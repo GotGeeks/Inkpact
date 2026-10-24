@@ -8,6 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "check:sync": "node scripts/sync-check.ts",
+    "crdt:fixtures": "node scripts/crdt-fixtures.ts",
+    "crdt:verify": "node scripts/crdt-verify.ts",
     "e2e": "dotnet build ../server/Spike.Server -o ../server/Spike.Server/bin/e2e -v q && playwright test"
   },
   "dependencies": {
