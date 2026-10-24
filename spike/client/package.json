@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "check:sync": "node scripts/sync-check.ts"
+    "check:sync": "node scripts/sync-check.ts",
+    "e2e": "dotnet build ../server/Spike.Server -o ../server/Spike.Server/bin/e2e -v q && playwright test"
   },
   "dependencies": {
     "@tiptap/core": "^3.32.0",
@@ -20,6 +21,8 @@
     "yjs": "^13.6.33"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.5"
   }
