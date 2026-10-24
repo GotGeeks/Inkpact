@@ -1,4 +1,4 @@
 using Spike.Server;
 
-var app = SpikeApp.Build(args);
+var app = await SpikeApp.BuildAsync(args);
 app.Run();

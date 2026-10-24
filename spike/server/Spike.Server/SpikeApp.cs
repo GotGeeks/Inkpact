@@ -1,29 +1,43 @@
+using Npgsql;
+
 namespace Spike.Server;
 
 public static class SpikeApp
 {
-    public static WebApplication Build(string[] args)
+    public static async Task<WebApplication> BuildAsync(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-        builder.Services.AddSingleton<RelayHub>();
+        var connectionString = builder.Configuration.GetConnectionString("Spike")
+            ?? throw new InvalidOperationException("ConnectionStrings:Spike is not set");
+
+        builder.Services.AddSingleton(_ => NpgsqlDataSource.Create(connectionString));
+        builder.Services.AddSingleton<IUpdateStore, PostgresUpdateStore>();
+        builder.Services.AddSingleton<SyncHub>();
 
         var app = builder.Build();
+        await app.Services.GetRequiredService<IUpdateStore>().EnsureSchemaAsync(CancellationToken.None);
+
         app.UseWebSockets();
 
-        // Spike only: no auth, no Origin check. The page id comes from the query string;
-        // run 0.2 moves it into every message so one socket can carry many pages.
-        app.Map("/ws", async (HttpContext context, RelayHub hub) =>
+        // Spike only: no auth, no Origin check, no permission check on subscribe (all in 1.09).
+        app.Map("/ws", async (HttpContext context, SyncHub hub) =>
         {
-            var pageId = context.Request.Query["page"].ToString();
-            if (!context.WebSockets.IsWebSocketRequest || pageId.Length is 0 or > 128)
+            if (!context.WebSockets.IsWebSocketRequest)
             {
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 return;
             }
 
             using var socket = await context.WebSockets.AcceptWebSocketAsync();
-            await hub.RunAsync(pageId, socket, context.RequestAborted);
+            await hub.RunAsync(socket, context.RequestAborted);
         });
+
+        if (app.Environment.IsDevelopment())
+        {
+            // Lets the check script verify that no update is stored twice.
+            app.MapGet("/debug/pages/{pageId}/updates", async (string pageId, IUpdateStore updates, CancellationToken ct) =>
+                Results.Ok(new { count = await updates.CountAsync(pageId, ct) }));
+        }
 
         return app;
     }
