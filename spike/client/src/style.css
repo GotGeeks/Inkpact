@@ -1,0 +1,31 @@
+/* Spike only: plain CSS, no design tokens. */
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0 auto;
+  max-width: 48rem;
+  padding: 1rem;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  color: #555;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+#status[data-state='connected'] {
+  color: green;
+}
+
+#status[data-state='disconnected'] {
+  color: crimson;
+}
+
+.ProseMirror {
+  min-height: 60vh;
+  outline: none;
+  border: 1px solid #ddd;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
