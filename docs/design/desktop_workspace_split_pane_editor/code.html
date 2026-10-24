@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-surface-variant": "#c7c4d8", "on-surface": "#e4e1ee", "surface-variant": "#35343e", "surface-dim": "#13121b", "on-secondary-fixed": "#001e2f", "background": "#13121b", "inverse-on-surface": "#302f39", "on-tertiary": "#571f00", "tertiary": "#ffb695", "outline-variant": "#464555", "inverse-primary": "#4d44e3", "primary-fixed": "#e2dfff", "error": "#ffb4ab", "surface-tint": "#c3c0ff", "on-secondary": "#00344d", "secondary-fixed-dim": "#89ceff", "on-tertiary-fixed-variant": "#7b2f00", "on-primary-container": "#dad7ff", "surface-elevated": "#222634", "presence-cursor-1": "#F43F5E", "on-secondary-fixed-variant": "#004c6e", "border-strong": "#374151", "error-container": "#93000a", "on-primary": "#1d00a5", "secondary-fixed": "#c9e6ff", "tertiary-fixed": "#ffdbcc", "presence-cursor-3": "#38BDF8", "on-tertiary-container": "#ffd2be", "secondary-container": "#00a2e6", "primary-fixed-dim": "#c3c0ff", "tertiary-container": "#a44100", "surface": "#13121b", "surface-bright": "#393842", "presence-cursor-4": "#FBBF24", "sync-active": "#10B981", "surface-container-low": "#1b1b24", "surface-container-lowest": "#0e0d16", "on-tertiary-fixed": "#351000", "surface-container": "#1f1f28", "secondary": "#89ceff", "surface-panel": "#11131A", "primary-container": "#4f46e5", "on-error-container": "#ffdad6", "surface-subtle": "#181B24", "surface-canvas": "#090A0F", "on-primary-fixed": "#0f0069", "primary": "#c3c0ff", "sync-offline": "#F59E0B", "outline": "#918fa1", "on-error": "#690005", "surface-container-highest": "#35343e", "presence-cursor-2": "#10B981", "inverse-surface": "#e4e1ee", "on-secondary-container": "#00344e", "surface-container-high": "#2a2933", "on-background": "#e4e1ee", "border-subtle": "#232838", "tertiary-fixed-dim": "#ffb695", "on-primary-fixed-variant": "#3323cc" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin": "1rem", "gutter": "1rem", "margin-desktop": "2rem", "space-xl": "1.5rem", "space-xs": "0.25rem", "space-md": "0.75rem", "space-sm": "0.5rem", "gutter-desktop": "1.5rem", "space-lg": "1rem" }, "fontFamily": { "body-sm": [ "Inter" ], "label-md": [ "Inter" ], "headline-xl": [ "Inter" ], "headline-sm": [ "Inter" ], "body-lg": [ "Inter" ], "headline-xl-mobile": [ "Inter" ], "headline-lg": [ "Inter" ], "code-inline": [ "JetBrains Mono" ], "label-xs": [ "Inter" ] }, "fontSize": { "body-sm": [ "0.875rem", { "lineHeight": "1.375rem", "fontWeight": "400" } ], "label-md": [ "0.8125rem", { "lineHeight": "1.125rem", "letterSpacing": "0.01em", "fontWeight": "500" } ], "headline-xl": [ "2rem", { "lineHeight": "2.5rem", "letterSpacing": "-0.025em", "fontWeight": "700" } ], "headline-sm": [ "1.125rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "body-lg": [ "1rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.011em", "fontWeight": "400" } ], "headline-xl-mobile": [ "1.75rem", { "lineHeight": "2.25rem", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "headline-lg": [ "1.5rem", { "lineHeight": "2rem", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "code-inline": [ "0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" } ], "label-xs": [ "0.6875rem", { "lineHeight": "0.875rem", "letterSpacing": "0.04em", "fontWeight": "600" } ] } } } };</script></head><body class="bg-surface font-body-sm text-body-sm text-on-surface antialiased select-none"><aside class="fixed left-0 top-0 bottom-0 w-64 bg-surface-panel z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col flex-1 min-h-0"><div class="h-14 px-space-lg flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-6 h-6 rounded bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[16px]">edit_note</span></div><span class="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">Inkpact</span></div><button class="w-7 h-7 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface" type="button"><span class="material-symbols-outlined text-[18px]">side_navigation</span></button></div><div class="px-space-md py-space-xs"><button class="w-full flex items-center justify-between px-space-md py-space-sm rounded bg-surface-subtle hover:bg-surface-elevated text-on-surface transition-colors" type="button"><div class="flex items-center gap-space-sm truncate"><span class="material-symbols-outlined text-primary text-[18px]">folder_shared</span><span class="font-label-md text-label-md truncate">Personal Workspace</span></div><span class="material-symbols-outlined text-on-surface-variant text-[16px]">unfold_more</span></button></div><div class="px-space-md py-space-xs"><div class="flex items-center justify-between px-space-md py-space-xs rounded bg-surface-canvas text-on-surface-variant"><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-body-sm text-body-sm">Quick Find</span></div><kbd class="font-code-inline text-label-xs bg-surface-elevated px-space-xs py-0.5 rounded text-on-surface-variant">Ctrl+K</kbd></div></div><nav class="flex-1 px-space-md py-space-sm space-y-0.5 overflow-y-auto" data-active-classes="bg-primary-container text-on-primary-container font-semibold"><div class="px-space-sm py-space-xs font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">Workspace</div><a aria-current="page" class="flex items-center gap-space-sm px-space-md py-space-sm rounded transition-colors bg-primary-container text-on-primary-container font-semibold" data-path="notes-editor" href="#"><span class="material-symbols-outlined text-[18px]">description</span><span class="font-label-md text-label-md truncate">All Documents</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" data-path="graph-view" href="#"><span class="material-symbols-outlined text-[18px]">hub</span><span class="font-label-md text-label-md truncate">Knowledge Graph</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" data-path="shared-vault" href="#"><span class="material-symbols-outlined text-[18px]">group</span><span class="font-label-md text-label-md truncate">Collaborative Spaces</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" data-path="tags-index" href="#"><span class="material-symbols-outlined text-[18px]">tag</span><span class="font-label-md text-label-md truncate">Tags &amp; Taxonomy</span></a><div class="pt-space-md px-space-sm py-space-xs font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">System</div><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" data-path="sync-diagnostics" href="#"><span class="material-symbols-outlined text-[18px]">sync_saved_locally</span><span class="font-label-md text-label-md truncate">Sync &amp; CRDT State</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" data-path="vault-settings" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-label-md text-label-md truncate">Vault Settings</span></a></nav></div><div class="p-space-md bg-surface-subtle"><div class="flex items-center justify-between"><div class="flex items-center gap-space-sm min-w-0"><div class="w-7 h-7 rounded-full bg-surface-elevated flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[16px]">dns</span></div><div class="flex flex-col min-w-0"><span class="font-label-xs text-label-xs text-on-surface truncate font-semibold">Local Node</span><span class="font-code-inline text-label-xs text-on-surface-variant truncate">v0.14.8-hybrid</span></div></div><span class="w-2 h-2 rounded-full bg-sync-active"></span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface-panel/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs bg-surface-canvas px-space-md py-1 rounded-full"><span class="w-2 h-2 rounded-full bg-sync-active animate-pulse"></span><span class="font-label-xs text-label-xs text-on-surface">Synced · 0 pending (Yjs WS)</span></div><div class="hidden sm:flex items-center gap-space-xs bg-surface-canvas px-space-md py-1 rounded-full text-on-surface-variant"><span class="material-symbols-outlined text-[14px] text-presence-cursor-2">router</span><span class="font-code-inline text-label-xs text-on-surface-variant">inkpact.lan.home · 38ms ping</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center -space-x-space-xs pl-space-sm" title="Connected Collaborators"><div class="w-6 h-6 rounded-full bg-presence-cursor-1 text-on-surface flex items-center justify-center font-label-xs text-label-xs font-bold ring-2 ring-surface-panel">M</div><div class="w-6 h-6 rounded-full bg-presence-cursor-2 text-on-surface flex items-center justify-center font-label-xs text-label-xs font-bold ring-2 ring-surface-panel">E</div><div class="w-6 h-6 rounded-full bg-presence-cursor-3 text-on-surface flex items-center justify-center font-label-xs text-label-xs font-bold ring-2 ring-surface-panel">T</div><div class="w-6 h-6 rounded-full bg-surface-elevated text-on-surface-variant flex items-center justify-center font-label-xs text-label-xs font-medium ring-2 ring-surface-panel">+2</div></div><div class="h-4 w-px bg-outline-variant"></div><button class="w-8 h-8 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">notifications</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-14 w-full bg-surface min-h-screen"><div class="flex flex-col w-full text-on-surface">
+<div class="flex h-[calc(100vh-3.5rem)] w-full overflow-hidden bg-surface-canvas">
+<!-- LEFT PANEL: Nested Notebook Navigation Tree (~268px) -->
+<aside class="w-68 flex-shrink-0 flex flex-col justify-between bg-surface-panel shadow-[1px_0_12px_rgba(0,0,0,0.35)] select-none z-20">
+<!-- Top Section -->
+<div class="flex flex-col flex-1 min-h-0">
+<!-- Workspace Header & Quick Controls -->
+<div class="p-space-md bg-surface-subtle/50">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm min-w-0 cursor-pointer group">
+<div class="w-7 h-7 rounded bg-primary-container/40 flex items-center justify-center text-primary group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-[17px]">inventory_2</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-sm text-label-md font-semibold text-on-surface truncate">Personal Vault</span>
+<span class="font-label-xs text-[9px] px-1.5 py-0.2 rounded-full bg-surface-elevated text-on-surface-variant font-medium uppercase tracking-wider">Owner</span>
+</div>
+<span class="font-label-xs text-label-xs text-on-surface-variant/80 truncate">v1.4 · Unraid LAN</span>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="w-6 h-6 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-elevated transition-colors" title="New Document (Ctrl+N)">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+</button>
+<button class="w-6 h-6 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-elevated transition-colors" title="Quick Filters">
+<span class="material-symbols-outlined text-[16px]">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Server Node Diagnostics Chip -->
+<div class="mt-2.5 px-2.5 py-1.5 rounded-lg bg-surface-canvas/90 flex items-center justify-between">
+<div class="flex items-center gap-2 min-w-0">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sync-active opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-sync-active"></span>
+</span>
+<span class="font-code-inline text-[11px] text-on-surface truncate">Jos Home Server (Unraid)</span>
+</div>
+<div class="flex items-center gap-1.5 flex-shrink-0">
+<span class="font-code-inline text-[10px] text-on-surface-variant/70">PG 17</span>
+<span class="text-on-surface-variant/40 text-[9px]">•</span>
+<span class="font-code-inline text-[10px] text-sync-active font-medium">42ms</span>
+</div>
+</div>
+<!-- Fast Finder Input Field -->
+<div class="mt-2 relative">
+<div class="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-surface-container-lowest text-on-surface-variant hover:bg-surface-elevated/40 transition-colors cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant">search</span>
+<span class="font-body-sm text-[12px] text-on-surface-variant">Filter files &amp; tags...</span>
+</div>
+<kbd class="font-code-inline text-[10px] bg-surface-elevated px-1.5 py-0.5 rounded text-on-surface-variant">⌘K</kbd>
+</div>
+</div>
+</div>
+<!-- Scrollable Document Tree Hierarchy -->
+<nav class="flex-1 px-2.5 py-2 overflow-y-auto space-y-3">
+<!-- Pinned / Starred Vault Records -->
+<div>
+<div class="flex items-center justify-between px-2 py-1 text-on-surface-variant">
+<span class="font-label-xs text-[10px] uppercase tracking-wider font-semibold">Pinned Quick Links</span>
+<span class="material-symbols-outlined text-[13px] text-tertiary">star</span>
+</div>
+<div class="space-y-0.5 mt-0.5">
+<a class="group flex items-center justify-between px-2 py-1.5 rounded-md bg-surface-elevated/40 hover:bg-surface-elevated text-on-surface transition-colors" href="#">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-[15px] text-primary">description</span>
+<span class="font-label-md text-[12px] truncate font-medium">Inkpact v1 - Architecture</span>
+</div>
+<span class="font-label-xs text-[9px] px-1 py-0.5 rounded bg-surface-canvas text-on-surface-variant group-hover:text-primary">0.14</span>
+</a>
+<a class="group flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-surface-elevated/50 text-on-surface-variant hover:text-on-surface transition-colors" href="#">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-[15px]">terminal</span>
+<span class="font-label-md text-[12px] truncate">Unraid Server Runbook</span>
+</div>
+<span class="material-symbols-outlined text-[14px] text-presence-cursor-4">bolt</span>
+</a>
+</div>
+</div>
+<!-- Tree Hierarchy -->
+<div>
+<div class="flex items-center justify-between px-2 py-1 text-on-surface-variant">
+<span class="font-label-xs text-[10px] uppercase tracking-wider font-semibold">Notebooks &amp; Spaces</span>
+<span class="font-code-inline text-[10px] text-on-surface-variant/60">32 files</span>
+</div>
+<div class="space-y-0.5 mt-1">
+<!-- Folder: Projects (Open) -->
+<div class="space-y-0.5">
+<button class="w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-surface-elevated/40 text-on-surface font-medium transition-colors text-left" type="button">
+<div class="flex items-center gap-1.5 truncate">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant">folder_open</span>
+<span class="font-label-md text-[12.5px] truncate">Projects</span>
+</div>
+<span class="font-code-inline text-[10px] px-1.5 rounded-full bg-surface-elevated text-on-surface-variant">4</span>
+</button>
+<!-- Nested Level 1 -->
+<div class="pl-4 space-y-0.5 relative before:absolute before:left-2.5 before:top-1 before:bottom-1 before:w-[1px] before:bg-surface-variant">
+<!-- Active Document -->
+<a class="flex items-center justify-between px-2 py-1.5 rounded-md bg-primary-container text-on-primary-container shadow-sm font-semibold transition-colors" href="#">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[15px] text-primary-fixed">article</span>
+<span class="font-label-md text-[12px] truncate">Inkpact v1 - Architecture</span>
+</div>
+<span class="w-1.5 h-1.5 rounded-full bg-presence-cursor-2 animate-pulse" title="Peer Editing Active"></span>
+</a>
+<!-- Inactive Leaf Document -->
+<a class="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-surface-elevated/60 text-on-surface-variant hover:text-on-surface transition-colors" href="#">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[15px]">description</span>
+<span class="font-label-md text-[12px] truncate">GarageStack CI/CD notes</span>
+</div>
+</a>
+<!-- Sub-folder: Sub-specs -->
+<div class="space-y-0.5">
+<button class="w-full flex items-center justify-between px-2 py-1 rounded-md hover:bg-surface-elevated/40 text-on-surface-variant hover:text-on-surface transition-colors text-left" type="button">
+<div class="flex items-center gap-1.5 truncate">
+<span class="material-symbols-outlined text-[14px]">arrow_right</span>
+<span class="material-symbols-outlined text-[14px]">folder</span>
+<span class="font-label-md text-[11.5px] truncate">Sub-specs</span>
+</div>
+<span class="font-label-xs text-[9px] text-on-surface-variant/60">2</span>
+</button>
+<!-- Nested Level 2 -->
+<div class="pl-5 space-y-0.5">
+<a class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-elevated text-on-surface-variant hover:text-on-surface text-[11px] truncate" href="#">
+<span class="material-symbols-outlined text-[13px]">code</span>
+<span class="truncate">Postgres Compaction Worker</span>
+</a>
+<a class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-elevated text-on-surface-variant hover:text-on-surface text-[11px] truncate" href="#">
+<span class="material-symbols-outlined text-[13px]">schema</span>
+<span class="truncate">Joplin JEX Import Schema</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+<!-- Folder: Personal & Home -->
+<button class="w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-surface-elevated/40 text-on-surface-variant hover:text-on-surface transition-colors text-left" type="button">
+<div class="flex items-center gap-1.5 truncate">
+<span class="material-symbols-outlined text-[15px]">folder</span>
+<span class="font-label-md text-[12.5px] truncate">Personal &amp; Home</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="font-label-xs text-[9px] px-1.5 py-0.2 rounded bg-surface-container-high text-sync-active font-medium">3/5 done</span>
+<span class="font-code-inline text-[10px] text-on-surface-variant/60">12</span>
+</div>
+</button>
+<!-- Folder: Shared with Me -->
+<div class="space-y-0.5">
+<button class="w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-surface-elevated/40 text-on-surface-variant hover:text-on-surface transition-colors text-left" type="button">
+<div class="flex items-center gap-1.5 truncate">
+<span class="material-symbols-outlined text-[15px] text-presence-cursor-3">group</span>
+<span class="font-label-md text-[12.5px] truncate">Shared with Me</span>
+</div>
+<span class="font-label-xs text-[9px] px-1 py-0.2 rounded bg-surface-elevated text-presence-cursor-3">2 live</span>
+</button>
+<div class="pl-4 space-y-0.5">
+<a class="flex items-center justify-between px-2 py-1 rounded hover:bg-surface-elevated text-on-surface-variant hover:text-on-surface transition-colors text-[11.5px]" href="#">
+<div class="flex items-center gap-1.5 truncate">
+<span class="material-symbols-outlined text-[13px] text-presence-cursor-1">article</span>
+<span class="truncate">Q4 Family Budget Planning</span>
+</div>
+<span class="font-label-xs text-[9px] text-presence-cursor-1 bg-presence-cursor-1/10 px-1 rounded">Maria</span>
+</a>
+<a class="flex items-center justify-between px-2 py-1 rounded hover:bg-surface-elevated text-on-surface-variant hover:text-on-surface transition-colors text-[11.5px]" href="#">
+<div class="flex items-center gap-1.5 truncate">
+<span class="material-symbols-outlined text-[13px] text-secondary">explore</span>
+<span class="truncate">Azores Trip Itinerary 2025</span>
+</div>
+<span class="font-label-xs text-[9px] text-secondary bg-secondary/10 px-1 rounded">Viewer</span>
+</a>
+</div>
+</div>
+<!-- Trash Section -->
+<button class="w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-surface-elevated/40 text-on-surface-variant/70 hover:text-on-surface transition-colors text-left" type="button">
+<div class="flex items-center gap-1.5 truncate">
+<span class="material-symbols-outlined text-[15px]">delete</span>
+<span class="font-label-md text-[12px] truncate">Trash</span>
+</div>
+<span class="font-label-xs text-[9px] text-on-surface-variant/50">3 items · 30d</span>
+</button>
+</div>
+</div>
+</nav>
+</div>
+<!-- Bottom Status & Storage Metrics -->
+<div class="p-space-md bg-surface-subtle">
+<div class="space-y-2">
+<div class="flex items-center justify-between font-label-xs text-[10px]">
+<span class="text-on-surface-variant uppercase tracking-wider font-semibold">CRDT Vault Buffer</span>
+<span class="text-on-surface font-code-inline">142 MB / 50 GB</span>
+</div>
+<!-- Storage Bar -->
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-300" style="width: 14%;"></div>
+</div>
+<div class="flex items-center justify-between font-label-xs text-[10px] text-on-surface-variant">
+<span class="flex items-center gap-1 text-sync-active">
+<span class="material-symbols-outlined text-[11px]">verified</span> 0 conflicts
+            </span>
+<span class="font-code-inline text-[9px] text-on-surface-variant/70">Compacted 8m ago</span>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-1 text-on-surface-variant">
+<button class="w-5 h-5 rounded hover:bg-surface-elevated flex items-center justify-center" title="Toggle Focus Mode">
+<span class="material-symbols-outlined text-[13px]">fullscreen</span>
+</button>
+<button class="w-5 h-5 rounded hover:bg-surface-elevated flex items-center justify-center" title="Database Statistics">
+<span class="material-symbols-outlined text-[13px]">analytics</span>
+</button>
+<button class="w-5 h-5 rounded hover:bg-surface-elevated flex items-center justify-center" title="CRDT Snapshot Log">
+<span class="material-symbols-outlined text-[13px]">history</span>
+</button>
+</div>
+<span class="font-code-inline text-[9px] text-on-surface-variant/60">Yjs WebSocket · v0.14</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- CENTER PANE: TipTap Rich Collaborative Prose Canvas -->
+<main class="flex-1 min-w-0 flex flex-col bg-surface overflow-hidden relative">
+<!-- Top Action Strip & Breadcrumbs -->
+<div class="h-12 px-space-lg flex items-center justify-between bg-surface-subtle/80 backdrop-blur-md flex-shrink-0 z-10">
+<!-- Breadcrumbs -->
+<div class="flex items-center gap-1.5 min-w-0 text-on-surface-variant text-[12px] font-label-md">
+<span class="hover:text-on-surface cursor-pointer">Projects</span>
+<span class="text-on-surface-variant/40">/</span>
+<span class="hover:text-on-surface cursor-pointer">Engineering</span>
+<span class="text-on-surface-variant/40">/</span>
+<span class="text-on-surface font-semibold truncate flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-primary">edit_document</span>
+            Inkpact v1 - System Architecture &amp; Sync
+          </span>
+</div>
+<!-- Center Strip Presence & Tools -->
+<div class="flex items-center gap-3">
+<!-- Multi-user presence pill group -->
+<div class="flex items-center -space-x-1.5 pl-2" title="Collaborators currently active in this file">
+<div class="relative group cursor-pointer">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-label-xs text-[10px] font-bold ring-2 ring-surface shadow">
+                J
+              </div>
+<span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-sync-active ring-1 ring-surface"></span>
+</div>
+<div class="relative group cursor-pointer">
+<div class="w-6 h-6 rounded-full bg-presence-cursor-2 text-surface-canvas flex items-center justify-center font-label-xs text-[10px] font-bold ring-2 ring-surface shadow">
+                M
+              </div>
+<span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-sync-active ring-1 ring-surface"></span>
+</div>
+<span class="font-label-xs text-[11px] text-on-surface-variant pl-2">Maria typing...</span>
+</div>
+<!-- Yjs WS Status Indicator -->
+<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-elevated/70">
+<span class="w-1.5 h-1.5 rounded-full bg-sync-active"></span>
+<span class="font-code-inline text-[10px] text-on-surface">WS Live · Yjs #1,420 · 0 pend</span>
+</div>
+<!-- Split Mode Toggle -->
+<button class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-elevated text-on-surface hover:bg-surface-variant transition-colors shadow-sm" id="toggleSplitBtn">
+<span class="material-symbols-outlined text-[15px] text-primary">vertical_split</span>
+<span class="font-label-md text-[11px]">Split: Markdown</span>
+</button>
+<!-- Document Controls -->
+<button class="w-7 h-7 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-elevated transition-colors">
+<span class="material-symbols-outlined text-[16px]">share</span>
+</button>
+<button class="w-7 h-7 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-elevated transition-colors">
+<span class="material-symbols-outlined text-[16px]">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Editor Scroll Area with locked max-width prose reading alignment -->
+<div class="flex-1 overflow-y-auto px-4 py-8 flex justify-center">
+<div class="w-full max-w-[720px] pb-32">
+<!-- Note Metadata Header (Uncoupled from CRDT Body) -->
+<div class="mb-8 group">
+<input class="w-full bg-transparent font-headline-xl text-headline-xl font-bold text-on-surface tracking-tight focus:outline-none placeholder-on-surface-variant/40" placeholder="Untitled Document..." type="text" value="Inkpact v1 - System Architecture &amp; Sync"/>
+<!-- Subtitle and Meta Tags Row -->
+<div class="mt-3 flex flex-wrap items-center gap-2 text-on-surface-variant font-label-md text-[11.5px]">
+<div class="flex items-center gap-1 text-on-surface-variant/80">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span>Last synced 2m ago by <strong class="text-on-surface font-semibold">@Jos</strong></span>
+</div>
+<span class="text-on-surface-variant/30">•</span>
+<div class="flex items-center gap-1 font-code-inline text-[10.5px] text-on-surface-variant/70">
+<span class="material-symbols-outlined text-[13px]">dns</span>
+<span>Unraid Docker #84</span>
+</div>
+<span class="text-on-surface-variant/30">•</span>
+<!-- Tag Pills -->
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="px-2 py-0.5 rounded-full bg-surface-elevated text-primary font-code-inline text-[10.5px]">#architecture</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-elevated text-secondary font-code-inline text-[10.5px]">#self-hosted</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-elevated text-tertiary font-code-inline text-[10.5px]">#crdt</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-elevated text-on-surface-variant font-code-inline text-[10.5px]">#postgres</span>
+<button class="w-5 h-5 rounded-full hover:bg-surface-elevated flex items-center justify-center text-on-surface-variant/60 hover:text-on-surface">
+<span class="material-symbols-outlined text-[12px]">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Document Prose Blocks (TipTap Simulation with block hover handles) -->
+<div class="space-y-4 font-body-lg text-body-lg text-on-surface leading-relaxed">
+<!-- Block 1: Intro callout with drag handle -->
+<div class="relative group -ml-7 pl-7 transition-colors">
+<!-- Notion-style drag handles -->
+<div class="absolute left-0 top-1 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 text-on-surface-variant transition-opacity cursor-grab">
+<span class="material-symbols-outlined text-[14px] hover:text-on-surface">add</span>
+<span class="material-symbols-outlined text-[15px] hover:text-on-surface">drag_indicator</span>
+</div>
+<div class="p-3.5 rounded-xl bg-surface-subtle text-on-surface shadow-sm flex items-start gap-3">
+<span class="material-symbols-outlined text-primary text-[20px] flex-shrink-0 mt-0.5">verified_user</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+<strong class="text-on-surface font-semibold">Local-First Immutable Guarantee:</strong> Inkpact uses Yjs binary update vectors streamed over secure WebSockets. Even in an offline state, clients edit the in-memory document state locally, syncing diffs instantaneously upon reconnecting to the Unraid node.
+                </p>
+</div>
+</div>
+<!-- Block 2: Section Heading -->
+<div class="relative group -ml-7 pl-7 pt-2">
+<div class="absolute left-0 top-3 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 text-on-surface-variant transition-opacity cursor-grab">
+<span class="material-symbols-outlined text-[14px]">add</span>
+<span class="material-symbols-outlined text-[15px]">drag_indicator</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">
+                Sync Pipeline &amp; CRDT Guarantees
+              </h2>
+</div>
+<!-- Block 3: Prose paragraph with collaborative cursor -->
+<div class="relative group -ml-7 pl-7">
+<div class="absolute left-0 top-1 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 text-on-surface-variant transition-opacity cursor-grab">
+<span class="material-symbols-outlined text-[14px]">add</span>
+<span class="material-symbols-outlined text-[15px]">drag_indicator</span>
+</div>
+<p class="text-on-surface/90">
+                The sync pipeline executes within an ASP.NET Core minimal API WebSocket hub running on Kestrel. Incoming binary updates are verified for cryptographic signature before being pushed down to other connected peers. Concurrently, updates append sequentially into the local 
+                <code class="font-code-inline text-[13px] px-1.5 py-0.5 rounded bg-surface-elevated text-primary font-medium">page_updates</code> table.
+              </p>
+</div>
+<!-- Block 4: Active editing paragraph with Maria's live cursor -->
+<div class="relative group -ml-7 pl-7">
+<div class="absolute left-0 top-1 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 text-on-surface-variant transition-opacity cursor-grab">
+<span class="material-symbols-outlined text-[14px]">add</span>
+<span class="material-symbols-outlined text-[15px]">drag_indicator</span>
+</div>
+<p class="text-on-surface/90 relative">
+                To prevent state divergence, a background compaction worker periodically aggregates individual delta rows into a single 
+                <span class="bg-presence-cursor-2/20 text-on-surface px-1 rounded relative">
+                  compacted Yjs document state blob
+                  <!-- Maria's Live Cursor Pill -->
+<span class="inline-block relative -top-0.5 -mr-1">
+<span class="inline-block w-[2px] h-5 bg-presence-cursor-2 align-middle animate-pulse"></span>
+<span class="absolute -top-5 left-0 px-1.5 py-0.2 rounded bg-presence-cursor-2 text-surface-canvas font-label-xs text-[10px] font-bold shadow-md uppercase tracking-tight pointer-events-none whitespace-nowrap">
+                      Maria
+                    </span>
+</span>
+</span>
+                which ensures query latency scales logarithmically rather than linearly with edits.
+              </p>
+</div>
+<!-- Block 5: Interactive Checklists -->
+<div class="relative group -ml-7 pl-7 space-y-2 pt-2">
+<div class="absolute left-0 top-2 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 text-on-surface-variant transition-opacity cursor-grab">
+<span class="material-symbols-outlined text-[14px]">add</span>
+<span class="material-symbols-outlined text-[15px]">drag_indicator</span>
+</div>
+<div class="font-headline-sm text-label-md font-semibold text-on-surface uppercase tracking-wider text-[11px]">
+                Implementation Milestones
+              </div>
+<div class="space-y-1.5">
+<!-- Checked Item -->
+<label class="flex items-start gap-2.5 cursor-pointer group/task select-none">
+<input checked="" class="mt-1 w-4 h-4 rounded bg-primary text-on-primary accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-sm text-[13.5px] line-through text-on-surface-variant/60">
+                    ASP.NET Core WebSocket hub spike &amp; benchmark (15k ops/sec)
+                  </span>
+</label>
+<!-- Unchecked Item 1 -->
+<label class="flex items-start gap-2.5 cursor-pointer group/task select-none">
+<input class="mt-1 w-4 h-4 rounded bg-surface-elevated text-primary accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-sm text-[13.5px] text-on-surface">
+                    YDotNet native library text extraction benchmark
+                  </span>
+</label>
+<!-- Unchecked Item 2 -->
+<label class="flex items-start gap-2.5 cursor-pointer group/task select-none">
+<input class="mt-1 w-4 h-4 rounded bg-surface-elevated text-primary accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-sm text-[13.5px] text-on-surface">
+                    Compaction stress test (50,000 edits replay verification)
+                  </span>
+</label>
+</div>
+</div>
+<!-- Block 6: Code Block Container with JSON -->
+<div class="relative group -ml-7 pl-7 pt-3">
+<div class="absolute left-0 top-4 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 text-on-surface-variant transition-opacity cursor-grab">
+<span class="material-symbols-outlined text-[14px]">add</span>
+<span class="material-symbols-outlined text-[15px]">drag_indicator</span>
+</div>
+<div class="rounded-xl overflow-hidden bg-surface-canvas shadow-md">
+<!-- Code Header -->
+<div class="px-4 py-2 bg-surface-subtle flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-presence-cursor-4">data_object</span>
+<span class="font-code-inline text-[11px] text-on-surface-variant">sync_event_payload.json</span>
+</div>
+<button class="flex items-center gap-1 font-label-xs text-[10px] text-on-surface-variant hover:text-on-surface px-2 py-0.5 rounded hover:bg-surface-elevated transition-colors">
+<span class="material-symbols-outlined text-[12px]">content_copy</span>
+<span>Copy</span>
+</button>
+</div>
+<!-- Code Body -->
+<pre class="p-4 overflow-x-auto font-code-inline text-[12px] leading-relaxed text-on-surface"><span class="text-tertiary">{</span>
+  <span class="text-secondary">"type"</span>: <span class="text-sync-active">"sync.update.v1"</span>,
+  <span class="text-secondary">"doc_id"</span>: <span class="text-sync-active">"doc_01j8m49z8n"</span>,
+  <span class="text-secondary">"client_id"</span>: <span class="text-presence-cursor-4">4910283</span>,
+  <span class="text-secondary">"clock"</span>: <span class="text-presence-cursor-4">1420</span>,
+  <span class="text-secondary">"origin"</span>: <span class="text-sync-active">"maria@macbook.local"</span>,
+  <span class="text-secondary">"delta_bytes_base64"</span>: <span class="text-sync-active">"AQH+0AQAAT8BCEFkZEJsb2Nr"</span>,
+  <span class="text-secondary">"committed_at"</span>: <span class="text-sync-active">"2025-05-18T14:22:01.402Z"</span>
+<span class="text-tertiary">}</span></pre>
+</div>
+</div>
+<!-- Block 7: Contextual Floating Slash Command Menu popup -->
+<div class="relative group -ml-7 pl-7 pt-2">
+<div class="flex items-center gap-1 text-on-surface-variant text-[14px]">
+<span class="text-primary font-bold">/</span>
+<span class="w-[2px] h-4 bg-primary inline-block animate-pulse"></span>
+</div>
+<!-- Slash Popover Menu -->
+<div class="absolute left-7 top-7 w-72 rounded-xl bg-surface-elevated/95 backdrop-blur-xl shadow-[0_16px_36px_rgba(0,0,0,0.55)] p-1.5 z-30">
+<div class="px-2.5 py-1 text-on-surface-variant font-label-xs text-[10px] uppercase tracking-wider font-semibold">
+                  Basic Blocks &amp; Embeds
+                </div>
+<div class="space-y-0.5">
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-primary-container text-on-primary-container text-left transition-colors">
+<span class="material-symbols-outlined text-[17px] text-primary-fixed">table_chart</span>
+<div>
+<div class="font-label-md text-[12px] font-semibold">Table</div>
+<div class="font-label-xs text-[10px] text-on-primary-container/70">Responsive data grid with formulas</div>
+</div>
+</button>
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-surface-subtle text-on-surface text-left transition-colors">
+<span class="material-symbols-outlined text-[17px] text-presence-cursor-3">code_blocks</span>
+<div>
+<div class="font-label-md text-[12px]">Code Block</div>
+<div class="font-label-xs text-[10px] text-on-surface-variant">Syntax highlighted developer snippet</div>
+</div>
+</button>
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-surface-subtle text-on-surface text-left transition-colors">
+<span class="material-symbols-outlined text-[17px] text-presence-cursor-4">lightbulb</span>
+<div>
+<div class="font-label-md text-[12px]">Callout Box</div>
+<div class="font-label-xs text-[10px] text-on-surface-variant">Notice, warning, or tip container</div>
+</div>
+</button>
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-surface-subtle text-on-surface text-left transition-colors">
+<span class="material-symbols-outlined text-[17px] text-tertiary">link</span>
+<div>
+<div class="font-label-md text-[12px]">[[Wikilink]]</div>
+<div class="font-label-xs text-[10px] text-on-surface-variant">Bi-directional cross-note reference</div>
+</div>
+</button>
+<button class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-surface-subtle text-on-surface text-left transition-colors">
+<span class="material-symbols-outlined text-[17px] text-sync-active">checklist</span>
+<div>
+<div class="font-label-md text-[12px]">Task List</div>
+<div class="font-label-xs text-[10px] text-on-surface-variant">Interactive markdown checkboxes</div>
+</div>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- RIGHT PANEL: Split-Pane Active (~360px) -->
+<aside class="w-90 flex-shrink-0 flex flex-col justify-between bg-surface-subtle shadow-[-1px_0_12px_rgba(0,0,0,0.35)] select-none z-10">
+<!-- Split-Pane Header & Tab Switcher -->
+<div class="flex flex-col flex-1 min-h-0">
+<div class="h-12 px-space-md flex items-center justify-between bg-surface-panel/80">
+<!-- Tabs -->
+<div class="flex items-center gap-1">
+<button class="px-2.5 py-1 rounded bg-surface-elevated font-label-md text-[11px] font-semibold text-primary">
+              Markdown Source
+            </button>
+<button class="px-2.5 py-1 rounded hover:bg-surface-elevated/50 font-label-md text-[11px] text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1">
+<span>Backlinks</span>
+<span class="px-1 py-0.2 rounded-full bg-surface-canvas text-[9px] font-code-inline text-on-surface-variant">4</span>
+</button>
+<button class="px-2.5 py-1 rounded hover:bg-surface-elevated/50 font-label-md text-[11px] text-on-surface-variant hover:text-on-surface transition-colors">
+              History
+            </button>
+</div>
+<button class="w-6 h-6 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-elevated" title="Collapse Split Pane">
+<span class="material-symbols-outlined text-[15px]">close</span>
+</button>
+</div>
+<!-- Raw Markdown / Frontmatter Code Area -->
+<div class="flex-1 flex overflow-hidden bg-surface-canvas">
+<!-- Line Numbers Gutter -->
+<div class="w-9 py-3 bg-surface-subtle/50 text-right pr-2 select-none font-code-inline text-[11px] text-on-surface-variant/40 space-y-1">
+<div>1</div>
+<div>2</div>
+<div>3</div>
+<div>4</div>
+<div>5</div>
+<div>6</div>
+<div>7</div>
+<div>8</div>
+<div>9</div>
+<div>10</div>
+<div>11</div>
+<div>12</div>
+<div>13</div>
+<div>14</div>
+<div>15</div>
+<div>16</div>
+<div>17</div>
+<div>18</div>
+<div>19</div>
+<div>20</div>
+<div>21</div>
+<div>22</div>
+</div>
+<!-- Code Content Stream -->
+<div class="flex-1 p-3 overflow-y-auto font-code-inline text-[11.5px] leading-relaxed text-on-surface selection:bg-primary-container">
+<!-- Frontmatter -->
+<div class="text-on-surface-variant/70">---</div>
+<div><span class="text-tertiary">title:</span> <span class="text-sync-active">"Inkpact v1 - Architecture"</span></div>
+<div><span class="text-tertiary">tags:</span> <span class="text-on-surface-variant">[architecture, crdt, postgres]</span></div>
+<div><span class="text-tertiary">created:</span> <span class="text-on-surface-variant">2025-05-18T10:14:00Z</span></div>
+<div><span class="text-tertiary">joplin_id:</span> <span class="text-secondary">"jex_8f92a0149bb"</span></div>
+<div class="text-on-surface-variant/70">---</div>
+<div class="h-2"></div>
+<!-- Body markdown -->
+<div><span class="text-primary font-bold">#</span> Inkpact v1 - System Architecture &amp; Sync</div>
+<div class="h-2"></div>
+<div><span class="text-on-surface-variant/60">&gt; **Local-First Immutable Guarantee:**</span></div>
+<div><span class="text-on-surface-variant/60">&gt; Inkpact uses Yjs binary update vectors...</span></div>
+<div class="h-2"></div>
+<div><span class="text-primary font-bold">##</span> Sync Pipeline &amp; CRDT Guarantees</div>
+<div class="h-2"></div>
+<div>The sync pipeline executes within an ASP.NET</div>
+<div>Core minimal API WebSocket hub running on Kestrel.</div>
+<div>Updates append sequentially to `<span class="text-primary font-bold">page_updates</span>`.</div>
+<div class="h-2"></div>
+<div><span class="text-sync-active">- [x]</span> ASP.NET Core WebSocket hub spike</div>
+<div><span class="text-secondary">- [ ]</span> YDotNet native text benchmark</div>
+<div><span class="text-secondary">- [ ]</span> Compaction stress test</div>
+<div class="h-2"></div>
+<div><span class="text-presence-cursor-4">json</span></div>
+<div class="text-on-surface-variant/80">{ "type": "sync.update.v1" }</div>
+<div><span class="text-presence-cursor-4"></span></div>
+</div>
+</div>
+<!-- Backlinks Collapsible Sub-Panel -->
+<div class="p-3 bg-surface-subtle">
+<div class="flex items-center justify-between cursor-pointer mb-2">
+<div class="flex items-center gap-1.5 font-label-xs text-[10px] uppercase tracking-wider font-semibold text-on-surface-variant">
+<span class="material-symbols-outlined text-[13px] text-primary">link</span>
+<span>Linked References (2)</span>
+</div>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">expand_less</span>
+</div>
+<!-- Reference Items -->
+<div class="space-y-1.5">
+<a class="block p-2 rounded-lg bg-surface-elevated/70 hover:bg-surface-elevated transition-colors text-left group" href="#">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-[11px] font-semibold text-on-surface group-hover:text-primary transition-colors">Postgres Compaction Worker</span>
+<span class="font-code-inline text-[9px] text-on-surface-variant/60">line 42</span>
+</div>
+<div class="font-body-sm text-[10.5px] text-on-surface-variant truncate mt-0.5">
+                "...reads latest vector clock aligned with <strong class="text-primary">[[Inkpact v1 - Architecture]]</strong>..."
+              </div>
+</a>
+<a class="block p-2 rounded-lg bg-surface-elevated/70 hover:bg-surface-elevated transition-colors text-left group" href="#">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-[11px] font-semibold text-on-surface group-hover:text-primary transition-colors">GarageStack CI/CD notes</span>
+<span class="font-code-inline text-[9px] text-on-surface-variant/60">line 8</span>
+</div>
+<div class="font-body-sm text-[10.5px] text-on-surface-variant truncate mt-0.5">
+                "...deploys worker service referencing <strong class="text-primary">[[Inkpact v1 - Architecture]]</strong> specs..."
+              </div>
+</a>
+</div>
+</div>
+</div>
+<!-- Split-Pane Mini Status Bar -->
+<div class="h-8 px-3 bg-surface-panel flex items-center justify-between font-code-inline text-[10px] text-on-surface-variant">
+<div>Ln 28, Col 14 · LF</div>
+<div class="flex items-center gap-1 text-sync-active">
+<span class="material-symbols-outlined text-[12px]">verified</span>
+<span>JEX Export Ready</span>
+</div>
+</div>
+</aside>
+</div>
+</div>
+<script>
+  // Simple toggle interaction for split-pane markdown viewer
+  document.getElementById('toggleSplitBtn')?.addEventListener('click', function() {
+    const splitPane = document.querySelector('aside.w-90');
+    if (splitPane) {
+      if (splitPane.classList.contains('hidden')) {
+        splitPane.classList.remove('hidden');
+        this.classList.add('bg-surface-elevated', 'text-on-surface');
+      } else {
+        splitPane.classList.add('hidden');
+        this.classList.remove('bg-surface-elevated');
+      }
+    }
+  });
+</script></main></div></body></html>

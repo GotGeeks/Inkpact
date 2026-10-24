@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#13121b;color:#e4e1ee;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary": "#00344d", "surface-variant": "#35343e", "surface-container-high": "#2a2933", "tertiary-container": "#a44100", "surface-tint": "#c3c0ff", "sync-offline": "#F59E0B", "primary": "#c3c0ff", "surface-dim": "#13121b", "tertiary-fixed-dim": "#ffb695", "secondary": "#89ceff", "error": "#ffb4ab", "primary-fixed-dim": "#c3c0ff", "secondary-fixed-dim": "#89ceff", "on-tertiary-fixed": "#351000", "tertiary": "#ffb695", "error-container": "#93000a", "on-primary": "#1d00a5", "primary-container": "#4f46e5", "secondary-fixed": "#c9e6ff", "on-secondary-container": "#00344e", "outline": "#918fa1", "on-primary-container": "#dad7ff", "surface": "#13121b", "on-secondary-fixed": "#001e2f", "on-primary-fixed-variant": "#3323cc", "background": "#13121b", "sync-active": "#10B981", "inverse-on-surface": "#302f39", "inverse-surface": "#e4e1ee", "tertiary-fixed": "#ffdbcc", "primary-fixed": "#e2dfff", "on-tertiary": "#571f00", "on-error-container": "#ffdad6", "on-primary-fixed": "#0f0069", "inverse-primary": "#4d44e3", "presence-cursor-2": "#10B981", "on-secondary-fixed-variant": "#004c6e", "surface-subtle": "#181B24", "on-error": "#690005", "outline-variant": "#464555", "secondary-container": "#00a2e6", "surface-container-lowest": "#0e0d16", "on-tertiary-container": "#ffd2be", "presence-cursor-3": "#38BDF8", "surface-container": "#1f1f28", "surface-bright": "#393842", "surface-container-low": "#1b1b24", "on-surface-variant": "#c7c4d8", "on-tertiary-fixed-variant": "#7b2f00", "presence-cursor-1": "#F43F5E", "presence-cursor-4": "#FBBF24", "surface-panel": "#11131A", "on-background": "#e4e1ee", "border-strong": "#374151", "surface-elevated": "#222634", "surface-canvas": "#090A0F", "border-subtle": "#232838", "on-surface": "#e4e1ee", "surface-container-highest": "#35343e" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xs": "0.25rem", "gutter-desktop": "1.5rem", "margin-desktop": "2rem", "space-xl": "1.5rem", "margin": "1rem", "gutter": "1rem", "space-lg": "1rem", "space-md": "0.75rem", "space-sm": "0.5rem" }, "fontFamily": { "label-xs": ["Inter"], "headline-lg": ["Inter"], "code-inline": ["JetBrains Mono"], "label-md": ["Inter"], "headline-xl-mobile": ["Inter"], "body-sm": ["Inter"], "body-lg": ["Inter"], "headline-xl": ["Inter"], "headline-sm": ["Inter"] }, "fontSize": { "label-xs": ["0.6875rem", { "lineHeight": "0.875rem", "letterSpacing": "0.04em", "fontWeight": "600" }], "headline-lg": ["1.5rem", { "lineHeight": "2rem", "letterSpacing": "-0.02em", "fontWeight": "600" }], "code-inline": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }], "label-md": ["0.8125rem", { "lineHeight": "1.125rem", "letterSpacing": "0.01em", "fontWeight": "500" }], "headline-xl-mobile": ["1.75rem", { "lineHeight": "2.25rem", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-sm": ["0.875rem", { "lineHeight": "1.375rem", "fontWeight": "400" }], "body-lg": ["1rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.011em", "fontWeight": "400" }], "headline-xl": ["2rem", { "lineHeight": "2.5rem", "letterSpacing": "-0.025em", "fontWeight": "700" }], "headline-sm": ["1.125rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.015em", "fontWeight": "600" }] } } } };</script></head><body class="bg-surface font-body-sm text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 bg-surface-panel/85 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-xs min-w-0"><button aria-label="Back" class="min-h-[44px] min-w-[44px] flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[20px]">arrow_back</span></button><img alt="Inkpact App Icon" class="h-8 w-auto object-contain flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfg0OC4WNRLP0RR_9o1IUGSsbPRfncvj1aNhWXUDzAvMUQKvaljG9d1HhZ9x9XkNz8vtoBIpDN7v7HLv5QH3qS0niw9heeluVgWWOu3JUuPjdS8Zo9roBLeRz1skCeOHqUEjKgceMQpSPmHt3U5IbxtY8dD9OrcbO-VHBqlM6X4mZnQR0OkmtV7kIphnicQb8WNVgsXd1Y3gyikREJXR6jpNmnfR8Gph0E3VUZCX2bTNsOwtBjWbs3"/><span class="font-headline-sm text-headline-sm text-on-surface truncate">Active Editor</span></div><div class="flex items-center gap-space-sm flex-shrink-0"><div class="flex items-center gap-space-xs px-2 py-1 rounded-full bg-surface-container"><span class="inline-block h-2 w-2 rounded-full bg-sync-active"></span><span class="font-label-xs text-label-xs text-sync-active">Live</span></div><div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBl1eOMpK0qxRrmZLneOOVbZO2oSUmecHl_-2dc64WUoZnC3mlp8iGidxxNP0fBwN4mGeaWyl1xRNCy1ypi_Ld-Z9vFmNcHIfANyi-2pbSu25qtXdONhvC831G5KLeZzJg04GCHs4DWWqpgrcHp9xZtl4DD59jiZmvOKCYd70ToKwq7bnbar2_yVutyAdg4iZ8x2o8N8wU3qKXAQxLk6rcSTKCuo_ycF9sBu1fQzmb2lGZqgU0UZFha"/></div></div></div></header><main class="flex flex-col relative w-full px-margin pt-16 pb-safe bg-surface min-h-screen"><div class="flex flex-col w-full pb-28 select-none">
+<!-- Document Metadata & Breadcrumb Bar -->
+<div class="flex flex-col gap-space-xs py-space-sm bg-surface-container-low rounded-xl px-space-md shadow-sm mb-space-md">
+<div class="flex items-center justify-between gap-space-sm">
+<nav aria-label="Breadcrumb" class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-surface-tint text-[16px]">folder_open</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant truncate">Engineering</span>
+<span class="font-label-xs text-label-xs text-outline">/</span>
+<span class="font-label-xs text-label-xs text-primary truncate font-semibold">Architecture</span>
+</nav>
+<!-- Active Presence Chips -->
+<div class="flex items-center gap-space-xs flex-shrink-0">
+<div class="flex items-center -space-x-2">
+<!-- Jos Presence Avatar -->
+<div class="relative group" title="Jos (Editing now)">
+<div class="w-6 h-6 rounded-full bg-presence-cursor-1 p-0.5 shadow-sm">
+<img class="w-full h-full rounded-full object-cover" data-alt="Intense close-up digital portrait avatar of a systems developer Jos with dark slate framing, ambient purple and cyan studio rim lighting, clean minimal profile style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_c2F7WJIkySNEpCIU8Yh0smSqGbV50pExe-m6Yo9fHrmCW2dBvUiXzaBL46GV5Ro1GlGvxw5YuDVLfL9oRFt3oL-04F6brn2jhuBnBkGyI_umbtakZtJCqXuJADv-rwl6NIWtspi9oODpRiVzUcpkjzIypZ_VmBAxtNDLhxtaMuYOolGqu83VdwWi0KY7XI9oUQpDZwqo_VOs6Xqdksr9M3lydg23u_tV_K8NlsAQtuaARBxsjuGh"/>
+</div>
+<span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-presence-cursor-1 shadow-[0_0_4px_rgba(244,63,94,0.8)]"></span>
+</div>
+<!-- Maria Presence Avatar -->
+<div class="relative group" title="Maria (Reading)">
+<div class="w-6 h-6 rounded-full bg-presence-cursor-2 p-0.5 shadow-sm">
+<img class="w-full h-full rounded-full object-cover" data-alt="Digital vector style modern avatar portrait of female software architect Maria with sleek glasses and emerald-cyan neon accent lighting, dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuApHeGufmqmvWCpDwzx0hMGxr_SA0jt-vcJkhWa_0mlRSvfAP_adHmLYn8Js6KD3SiL35Xaqtonaho2DQV5YIc6P8TQijx9SxEvzy33MfFnFEUEIVeX38zXwQnH7Bnd2VXJlLPbUZ87tJYaLNWadjc45tE00dM1EdegYLlsTDHC1lUlfPtNPLPOExxG_06aafKqGwRiyrtYRkWMMCMggT4j7Yj9NWwfCEg1xXSKSD5DVooCbcWb1G7v"/>
+</div>
+<span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-presence-cursor-2 shadow-[0_0_4px_rgba(16,185,129,0.8)]"></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Editable Title Field -->
+<div class="relative mt-1">
+<input aria-label="Note Title" class="w-full bg-transparent font-headline-sm text-headline-sm text-on-surface focus:outline-none placeholder-outline transition-colors pb-0.5 tracking-tight font-bold" placeholder="Untitled Note..." type="text" value="Inkpact v1 - System Architecture &amp; Sync Spike"/>
+</div>
+<!-- Metadata Footnote + Sync Telemetry Pill -->
+<div class="flex flex-wrap items-center justify-between gap-y-1 gap-x-2 pt-1">
+<div class="flex items-center gap-1.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-[13px] text-outline">schedule</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant">2 mins ago by <span class="text-tertiary font-medium">@Jos</span></span>
+</div>
+<!-- Real-time Yjs compaction pill -->
+<div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-high shadow-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-sync-active animate-pulse"></span>
+<span class="font-code-inline text-[10px] text-secondary tracking-tight">WS Live · Yjs #1,420</span>
+</div>
+</div>
+</div>
+<!-- Document Tags Rail -->
+<div class="flex items-center gap-space-xs overflow-x-auto pb-space-sm mb-space-sm">
+<button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-primary font-label-xs text-label-xs active:scale-95 transition-transform flex-shrink-0">
+<span class="text-surface-tint">#</span>architecture
+    </button>
+<button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-secondary font-label-xs text-label-xs active:scale-95 transition-transform flex-shrink-0">
+<span class="text-secondary-fixed">#</span>self-hosted
+    </button>
+<button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-tertiary font-label-xs text-label-xs active:scale-95 transition-transform flex-shrink-0">
+<span class="text-tertiary-fixed-dim">#</span>crdt
+    </button>
+<button aria-label="Add tag" class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface flex-shrink-0 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-[15px]">add</span>
+</button>
+</div>
+<!-- TipTap Mobile Canvas -->
+<div class="flex flex-col gap-space-md select-text">
+<!-- Block 1: Section Heading with Block Drag / Add Handle -->
+<div class="group relative flex items-start -ml-1 pl-1 pr-1 rounded-lg transition-colors hover:bg-surface-container-low/40">
+<div class="absolute -left-3 top-1.5 flex items-center gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
+<button aria-label="Add block" class="w-4 h-4 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container">
+<span class="material-symbols-outlined text-[13px]">add</span>
+</button>
+<button aria-label="Drag handle" class="w-4 h-4 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container cursor-grab">
+<span class="material-symbols-outlined text-[13px]">drag_indicator</span>
+</button>
+</div>
+<div class="w-full">
+<h2 class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-semibold flex items-center gap-2">
+<span>Sync Pipeline &amp; CRDT Guarantees</span>
+</h2>
+</div>
+</div>
+<!-- Block 2: Prose with Live Collaborator Cursor (Maria) -->
+<div class="group relative flex items-start -ml-1 pl-1 pr-1 rounded-lg transition-colors hover:bg-surface-container-low/40">
+<div class="absolute -left-3 top-1 flex items-center gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
+<button aria-label="Block options" class="w-4 h-4 rounded flex items-center justify-center text-outline">
+<span class="material-symbols-outlined text-[13px]">drag_indicator</span>
+</button>
+</div>
+<div class="w-full relative">
+<p class="font-body-lg text-body-lg text-on-surface/90 leading-relaxed">
+          The ASP.NET Core Minimal API WebSocket hub relays raw binary Yjs update vectors directly to the persistence ledger. Updates stream into the PostgreSQL 
+          <code class="font-code-inline text-code-inline px-1.5 py-0.5 rounded bg-surface-container-high text-secondary">page_updates</code> 
+          buffer table, paired with an asynchronous background compaction worker producing serialized binary snapshots in 
+          <code class="font-code-inline text-code-inline px-1.5 py-0.5 rounded bg-surface-container-high text-primary">page_snapshots</code>.
+          <!-- Live Cursor Marker for Maria -->
+<span class="relative inline-block align-middle ml-0.5">
+<span class="inline-block w-[2px] h-5 bg-presence-cursor-2 align-middle animate-pulse"></span>
+<span class="absolute -top-5 left-0 px-1.5 py-0.5 rounded bg-presence-cursor-2 text-surface font-label-xs text-[10px] font-bold shadow-sm whitespace-nowrap pointer-events-none">Maria</span>
+</span>
+</p>
+</div>
+</div>
+<!-- Block 3: Interactive To-Do Checklist -->
+<div class="group relative flex flex-col gap-2 p-3 bg-surface-container-low rounded-xl shadow-xs">
+<div class="flex items-center justify-between pb-1">
+<span class="font-label-xs text-label-xs text-outline uppercase tracking-wider">Milestone Checklist</span>
+<span class="font-label-xs text-label-xs text-sync-active font-medium">1 / 2 Complete</span>
+</div>
+<!-- Item 1 (Checked) -->
+<label class="flex items-start gap-3 cursor-pointer group/item py-1">
+<input checked="" class="sr-only peer" id="chk-spike" type="checkbox"/>
+<div class="w-5 h-5 rounded-md bg-primary flex items-center justify-center text-on-primary shadow-xs transition-colors peer-checked:bg-primary-container">
+<span class="material-symbols-outlined text-[16px] font-bold">check</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-through opacity-70 peer-checked:text-on-surface-variant">
+          ASP.NET Core WebSocket hub spike &amp; benchmark
+        </span>
+</label>
+<!-- Item 2 (Unchecked) -->
+<label class="flex items-start gap-3 cursor-pointer group/item py-1">
+<input class="sr-only peer" id="chk-ydotnet" type="checkbox"/>
+<div class="w-5 h-5 rounded-md bg-surface-container-high flex items-center justify-center text-transparent transition-all peer-checked:bg-primary-container peer-checked:text-on-primary">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface">
+          YDotNet native library text extraction benchmark
+        </span>
+</label>
+</div>
+<!-- Block 4: Code Block with Syntax Styling -->
+<div class="flex flex-col rounded-xl overflow-hidden bg-surface-canvas shadow-md">
+<!-- Code Header -->
+<div class="flex items-center justify-between px-3.5 py-2 bg-surface-container-highest/60 text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-error/60"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-sync-offline/60"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-sync-active/60"></span>
+<span class="font-code-inline text-[11px] text-outline ml-1">sync_event_payload.json</span>
+</div>
+<button class="font-label-xs text-label-xs text-primary hover:text-on-primary-container px-2 py-0.5 rounded bg-surface-container active:scale-95 transition-all" id="btn-copy" onclick="navigator.clipboard?.writeText('{\n  &quot;pageId&quot;: &quot;pg_8f92a&quot;,\n  &quot;vector&quot;: &quot;AQEB4M2P...&quot;,\n  &quot;seq&quot;: 1420\n}'); this.innerText='Copied!';">Copy</button>
+</div>
+<!-- Code Content -->
+<pre class="p-3.5 font-code-inline text-code-inline text-on-surface overflow-x-auto leading-relaxed"><code><span class="text-outline">{</span>
+  <span class="text-secondary">"pageId"</span><span class="text-outline">:</span> <span class="text-tertiary">"pg_8f92a"</span><span class="text-outline">,</span>
+  <span class="text-secondary">"vector"</span><span class="text-outline">:</span> <span class="text-sync-active">"AQEBoZ+3qAkF98v..."</span><span class="text-outline">,</span>
+  <span class="text-secondary">"seq"</span><span class="text-outline">:</span> <span class="text-primary">1420</span><span class="text-outline">,</span>
+  <span class="text-secondary">"clientTs"</span><span class="text-outline">:</span> <span class="text-outline-variant">1715420391204</span>
+<span class="text-outline">}</span></code></pre>
+</div>
+<!-- Block 5: Active Focused Paragraph with Jos Cursor -->
+<div class="group relative flex items-start -ml-1 pl-1 pr-1 rounded-lg">
+<div class="w-full">
+<p class="font-body-lg text-body-lg text-on-surface/90 leading-relaxed">
+          Typing next sync verification hook right here
+          <!-- Jos Active Cursor & Prompt Bubble -->
+<span class="relative inline-block align-middle ml-0.5">
+<span class="inline-block w-[2px] h-5 bg-presence-cursor-1 align-middle animate-ping opacity-75"></span>
+<span class="inline-block w-[2px] h-5 bg-presence-cursor-1 align-middle absolute left-0 top-0"></span>
+<span class="absolute -top-5 left-0 px-1.5 py-0.5 rounded bg-presence-cursor-1 text-on-surface font-label-xs text-[10px] font-bold shadow-sm whitespace-nowrap pointer-events-none">Jos</span>
+</span>
+<span class="text-outline"> /</span>
+</p>
+</div>
+</div>
+<!-- Inline Slash Popover Demo Trigger Card (Visual Delighter) -->
+<div class="relative w-full rounded-2xl bg-surface-container-high p-4 shadow-xl mt-1">
+<div class="flex items-center justify-between pb-2 mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">terminal</span>
+<span class="font-label-xs text-label-xs uppercase tracking-wider text-primary font-bold">Slash Commands</span>
+</div>
+<span class="font-label-xs text-[10px] text-outline">Type '/' to filter</span>
+</div>
+<div class="grid grid-cols-2 gap-1.5">
+<button class="flex items-center gap-2.5 p-2 rounded-xl bg-surface-container hover:bg-surface-elevated text-left transition-colors active:scale-98">
+<div class="w-7 h-7 rounded-lg bg-primary-container/40 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[17px]">title</span>
+</div>
+<div class="min-w-0">
+<p class="font-label-md text-label-md text-on-surface font-medium truncate">Heading 1</p>
+<p class="font-label-xs text-[10px] text-outline truncate">Big section title</p>
+</div>
+</button>
+<button class="flex items-center gap-2.5 p-2 rounded-xl bg-surface-container hover:bg-surface-elevated text-left transition-colors active:scale-98">
+<div class="w-7 h-7 rounded-lg bg-sync-active/20 flex items-center justify-center text-sync-active">
+<span class="material-symbols-outlined text-[17px]">check_box</span>
+</div>
+<div class="min-w-0">
+<p class="font-label-md text-label-md text-on-surface font-medium truncate">Task List</p>
+<p class="font-label-xs text-[10px] text-outline truncate">To-dos &amp; tracks</p>
+</div>
+</button>
+<button class="flex items-center gap-2.5 p-2 rounded-xl bg-surface-container hover:bg-surface-elevated text-left transition-colors active:scale-98">
+<div class="w-7 h-7 rounded-lg bg-secondary-container/30 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[17px]">code</span>
+</div>
+<div class="min-w-0">
+<p class="font-label-md text-label-md text-on-surface font-medium truncate">Code Block</p>
+<p class="font-label-xs text-[10px] text-outline truncate">Syntax block</p>
+</div>
+</button>
+<button class="flex items-center gap-2.5 p-2 rounded-xl bg-surface-container hover:bg-surface-elevated text-left transition-colors active:scale-98">
+<div class="w-7 h-7 rounded-lg bg-tertiary-container/40 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[17px]">lightbulb</span>
+</div>
+<div class="min-w-0">
+<p class="font-label-md text-label-md text-on-surface font-medium truncate">Callout Note</p>
+<p class="font-label-xs text-[10px] text-outline truncate">Highlight info</p>
+</div>
+</button>
+<button class="flex items-center gap-2.5 p-2 rounded-xl bg-surface-container hover:bg-surface-elevated text-left transition-colors active:scale-98">
+<div class="w-7 h-7 rounded-lg bg-surface-variant flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[17px]">table_chart</span>
+</div>
+<div class="min-w-0">
+<p class="font-label-md text-label-md text-on-surface font-medium truncate">Table</p>
+<p class="font-label-xs text-[10px] text-outline truncate">Matrix grid</p>
+</div>
+</button>
+<button class="flex items-center gap-2.5 p-2 rounded-xl bg-surface-container hover:bg-surface-elevated text-left transition-colors active:scale-98">
+<div class="w-7 h-7 rounded-lg bg-primary-container/30 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[17px]">link</span>
+</div>
+<div class="min-w-0">
+<p class="font-label-md text-label-md text-on-surface font-medium truncate">Link Note</p>
+<p class="font-label-xs text-[10px] text-outline truncate">[[wikilink]] ref</p>
+</div>
+</button>
+</div>
+</div>
+</div>
+<!-- Docked TipTap Touch Action Toolbar (Above mobile keyboard / bottom safe margin) -->
+<div class="fixed bottom-3 inset-x-3 z-40">
+<div class="flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-2xl bg-surface-panel/95 backdrop-blur-xl shadow-2xl">
+<!-- Fast Block Type Switcher -->
+<button aria-label="Heading style" class="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-on-surface hover:bg-surface-container active:scale-95 transition-all">
+<span class="font-headline-sm text-headline-sm font-bold">H</span>
+</button>
+<!-- Bold -->
+<button aria-label="Toggle Bold" class="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-on-surface hover:bg-surface-container active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[20px] font-bold">format_bold</span>
+</button>
+<!-- Italic -->
+<button aria-label="Toggle Italic" class="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[20px]">format_italic</span>
+</button>
+<!-- Bullet List -->
+<button aria-label="Bulleted list" class="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[20px]">format_list_bulleted</span>
+</button>
+<!-- Checklist Toggle -->
+<button aria-label="Checklist" class="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-primary bg-primary-container/30 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[20px]">checklist</span>
+</button>
+<!-- Code Snippet -->
+<button aria-label="Code block" class="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-secondary hover:bg-surface-container active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[20px]">code</span>
+</button>
+<!-- Attach Asset -->
+<button aria-label="Attach media" class="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[20px]">add_photo_alternate</span>
+</button>
+<!-- Slash Command Popover Toggle -->
+<button aria-label="Open slash commands" class="min-h-[40px] min-w-[44px] px-2 rounded-xl flex items-center justify-center gap-1 bg-primary text-on-primary font-bold shadow-md active:scale-95 transition-all" id="btn-slash-toggle">
+<span class="font-code-inline text-code-inline font-bold">/</span>
+</button>
+</div>
+</div>
+</div></main></body></html>

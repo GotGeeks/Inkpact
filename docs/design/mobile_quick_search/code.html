@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#13121b;color:#e4e1ee;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary": "#00344d", "surface-variant": "#35343e", "surface-container-high": "#2a2933", "tertiary-container": "#a44100", "surface-tint": "#c3c0ff", "sync-offline": "#F59E0B", "primary": "#c3c0ff", "surface-dim": "#13121b", "tertiary-fixed-dim": "#ffb695", "secondary": "#89ceff", "error": "#ffb4ab", "primary-fixed-dim": "#c3c0ff", "secondary-fixed-dim": "#89ceff", "on-tertiary-fixed": "#351000", "tertiary": "#ffb695", "error-container": "#93000a", "on-primary": "#1d00a5", "primary-container": "#4f46e5", "secondary-fixed": "#c9e6ff", "on-secondary-container": "#00344e", "outline": "#918fa1", "on-primary-container": "#dad7ff", "surface": "#13121b", "on-secondary-fixed": "#001e2f", "on-primary-fixed-variant": "#3323cc", "background": "#13121b", "sync-active": "#10B981", "inverse-on-surface": "#302f39", "inverse-surface": "#e4e1ee", "tertiary-fixed": "#ffdbcc", "primary-fixed": "#e2dfff", "on-tertiary": "#571f00", "on-error-container": "#ffdad6", "on-primary-fixed": "#0f0069", "inverse-primary": "#4d44e3", "presence-cursor-2": "#10B981", "on-secondary-fixed-variant": "#004c6e", "surface-subtle": "#181B24", "on-error": "#690005", "outline-variant": "#464555", "secondary-container": "#00a2e6", "surface-container-lowest": "#0e0d16", "on-tertiary-container": "#ffd2be", "presence-cursor-3": "#38BDF8", "surface-container": "#1f1f28", "surface-bright": "#393842", "surface-container-low": "#1b1b24", "on-surface-variant": "#c7c4d8", "on-tertiary-fixed-variant": "#7b2f00", "presence-cursor-1": "#F43F5E", "presence-cursor-4": "#FBBF24", "surface-panel": "#11131A", "on-background": "#e4e1ee", "border-strong": "#374151", "surface-elevated": "#222634", "surface-canvas": "#090A0F", "border-subtle": "#232838", "on-surface": "#e4e1ee", "surface-container-highest": "#35343e" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xs": "0.25rem", "gutter-desktop": "1.5rem", "margin-desktop": "2rem", "space-xl": "1.5rem", "margin": "1rem", "gutter": "1rem", "space-lg": "1rem", "space-md": "0.75rem", "space-sm": "0.5rem" }, "fontFamily": { "label-xs": ["Inter"], "headline-lg": ["Inter"], "code-inline": ["JetBrains Mono"], "label-md": ["Inter"], "headline-xl-mobile": ["Inter"], "body-sm": ["Inter"], "body-lg": ["Inter"], "headline-xl": ["Inter"], "headline-sm": ["Inter"] }, "fontSize": { "label-xs": ["0.6875rem", { "lineHeight": "0.875rem", "letterSpacing": "0.04em", "fontWeight": "600" }], "headline-lg": ["1.5rem", { "lineHeight": "2rem", "letterSpacing": "-0.02em", "fontWeight": "600" }], "code-inline": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }], "label-md": ["0.8125rem", { "lineHeight": "1.125rem", "letterSpacing": "0.01em", "fontWeight": "500" }], "headline-xl-mobile": ["1.75rem", { "lineHeight": "2.25rem", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-sm": ["0.875rem", { "lineHeight": "1.375rem", "fontWeight": "400" }], "body-lg": ["1rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.011em", "fontWeight": "400" }], "headline-xl": ["2rem", { "lineHeight": "2.5rem", "letterSpacing": "-0.025em", "fontWeight": "700" }], "headline-sm": ["1.125rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.015em", "fontWeight": "600" }] } } } };</script></head><body class="bg-surface font-body-sm text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 bg-surface-panel/85 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><button aria-label="Open notebook drawer" class="min-h-[44px] min-w-[44px] flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[22px]">dock_to_right</span></button><img alt="Inkpact App Icon" class="h-8 w-auto object-contain flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIqZVaT5ql0qt4cQUQF_7Fwo3G6BK4w_keaoAlNVzWvrvulas4EvVV0lKr5Hdr0B7ftDBopJQFqk1AoMciETuIHEXMQyzGjcwdmeyW1eKjBA5hxO1zFFGiftGh-SqGIu41uuKVlFPVA3guYJ0f3JzIUNyJ6g0hvTeahQ7-utuIclbJiPibd0M63LDa5tFBFo6-5ySa_csavFfMBHV2IwvgkMaCvWXwtPZf0zccgdus-OFaHM0ZKTN8"/><div class="flex flex-col min-w-0"><button class="flex items-center gap-space-xs text-left group"><span class="font-label-md text-label-md text-on-surface truncate group-hover:text-primary transition-colors">Personal Workspace</span><span class="material-symbols-outlined text-outline text-[16px]">unfold_more</span></button><div class="flex items-center gap-space-xs"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sync-active opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-sync-active"></span></span><span class="font-label-xs text-label-xs text-sync-active truncate">Synced · Conflict-free</span></div></div></div><div class="flex items-center gap-space-xs flex-shrink-0"><button aria-label="Quick search" class="min-h-[44px] min-w-[44px] flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">search</span></button><div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDDhw3vXCDVNU5MwJbKIJqEU-ZmFsRyuBgG0mhWR7KIsqqPgufPkWcag0d-c7cZC4mAVlA_fSHj8oeAIOeCNeNi5N3BVSnHYlv36nKmSyOxztHwKccPmVgY5oLnYgOBJ0i9y1pMJtT5paaVGEbyie1I8kMRxxFZBUmqsjXfbTCsVTJn3UUcWmV0KuKqHf-4V7h3pcOprvmX68iw1ymNV_rlUiB5gIwRg_QT5BShDV8wUoFubkg7l-v"/></div></div></div></header><main class="flex flex-col relative w-full px-margin pt-16 pb-24 bg-surface min-h-screen"><div class="flex flex-col w-full pb-6 space-y-space-md">
+<!-- Search Header & Interactive Input Box -->
+<div class="relative w-full rounded-xl bg-surface-container-high p-space-md shadow-lg transition-all duration-200">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined text-outline text-[22px] ml-1 mr-space-sm flex-shrink-0">search</span>
+<input autocomplete="off" class="w-full bg-transparent font-body-lg text-body-lg text-on-surface placeholder-outline focus:outline-none py-1 min-w-0" id="palette-input" placeholder="Type a prefix, #tag, or :action..." spellcheck="false" type="search" value="sync"/>
+<button aria-label="Clear query" class="min-h-[44px] min-w-[44px] flex items-center justify-center text-outline hover:text-on-surface transition-colors" id="clear-query-btn">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+<div class="hidden sm:flex items-center gap-1 bg-surface-variant px-space-sm py-0.5 rounded text-on-surface-variant font-code-inline text-label-xs">
+<span>⌘K</span>
+</div>
+</div>
+<!-- Prefix Filter Pills (Horizontal Scrollable) -->
+<div class="flex items-center gap-space-xs mt-space-sm overflow-x-auto no-scrollbar py-0.5" id="filter-pills-container">
+<button class="filter-pill flex items-center gap-1 px-space-md py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-md text-label-md whitespace-nowrap active:scale-95 transition-all">
+<span>All</span>
+<span class="text-label-xs font-label-xs opacity-75">18</span>
+</button>
+<button class="filter-pill flex items-center gap-1 px-space-md py-1.5 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[14px]">title</span>
+<span>Titles</span>
+</button>
+<button class="filter-pill flex items-center gap-1 px-space-md py-1.5 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap active:scale-95 transition-all">
+<span class="font-code-inline">#</span>
+<span>Tags</span>
+</button>
+<button class="filter-pill flex items-center gap-1 px-space-md py-1.5 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[14px]">check_box</span>
+<span>Tasks</span>
+</button>
+<button class="filter-pill flex items-center gap-1 px-space-md py-1.5 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[14px]">group</span>
+<span>Shared</span>
+</button>
+</div>
+</div>
+<!-- Instant Search Prefix Stats & Breadcrumb indicator -->
+<div class="flex items-center justify-between px-1 text-on-surface-variant font-label-xs text-label-xs">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[14px]">bolt</span>
+<span>PREFIX: <span class="text-primary font-code-inline font-medium">sync*</span> (4 matches in 1.4ms)</span>
+</div>
+<span class="tracking-wider uppercase opacity-70">ESC to close</span>
+</div>
+<!-- Instant Prefix Results List -->
+<div class="flex flex-col space-y-space-sm" id="search-results-list">
+<!-- Result 1: Primary Architecture Spec Note -->
+<div class="group flex flex-col p-space-md rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors text-left focus:outline-none" role="button" tabindex="0">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs min-w-0">
+<div class="w-6 h-6 rounded flex items-center justify-center bg-primary-container/20 text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[16px]">article</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-on-surface truncate group-hover:text-primary transition-colors">
+            Inkpact v1 - <span class="bg-primary/20 text-primary px-0.5 rounded">System</span> Architecture
+          </span>
+</div>
+<span class="font-label-xs text-label-xs text-on-surface-variant flex-shrink-0 bg-surface-container-lowest px-2 py-0.5 rounded-full">
+          2m ago
+        </span>
+</div>
+<!-- Matched Snippet -->
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 line-clamp-2">
+        ...all edits flow through the <mark class="bg-primary/25 text-on-surface font-medium rounded-sm px-0.5">sync</mark> hub as Yjs updates via WebSockets, ensuring seamless CRDT reconciliation...
+      </p>
+<div class="flex items-center justify-between mt-space-sm pt-space-xs">
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant font-code-inline text-label-xs">#architecture</span>
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant font-code-inline text-label-xs">#crdt</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">folder</span>
+<span class="font-label-xs text-label-xs">Core Engine</span>
+</div>
+</div>
+</div>
+<!-- Result 2: Postgres Spec Note -->
+<div class="group flex flex-col p-space-md rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors text-left focus:outline-none" role="button" tabindex="0">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs min-w-0">
+<div class="w-6 h-6 rounded flex items-center justify-center bg-secondary/10 text-secondary flex-shrink-0">
+<span class="material-symbols-outlined text-[16px]">database</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-on-surface truncate group-hover:text-secondary transition-colors">
+            Postgres Compaction Worker &amp; Watermark
+          </span>
+</div>
+<span class="font-label-xs text-label-xs text-on-surface-variant flex-shrink-0">
+          Projects / Sub-specs
+        </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 line-clamp-2">
+        ...snapshots record the highest sequence number per doc. Incremental state is pruned once <mark class="bg-primary/25 text-on-surface font-medium rounded-sm px-0.5">sync</mark> confirms zero detached replicas...
+      </p>
+<div class="flex items-center justify-between mt-space-sm pt-space-xs">
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant font-code-inline text-label-xs">#postgres</span>
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant font-code-inline text-label-xs">#worker</span>
+</div>
+<div class="flex items-center gap-1 text-sync-active">
+<span class="material-symbols-outlined text-[13px]">cloud_done</span>
+<span class="font-label-xs text-label-xs">State cached</span>
+</div>
+</div>
+</div>
+<!-- Result 3: Task / Todo Result -->
+<div class="group flex items-center justify-between p-space-md rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors text-left focus:outline-none" role="button" tabindex="0">
+<div class="flex items-start gap-space-sm min-w-0">
+<div class="w-5 h-5 mt-0.5 rounded-sm bg-surface-variant flex items-center justify-center flex-shrink-0 group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-[14px] text-surface-container">check</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="font-label-md text-label-md text-on-surface group-hover:text-primary transition-colors truncate">
+              Test TipTap on Android Chrome with Gboard
+            </span>
+</div>
+<span class="font-label-xs text-label-xs text-on-surface-variant mt-0.5">
+            Note: Mobile Composition QA · Due Oct 26
+          </span>
+</div>
+</div>
+<span class="flex-shrink-0 px-2 py-1 rounded bg-tertiary-container/20 text-tertiary font-label-xs text-label-xs ml-2">
+        Due in 3d
+      </span>
+</div>
+<!-- Result 4: Tag Search Match -->
+<div class="group flex items-center justify-between p-space-md rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors text-left focus:outline-none" role="button" tabindex="0">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-6 h-6 rounded flex items-center justify-center bg-tertiary-fixed-dim/20 text-tertiary-fixed-dim flex-shrink-0">
+<span class="font-code-inline text-[13px] font-bold">#</span>
+</div>
+<div class="flex items-center gap-2 min-w-0">
+<span class="font-code-inline text-body-sm text-primary font-medium">#crdt</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant">Matches 14 linked notes</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[18px] group-hover:translate-x-0.5 transition-transform">
+        arrow_forward
+      </span>
+</div>
+</div>
+<!-- Quick Command Palette Section -->
+<div class="flex flex-col pt-space-sm">
+<div class="flex items-center gap-1.5 px-1 pb-space-xs text-on-surface-variant font-label-xs text-label-xs uppercase tracking-wider">
+<span class="material-symbols-outlined text-[14px]">terminal</span>
+<span>Quick Actions</span>
+</div>
+<div class="flex flex-col space-y-space-xs">
+<!-- Action 1 -->
+<button class="w-full flex items-center justify-between p-space-md rounded-xl bg-surface-container hover:bg-surface-container-high active:scale-[0.99] transition-all text-left">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-8 h-8 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add_box</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface truncate">Create new note in current folder</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant">Targets /Knowledge Engine/CRDT</span>
+</div>
+</div>
+<span class="font-code-inline text-label-xs text-on-surface-variant bg-surface-container-high px-2 py-1 rounded">N</span>
+</button>
+<!-- Action 2 -->
+<button class="w-full flex items-center justify-between p-space-md rounded-xl bg-surface-container hover:bg-surface-container-high active:scale-[0.99] transition-all text-left">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-variant text-on-surface flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[18px]">download_for_offline</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface truncate">Import Joplin .jex file</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant">Converts tags, embeds &amp; markdown trees</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[18px]">file_open</span>
+</button>
+<!-- Action 3 -->
+<button class="w-full flex items-center justify-between p-space-md rounded-xl bg-surface-container hover:bg-surface-container-high active:scale-[0.99] transition-all text-left">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-variant text-sync-active flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[18px]">cached</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface truncate">Force manual snapshot compaction</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant">Flushes WAL delta into immutable SQLite blob</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[18px]">tune</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  (function initPalette() {
+    const input = document.getElementById('palette-input');
+    const clearBtn = document.getElementById('clear-query-btn');
+    const pills = document.querySelectorAll('.filter-pill');
+
+    if (input) {
+      input.focus();
+      // place cursor at end of default string
+      const len = input.value.length;
+      input.setSelectionRange(len, len);
+    }
+
+    if (clearBtn && input) {
+      clearBtn.addEventListener('click', () => {
+        input.value = '';
+        input.focus();
+      });
+    }
+
+    pills.forEach((pill) => {
+      pill.addEventListener('click', () => {
+        pills.forEach(p => {
+          p.classList.remove('bg-primary-container', 'text-on-primary-container');
+          p.classList.add('bg-surface-container', 'text-on-surface-variant');
+        });
+        pill.classList.remove('bg-surface-container', 'text-on-surface-variant');
+        pill.classList.add('bg-primary-container', 'text-on-primary-container');
+      });
+    });
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-panel/90 backdrop-blur-xl shadow-[0_-1px_12px_rgba(0,0,0,0.5)]" data-active-classes="text-primary-container"><div class="flex justify-between items-center h-16 px-margin max-w-lg mx-auto"><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 text-on-surface-variant hover:text-on-surface transition-colors" data-path="notes-tree" href="#"><span class="material-symbols-outlined text-[22px]">folder_copy</span><span class="font-label-xs text-label-xs">Tree</span></a><a aria-current="page" class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 transition-colors text-primary-container" data-path="quick-search" href="#"><span class="material-symbols-outlined text-[22px]">manage_search</span><span class="font-label-xs text-label-xs">Find</span></a><div class="flex items-center justify-center -translate-y-3"><a aria-label="New Note" class="flex items-center justify-center w-12 h-12 rounded-full bg-primary-container text-on-primary-container shadow-[0_0_20px_rgba(79,70,229,0.55)] active:scale-95 transition-transform" data-path="active-editor" href="#"><span class="material-symbols-outlined text-[26px]">add</span></a></div><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 text-on-surface-variant hover:text-on-surface transition-colors" data-path="backlinks-and-graph" href="#"><span class="material-symbols-outlined text-[22px]">hub</span><span class="font-label-xs text-label-xs">Links</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 text-on-surface-variant hover:text-on-surface transition-colors" data-path="workspace-settings" href="#"><span class="material-symbols-outlined text-[22px]">settings</span><span class="font-label-xs text-label-xs">Settings</span></a></div></nav></body></html>

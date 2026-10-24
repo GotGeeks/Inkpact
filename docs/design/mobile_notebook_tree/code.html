@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#13121b;color:#e4e1ee;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary": "#00344d", "surface-variant": "#35343e", "surface-container-high": "#2a2933", "tertiary-container": "#a44100", "surface-tint": "#c3c0ff", "sync-offline": "#F59E0B", "primary": "#c3c0ff", "surface-dim": "#13121b", "tertiary-fixed-dim": "#ffb695", "secondary": "#89ceff", "error": "#ffb4ab", "primary-fixed-dim": "#c3c0ff", "secondary-fixed-dim": "#89ceff", "on-tertiary-fixed": "#351000", "tertiary": "#ffb695", "error-container": "#93000a", "on-primary": "#1d00a5", "primary-container": "#4f46e5", "secondary-fixed": "#c9e6ff", "on-secondary-container": "#00344e", "outline": "#918fa1", "on-primary-container": "#dad7ff", "surface": "#13121b", "on-secondary-fixed": "#001e2f", "on-primary-fixed-variant": "#3323cc", "background": "#13121b", "sync-active": "#10B981", "inverse-on-surface": "#302f39", "inverse-surface": "#e4e1ee", "tertiary-fixed": "#ffdbcc", "primary-fixed": "#e2dfff", "on-tertiary": "#571f00", "on-error-container": "#ffdad6", "on-primary-fixed": "#0f0069", "inverse-primary": "#4d44e3", "presence-cursor-2": "#10B981", "on-secondary-fixed-variant": "#004c6e", "surface-subtle": "#181B24", "on-error": "#690005", "outline-variant": "#464555", "secondary-container": "#00a2e6", "surface-container-lowest": "#0e0d16", "on-tertiary-container": "#ffd2be", "presence-cursor-3": "#38BDF8", "surface-container": "#1f1f28", "surface-bright": "#393842", "surface-container-low": "#1b1b24", "on-surface-variant": "#c7c4d8", "on-tertiary-fixed-variant": "#7b2f00", "presence-cursor-1": "#F43F5E", "presence-cursor-4": "#FBBF24", "surface-panel": "#11131A", "on-background": "#e4e1ee", "border-strong": "#374151", "surface-elevated": "#222634", "surface-canvas": "#090A0F", "border-subtle": "#232838", "on-surface": "#e4e1ee", "surface-container-highest": "#35343e" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xs": "0.25rem", "gutter-desktop": "1.5rem", "margin-desktop": "2rem", "space-xl": "1.5rem", "margin": "1rem", "gutter": "1rem", "space-lg": "1rem", "space-md": "0.75rem", "space-sm": "0.5rem" }, "fontFamily": { "label-xs": ["Inter"], "headline-lg": ["Inter"], "code-inline": ["JetBrains Mono"], "label-md": ["Inter"], "headline-xl-mobile": ["Inter"], "body-sm": ["Inter"], "body-lg": ["Inter"], "headline-xl": ["Inter"], "headline-sm": ["Inter"] }, "fontSize": { "label-xs": ["0.6875rem", { "lineHeight": "0.875rem", "letterSpacing": "0.04em", "fontWeight": "600" }], "headline-lg": ["1.5rem", { "lineHeight": "2rem", "letterSpacing": "-0.02em", "fontWeight": "600" }], "code-inline": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }], "label-md": ["0.8125rem", { "lineHeight": "1.125rem", "letterSpacing": "0.01em", "fontWeight": "500" }], "headline-xl-mobile": ["1.75rem", { "lineHeight": "2.25rem", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-sm": ["0.875rem", { "lineHeight": "1.375rem", "fontWeight": "400" }], "body-lg": ["1rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.011em", "fontWeight": "400" }], "headline-xl": ["2rem", { "lineHeight": "2.5rem", "letterSpacing": "-0.025em", "fontWeight": "700" }], "headline-sm": ["1.125rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.015em", "fontWeight": "600" }] } } } };</script></head><body class="bg-surface font-body-sm text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 bg-surface-panel/85 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><button aria-label="Open notebook drawer" class="min-h-[44px] min-w-[44px] flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[22px]">dock_to_right</span></button><img alt="Inkpact App Icon" class="h-8 w-auto object-contain flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRot3lpebXPb1P5kVxD2_6SdXzLyWto-0-uoS2Ho6EcG4zk8iTP6q_aRRFPALu00Php03HA6QzmTUiZ0wkknHn5lotq9wdTjpefYdiD_Q9sbv1ANftiw2PEvSSQReaTdLngimHteRfMJ9cXeAhcrVmaOelKo3_Ifs6Wf9gxxLcpFv5K6FStf-5Rd40e12_IZZuQ77hnU0Y1IC29LVuu0CY6uF11QSNni78yf7BNuyKAbx7f6ofhjod"/><div class="flex flex-col min-w-0"><button class="flex items-center gap-space-xs text-left group"><span class="font-label-md text-label-md text-on-surface truncate group-hover:text-primary transition-colors">Personal Workspace</span><span class="material-symbols-outlined text-outline text-[16px]">unfold_more</span></button><div class="flex items-center gap-space-xs"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sync-active opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-sync-active"></span></span><span class="font-label-xs text-label-xs text-sync-active truncate">Synced · Conflict-free</span></div></div></div><div class="flex items-center gap-space-xs flex-shrink-0"><button aria-label="Quick search" class="min-h-[44px] min-w-[44px] flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">search</span></button><div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA045-_1TgQpRZ-mVwI7K39-X6BLvyLwAASl9pcYwcpCSsNeqeLqHKbrJCEBQTdEIuULm8lntOBTzPB0X3ZHrjmMcq7igwEiA-SF4OUEviGbJyJIPWJJdyUAhQrwEYZfF7niDBvKx9x0Lhf3zlBtmhTXLZufrBxF0kn15Mnz__2kmMw8rsZwDDixak-XPuFGNDlS6SEK0UTigPhSjLWa6jO5wyMh4ZHuvH5Puuxbtm4t7NI9xYpI1hW"/></div></div></div></header><main class="flex flex-col relative w-full px-margin pt-16 pb-24 bg-surface min-h-screen"><div class="flex flex-col w-full pb-10 space-y-space-md">
+<!-- Server Connection Card -->
+<div class="w-full bg-surface-container rounded-xl p-space-md shadow-md flex items-center justify-between">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high flex items-center justify-center flex-shrink-0 text-primary">
+<span class="material-symbols-outlined text-[20px]">dns</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Jos Home Server (Unraid)</span>
+<span class="material-symbols-outlined text-outline text-[16px]">expand_more</span>
+</div>
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label-xs text-label-xs">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-sync-active"></span>
+<span class="truncate">Traefik · Postgres 17 · 42ms ping</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1 flex-shrink-0">
+<button aria-label="Server telemetry" class="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[18px]">query_stats</span>
+</button>
+</div>
+</div>
+<!-- Search & Instant Filter Bar -->
+<div class="relative w-full">
+<div class="flex items-center w-full bg-surface-container-low rounded-xl px-space-md py-space-sm shadow-sm gap-space-sm">
+<span class="material-symbols-outlined text-outline text-[20px] flex-shrink-0">search</span>
+<input class="bg-transparent text-on-surface font-body-sm text-body-sm placeholder:text-outline w-full focus:outline-none" id="tree-filter-input" placeholder="Filter notebooks &amp; notes..." type="text"/>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-outline font-code-inline text-label-xs">/</span>
+</div>
+</div>
+<!-- Favorites / Pinned Horizontal Scroller -->
+<div class="flex flex-col space-y-space-xs">
+<div class="flex items-center justify-between px-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-tertiary text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-xs text-label-xs uppercase tracking-wider text-on-surface-variant">Favorites</span>
+</div>
+<span class="font-label-xs text-label-xs text-outline">3 items</span>
+</div>
+<div class="flex gap-space-sm overflow-x-auto pb-1 -mx-margin px-margin no-scrollbar">
+<!-- Fav Card 1 -->
+<a class="flex-shrink-0 w-48 bg-surface-container rounded-xl p-space-sm shadow-sm hover:bg-surface-container-high transition-colors active:scale-98" href="#">
+<div class="flex items-center gap-1.5 mb-1.5">
+<span class="text-tertiary text-[13px]">⭐</span>
+<span class="font-label-xs text-label-xs text-sync-active truncate font-semibold">Local v1.4</span>
+</div>
+<p class="font-headline-sm text-label-md text-on-surface font-semibold line-clamp-1">Inkpact v1 - Architecture &amp; Sync</p>
+<p class="font-label-xs text-label-xs text-on-surface-variant mt-1">Edited 12m ago</p>
+</a>
+<!-- Fav Card 2 -->
+<a class="flex-shrink-0 w-48 bg-surface-container rounded-xl p-space-sm shadow-sm hover:bg-surface-container-high transition-colors active:scale-98" href="#">
+<div class="flex items-center gap-1.5 mb-1.5">
+<span class="text-tertiary text-[13px]">⭐</span>
+<span class="font-label-xs text-label-xs text-secondary truncate font-semibold">Ops Runbook</span>
+</div>
+<p class="font-headline-sm text-label-md text-on-surface font-semibold line-clamp-1">Unraid Server Runbook</p>
+<p class="font-label-xs text-label-xs text-on-surface-variant mt-1">Docker · ZFS Cache</p>
+</a>
+<!-- Fav Card 3 -->
+<a class="flex-shrink-0 w-48 bg-surface-container rounded-xl p-space-sm shadow-sm hover:bg-surface-container-high transition-colors active:scale-98" href="#">
+<div class="flex items-center gap-1.5 mb-1.5">
+<span class="text-tertiary text-[13px]">⭐</span>
+<span class="font-label-xs text-label-xs text-primary truncate font-semibold">Sync Log</span>
+</div>
+<p class="font-headline-sm text-label-md text-on-surface font-semibold line-clamp-1">Weekly Sprint Notes</p>
+<p class="font-label-xs text-label-xs text-on-surface-variant mt-1">Yesterday · Team of 4</p>
+</a>
+</div>
+</div>
+<!-- Notebooks Nested Tree -->
+<div class="flex flex-col space-y-space-xs pt-1">
+<div class="flex items-center justify-between px-space-xs mb-1">
+<span class="font-label-xs text-label-xs uppercase tracking-wider text-on-surface-variant">Notebooks &amp; Hierarchies</span>
+<div class="flex items-center gap-space-xs text-outline font-label-xs text-label-xs">
+<span class="material-symbols-outlined text-[16px]">unfold_more</span>
+<span>Reorder</span>
+</div>
+</div>
+<!-- Tree Node Group: Projects (Expanded) -->
+<div class="bg-surface-container rounded-xl overflow-hidden shadow-sm">
+<!-- Folder Header -->
+<div class="flex items-center justify-between p-space-sm bg-surface-container hover:bg-surface-container-high cursor-pointer group" onclick="toggleFolder('projects-children', 'projects-chevron')">
+<div class="flex items-center gap-space-xs min-w-0">
+<span class="material-symbols-outlined text-outline text-[18px] transition-transform duration-200 rotate-90" id="projects-chevron">arrow_right</span>
+<div class="w-6 h-6 rounded bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[16px]">folder_open</span>
+</div>
+<span class="font-headline-sm text-label-md text-on-surface font-semibold truncate">Projects</span>
+<span class="font-label-xs text-label-xs text-outline px-1.5 py-0.2 rounded-full bg-surface-container-high">4</span>
+</div>
+<div class="flex items-center gap-1 opacity-70 group-hover:opacity-100">
+<button aria-label="Add note to Projects" class="w-6 h-6 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest">
+<span class="material-symbols-outlined text-[16px]">note_add</span>
+</button>
+</div>
+</div>
+<!-- Folder Contents (Nested) -->
+<div class="flex flex-col space-y-1 pb-space-sm pl-4 pr-space-sm" id="projects-children">
+<!-- Active Note: Inkpact v1 -->
+<div class="relative flex items-center justify-between p-2 rounded-lg bg-surface-container-high/70 shadow-inner group">
+<!-- Fractional Drag Index indicator -->
+<div class="absolute -left-2 top-1/2 -translate-y-1/2 flex flex-col items-center opacity-40 hover:opacity-100 cursor-grab">
+<span class="material-symbols-outlined text-[14px] text-outline">drag_indicator</span>
+</div>
+<div class="flex items-center gap-space-xs min-w-0 pl-1">
+<span class="material-symbols-outlined text-primary text-[18px]">article</span>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-body-sm text-body-sm text-on-surface font-medium truncate">Inkpact v1 - Architecture</span>
+<span class="w-1.5 h-1.5 rounded-full bg-presence-cursor-2 flex-shrink-0" title="Active on mobile"></span>
+</div>
+<div class="flex items-center gap-2 mt-0.5">
+<!-- Due & Task Pill -->
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-lowest font-label-xs text-label-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[12px] text-sync-active">check_circle</span>
+<span>3/5 done</span>
+<span class="text-outline">·</span>
+<span class="text-secondary">Due Oct 28</span>
+</span>
+<span class="font-code-inline text-label-xs text-outline">idx: 0.125</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
+</div>
+<!-- Note 2: GarageStack -->
+<div class="relative flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-high cursor-pointer transition-colors group">
+<div class="absolute -left-2 top-1/2 -translate-y-1/2 flex flex-col items-center opacity-20 group-hover:opacity-80 cursor-grab">
+<span class="material-symbols-outlined text-[14px] text-outline">drag_indicator</span>
+</div>
+<div class="flex items-center gap-space-xs min-w-0 pl-1">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">description</span>
+<span class="font-body-sm text-body-sm text-on-surface truncate">GarageStack CI/CD notes</span>
+</div>
+<div class="flex items-center gap-2 text-outline font-code-inline text-label-xs">
+<span>idx: 0.250</span>
+</div>
+</div>
+<!-- Sub-folder: Sub-specs (Expanded) -->
+<div class="flex flex-col space-y-1 pl-3 border-l-0">
+<div class="flex items-center justify-between py-1 px-1.5 rounded hover:bg-surface-container-high cursor-pointer" onclick="toggleFolder('subspecs-children', 'subspecs-chevron')">
+<div class="flex items-center gap-1 min-w-0">
+<span class="material-symbols-outlined text-outline text-[16px] transition-transform duration-200 rotate-90" id="subspecs-chevron">arrow_right</span>
+<span class="material-symbols-outlined text-tertiary-fixed-dim text-[16px]">folder</span>
+<span class="font-label-md text-label-md text-on-surface truncate">Sub-specs</span>
+</div>
+<span class="font-label-xs text-label-xs text-outline">2 notes</span>
+</div>
+<div class="flex flex-col space-y-1 pl-4" id="subspecs-children">
+<!-- Nested note 1 -->
+<div class="flex items-center justify-between p-1.5 rounded hover:bg-surface-container-high cursor-pointer group">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">code</span>
+<span class="font-body-sm text-body-sm text-on-surface truncate">Postgres Compaction Worker</span>
+</div>
+<span class="font-code-inline text-label-xs text-outline opacity-60">0.251</span>
+</div>
+<!-- Nested note 2 -->
+<div class="flex items-center justify-between p-1.5 rounded hover:bg-surface-container-high cursor-pointer group">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">schema</span>
+<span class="font-body-sm text-body-sm text-on-surface truncate">Joplin JEX Import Schema</span>
+</div>
+<span class="font-code-inline text-label-xs text-outline opacity-60">0.252</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Tree Node Group: Personal & Home (Collapsed) -->
+<div class="bg-surface-container rounded-xl overflow-hidden shadow-sm">
+<div class="flex items-center justify-between p-space-sm hover:bg-surface-container-high cursor-pointer" onclick="toggleFolder('personal-children', 'personal-chevron')">
+<div class="flex items-center gap-space-xs min-w-0">
+<span class="material-symbols-outlined text-outline text-[18px] transition-transform duration-200" id="personal-chevron">arrow_right</span>
+<div class="w-6 h-6 rounded bg-secondary-container/20 flex items-center justify-center text-secondary flex-shrink-0">
+<span class="material-symbols-outlined text-[16px]">home</span>
+</div>
+<span class="font-headline-sm text-label-md text-on-surface font-semibold truncate">Personal &amp; Home</span>
+</div>
+<span class="font-label-xs text-label-xs text-outline px-2 py-0.5 rounded-full bg-surface-container-high">12 notes</span>
+</div>
+<div class="hidden flex-col space-y-1 pb-space-sm pl-7 pr-space-sm" id="personal-children">
+<div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-high cursor-pointer">
+<div class="flex items-center gap-space-xs min-w-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">receipt_long</span>
+<span class="font-body-sm text-body-sm text-on-surface truncate">Home Solar &amp; Powerwall Stats</span>
+</div>
+<span class="font-label-xs text-label-xs text-outline">Oct 14</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-high cursor-pointer">
+<div class="flex items-center gap-space-xs min-w-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">menu_book</span>
+<span class="font-body-sm text-body-sm text-on-surface truncate">Reading List &amp; Paper Sync</span>
+</div>
+<span class="font-label-xs text-label-xs text-outline">Oct 09</span>
+</div>
+</div>
+</div>
+<!-- Tree Node Group: Shared with Me (Collaborative) -->
+<div class="bg-surface-container rounded-xl overflow-hidden shadow-sm">
+<div class="flex items-center justify-between p-space-sm hover:bg-surface-container-high cursor-pointer" onclick="toggleFolder('shared-children', 'shared-chevron')">
+<div class="flex items-center gap-space-xs min-w-0">
+<span class="material-symbols-outlined text-outline text-[18px] transition-transform duration-200 rotate-90" id="shared-chevron">arrow_right</span>
+<div class="w-6 h-6 rounded bg-tertiary-container/30 flex items-center justify-center text-tertiary flex-shrink-0">
+<span class="material-symbols-outlined text-[16px]">group</span>
+</div>
+<span class="font-headline-sm text-label-md text-on-surface font-semibold truncate">Shared with Me</span>
+</div>
+<span class="font-label-xs text-label-xs text-tertiary px-2 py-0.5 rounded-full bg-surface-container-high">2 shared</span>
+</div>
+<div class="flex flex-col space-y-1 pb-space-sm pl-4 pr-space-sm" id="shared-children">
+<!-- Shared Note 1 -->
+<div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-high cursor-pointer">
+<div class="flex items-center gap-space-xs min-w-0">
+<span class="material-symbols-outlined text-secondary text-[18px]">quick_reference</span>
+<div class="flex flex-col min-w-0">
+<span class="font-body-sm text-body-sm text-on-surface truncate">Q4 Family Budget Planning</span>
+<div class="flex items-center gap-1.5 mt-0.5">
+<span class="font-label-xs text-label-xs text-on-surface-variant">by @Maria</span>
+<span class="w-1 h-1 rounded-full bg-outline"></span>
+<span class="inline-flex items-center px-1.5 rounded bg-surface-container-lowest text-secondary font-label-xs text-label-xs">Editor</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
+</div>
+<!-- Shared Note 2 -->
+<div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-high cursor-pointer">
+<div class="flex items-center gap-space-xs min-w-0">
+<span class="material-symbols-outlined text-tertiary-fixed-dim text-[18px]">travel</span>
+<div class="flex flex-col min-w-0">
+<span class="font-body-sm text-body-sm text-on-surface truncate">Azores Trip Itinerary 2025</span>
+<div class="flex items-center gap-1.5 mt-0.5">
+<span class="font-label-xs text-label-xs text-on-surface-variant">by @Maria</span>
+<span class="w-1 h-1 rounded-full bg-outline"></span>
+<span class="inline-flex items-center px-1.5 rounded bg-surface-container-lowest text-outline font-label-xs text-label-xs">Viewer</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[16px]">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Tree Node Group: Trash -->
+<div class="bg-surface-container rounded-xl overflow-hidden shadow-sm">
+<div class="flex items-center justify-between p-space-sm hover:bg-surface-container-high cursor-pointer" onclick="toggleFolder('trash-children', 'trash-chevron')">
+<div class="flex items-center gap-space-xs min-w-0">
+<span class="material-symbols-outlined text-outline text-[18px] transition-transform duration-200" id="trash-chevron">arrow_right</span>
+<div class="w-6 h-6 rounded bg-error-container/20 flex items-center justify-center text-error flex-shrink-0">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</div>
+<span class="font-headline-sm text-label-md text-on-surface font-semibold truncate">Trash</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant font-label-xs text-label-xs">
+<span>3 items</span>
+<span class="text-outline">·</span>
+<span class="text-error font-medium">auto-purge 30d</span>
+</div>
+</div>
+<div class="hidden flex-col space-y-1 pb-space-sm pl-7 pr-space-sm" id="trash-children">
+<div class="flex items-center justify-between p-2 rounded-lg bg-surface-container-lowest/50 text-outline">
+<span class="font-body-sm text-body-sm line-through truncate">Old Docker Compose Draft</span>
+<span class="font-label-xs text-label-xs">Purges in 4d</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-lg bg-surface-container-lowest/50 text-outline">
+<span class="font-body-sm text-body-sm line-through truncate">Scratchpad 2024-09-12</span>
+<span class="font-label-xs text-label-xs">Purges in 12d</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Workspace Health & Storage Summary Badge -->
+<div class="w-full bg-surface-container-low rounded-xl p-space-md shadow-sm space-y-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-sync-active text-[18px]">verified</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Storage &amp; Integrity</span>
+</div>
+<span class="font-label-xs text-label-xs text-sync-active">0 conflicts</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 2.8%;"></div>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-xs text-label-xs">
+<span>142 MB of 50 GB used</span>
+<span class="font-medium text-on-surface">10,480 notes · All conflict-free</span>
+</div>
+</div>
+<!-- Quick Note Creator Sheet / Floating Trigger Overlay -->
+<div class="w-full bg-surface-container rounded-xl p-space-sm shadow-md">
+<div class="flex items-center justify-between mb-2 px-1">
+<span class="font-label-xs text-label-xs uppercase tracking-wider text-on-surface-variant">Fast Template Launch</span>
+<span class="font-label-xs text-label-xs text-primary font-medium">Quick draft</span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs">
+<button class="flex flex-col items-center justify-center p-space-sm rounded-lg bg-surface-container-high hover:bg-surface-bright active:scale-95 transition-all text-center">
+<span class="material-symbols-outlined text-primary text-[20px] mb-1">note_alt</span>
+<span class="font-label-xs text-label-xs text-on-surface font-medium truncate w-full">Blank Note</span>
+</button>
+<button class="flex flex-col items-center justify-center p-space-sm rounded-lg bg-surface-container-high hover:bg-surface-bright active:scale-95 transition-all text-center">
+<span class="material-symbols-outlined text-secondary text-[20px] mb-1">checklist</span>
+<span class="font-label-xs text-label-xs text-on-surface font-medium truncate w-full">Daily Log</span>
+</button>
+<button class="flex flex-col items-center justify-center p-space-sm rounded-lg bg-surface-container-high hover:bg-surface-bright active:scale-95 transition-all text-center">
+<span class="material-symbols-outlined text-tertiary text-[20px] mb-1">terminal</span>
+<span class="font-label-xs text-label-xs text-on-surface font-medium truncate w-full">Code Snippet</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  function toggleFolder(childrenId, chevronId) {
+    const children = document.getElementById(childrenId);
+    const chevron = document.getElementById(chevronId);
+    if (!children || !chevron) return;
+
+    if (children.classList.contains('hidden')) {
+      children.classList.remove('hidden');
+      children.classList.add('flex');
+      chevron.classList.add('rotate-90');
+    } else {
+      children.classList.add('hidden');
+      children.classList.remove('flex');
+      chevron.classList.remove('rotate-90');
+    }
+  }
+
+  // Filter interaction mock
+  document.getElementById('tree-filter-input')?.addEventListener('input', (e) => {
+    const val = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#projects-children > div, #personal-children > div, #shared-children > div');
+    rows.forEach(row => {
+      const txt = row.textContent.toLowerCase();
+      row.style.display = txt.includes(val) ? 'flex' : 'none';
+    });
+  });
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-panel/90 backdrop-blur-xl shadow-[0_-1px_12px_rgba(0,0,0,0.5)]" data-active-classes="text-primary-container"><div class="flex justify-between items-center h-16 px-margin max-w-lg mx-auto"><a aria-current="page" class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 transition-colors text-primary-container" data-path="notes-tree" href="#"><span class="material-symbols-outlined text-[22px]">folder_copy</span><span class="font-label-xs text-label-xs">Tree</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 text-on-surface-variant hover:text-on-surface transition-colors" data-path="quick-search" href="#"><span class="material-symbols-outlined text-[22px]">manage_search</span><span class="font-label-xs text-label-xs">Find</span></a><div class="flex items-center justify-center -translate-y-3"><a aria-label="New Note" class="flex items-center justify-center w-12 h-12 rounded-full bg-primary-container text-on-primary-container shadow-[0_0_20px_rgba(79,70,229,0.55)] active:scale-95 transition-transform" data-path="active-editor" href="#"><span class="material-symbols-outlined text-[26px]">add</span></a></div><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 text-on-surface-variant hover:text-on-surface transition-colors" data-path="backlinks-and-graph" href="#"><span class="material-symbols-outlined text-[22px]">hub</span><span class="font-label-xs text-label-xs">Links</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-1 text-on-surface-variant hover:text-on-surface transition-colors" data-path="workspace-settings" href="#"><span class="material-symbols-outlined text-[22px]">settings</span><span class="font-label-xs text-label-xs">Settings</span></a></div></nav></body></html>
