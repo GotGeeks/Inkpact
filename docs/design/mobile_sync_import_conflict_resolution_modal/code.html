@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "secondary-container": "#00a2e6", "border-strong": "#374151", "surface-subtle": "#181B24", "surface-container-low": "#1b1b24", "inverse-surface": "#e4e1ee", "on-surface-variant": "#c7c4d8", "tertiary": "#ffb695", "on-primary-container": "#dad7ff", "on-background": "#e4e1ee", "on-secondary-fixed-variant": "#004c6e", "on-secondary-fixed": "#001e2f", "surface-panel": "#11131A", "secondary": "#89ceff", "inverse-primary": "#4d44e3", "on-tertiary-fixed-variant": "#7b2f00", "on-primary-fixed-variant": "#3323cc", "secondary-fixed": "#c9e6ff", "surface-bright": "#393842", "on-surface": "#e4e1ee", "on-error-container": "#ffdad6", "presence-cursor-2": "#10B981", "outline-variant": "#464555", "surface-elevated": "#222634", "border-subtle": "#232838", "surface": "#13121b", "on-secondary-container": "#00344e", "surface-canvas": "#090A0F", "tertiary-container": "#a44100", "secondary-fixed-dim": "#89ceff", "outline": "#918fa1", "surface-container-lowest": "#0e0d16", "surface-container": "#1f1f28", "on-tertiary-fixed": "#351000", "presence-cursor-3": "#38BDF8", "surface-tint": "#c3c0ff", "sync-offline": "#F59E0B", "error-container": "#93000a", "presence-cursor-4": "#FBBF24", "on-primary": "#1d00a5", "primary-fixed-dim": "#c3c0ff", "on-secondary": "#00344d", "primary-container": "#4f46e5", "tertiary-fixed-dim": "#ffb695", "on-error": "#690005", "error": "#ffb4ab", "surface-dim": "#13121b", "inverse-on-surface": "#302f39", "on-tertiary-container": "#ffd2be", "surface-variant": "#35343e", "on-primary-fixed": "#0f0069", "presence-cursor-1": "#F43F5E", "surface-container-high": "#2a2933", "background": "#13121b", "primary-fixed": "#e2dfff", "sync-active": "#10B981", "on-tertiary": "#571f00", "surface-container-highest": "#35343e", "primary": "#c3c0ff", "tertiary-fixed": "#ffdbcc" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-sm": "0.5rem", "gutter-desktop": "1.5rem", "space-md": "0.75rem", "margin-desktop": "2rem", "gutter": "1rem", "space-xl": "1.5rem", "margin": "1rem", "space-xs": "0.25rem", "space-lg": "1rem" }, "fontFamily": { "headline-lg": ["Inter"], "headline-sm": ["Inter"], "code-inline": ["JetBrains Mono"], "body-sm": ["Inter"], "body-lg": ["Inter"], "label-md": ["Inter"], "label-xs": ["Inter"], "headline-xl": ["Inter"], "headline-xl-mobile": ["Inter"] }, "fontSize": { "headline-lg": ["1.5rem", { "lineHeight": "2rem", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-sm": ["1.125rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.015em", "fontWeight": "600" }], "code-inline": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }], "body-sm": ["0.875rem", { "lineHeight": "1.375rem", "fontWeight": "400" }], "body-lg": ["1rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.011em", "fontWeight": "400" }], "label-md": ["0.8125rem", { "lineHeight": "1.125rem", "letterSpacing": "0.01em", "fontWeight": "500" }], "label-xs": ["0.6875rem", { "lineHeight": "0.875rem", "letterSpacing": "0.04em", "fontWeight": "600" }], "headline-xl": ["2rem", { "lineHeight": "2.5rem", "letterSpacing": "-0.025em", "fontWeight": "700" }], "headline-xl-mobile": ["1.75rem", { "lineHeight": "2.25rem", "letterSpacing": "-0.02em", "fontWeight": "700" }] } } } };</script></head><body class="bg-surface-canvas text-on-surface font-body-sm flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface-panel/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.45)]"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm min-w-0"><button aria-label="Dismiss" class="w-11 h-11 -ml-space-xs flex items-center justify-center text-on-surface-variant hover:text-on-surface rounded active:scale-95 transition-all" onclick="history.back()"><span class="material-symbols-outlined text-[20px]">close</span></button><div class="flex flex-col min-w-0"><h1 class="font-headline-sm text-headline-sm text-on-surface truncate">Resolve Sync Conflict</h1><div class="flex items-center gap-space-xs"><span class="w-1.5 h-1.5 rounded-full bg-sync-offline animate-pulse"></span><span class="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">Conflict Unresolved</span></div></div></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0 ml-space-sm"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="flex flex-col relative w-full pt-14 pb-safe bg-surface-canvas min-h-screen"><div class="flex flex-col w-full text-on-surface">
+<!-- Conflict Banner Header -->
+<section class="px-margin pt-space-md pb-space-lg bg-surface-container-low flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="inline-flex items-center gap-space-xs px-2.5 py-1 rounded-full bg-sync-offline/15 text-sync-offline">
+<span class="material-symbols-outlined text-[16px]">merge_type</span>
+<span class="font-label-xs text-label-xs uppercase tracking-wider font-semibold">3-Way Merge Conflict</span>
+</div>
+<span class="font-code-inline text-code-inline text-on-surface-variant/70 text-xs">jex_8f92a0149bb</span>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Projects / Inkpact v1 - System Architecture &amp; Sync</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-tertiary">inventory_2</span>
+<span>Joplin Archive (.jex) Re-import</span>
+<span class="text-on-surface-variant/40">·</span>
+<span class="text-xs">Today, 14:35</span>
+</p>
+</div>
+<!-- Conflict Summary Pill Matrix -->
+<div class="grid grid-cols-3 gap-2 pt-1">
+<div class="bg-surface-panel p-2 rounded flex flex-col">
+<span class="font-label-xs text-label-xs text-on-surface-variant">Local Base</span>
+<span class="font-code-inline text-xs text-primary font-medium mt-0.5">v0.14.8 (Head)</span>
+<span class="text-[11px] text-on-surface-variant/70">@Jos · 2m ago</span>
+</div>
+<div class="bg-surface-panel p-2 rounded flex flex-col">
+<span class="font-label-xs text-label-xs text-on-surface-variant">Incoming JEX</span>
+<span class="font-code-inline text-xs text-tertiary font-medium mt-0.5">Oct 22 Snapshot</span>
+<span class="text-[11px] text-on-surface-variant/70">@Maria · External</span>
+</div>
+<div class="bg-surface-panel p-2 rounded flex flex-col">
+<span class="font-label-xs text-label-xs text-on-surface-variant">Common Ancestor</span>
+<span class="font-code-inline text-xs text-secondary font-medium mt-0.5">Rev #138</span>
+<span class="text-[11px] text-on-surface-variant/70">Sync Anchor</span>
+</div>
+</div>
+</section>
+<!-- Interactive Version Segmented Tab Controller -->
+<div class="sticky top-14 z-30 bg-surface-canvas/95 backdrop-blur-md px-margin py-2.5">
+<div class="flex p-1 bg-surface-container rounded-lg overflow-x-auto no-scrollbar gap-1 text-center" role="tablist">
+<button class="flex-1 py-1.5 px-3 rounded font-label-md text-label-md transition-all whitespace-nowrap bg-surface-elevated text-on-surface font-semibold shadow-sm flex items-center justify-center gap-1.5" id="tab-diff" onclick="selectTab('diff')">
+<span class="material-symbols-outlined text-[16px] text-secondary">difference</span>
+<span>Visual Diff (3)</span>
+</button>
+<button class="flex-1 py-1.5 px-3 rounded font-label-md text-label-md transition-all whitespace-nowrap text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-1.5" id="tab-local" onclick="selectTab('local')">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span>Local (Head)</span>
+</button>
+<button class="flex-1 py-1.5 px-3 rounded font-label-md text-label-md transition-all whitespace-nowrap text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-1.5" id="tab-incoming" onclick="selectTab('incoming')">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span>Joplin (JEX)</span>
+</button>
+<button class="flex-1 py-1.5 px-3 rounded font-label-md text-label-md transition-all whitespace-nowrap text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-1.5" id="tab-base" onclick="selectTab('base')">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span>Ancestor</span>
+</button>
+</div>
+</div>
+<!-- Resolution Guide Callout -->
+<div class="mx-margin mt-space-md p-space-md rounded-xl bg-surface-container flex items-start gap-space-md shadow-sm">
+<div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+</div>
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md font-semibold text-on-surface">Deterministic 3-Way Policy</span>
+<span class="text-xs bg-surface-subtle text-primary px-2 py-0.5 rounded font-code-inline font-medium">Safe Re-import</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+        Changed only in Joplin: updated. Changed only in Inkpact: left alone. When <strong class="text-on-surface font-semibold">both modified</strong>, Inkpact preserves your local edits, saving Joplin's copy alongside as a backup note.
+      </p>
+</div>
+</div>
+<!-- Main Diff Interactive Stream -->
+<main class="flex flex-col gap-space-lg px-margin py-space-lg">
+<!-- Hunk 1: Metadata & Frontmatter -->
+<article class="flex flex-col rounded-xl bg-surface-container overflow-hidden shadow-sm">
+<header class="flex items-center justify-between px-space-md py-space-sm bg-surface-container-high">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-tertiary">label</span>
+<span class="font-label-md text-label-md font-medium text-on-surface">Hunk 1: Frontmatter Tags</span>
+</div>
+<span class="font-code-inline text-xs px-2 py-0.5 rounded bg-surface-subtle text-on-surface-variant">Lines 4–7</span>
+</header>
+<div class="p-space-md flex flex-col gap-space-sm bg-surface-panel">
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-elevated text-xs font-code-inline text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-outline">tag</span>architecture
+          </span>
+<span class="px-2 py-0.5 rounded bg-surface-elevated text-xs font-code-inline text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-outline">tag</span>crdt
+          </span>
+<!-- Deleted tag -->
+<span class="px-2 py-0.5 rounded bg-error-container/40 text-xs font-code-inline text-error flex items-center gap-1 line-through decoration-error">
+<span class="material-symbols-outlined text-[13px]">remove</span>#legacy
+          </span>
+<!-- Added tag -->
+<span class="px-2 py-0.5 rounded bg-presence-cursor-2/20 text-xs font-code-inline text-sync-active flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-[13px]">add</span>#joplin-backup
+          </span>
+</div>
+<!-- Per-Hunk Action Controls -->
+<div class="pt-2 flex items-center justify-between">
+<span class="font-label-xs text-label-xs text-on-surface-variant">Resolution for tags:</span>
+<div class="inline-flex rounded-md bg-surface-elevated p-0.5 text-xs">
+<button class="px-2.5 py-1 rounded bg-primary text-on-primary font-medium transition-all" id="hunk1-inkpact" onclick="resolveHunk(1, 'inkpact')">Keep Local</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface transition-all" id="hunk1-joplin" onclick="resolveHunk(1, 'joplin')">Accept Incoming</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface transition-all" id="hunk1-both" onclick="resolveHunk(1, 'both')">Merge Tags</button>
+</div>
+</div>
+</div>
+</article>
+<!-- Hunk 2: Body Prose Architectural Pipeline -->
+<article class="flex flex-col rounded-xl bg-surface-container overflow-hidden shadow-sm">
+<header class="flex items-center justify-between px-space-md py-space-sm bg-surface-container-high">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-presence-cursor-3">segment</span>
+<span class="font-label-md text-label-md font-medium text-on-surface">Hunk 2: Section § 2.4 Data Pipeline</span>
+</div>
+<span class="font-code-inline text-xs px-2 py-0.5 rounded bg-surface-subtle text-on-surface-variant">Paragraph Block</span>
+</header>
+<div class="p-space-md flex flex-col gap-space-md bg-surface-panel">
+<!-- Local inkpact version card -->
+<div class="p-space-md rounded-lg bg-surface-subtle flex flex-col gap-2 relative">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined text-[16px]">devices</span>
+<span class="font-label-xs text-label-xs font-semibold uppercase tracking-wider">Inkpact (Your Edits)</span>
+</div>
+<span class="text-xs text-on-surface-variant font-code-inline">Updated 2m ago</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface bg-surface-elevated/40 p-2.5 rounded font-normal leading-relaxed">
+            Postgres writes use folded snapshot compactions: 542 micro-transactions are compressed into indexed binary state vectors.
+          </p>
+<div class="flex justify-end pt-1">
+<button class="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-xs font-semibold flex items-center gap-1 shadow-sm active:scale-95 transition-all" id="btn-hunk2-local" onclick="selectHunkOption(2, 'local')">
+<span class="material-symbols-outlined text-[14px]">check</span>
+              Keep Inkpact Version
+            </button>
+</div>
+</div>
+<!-- Joplin incoming version card -->
+<div class="p-space-md rounded-lg bg-surface-subtle flex flex-col gap-2 relative">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-tertiary">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+<span class="font-label-xs text-label-xs font-semibold uppercase tracking-wider">Joplin Archive (Incoming)</span>
+</div>
+<span class="text-xs text-on-surface-variant font-code-inline">Oct 22 snapshot</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant bg-surface-elevated/40 p-2.5 rounded font-normal leading-relaxed">
+            Direct synchronous database writes are queued per keystroke directly onto document_deltas with full historical JSON logs.
+          </p>
+<div class="flex justify-end pt-1">
+<button class="px-3 py-1.5 rounded-lg bg-surface-elevated text-on-surface hover:bg-surface-bright font-label-md text-xs font-medium flex items-center gap-1 active:scale-95 transition-all" id="btn-hunk2-incoming" onclick="selectHunkOption(2, 'incoming')">
+<span class="material-symbols-outlined text-[14px]">south</span>
+              Take Joplin Incoming
+            </button>
+</div>
+</div>
+<!-- Multi-choice granular strip -->
+<div class="flex items-center justify-between pt-1">
+<span class="text-xs text-on-surface-variant">Combined fallback:</span>
+<button class="px-2.5 py-1 rounded bg-surface-elevated text-on-surface-variant hover:text-on-surface text-xs font-medium flex items-center gap-1" id="btn-hunk2-combine" onclick="selectHunkOption(2, 'combine')">
+<span class="material-symbols-outlined text-[14px]">join_inner</span>
+            Concatenate Both Sections
+          </button>
+</div>
+</div>
+</article>
+<!-- Hunk 3: Code Block (sync-runtime.config.ts) -->
+<article class="flex flex-col rounded-xl bg-surface-container overflow-hidden shadow-sm">
+<header class="flex items-center justify-between px-space-md py-space-sm bg-surface-container-high">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-presence-cursor-4">code</span>
+<span class="font-label-md text-label-md font-medium text-on-surface">Hunk 3: sync-runtime.config.ts</span>
+</div>
+<span class="font-code-inline text-xs px-2 py-0.5 rounded bg-surface-subtle text-on-surface-variant">Code Block</span>
+</header>
+<div class="bg-surface-canvas p-space-md flex flex-col font-code-inline text-code-inline text-xs leading-5 overflow-x-auto">
+<div class="text-on-surface-variant/70">// Conflict at SyncEngine.configureRetention()</div>
+<div class="text-on-surface">export const runtimePolicy = {</div>
+<div class="text-on-surface pl-3">heartbeatMs: 2500,</div>
+<!-- Deletion / Joplin variant -->
+<div class="bg-error-container/20 text-error px-2 py-1 rounded-sm -mx-2 my-0.5 flex items-start gap-1">
+<span class="select-none text-error/60">-</span>
+<span>retentionWindowDays: 90, // Joplin default</span>
+</div>
+<!-- Insertion / Inkpact variant -->
+<div class="bg-presence-cursor-2/20 text-sync-active px-2 py-1 rounded-sm -mx-2 my-0.5 flex items-start gap-1 font-medium">
+<span class="select-none text-sync-active/60">+</span>
+<span>retentionWindowDays: 365, // Local compaction target</span>
+</div>
+<div class="text-on-surface pl-3">crdtSyncStrategy: 'state-vector-lww'</div>
+<div class="text-on-surface">};</div>
+</div>
+<div class="px-space-md py-space-sm bg-surface-panel flex items-center justify-between">
+<span class="font-label-xs text-label-xs text-on-surface-variant">Active Selection:</span>
+<div class="flex gap-1.5">
+<button class="px-2.5 py-1 rounded bg-primary text-on-primary text-xs font-semibold" id="hunk3-inkpact" onclick="resolveCodeHunk('inkpact')">Keep +365d (Local)</button>
+<button class="px-2.5 py-1 rounded bg-surface-elevated text-on-surface text-xs hover:bg-surface-bright" id="hunk3-joplin" onclick="resolveCodeHunk('joplin')">Take -90d (Joplin)</button>
+</div>
+</div>
+</article>
+<!-- Sibling Note Creation Card & Switch -->
+<section class="p-space-md rounded-xl bg-surface-container flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[22px]">content_copy</span>
+<div>
+<h4 class="font-label-md text-label-md font-semibold text-on-surface">Fork Incoming Copy</h4>
+<p class="font-body-sm text-xs text-on-surface-variant">Prevent data loss by archiving Joplin's version</p>
+</div>
+</div>
+<!-- Custom iOS/Touch Toggle -->
+<button aria-checked="true" class="w-12 h-7 bg-primary rounded-full relative p-0.5 transition-colors duration-200 ease-in-out shrink-0 focus:outline-none" id="toggle-backup" onclick="toggleConflictCopy()" role="switch">
+<span class="translate-x-5 block w-6 h-6 rounded-full bg-on-primary shadow transform transition-transform duration-200 ease-in-out" id="toggle-knob"></span>
+</button>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-panel flex items-center gap-2 mt-1" id="backup-details">
+<span class="material-symbols-outlined text-[18px] text-tertiary shrink-0">draft</span>
+<div class="min-w-0">
+<div class="font-code-inline text-xs text-on-surface truncate">Inkpact v1 - System Architecture (Joplin Conflict Copy)</div>
+<div class="text-[11px] text-on-surface-variant">Will be placed in folder: Projects / Joplin Imports</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Sticky Bottom Touch Resolution Bar -->
+<footer class="sticky bottom-0 z-40 bg-surface-panel/95 backdrop-blur-xl px-margin py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.5)] flex flex-col gap-2">
+<div class="flex gap-2 w-full">
+<button class="flex-1 h-11 rounded-lg bg-surface-elevated active:bg-surface-bright text-on-surface font-label-md text-label-md font-medium active:scale-[0.98] transition-all flex items-center justify-center gap-1.5" onclick="handleResolve('duplicate')">
+<span class="material-symbols-outlined text-[18px]">copy_all</span>
+<span>Keep Both</span>
+</button>
+<button class="flex-[1.4] h-11 rounded-lg bg-primary hover:bg-primary/95 text-on-primary font-label-md text-label-md font-semibold active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-md" onclick="handleResolve('apply')">
+<span class="material-symbols-outlined text-[18px]">done_all</span>
+<span>Apply Resolution</span>
+</button>
+</div>
+<div class="flex items-center justify-center pt-0.5">
+<button class="font-label-xs text-label-xs text-on-surface-variant/80 hover:text-primary flex items-center gap-1 py-1" onclick="openFullEditor()">
+<span>Need fine-grained line-by-line edit? Review in Full Workspace</span>
+<span class="material-symbols-outlined text-[13px]">open_in_new</span>
+</button>
+</div>
+</footer>
+</div>
+<script>
+  let backupConflictCopy = true;
+  let resolutions = {
+    hunk1: 'inkpact',
+    hunk2: 'local',
+    hunk3: 'inkpact'
+  };
+
+  function selectTab(type) {
+    const tabs = ['diff', 'local', 'incoming', 'base'];
+    tabs.forEach(t => {
+      const el = document.getElementById('tab-' + t);
+      if (t === type) {
+        el.className = 'flex-1 py-1.5 px-3 rounded font-label-md text-label-md transition-all whitespace-nowrap bg-surface-elevated text-on-surface font-semibold shadow-sm flex items-center justify-center gap-1.5';
+      } else {
+        el.className = 'flex-1 py-1.5 px-3 rounded font-label-md text-label-md transition-all whitespace-nowrap text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-1.5';
+      }
+    });
+  }
+
+  function resolveHunk(hunkId, choice) {
+    resolutions['hunk' + hunkId] = choice;
+    const opts = ['inkpact', 'joplin', 'both'];
+    opts.forEach(opt => {
+      const btn = document.getElementById('hunk1-' + opt);
+      if (!btn) return;
+      if (opt === choice) {
+        btn.className = 'px-2.5 py-1 rounded bg-primary text-on-primary font-medium transition-all';
+      } else {
+        btn.className = 'px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface transition-all';
+      }
+    });
+  }
+
+  function selectHunkOption(hunkId, choice) {
+    resolutions.hunk2 = choice;
+    const btnLocal = document.getElementById('btn-hunk2-local');
+    const btnIncoming = document.getElementById('btn-hunk2-incoming');
+    const btnCombine = document.getElementById('btn-hunk2-combine');
+
+    if (choice === 'local') {
+      btnLocal.className = 'px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-xs font-semibold flex items-center gap-1 shadow-sm active:scale-95 transition-all';
+      btnIncoming.className = 'px-3 py-1.5 rounded-lg bg-surface-elevated text-on-surface hover:bg-surface-bright font-label-md text-xs font-medium flex items-center gap-1 active:scale-95 transition-all';
+      btnCombine.className = 'px-2.5 py-1 rounded bg-surface-elevated text-on-surface-variant hover:text-on-surface text-xs font-medium flex items-center gap-1';
+    } else if (choice === 'incoming') {
+      btnLocal.className = 'px-3 py-1.5 rounded-lg bg-surface-elevated text-on-surface hover:bg-surface-bright font-label-md text-xs font-medium flex items-center gap-1 active:scale-95 transition-all';
+      btnIncoming.className = 'px-3 py-1.5 rounded-lg bg-tertiary-container text-on-tertiary-container font-label-md text-xs font-semibold flex items-center gap-1 shadow-sm active:scale-95 transition-all';
+      btnCombine.className = 'px-2.5 py-1 rounded bg-surface-elevated text-on-surface-variant hover:text-on-surface text-xs font-medium flex items-center gap-1';
+    } else {
+      btnLocal.className = 'px-3 py-1.5 rounded-lg bg-surface-elevated text-on-surface hover:bg-surface-bright font-label-md text-xs font-medium flex items-center gap-1';
+      btnIncoming.className = 'px-3 py-1.5 rounded-lg bg-surface-elevated text-on-surface hover:bg-surface-bright font-label-md text-xs font-medium flex items-center gap-1';
+      btnCombine.className = 'px-2.5 py-1 rounded bg-secondary-container text-on-secondary-container text-xs font-semibold flex items-center gap-1 shadow-sm';
+    }
+  }
+
+  function resolveCodeHunk(choice) {
+    resolutions.hunk3 = choice;
+    const bInkpact = document.getElementById('hunk3-inkpact');
+    const bJoplin = document.getElementById('hunk3-joplin');
+    if (choice === 'inkpact') {
+      bInkpact.className = 'px-2.5 py-1 rounded bg-primary text-on-primary text-xs font-semibold';
+      bJoplin.className = 'px-2.5 py-1 rounded bg-surface-elevated text-on-surface text-xs hover:bg-surface-bright';
+    } else {
+      bInkpact.className = 'px-2.5 py-1 rounded bg-surface-elevated text-on-surface text-xs hover:bg-surface-bright';
+      bJoplin.className = 'px-2.5 py-1 rounded bg-tertiary-container text-on-tertiary-container text-xs font-semibold';
+    }
+  }
+
+  function toggleConflictCopy() {
+    backupConflictCopy = !backupConflictCopy;
+    const toggle = document.getElementById('toggle-backup');
+    const knob = document.getElementById('toggle-knob');
+    const details = document.getElementById('backup-details');
+    
+    toggle.setAttribute('aria-checked', String(backupConflictCopy));
+    if (backupConflictCopy) {
+      toggle.className = 'w-12 h-7 bg-primary rounded-full relative p-0.5 transition-colors duration-200 ease-in-out shrink-0 focus:outline-none';
+      knob.className = 'translate-x-5 block w-6 h-6 rounded-full bg-on-primary shadow transform transition-transform duration-200 ease-in-out';
+      details.style.opacity = '1';
+    } else {
+      toggle.className = 'w-12 h-7 bg-surface-elevated rounded-full relative p-0.5 transition-colors duration-200 ease-in-out shrink-0 focus:outline-none';
+      knob.className = 'translate-x-0 block w-6 h-6 rounded-full bg-on-surface-variant shadow transform transition-transform duration-200 ease-in-out';
+      details.style.opacity = '0.35';
+    }
+  }
+
+  function handleResolve(type) {
+    if (window.history && window.history.back) {
+      window.history.back();
+    }
+  }
+
+  function openFullEditor() {
+    // Navigates to desktop split merge view if on tablet or large display
+    console.log('Switched to expanded editor diff');
+  }
+</script></main></body></html>

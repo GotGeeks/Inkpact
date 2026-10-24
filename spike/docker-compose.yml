@@ -1,0 +1,21 @@
+# Spike only: Postgres for run 0.2 onward. The spike server and client run on the host.
+# Start with: docker compose -f spike/docker-compose.yml up -d
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: spike
+      POSTGRES_PASSWORD: spike
+      POSTGRES_DB: inkpact_spike
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - spike-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spike -d inkpact_spike"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  spike-pgdata:

@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-surface-variant": "#c7c4d8", "on-surface": "#e4e1ee", "surface-variant": "#35343e", "surface-dim": "#13121b", "on-secondary-fixed": "#001e2f", "background": "#13121b", "inverse-on-surface": "#302f39", "on-tertiary": "#571f00", "tertiary": "#ffb695", "outline-variant": "#464555", "inverse-primary": "#4d44e3", "primary-fixed": "#e2dfff", "error": "#ffb4ab", "surface-tint": "#c3c0ff", "on-secondary": "#00344d", "secondary-fixed-dim": "#89ceff", "on-tertiary-fixed-variant": "#7b2f00", "on-primary-container": "#dad7ff", "surface-elevated": "#222634", "presence-cursor-1": "#F43F5E", "on-secondary-fixed-variant": "#004c6e", "border-strong": "#374151", "error-container": "#93000a", "on-primary": "#1d00a5", "secondary-fixed": "#c9e6ff", "tertiary-fixed": "#ffdbcc", "presence-cursor-3": "#38BDF8", "on-tertiary-container": "#ffd2be", "secondary-container": "#00a2e6", "primary-fixed-dim": "#c3c0ff", "tertiary-container": "#a44100", "surface": "#13121b", "surface-bright": "#393842", "presence-cursor-4": "#FBBF24", "sync-active": "#10B981", "surface-container-low": "#1b1b24", "surface-container-lowest": "#0e0d16", "on-tertiary-fixed": "#351000", "surface-container": "#1f1f28", "secondary": "#89ceff", "surface-panel": "#11131A", "primary-container": "#4f46e5", "on-error-container": "#ffdad6", "surface-subtle": "#181B24", "surface-canvas": "#090A0F", "on-primary-fixed": "#0f0069", "primary": "#c3c0ff", "sync-offline": "#F59E0B", "outline": "#918fa1", "on-error": "#690005", "surface-container-highest": "#35343e", "presence-cursor-2": "#10B981", "inverse-surface": "#e4e1ee", "on-secondary-container": "#00344e", "surface-container-high": "#2a2933", "on-background": "#e4e1ee", "border-subtle": "#232838", "tertiary-fixed-dim": "#ffb695", "on-primary-fixed-variant": "#3323cc" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin": "1rem", "gutter": "1rem", "margin-desktop": "2rem", "space-xl": "1.5rem", "space-xs": "0.25rem", "space-md": "0.75rem", "space-sm": "0.5rem", "gutter-desktop": "1.5rem", "space-lg": "1rem" }, "fontFamily": { "body-sm": [ "Inter" ], "label-md": [ "Inter" ], "headline-xl": [ "Inter" ], "headline-sm": [ "Inter" ], "body-lg": [ "Inter" ], "headline-xl-mobile": [ "Inter" ], "headline-lg": [ "Inter" ], "code-inline": [ "JetBrains Mono" ], "label-xs": [ "Inter" ] }, "fontSize": { "body-sm": [ "0.875rem", { "lineHeight": "1.375rem", "fontWeight": "400" } ], "label-md": [ "0.8125rem", { "lineHeight": "1.125rem", "letterSpacing": "0.01em", "fontWeight": "500" } ], "headline-xl": [ "2rem", { "lineHeight": "2.5rem", "letterSpacing": "-0.025em", "fontWeight": "700" } ], "headline-sm": [ "1.125rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "body-lg": [ "1rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.011em", "fontWeight": "400" } ], "headline-xl-mobile": [ "1.75rem", { "lineHeight": "2.25rem", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "headline-lg": [ "1.5rem", { "lineHeight": "2rem", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "code-inline": [ "0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" } ], "label-xs": [ "0.6875rem", { "lineHeight": "0.875rem", "letterSpacing": "0.04em", "fontWeight": "600" } ] } } } };</script></head><body class="bg-surface font-body-sm text-body-sm text-on-surface antialiased select-none"><aside class="fixed left-0 top-0 bottom-0 w-64 bg-surface-panel z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col flex-1 min-h-0"><div class="h-14 px-space-lg flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-6 h-6 rounded bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[16px]">edit_note</span></div><span class="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">Inkpact</span></div><button class="w-7 h-7 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface" type="button"><span class="material-symbols-outlined text-[18px]">side_navigation</span></button></div><div class="px-space-md py-space-xs"><button class="w-full flex items-center justify-between px-space-md py-space-sm rounded bg-surface-subtle hover:bg-surface-elevated text-on-surface transition-colors" type="button"><div class="flex items-center gap-space-sm truncate"><span class="material-symbols-outlined text-primary text-[18px]">folder_shared</span><span class="font-label-md text-label-md truncate">Personal Workspace</span></div><span class="material-symbols-outlined text-on-surface-variant text-[16px]">unfold_more</span></button></div><div class="px-space-md py-space-xs"><div class="flex items-center justify-between px-space-md py-space-xs rounded bg-surface-canvas text-on-surface-variant"><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-body-sm text-body-sm">Quick Find</span></div><kbd class="font-code-inline text-label-xs bg-surface-elevated px-space-xs py-0.5 rounded text-on-surface-variant">Ctrl+K</kbd></div></div><nav class="flex-1 px-space-md py-space-sm space-y-0.5 overflow-y-auto" data-active-classes="bg-primary-container text-on-primary-container font-semibold"><div class="px-space-sm py-space-xs font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">Workspace</div><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" data-path="notes-editor" href="#"><span class="material-symbols-outlined text-[18px]">description</span><span class="font-label-md text-label-md truncate">All Documents</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" data-path="graph-view" href="#"><span class="material-symbols-outlined text-[18px]">hub</span><span class="font-label-md text-label-md truncate">Knowledge Graph</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" data-path="shared-vault" href="#"><span class="material-symbols-outlined text-[18px]">group</span><span class="font-label-md text-label-md truncate">Collaborative Spaces</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" data-path="tags-index" href="#"><span class="material-symbols-outlined text-[18px]">tag</span><span class="font-label-md text-label-md truncate">Tags &amp; Taxonomy</span></a><div class="pt-space-md px-space-sm py-space-xs font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">System</div><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" data-path="sync-diagnostics" href="#"><span class="material-symbols-outlined text-[18px]">sync_saved_locally</span><span class="font-label-md text-label-md truncate">Sync &amp; CRDT State</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" data-path="vault-settings" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-label-md text-label-md truncate">Vault Settings</span></a></nav></div><div class="p-space-md bg-surface-subtle"><div class="flex items-center justify-between"><div class="flex items-center gap-space-sm min-w-0"><div class="w-7 h-7 rounded-full bg-surface-elevated flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[16px]">dns</span></div><div class="flex flex-col min-w-0"><span class="font-label-xs text-label-xs text-on-surface truncate font-semibold">Local Node</span><span class="font-code-inline text-label-xs text-on-surface-variant truncate">v0.14.8-hybrid</span></div></div><span class="w-2 h-2 rounded-full bg-sync-active"></span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface-panel/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs bg-surface-canvas px-space-md py-1 rounded-full"><span class="w-2 h-2 rounded-full bg-sync-active animate-pulse"></span><span class="font-label-xs text-label-xs text-on-surface">Synced · 0 pending (Yjs WS)</span></div><div class="hidden sm:flex items-center gap-space-xs bg-surface-canvas px-space-md py-1 rounded-full text-on-surface-variant"><span class="material-symbols-outlined text-[14px] text-presence-cursor-2">router</span><span class="font-code-inline text-label-xs text-on-surface-variant">inkpact.lan.home · 38ms ping</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center -space-x-space-xs pl-space-sm" title="Connected Collaborators"><div class="w-6 h-6 rounded-full bg-presence-cursor-1 text-on-surface flex items-center justify-center font-label-xs text-label-xs font-bold ring-2 ring-surface-panel">M</div><div class="w-6 h-6 rounded-full bg-presence-cursor-2 text-on-surface flex items-center justify-center font-label-xs text-label-xs font-bold ring-2 ring-surface-panel">E</div><div class="w-6 h-6 rounded-full bg-presence-cursor-3 text-on-surface flex items-center justify-center font-label-xs text-label-xs font-bold ring-2 ring-surface-panel">T</div><div class="w-6 h-6 rounded-full bg-surface-elevated text-on-surface-variant flex items-center justify-center font-label-xs text-label-xs font-medium ring-2 ring-surface-panel">+2</div></div><div class="h-4 w-px bg-outline-variant"></div><button class="w-8 h-8 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-elevated hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">notifications</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-14 w-full bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- Content Container with max desktop boundary and subtle ambient glow -->
+<div class="relative w-full max-w-[1520px] mx-auto px-margin-desktop py-space-xl space-y-space-xl">
+<!-- Ambient Radial Underglow (Engineering aesthetic) -->
+<div class="absolute top-4 left-1/3 w-[640px] h-[260px] bg-gradient-to-r from-primary-container/10 via-sync-offline/5 to-transparent blur-3xl pointer-events-none -z-10"></div>
+<!-- 1. Header & Overview Breadcrumb -->
+<div class="flex flex-col gap-space-md">
+<!-- Breadcrumb Bar & Status Tag -->
+<div class="flex flex-wrap items-center justify-between gap-space-md">
+<nav aria-label="Breadcrumb" class="flex items-center gap-space-xs font-label-md text-label-md text-on-surface-variant">
+<a class="hover:text-on-surface transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[16px]">settings</span>
+            Settings
+          </a>
+<span class="material-symbols-outlined text-[14px] text-outline">chevron_right</span>
+<a class="hover:text-on-surface transition-colors" href="#">Data Migration</a>
+<span class="material-symbols-outlined text-[14px] text-outline">chevron_right</span>
+<span class="font-code-inline text-on-surface font-semibold bg-surface-subtle px-space-xs py-0.5 rounded">
+            Joplin JEX Import #84
+          </span>
+</nav>
+<!-- Status & Target Pipeline Badge -->
+<div class="flex items-center gap-space-sm">
+<div class="inline-flex items-center gap-space-xs px-space-md py-1 rounded-full bg-sync-offline/15 text-sync-offline">
+<span class="w-2 h-2 rounded-full bg-sync-offline animate-pulse"></span>
+<span class="font-label-xs text-label-xs uppercase tracking-wider font-bold">Import Completed with Warnings</span>
+</div>
+<div class="inline-flex items-center gap-space-xs px-space-md py-1 rounded-full bg-surface-elevated text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px] text-primary">verified</span>
+<span class="font-code-inline text-label-xs">CRDT Snapshot Verified</span>
+</div>
+</div>
+</div>
+<!-- Main Action & File Metadata Header Card -->
+<div class="bg-surface-container-low rounded-xl p-space-xl shadow-sm relative overflow-hidden">
+<!-- Visual Accent Strip -->
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-sync-offline"></div>
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="font-code-inline text-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">
+                joplin-backup-2026-10-22.jex
+              </span>
+<span class="font-code-inline text-label-xs bg-surface-variant text-on-surface-variant px-space-sm py-0.5 rounded">
+                384.2 MB · tar/gzip
+              </span>
+</div>
+<!-- Metadata Line with Monospace Metrics -->
+<div class="flex flex-wrap items-center gap-x-space-lg gap-y-space-xs font-body-sm text-body-sm text-on-surface-variant pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-outline">timer</span>
+<span>Duration: <strong class="text-on-surface font-code-inline">2m 43s</strong> <span class="font-label-xs text-sync-active">(target &lt;5m)</span></span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-outline">calendar_today</span>
+<span>Timestamp: <span class="text-on-surface font-code-inline">Oct 22, 2026 · 14:35:12 UTC</span></span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-primary">drive_file_move</span>
+<span>Destination: <strong class="text-on-surface">Personal Workspace / Projects &amp; Archive</strong></span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-secondary">memory</span>
+<span>Engine: <span class="font-code-inline text-label-xs text-on-surface">Phase 1A Native Worker (Thread #3)</span></span>
+</div>
+</div>
+</div>
+<!-- Quick Action Buttons -->
+<div class="flex items-center flex-wrap gap-space-sm shrink-0">
+<button class="inline-flex items-center gap-space-xs px-space-md py-space-sm rounded-lg bg-surface-elevated hover:bg-surface-variant text-on-surface font-label-md text-label-md transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">data_object</span>
+<span>Download Full Log (NDJSON)</span>
+</button>
+<button class="inline-flex items-center gap-space-xs px-space-md py-space-sm rounded-lg bg-sync-offline/20 text-sync-offline hover:bg-sync-offline/30 font-label-md text-label-md transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">difference</span>
+<span>Resolve Conflict (1)</span>
+</button>
+<button class="inline-flex items-center gap-space-xs px-space-md py-space-sm rounded-lg bg-primary-container hover:bg-primary-container/80 text-on-primary-container font-label-md text-label-md transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">account_tree</span>
+<span>Go to Notebooks Tree</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- 2. High-Level Summary Stat Cards (Bento Metric Layout) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-space-md">
+<!-- Card 1: Total Notes Processed -->
+<div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col justify-between shadow-sm relative overflow-hidden group">
+<div class="flex items-start justify-between">
+<div>
+<p class="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">Processed Notes</p>
+<div class="flex items-baseline gap-space-xs mt-space-xs">
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">4,826</span>
+<span class="font-label-xs text-label-xs text-sync-active font-semibold">99.2% ok</span>
+</div>
+</div>
+<div class="w-9 h-9 rounded-lg bg-primary-container/20 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">description</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-sm space-y-1 bg-surface-canvas/50 -mx-space-lg -mb-space-lg px-space-lg pb-space-md">
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Pristine Imported:</span>
+<span class="font-code-inline text-sync-active font-semibold">4,789</span>
+</div>
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Warnings / Conflicts:</span>
+<span class="font-code-inline text-sync-offline font-semibold">36 / 1</span>
+</div>
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Fatal Crash / Failures:</span>
+<span class="font-code-inline text-on-surface-variant">0</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Notebooks & Tree Hierarchy -->
+<div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col justify-between shadow-sm relative overflow-hidden group">
+<div class="flex items-start justify-between">
+<div>
+<p class="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">Notebooks Tree</p>
+<div class="flex items-baseline gap-space-xs mt-space-xs">
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">42</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant">hierarchies</span>
+</div>
+</div>
+<div class="w-9 h-9 rounded-lg bg-surface-elevated text-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">folder_copy</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-sm space-y-1 bg-surface-canvas/50 -mx-space-lg -mb-space-lg px-space-lg pb-space-md">
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Max Tree Depth:</span>
+<span class="font-code-inline text-on-surface">6 levels</span>
+</div>
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Ordering Scheme:</span>
+<span class="font-code-inline text-primary">Fractional Index</span>
+</div>
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Orphan Restorations:</span>
+<span class="font-code-inline text-on-surface">0 notes</span>
+</div>
+</div>
+</div>
+<!-- Card 3: Attachments & Resources -->
+<div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col justify-between shadow-sm relative overflow-hidden group">
+<div class="flex items-start justify-between">
+<div>
+<p class="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">Attachments &amp; Blobs</p>
+<div class="flex items-baseline gap-space-xs mt-space-xs">
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">1,248</span>
+<span class="font-label-xs text-label-xs text-sync-active">deduped</span>
+</div>
+</div>
+<div class="w-9 h-9 rounded-lg bg-surface-elevated text-sync-active flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">attach_file</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-sm space-y-1 bg-surface-canvas/50 -mx-space-lg -mb-space-lg px-space-lg pb-space-md">
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">SHA-256 Storage:</span>
+<span class="font-code-inline text-sync-active">1,242 assets</span>
+</div>
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Partitioned (&gt;5MB):</span>
+<span class="font-code-inline text-sync-offline">4 warnings</span>
+</div>
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Corrupted Payloads:</span>
+<span class="font-code-inline text-error">2 skipped</span>
+</div>
+</div>
+</div>
+<!-- Card 4: Tags & To-Dos -->
+<div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col justify-between shadow-sm relative overflow-hidden group">
+<div class="flex items-start justify-between">
+<div>
+<p class="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">Taxonomy &amp; Tasks</p>
+<div class="flex items-baseline gap-space-xs mt-space-xs">
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">184 / 312</span>
+</div>
+</div>
+<div class="w-9 h-9 rounded-lg bg-surface-elevated text-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">checklist</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-sm space-y-1 bg-surface-canvas/50 -mx-space-lg -mb-space-lg px-space-lg pb-space-md">
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Unique Tags Ingested:</span>
+<span class="font-code-inline text-on-surface">184 mapped</span>
+</div>
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Checklist Tasks:</span>
+<span class="font-code-inline text-on-surface">312 converted</span>
+</div>
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Alarms -&gt; Reminders:</span>
+<span class="font-code-inline text-primary">27 queued</span>
+</div>
+</div>
+</div>
+<!-- Card 5: 3-Way Merge Resolution -->
+<div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col justify-between shadow-sm relative overflow-hidden group">
+<div class="flex items-start justify-between">
+<div>
+<p class="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">3-Way Sync Merge</p>
+<div class="flex items-baseline gap-space-xs mt-space-xs">
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">1</span>
+<span class="font-label-xs text-label-xs text-sync-offline font-semibold">conflict fork</span>
+</div>
+</div>
+<div class="w-9 h-9 rounded-lg bg-sync-offline/20 text-sync-offline flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">call_split</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-sm space-y-1 bg-surface-canvas/50 -mx-space-lg -mb-space-lg px-space-lg pb-space-md">
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Unchanged in Inkpact:</span>
+<span class="font-code-inline text-on-surface">4,112</span>
+</div>
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Updated from Joplin:</span>
+<span class="font-code-inline text-sync-active">674</span>
+</div>
+<div class="flex justify-between font-label-xs text-label-xs">
+<span class="text-on-surface-variant">Local Heads Preserved:</span>
+<span class="font-code-inline text-secondary">39</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 3. Ingest Progress Breakdown / Phase Indicator (Data Vis) -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-sm space-y-space-md">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">tune</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Ingestion Pipeline Performance &amp; Phase Milestones</h2>
+</div>
+<div class="flex items-center gap-space-md text-on-surface-variant font-code-inline text-label-xs">
+<span>THROUGHPUT: <strong class="text-on-surface font-bold">29.6 notes/sec</strong></span>
+<span>MEMORY PEAK: <strong class="text-on-surface font-bold">142 MB</strong></span>
+<span>CRDT OPS: <strong class="text-on-surface font-bold">19,410</strong></span>
+</div>
+</div>
+<!-- Segmented Bar Visualization -->
+<div class="space-y-space-xs">
+<div class="w-full h-3 rounded-full bg-surface-elevated overflow-hidden flex">
+<div class="h-full bg-primary-container" style="width: 85.2%;" title="Unmodified Notes Ingested (4,112)"></div>
+<div class="h-full bg-sync-active" style="width: 13.9%;" title="Updated Notes (674)"></div>
+<div class="h-full bg-secondary" style="width: 0.8%;" title="Inkpact Changes Preserved (39)"></div>
+<div class="h-full bg-sync-offline animate-pulse" style="width: 0.1%;" title="Conflicts (1)"></div>
+</div>
+<div class="flex items-center justify-between font-label-xs text-label-xs text-on-surface-variant pt-1">
+<div class="flex items-center gap-space-md flex-wrap">
+<span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-primary-container"></span> Unmodified (85.2%)</span>
+<span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-sync-active"></span> Joplin Head Applied (13.9%)</span>
+<span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-secondary"></span> Inkpact Head Kept (0.8%)</span>
+<span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-sync-offline"></span> Conflict Forked (0.1%)</span>
+</div>
+<span class="font-code-inline">Zero Ingestion Loss Guarantee</span>
+</div>
+</div>
+</div>
+<!-- 4. Diagnostic Filtering & Tab Navigation -->
+<div class="flex flex-col gap-space-md">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+<!-- Filter Tabs -->
+<div class="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 bg-surface-canvas p-1 rounded-lg">
+<button class="px-space-md py-1.5 rounded font-label-md text-label-md bg-surface-elevated text-on-surface font-semibold shadow-sm transition-all flex items-center gap-space-xs" type="button">
+<span>All Issues</span>
+<span class="px-1.5 py-0.5 rounded-full text-label-xs font-code-inline bg-surface-bright text-on-surface">38</span>
+</button>
+<button class="px-space-md py-1.5 rounded font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-elevated transition-all flex items-center gap-space-xs" type="button">
+<span>3-Way Conflicts</span>
+<span class="px-1.5 py-0.5 rounded-full text-label-xs font-code-inline bg-sync-offline/20 text-sync-offline font-bold">1</span>
+</button>
+<button class="px-space-md py-1.5 rounded font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-elevated transition-all flex items-center gap-space-xs" type="button">
+<span>Format Warnings</span>
+<span class="px-1.5 py-0.5 rounded-full text-label-xs font-code-inline bg-surface-elevated text-on-surface-variant">18</span>
+</button>
+<button class="px-space-md py-1.5 rounded font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-elevated transition-all flex items-center gap-space-xs" type="button">
+<span>Skipped &amp; Excluded</span>
+<span class="px-1.5 py-0.5 rounded-full text-label-xs font-code-inline bg-surface-elevated text-on-surface-variant">14</span>
+</button>
+<button class="px-space-md py-1.5 rounded font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-elevated transition-all flex items-center gap-space-xs" type="button">
+<span>Oversized Attachments</span>
+<span class="px-1.5 py-0.5 rounded-full text-label-xs font-code-inline bg-surface-elevated text-on-surface-variant">5</span>
+</button>
+</div>
+<!-- Search Bar and Quick Severity Filter -->
+<div class="flex items-center gap-space-sm flex-1 lg:max-w-md">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+<input class="w-full bg-surface-canvas rounded-lg pl-9 pr-space-md py-2 font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-subtle transition-colors shadow-inner" placeholder="Search title, Joplin ID (e.g. 8f92a0...), or code..." type="text"/>
+</div>
+<div class="flex items-center bg-surface-canvas rounded-lg p-1 shrink-0">
+<button class="px-space-sm py-1 rounded text-label-xs font-code-inline text-sync-offline hover:bg-surface-elevated flex items-center gap-1" title="Show Warnings" type="button">
+<span class="w-2 h-2 rounded-full bg-sync-offline"></span> 37
+            </button>
+<button class="px-space-sm py-1 rounded text-label-xs font-code-inline text-error hover:bg-surface-elevated flex items-center gap-1" title="Show Conflicts" type="button">
+<span class="w-2 h-2 rounded-full bg-error"></span> 1
+            </button>
+</div>
+</div>
+</div>
+<!-- 5. Detailed Issues & Skipped Items Log Feed -->
+<div class="flex flex-col gap-space-sm">
+<!-- Log Item 1: 3-Way Merge Conflict (CRITICAL/SPECIAL ATTENTION) -->
+<div class="bg-surface-container-low hover:bg-surface-container rounded-xl p-space-lg shadow-sm transition-colors relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-sync-offline"></div>
+<div class="flex flex-col lg:flex-row lg:items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-sync-offline/20 text-sync-offline flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">call_split</span>
+</div>
+<div class="flex flex-col min-w-0 space-y-1">
+<div class="flex flex-wrap items-center gap-space-xs">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-label-xs font-bold font-code-inline bg-sync-offline/20 text-sync-offline uppercase">
+                    3-Way Merge Conflict
+                  </span>
+<span class="font-code-inline text-label-xs text-on-surface-variant bg-surface-canvas px-2 py-0.5 rounded">
+                    ID: jex_8f92a0149bb
+                  </span>
+<span class="font-label-xs text-label-xs text-outline">Section: Projects &amp; Architecture</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate pt-0.5">
+                  Projects / Inkpact v1 - System Architecture &amp; Sync
+                </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-4xl">
+                  Concurrent collision detected: Note was modified in Inkpact 2 minutes ago by <span class="text-primary font-medium">@Jos</span>, and also concurrently modified in incoming Joplin archive payload.
+                </p>
+<!-- Deterministic Strategy Detail Box -->
+<div class="mt-space-sm p-space-md rounded-lg bg-surface-canvas flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="material-symbols-outlined text-sync-active text-[18px] shrink-0">check_circle</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">
+<strong class="text-on-surface">Automatic Deterministic Action:</strong> Inkpact maintained local head version; incoming archive copy forked as backup note <code class="font-code-inline text-primary text-label-xs">Inkpact v1 - System Architecture (Joplin Backup)</code>.
+                    </span>
+</div>
+<button class="inline-flex items-center gap-space-xs px-space-md py-1.5 rounded bg-primary-container hover:bg-primary-container/80 text-on-primary-container font-label-md text-label-md shrink-0 shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">compare_arrows</span>
+<span>Open in Conflict Diff Modal</span>
+</button>
+</div>
+</div>
+</div>
+<div class="flex lg:flex-col items-end justify-between shrink-0 font-code-inline text-label-xs text-on-surface-variant gap-1">
+<span>ERR_CRDT_CONCURRENCY</span>
+<span class="text-outline">Oct 22, 14:34:10</span>
+</div>
+</div>
+</div>
+<!-- Log Item 2: Oversized Note & Large Buffer Extracted -->
+<div class="bg-surface-container-low hover:bg-surface-container rounded-xl p-space-lg shadow-sm transition-colors relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-sync-offline/70"></div>
+<div class="flex flex-col lg:flex-row lg:items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-elevated text-sync-offline flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">data_thresholding</span>
+</div>
+<div class="flex flex-col min-w-0 space-y-1">
+<div class="flex flex-wrap items-center gap-space-xs">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-label-xs font-semibold font-code-inline bg-sync-offline/15 text-sync-offline uppercase">
+                    Oversized Buffer Partitioned
+                  </span>
+<span class="font-code-inline text-label-xs text-on-surface-variant bg-surface-canvas px-2 py-0.5 rounded">
+                    ID: jex_c194bb2e8
+                  </span>
+<span class="font-code-inline text-label-xs text-outline">Payload: 8.4 MB</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate pt-0.5">
+                  Deep Learning Papers Dump &amp; Raw Embeddings
+                </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-4xl">
+                  Markdown body size (<code class="font-code-inline text-sync-offline">8.4 MB</code>) exceeds the 5.0 MB real-time editor CRDT buffer ceiling. Note created with initial 500 KB prose extract and labeled with safety banner.
+                </p>
+<div class="flex items-center gap-space-sm pt-space-xs flex-wrap font-body-sm text-body-sm">
+<span class="text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-sync-active">inventory_2</span>
+                    Full payload stored safely as SHA-256 attachment: <span class="font-code-inline text-on-surface text-label-xs">dump_embeddings.md.enc</span>
+</span>
+<button class="font-label-md text-label-md text-primary hover:underline flex items-center gap-0.5" type="button">
+                    View Extracted Note <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<div class="flex lg:flex-col items-end justify-between shrink-0 font-code-inline text-label-xs text-on-surface-variant gap-1">
+<span>WARN_MAX_BODY_EXCEEDED</span>
+<span class="text-outline">Blob: e3b0c44298</span>
+</div>
+</div>
+</div>
+<!-- Log Item 3: Broken Internal References -->
+<div class="bg-surface-container-low hover:bg-surface-container rounded-xl p-space-lg shadow-sm transition-colors relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-surface-variant"></div>
+<div class="flex flex-col lg:flex-row lg:items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-elevated text-secondary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">link_off</span>
+</div>
+<div class="flex flex-col min-w-0 space-y-1">
+<div class="flex flex-wrap items-center gap-space-xs">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-label-xs font-semibold font-code-inline bg-secondary/15 text-secondary uppercase">
+                    Skipped Broken Link
+                  </span>
+<span class="font-code-inline text-label-xs text-on-surface-variant bg-surface-canvas px-2 py-0.5 rounded">
+                    ID: jex_771ae90f
+                  </span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate pt-0.5">
+                  Homelab / Proxmox VE Upgrade Guide
+                </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-4xl">
+                  Found 2 internal Joplin references <code class="font-code-inline text-on-surface text-label-xs">:/99a0b12</code> pointing to missing or permanently purged Joplin target UUIDs.
+                </p>
+<div class="flex items-center gap-space-sm pt-space-xs font-body-sm text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-outline">bookmark_border</span>
+<span>Preserved as formatted broken anchor: <code class="font-code-inline text-label-xs bg-surface-canvas px-1.5 py-0.5 rounded text-on-surface">[Broken Joplin Reference: :/99a0b12]</code></span>
+</div>
+</div>
+</div>
+<div class="flex lg:flex-col items-end justify-between shrink-0 font-code-inline text-label-xs text-on-surface-variant gap-1">
+<span>WARN_ORPHAN_LINK</span>
+<span class="text-outline">Resolved via Phase 1B</span>
+</div>
+</div>
+</div>
+<!-- Log Item 4: Unsupported Plugin HTML / MathJax / DOMPurify Sanitization -->
+<div class="bg-surface-container-low hover:bg-surface-container rounded-xl p-space-lg shadow-sm transition-colors relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-surface-variant"></div>
+<div class="flex flex-col lg:flex-row lg:items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-elevated text-primary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">code_blocks</span>
+</div>
+<div class="flex flex-col min-w-0 space-y-1">
+<div class="flex flex-wrap items-center gap-space-xs">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-label-xs font-semibold font-code-inline bg-primary-container/20 text-primary uppercase">
+                    Markdown Conversion Notice
+                  </span>
+<span class="font-code-inline text-label-xs text-on-surface-variant bg-surface-canvas px-2 py-0.5 rounded">
+                    ID: jex_49ba021dc
+                  </span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate pt-0.5">
+                  Calculus Notes &amp; Graph Neural Net Math
+                </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-4xl">
+                  Joplin custom plugin tag <code class="font-code-inline text-on-surface text-label-xs">&lt;details markdown="1"&gt;</code> and inline script block sanitized via strict DOMPurify policy for Inkpact web runtime CSP compliance.
+                </p>
+<div class="flex items-center gap-space-sm pt-space-xs font-body-sm text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-sync-active">shield</span>
+<span>Transformed into native HTML5 collapsible accordion with script stripped. Math blocks converted to KaTeX notation.</span>
+</div>
+</div>
+</div>
+<div class="flex lg:flex-col items-end justify-between shrink-0 font-code-inline text-label-xs text-on-surface-variant gap-1">
+<span>INFO_CSP_SANITIZED</span>
+<span class="text-outline">DOMPurify v3.1</span>
+</div>
+</div>
+</div>
+<!-- Log Item 5: Corrupt Attachment / Oversized Safety Ceiling -->
+<div class="bg-surface-container-low hover:bg-surface-container rounded-xl p-space-lg shadow-sm transition-colors relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error/70"></div>
+<div class="flex flex-col lg:flex-row lg:items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-error-container/20 text-error flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">attachment</span>
+</div>
+<div class="flex flex-col min-w-0 space-y-1">
+<div class="flex flex-wrap items-center gap-space-xs">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-label-xs font-semibold font-code-inline bg-error-container/20 text-error uppercase">
+                    Skipped Attachment Limit
+                  </span>
+<span class="font-code-inline text-label-xs text-on-surface-variant bg-surface-canvas px-2 py-0.5 rounded">
+                    Resource: IMG_9042.CR3 (64 MB)
+                  </span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate pt-0.5">
+                  Family Photos Archive / Raw DNG 2024
+                </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-4xl">
+                  Individual binary asset exceeds 50 MB single-file safety ceiling. Ingestion engine bypassed raw upload to preserve SQLite/Postgres write head; recorded in manifest with local disk offset.
+                </p>
+<div class="flex items-center gap-space-sm pt-space-xs font-body-sm text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-outline">folder_open</span>
+<span>Disk reference: <code class="font-code-inline text-label-xs bg-surface-canvas px-1.5 py-0.5 rounded text-on-surface">./resources/IMG_9042.CR3.meta</code></span>
+</div>
+</div>
+</div>
+<div class="flex lg:flex-col items-end justify-between shrink-0 font-code-inline text-label-xs text-on-surface-variant gap-1">
+<span>ERR_ATTACHMENT_SIZE</span>
+<span class="text-error font-medium">Cap: 50.0 MB</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination / Filter Summary Footer -->
+<div class="flex items-center justify-between p-space-md bg-surface-container-low rounded-xl text-on-surface-variant font-label-md text-label-md">
+<div class="flex items-center gap-space-sm">
+<span>Displaying 5 of 38 recorded diagnostics entries</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="px-space-md py-1 rounded bg-surface-elevated hover:bg-surface-variant text-on-surface disabled:opacity-50 transition-colors" disabled="" type="button">
+            Previous
+          </button>
+<button class="px-space-md py-1 rounded bg-surface-elevated hover:bg-surface-variant text-on-surface transition-colors" type="button">
+            Next Page (2/8)
+          </button>
+</div>
+</div>
+</div>
+<!-- 6. Technical Audit, System Health & Repeatability Safety Banner -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-space-md pt-space-xs">
+<!-- Box 1: Storage & Deduplication Metrics -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-sm flex flex-col justify-between space-y-space-md">
+<div>
+<div class="flex items-center gap-space-xs text-on-surface font-semibold font-headline-sm text-headline-sm">
+<span class="material-symbols-outlined text-sync-active text-[20px]">fingerprint</span>
+<h3>SHA-256 Deduplication</h3>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+            Incoming Joplin image assets checked against existing vault cryptographic blockstore.
+          </p>
+</div>
+<div class="p-space-md rounded-lg bg-surface-canvas space-y-2">
+<div class="flex justify-between font-label-md text-label-md">
+<span class="text-on-surface-variant">Duplicate Blobs Reused:</span>
+<span class="font-code-inline text-sync-active font-bold">312 files</span>
+</div>
+<div class="flex justify-between font-label-md text-label-md">
+<span class="text-on-surface-variant">Physical Disk Saved:</span>
+<span class="font-code-inline text-on-surface font-bold">142.8 MB</span>
+</div>
+<div class="flex justify-between font-label-md text-label-md">
+<span class="text-on-surface-variant">Hash Collision Check:</span>
+<span class="font-code-inline text-on-surface">Zero (SHA256 verified)</span>
+</div>
+</div>
+</div>
+<!-- Box 2: Database Health & Compaction Queue -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-sm flex flex-col justify-between space-y-space-md">
+<div>
+<div class="flex items-center gap-space-xs text-on-surface font-semibold font-headline-sm text-headline-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">database</span>
+<h3>Postgres / CRDT Storage Health</h3>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+            Write buffer indexing after 4,826 inserted entity rows and tag bindings.
+          </p>
+</div>
+<div class="p-space-md rounded-lg bg-surface-canvas space-y-2">
+<div class="flex justify-between font-label-md text-label-md">
+<span class="text-on-surface-variant">Delta Buffer Size:</span>
+<span class="font-code-inline text-on-surface font-bold">12.4 MB</span>
+</div>
+<div class="flex justify-between font-label-md text-label-md">
+<span class="text-on-surface-variant">Auto-Compaction:</span>
+<span class="font-code-inline text-secondary font-semibold">Scheduled in 14m 48s</span>
+</div>
+<div class="flex justify-between font-label-md text-label-md">
+<span class="text-on-surface-variant">WAL Journal State:</span>
+<span class="font-code-inline text-sync-active font-semibold">Clean (Checkpoint #104)</span>
+</div>
+</div>
+</div>
+<!-- Box 3: Repeatable Import Safety Guarantee Banner -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-sm flex flex-col justify-between space-y-space-md relative overflow-hidden">
+<div class="absolute right-0 top-0 w-32 h-32 bg-primary-container/10 rounded-full blur-2xl pointer-events-none"></div>
+<div>
+<div class="flex items-center gap-space-xs text-on-surface font-semibold font-headline-sm text-headline-sm">
+<span class="material-symbols-outlined text-secondary text-[20px]">verified_user</span>
+<h3>Idempotent Safety Guarantee</h3>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+            Repeatable migration policy conforms to Phase 1A specification without duplicate sprawl.
+          </p>
+</div>
+<div class="p-space-md rounded-lg bg-surface-canvas/90 space-y-2">
+<p class="font-body-sm text-body-sm text-on-surface">
+<strong>Safe to re-run:</strong> Existing Joplin UUID mappings (<code class="font-code-inline text-label-xs text-primary">joplin_id</code> index) prevent duplicate documents and enforce strict 3-way merge rules on repeated JEX uploads.
+          </p>
+<div class="pt-1 flex items-center justify-between">
+<span class="font-label-xs text-label-xs text-sync-active flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">lock_reset</span>
+              Re-import protection active
+            </span>
+<a class="font-label-xs text-label-xs text-primary hover:underline font-semibold" href="#">
+              Read Specification →
+            </a>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Contextual Action Strip -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-md pt-space-md pb-space-xl">
+<div class="flex items-center gap-space-sm text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-outline text-[18px]">history</span>
+<span>JEX Session ID: <strong class="text-on-surface font-code-inline">sess_jex_20261022_99a8</strong></span>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="px-space-md py-space-sm rounded-lg bg-surface-elevated hover:bg-surface-variant text-on-surface font-label-md text-label-md transition-colors" type="button">
+          Export Diagnostics as CSV
+        </button>
+<button class="px-space-lg py-space-sm rounded-lg bg-primary hover:bg-primary-fixed text-on-primary font-label-md text-label-md font-bold transition-colors shadow-md" type="button">
+          Open Imported Vault
+        </button>
+</div>
+</div>
+</div>
+</div></main></div></body></html>
