@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="Spike.Crdt.Tests/Spike.Crdt.Tests.csproj" />
-  <Project Path="Spike.Crdt/Spike.Crdt.csproj" />
-  <Project Path="Spike.Server.Tests/Spike.Server.Tests.csproj" />
-  <Project Path="Spike.Server/Spike.Server.csproj" />
-</Solution>

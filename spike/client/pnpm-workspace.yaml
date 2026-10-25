@@ -1,4 +1,0 @@
-# Standalone for the spike; the real workspace root arrives in run 1.01.
-packages: []
-# Do not install versions published less than a day ago.
-minimumReleaseAge: 1440
