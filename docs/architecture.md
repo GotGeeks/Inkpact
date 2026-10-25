@@ -331,7 +331,7 @@ Every import ends with a report: counts per type, plus a list of anything skippe
 ### Database migrations
 
 - EF Core migrations are the single source of truth for the schema; no manual SQL changes
-- Pending migrations are applied automatically on startup, the norm for single-instance self-hosted apps. Regular backups are the admin's responsibility; by default the app also writes a `pg_dump` to the data volume before migrating, which stays quick because attachments live outside the database, and a setting turns it off for large installs
+- Pending migrations are applied automatically on startup, the norm for single-instance self-hosted apps. Regular backups are the admin's responsibility; by default the app also writes a `pg_dump` to the data volume before migrating, which stays quick because attachments live outside the database, and a setting turns it off for large installs. A brand-new database is not dumped (there is nothing to lose), and a failing dump stops the upgrade. The image therefore needs the PostgreSQL client tools (`pg_dump`)
 - The app refuses to start against a database newer than itself, with a clear message
 - Downgrades are unsupported: roll back by restoring the backup taken before the upgrade
 - Backups carry their schema version (the migrations history table is part of every dump)
