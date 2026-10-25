@@ -9,7 +9,7 @@ import { plainText } from '../scripts/crdt-fixtures-text.ts'
 
 interface Request {
   id: number
-  op: 'merge' | 'diff' | 'stateVector' | 'text'
+  op: 'merge' | 'replay' | 'mergeInOneTransaction' | 'diff' | 'fingerprint' | 'stateVector' | 'text'
   updates?: string[]
   state?: string
   stateVector?: string
@@ -18,9 +18,20 @@ interface Request {
 const fromBase64 = (value: string) => new Uint8Array(Buffer.from(value, 'base64'))
 const toBase64 = (bytes: Uint8Array) => Buffer.from(bytes).toString('base64')
 
+/**
+ * Every update in its own transaction, exactly as a browser applies them. Applying a snapshot and the
+ * updates after it in ONE transaction can lose a deletion (found in run 0.5, docs/runs/0.5.md), so
+ * nothing that is persisted is built that way.
+ */
 function load(updates: string[]): Y.Doc {
   const doc = new Y.Doc()
-  // One transaction for all updates, as the server applies a log.
+  for (const update of updates) Y.applyUpdate(doc, fromBase64(update))
+  return doc
+}
+
+/** Kept only to pin the Yjs behaviour above in a test. */
+function loadInOneTransaction(updates: string[]): Y.Doc {
+  const doc = new Y.Doc()
   Y.transact(doc, () => {
     for (const update of updates) Y.applyUpdate(doc, fromBase64(update))
   })
@@ -30,9 +41,16 @@ function load(updates: string[]): Y.Doc {
 function handle(request: Request): string {
   switch (request.op) {
     case 'merge':
+    case 'replay':
+      // The same operation; the compactor calls 'replay' on the full history to verify a 'merge'.
       return toBase64(Y.encodeStateAsUpdate(load(request.updates ?? [])))
+    case 'mergeInOneTransaction':
+      return toBase64(Y.encodeStateAsUpdate(loadInOneTransaction(request.updates ?? [])))
     case 'diff':
       return toBase64(Y.encodeStateAsUpdate(load([request.state!]), fromBase64(request.stateVector!)))
+    case 'fingerprint':
+      // A Yjs snapshot is the state vector plus the delete set, both written in sorted order.
+      return toBase64(Y.encodeSnapshot(Y.snapshot(load([request.state!]))))
     case 'stateVector':
       return toBase64(Y.encodeStateVector(load([request.state!])))
     case 'text':

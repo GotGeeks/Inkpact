@@ -144,8 +144,8 @@ public sealed class SyncHub(IUpdateStore store, ILogger<SyncHub> logger)
         await WithPageAsync(page, async _ =>
         {
             page.Subscribers.Add(connection);
-            var updates = await store.LoadAsync(pageId, cancellationToken);
-            connection.Enqueue(Frame.EncodeSync(pageId, updates));
+            var load = await store.LoadPageAsync(pageId, cancellationToken);
+            connection.Enqueue(Frame.EncodeSync(pageId, load.All));
 
             var presence = page.Awareness.EncodeAll();
             if (presence is not null)

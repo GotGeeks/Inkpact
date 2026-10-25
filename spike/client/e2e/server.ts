@@ -20,7 +20,7 @@ export class ServerProcess {
 
   async start() {
     if (this.child) throw new Error('Server already running')
-    this.child = spawn('dotnet', [dll, '--urls', this.httpUrl, `--ConnectionStrings:Spike=${POSTGRES}`], {
+    this.child = spawn('dotnet', [dll, '--urls', this.httpUrl, `--ConnectionStrings:Spike=${POSTGRES}`, '--Compaction:Enabled=false'], {
       env: { ...process.env, ASPNETCORE_ENVIRONMENT: 'Development' },
       // Set E2E_SERVER_LOG to a file path to keep the server output.
       stdio: process.env.E2E_SERVER_LOG ? ['ignore', openSync(process.env.E2E_SERVER_LOG, 'a'), 'inherit'] : 'ignore',

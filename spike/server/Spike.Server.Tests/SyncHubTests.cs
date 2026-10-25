@@ -1,4 +1,5 @@
 using System.Net.WebSockets;
+using Microsoft.Extensions.Logging.Abstractions;
 using Spike.Server.Protocol;
 
 namespace Spike.Server.Tests;
@@ -17,6 +18,33 @@ public sealed class SyncHubTests(PostgresFixture fixture)
         await client.SubscribeAsync(page);
 
         Assert.Equal([[1], [2]], await client.ReceiveSyncAsync(page));
+    }
+
+    [Fact]
+    public async Task Subscribe_after_compaction_returns_the_snapshot_then_the_newer_updates()
+    {
+        var stream = UpdateStream.Get(300, 21);
+        var page = PostgresFixture.NewPageId();
+        using var codec = TestSidecar.Create();
+        for (var i = 0; i < 40; i++)
+        {
+            await fixture.Store.AppendAsync(page, stream[i], CancellationToken.None);
+        }
+
+        await new Compactor(fixture.DataSource, codec, NullLogger<Compactor>.Instance).CompactAsync(page);
+        for (var i = 40; i < 45; i++)
+        {
+            await fixture.Store.AppendAsync(page, stream[i], CancellationToken.None);
+        }
+
+        using var client = await TestClient.ConnectAsync(fixture);
+        await client.SubscribeAsync(page);
+        var sync = await client.ReceiveSyncAsync(page);
+
+        // One snapshot standing in for the 40 compacted updates, then the 5 that came after.
+        Assert.Equal(6, sync.Count);
+        Assert.All(stream.Skip(40).Take(5).Zip(sync.Skip(1)), pair => Assert.Equal(pair.First, pair.Second));
+        DocumentAssert.Same(codec, codec.Merge(stream.Take(45)), codec.Merge(sync), "what the subscriber receives");
     }
 
     [Fact]
