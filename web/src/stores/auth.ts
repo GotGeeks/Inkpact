@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { api } from '../api'
+import { api, setCsrfToken } from '../api'
 
 export interface CurrentUser {
   id: string
@@ -12,6 +12,7 @@ export interface CurrentUser {
 interface AuthState {
   setupRequired: boolean
   user: CurrentUser | null
+  csrfToken: string | null
 }
 
 export interface SetupForm {
@@ -31,6 +32,8 @@ export const useAuthStore = defineStore('auth', () => {
     const state = await api<AuthState>('GET', '/api/auth/state')
     setupRequired.value = state.setupRequired
     user.value = state.user
+    // The token belongs to whoever is signed in now, so it is replaced with every state.
+    setCsrfToken(state.csrfToken)
     loaded.value = true
   }
 

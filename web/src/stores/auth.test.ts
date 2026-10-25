@@ -1,7 +1,16 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError } from '../api'
-import { freshInstall, ok, refused, signedIn, signedOut, state, stubApi } from '../testing/helpers'
+import { ApiError, api, setCsrfToken } from '../api'
+import {
+  freshInstall,
+  jsonResponse,
+  ok,
+  refused,
+  signedIn,
+  signedOut,
+  state,
+  stubApi,
+} from '../testing/helpers'
 import { useAuthStore } from './auth'
 
 beforeEach(() => setActivePinia(createPinia()))
@@ -130,5 +139,54 @@ describe('auth store', () => {
     await auth[action]()
 
     expect(auth.user).toBeNull()
+  })
+
+  it('hands the token of every new state to the API calls', async () => {
+    setCsrfToken(null)
+    const fetchMock = stubApi([
+      {
+        method: 'GET',
+        path: '/api/auth/state',
+        respond: () => jsonResponse(200, { ...signedOut, csrfToken: 'fresh-token' }),
+      },
+      ok('POST', '/api/x'),
+    ])
+    const auth = useAuthStore()
+
+    await auth.load()
+    await api('POST', '/api/x', {})
+
+    expect(fetchMock.mock.calls[1]![1].headers['X-CSRF-Token']).toBe('fresh-token')
+  })
+
+  it('replaces the token when the state changes, because it belongs to whoever is signed in', async () => {
+    setCsrfToken(null)
+    let token = 'token-before-login'
+    const fetchMock = stubApi([
+      {
+        method: 'GET',
+        path: '/api/auth/state',
+        respond: () => jsonResponse(200, { ...signedOut, csrfToken: token }),
+      },
+      {
+        method: 'POST',
+        path: '/api/auth/login',
+        respond: () => {
+          token = 'token-after-login'
+          return jsonResponse(204)
+        },
+      },
+      ok('POST', '/api/x'),
+    ])
+    const auth = useAuthStore()
+    await auth.load()
+
+    await auth.login('jos@example.com', 'correct horse battery')
+    await api('POST', '/api/x', {})
+
+    const login = fetchMock.mock.calls.find(([path]) => path === '/api/auth/login')!
+    expect(login[1].headers['X-CSRF-Token']).toBe('token-before-login')
+    const later = fetchMock.mock.calls.find(([path]) => path === '/api/x')!
+    expect(later[1].headers['X-CSRF-Token']).toBe('token-after-login')
   })
 })

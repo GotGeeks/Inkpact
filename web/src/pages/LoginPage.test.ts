@@ -166,4 +166,48 @@ describe('LoginPage', () => {
     finish(ok('POST', '/api/auth/login').respond() as Response)
     await flushPromises()
   })
+
+  it('says how long to wait when the account is locked', async () => {
+    stubApi([
+      state(signedOut),
+      {
+        method: 'POST',
+        path: '/api/auth/login',
+        respond: () =>
+          new Response(JSON.stringify({ code: 'login_locked' }), {
+            status: 429,
+            headers: { 'Content-Type': 'application/json', 'Retry-After': '240' },
+          }),
+      },
+    ])
+    const { wrapper } = await mountAt(LoginPage, '/login')
+
+    await fillAndSubmit(wrapper, 'jos@example.com', 'correct horse battery')
+
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      'Too many wrong passwords for this account. Try again in 4 minutes.',
+    )
+  })
+
+  it('says it in Dutch too', async () => {
+    stubApi([
+      state(signedOut),
+      {
+        method: 'POST',
+        path: '/api/auth/login',
+        respond: () =>
+          new Response(JSON.stringify({ code: 'too_many_requests' }), {
+            status: 429,
+            headers: { 'Content-Type': 'application/json', 'Retry-After': '30' },
+          }),
+      },
+    ])
+    const { wrapper } = await mountAt(LoginPage, '/login', 'nl')
+
+    await fillAndSubmit(wrapper, 'jos@example.com', 'correct horse battery')
+
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      'Te veel pogingen vanaf dit apparaat. Probeer het opnieuw over 30 seconden.',
+    )
+  })
 })

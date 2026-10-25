@@ -37,8 +37,9 @@ async function submit() {
     const code = caught instanceof ApiError ? caught.code : 'unknown'
     const field = caught instanceof ApiError ? caught.field : undefined
     // An error that belongs to a field is shown under it; anything else, above the form.
-    if (field && field in form) fieldErrors[field] = message(code)
-    else error.value = message(code)
+    const wait = caught instanceof ApiError ? caught.retryAfterSeconds : undefined
+    if (field && field in form) fieldErrors[field] = message(code, wait)
+    else error.value = message(code, wait)
     form.password = ''
   } finally {
     busy.value = false

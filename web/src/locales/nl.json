@@ -46,6 +46,11 @@
     "not_authenticated": "Je bent niet ingelogd.",
     "network_error": "De server is niet bereikbaar. Controleer je verbinding en probeer het opnieuw.",
     "server_error": "Er ging iets mis op de server. Probeer het zo opnieuw.",
-    "unknown": "Er ging iets mis. Probeer het opnieuw."
+    "unknown": "Er ging iets mis. Probeer het opnieuw.",
+    "login_locked": "Te veel verkeerde wachtwoorden voor dit account. Probeer het opnieuw {when}.",
+    "too_many_requests": "Te veel pogingen vanaf dit apparaat. Probeer het opnieuw {when}.",
+    "forbidden": "Dat mag je niet doen.",
+    "not_found": "Dat is niet gevonden.",
+    "csrf_invalid": "De pagina was verouderd. Laad hem opnieuw en probeer het nog eens."
   }
 }

@@ -1,16 +1,29 @@
 import { useI18n } from 'vue-i18n'
 
+/** "in 45 seconds", "in 15 minutes": the wait, in the language of the page. */
+export function formatWait(seconds: number, locale: string): string {
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'always' })
+  return seconds < 60
+    ? formatter.format(Math.max(1, Math.ceil(seconds)), 'second')
+    : formatter.format(Math.ceil(seconds / 60), 'minute')
+}
+
 /**
  * Turns an error code from the server into a message in the current language. The keys are written out so
  * the lint rule that finds unused translations can see them; anything unknown gets the generic message.
  */
 export function useErrorMessage() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
 
-  return function message(code: string): string {
+  return function message(code: string, retryAfterSeconds?: number): string {
+    const when = formatWait(retryAfterSeconds ?? 60, locale.value)
     switch (code) {
       case 'invalid_credentials':
         return t('errors.invalid_credentials')
+      case 'login_locked':
+        return t('errors.login_locked', { when })
+      case 'too_many_requests':
+        return t('errors.too_many_requests', { when })
       case 'setup_code_invalid':
         return t('errors.setup_code_invalid')
       case 'setup_not_available':
@@ -29,6 +42,12 @@ export function useErrorMessage() {
         return t('errors.password_same_as_email')
       case 'not_authenticated':
         return t('errors.not_authenticated')
+      case 'forbidden':
+        return t('errors.forbidden')
+      case 'not_found':
+        return t('errors.not_found')
+      case 'csrf_invalid':
+        return t('errors.csrf_invalid')
       case 'network_error':
         return t('errors.network_error')
       case 'server_error':
