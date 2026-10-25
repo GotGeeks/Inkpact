@@ -14,10 +14,12 @@ concurrency:
 
 jobs:
   server:
+    name: server
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
       - name: Format
@@ -28,17 +30,12 @@ jobs:
         run: dotnet test server --configuration Release --no-build
 
   web:
+    name: web
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
-      # Corepack first: setup-node reads packageManager and needs pnpm on the PATH to set up its cache.
-      - name: Enable Corepack
-        run: corepack enable
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-      - name: Install
-        run: pnpm install --frozen-lockfile
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-web
       - name: Lint (ESLint and Prettier)
         run: pnpm --filter web lint
       - name: Typecheck
@@ -47,20 +44,15 @@ jobs:
         run: pnpm --filter web test
 
   commits:
+    name: commits
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      # Corepack first: setup-node reads packageManager and needs pnpm on the PATH to set up its cache.
-      - name: Enable Corepack
-        run: corepack enable
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-      - name: Install
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-web
       - name: Conventional commits
         run: pnpm exec commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
         env:
