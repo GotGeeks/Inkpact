@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Inkpact.Api.Tests.Testing;
@@ -15,6 +16,9 @@ namespace Inkpact.Api.Tests.Testing;
 /// <param name="cookieSecure">The Auth:CookieSecure setting; null leaves the default (auto).</param>
 /// <param name="trustedProxies">Network:TrustedProxies as CIDR ranges; null leaves the default.</param>
 /// <param name="remoteIp">The address every request appears to come from; the test server has none by default.</param>
+/// <param name="perAddressPerMinute">Login attempts one address may make in a minute; high, so tests that sign in a lot are not throttled.</param>
+/// <param name="failuresBeforeLock">Wrong passwords before an email is locked; null leaves the default (5).</param>
+/// <param name="time">The clock the app uses; null is the real one.</param>
 public class InkpactFactory(
     string connectionString,
     bool backupOnMigrate = false,
@@ -23,7 +27,10 @@ public class InkpactFactory(
     string? keysDirectory = null,
     string? cookieSecure = null,
     string[]? trustedProxies = null,
-    string? remoteIp = null) : WebApplicationFactory<Program>
+    string? remoteIp = null,
+    int perAddressPerMinute = 1000,
+    int? failuresBeforeLock = null,
+    TimeProvider? time = null) : WebApplicationFactory<Program>
 {
     public const string SetupCode = "TESTCODE";
 
@@ -41,6 +48,17 @@ public class InkpactFactory(
         builder.UseSetting("Database:BackupOnMigrate", backupOnMigrate.ToString());
         builder.UseSetting("DataProtection:KeysDirectory", _keysDirectory);
         builder.UseSetting("Auth:SetupCode", SetupCode);
+        builder.UseSetting("Auth:Throttle:PerAddressPerMinute", perAddressPerMinute.ToString());
+        if (failuresBeforeLock is not null)
+        {
+            builder.UseSetting("Auth:Throttle:FailuresBeforeLock", failuresBeforeLock.Value.ToString());
+        }
+
+        if (time is not null)
+        {
+            builder.ConfigureTestServices(services => services.AddSingleton(time));
+        }
+
         if (webRoot is not null)
         {
             builder.UseSetting(WebHostDefaults.WebRootKey, webRoot);

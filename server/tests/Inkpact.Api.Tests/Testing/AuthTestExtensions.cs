@@ -13,7 +13,19 @@ public static class AuthTestExtensions
     public static HttpClient CreateHttpsClient(this InkpactFactory factory) =>
         factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
 
-    public static Task<HttpResponseMessage> PostJsonAsync(this HttpClient client, string path, object? body = null) =>
+    /// <summary>
+    /// Posts JSON with a fresh CSRF token, the way the web client does: ask for the state, send what it hands out.
+    /// Asked for every time, because a token belongs to whoever is signed in at that moment.
+    /// </summary>
+    public static async Task<HttpResponseMessage> PostJsonAsync(this HttpClient client, string path, object? body = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(body ?? new { }) };
+        request.Headers.Add(CsrfProtection.HeaderName, (await client.GetStateAsync()).CsrfToken);
+        return await client.SendAsync(request);
+    }
+
+    /// <summary>Posts JSON without any CSRF token, to see what is refused.</summary>
+    public static Task<HttpResponseMessage> PostJsonWithoutTokenAsync(this HttpClient client, string path, object? body = null) =>
         client.PostAsJsonAsync(path, body ?? new { });
 
     public static Task<HttpResponseMessage> SetupAsync(

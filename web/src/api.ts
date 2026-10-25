@@ -4,47 +4,85 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     readonly field?: string,
+    /** How long to wait before trying again, when the server said so (a lockout or a rate limit). */
+    readonly retryAfterSeconds?: number,
   ) {
     super(code)
     this.name = 'ApiError'
   }
 }
 
-/**
- * Calls the JSON API. Bodies are always JSON, which is also what the server insists on for anything that
- * changes state. Errors become ApiError, so callers never have to look at a Response.
- */
-export async function api<T = void>(
-  method: 'GET' | 'POST',
-  path: string,
-  body?: unknown,
-): Promise<T> {
-  let response: Response
+const csrfHeader = 'X-CSRF-Token'
+
+// The token for the next call that changes something. The server hands it out with the sign-in state,
+// and it belongs to whoever is signed in at that moment, so every new state replaces it.
+let csrfToken: string | null = null
+
+export function setCsrfToken(token: string | null | undefined) {
+  csrfToken = token ?? null
+}
+
+async function send(method: 'GET' | 'POST', path: string, body: unknown): Promise<Response> {
+  const headers: Record<string, string> =
+    method === 'GET' ? { Accept: 'application/json' } : { 'Content-Type': 'application/json' }
+  if (method !== 'GET' && csrfToken) headers[csrfHeader] = csrfToken
+
   try {
-    response = await fetch(path, {
+    return await fetch(path, {
       method,
       credentials: 'same-origin',
-      headers:
-        method === 'GET' ? { Accept: 'application/json' } : { 'Content-Type': 'application/json' },
+      headers,
       body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
     })
   } catch {
     throw new ApiError(0, 'network_error')
   }
+}
 
-  if (response.ok) {
-    return (response.status === 204 ? undefined : await response.json()) as T
-  }
-
+async function toError(response: Response): Promise<ApiError> {
   let code = response.status >= 500 ? 'server_error' : 'unknown'
   let field: string | undefined
   try {
-    const error = (await response.json()) as { code?: unknown; field?: unknown }
+    const error = (await response.clone().json()) as { code?: unknown; field?: unknown }
     if (typeof error.code === 'string') code = error.code
     if (typeof error.field === 'string') field = error.field
   } catch {
     // A proxy's HTML error page, for example: keep the code derived from the status.
   }
 
-  throw new ApiError(response.status, code, field)
+  const retryAfter = Number(response.headers.get('Retry-After'))
+  return new ApiError(
+    response.status,
+    code,
+    field,
+    Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+  )
+}
+
+/**
+ * Calls the JSON API. Bodies are always JSON, and so is everything that changes state; those calls carry the CSRF
+ * token. If the server finds the token out of date (it was issued before another tab signed in or out, say) the
+ * state is fetched again and the call is repeated once. Errors become ApiError, so callers never see a Response.
+ */
+export async function api<T = void>(
+  method: 'GET' | 'POST',
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  let response = await send(method, path, body)
+
+  if (response.status === 400 && method === 'POST') {
+    const error = await toError(response)
+    if (error.code !== 'csrf_invalid') throw error
+
+    const state = await send('GET', '/api/auth/state', undefined)
+    if (state.ok) setCsrfToken(((await state.json()) as { csrfToken?: string }).csrfToken)
+    response = await send(method, path, body)
+  }
+
+  if (response.ok) {
+    return (response.status === 204 ? undefined : await response.json()) as T
+  }
+
+  throw await toError(response)
 }

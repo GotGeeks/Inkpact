@@ -104,6 +104,9 @@ export default defineConfig({
       ConnectionStrings__Inkpact: database,
       Database__BackupOnMigrate: 'false',
       Auth__SetupCode: ADMIN.setupCode,
+      // The suite signs in about forty times from one address; the real limit (10 a minute) would stop it.
+      // The lockout per email stays at its real value: one spec locks an address on purpose.
+      Auth__Throttle__PerAddressPerMinute: '600',
       DataProtection__KeysDirectory: keysDirectory,
     },
   },

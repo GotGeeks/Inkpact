@@ -65,19 +65,22 @@ test.describe('signed out', () => {
     await expect(page).toHaveURL(/\/login$/)
   })
 
-  test('a wrong password shows an error and keeps the email', async ({ page }) => {
-    await signInThroughTheForm(page, 'not the password at all')
+  // Wrong passwords are tried with an address nobody has, one per project: the administrator is shared by all
+  // the projects at once and must never end up locked. An unknown address is treated exactly like a known one.
+  test('a wrong password shows an error and keeps the email', async ({ page }, testInfo) => {
+    const email = `nobody-${testInfo.project.name}-1@example.com`
+    await signInThroughTheForm(page, 'not the password at all', email)
 
     await expect(page.getByRole('alert')).toHaveText('The email or password is not right.')
-    await expect(page.getByLabel('Email')).toHaveValue(ADMIN.email)
+    await expect(page.getByLabel('Email')).toHaveValue(email)
     await expect(page.getByLabel('Password')).toHaveValue('')
     await expect(page).toHaveURL(/\/login$/)
   })
 
-  test('the error is in Dutch when the page is in Dutch', async ({ page }) => {
+  test('the error is in Dutch when the page is in Dutch', async ({ page }, testInfo) => {
     await page.goto('/login')
     await page.getByRole('button', { name: 'Nederlands' }).click()
-    await page.getByLabel('E-mailadres').fill(ADMIN.email)
+    await page.getByLabel('E-mailadres').fill(`nobody-${testInfo.project.name}-2@example.com`)
     await page.getByLabel('Wachtwoord').fill('not the password at all')
     await page.getByRole('button', { name: 'Inloggen' }).click()
 

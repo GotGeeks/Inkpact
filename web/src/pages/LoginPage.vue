@@ -28,7 +28,10 @@ async function submit() {
     await auth.login(email.value, password.value)
     await router.replace(safeRedirect(router.currentRoute.value.query.redirect) ?? { name: 'home' })
   } catch (caught) {
-    error.value = message(caught instanceof ApiError ? caught.code : 'unknown')
+    error.value = message(
+      caught instanceof ApiError ? caught.code : 'unknown',
+      caught instanceof ApiError ? caught.retryAfterSeconds : undefined,
+    )
     password.value = ''
   } finally {
     busy.value = false

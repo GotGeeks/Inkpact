@@ -1,9 +1,12 @@
 using System.Data;
+using System.Globalization;
 using System.Net.Mail;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
+using Inkpact.Api.Permissions;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +23,8 @@ public sealed record LoginRequest(string? Email, string? Password);
 
 public sealed record CurrentUser(Guid Id, string Email, string DisplayName, bool IsAdmin);
 
-public sealed record AuthState(bool SetupRequired, CurrentUser? User);
+/// <summary>Who is signed in, whether the installation still needs its first account, and the token for the next state-changing call.</summary>
+public sealed record AuthState(bool SetupRequired, CurrentUser? User, string? CsrfToken);
 
 public static class AuthEndpoints
 {
@@ -32,19 +36,21 @@ public static class AuthEndpoints
         var group = app.MapGroup("/api/auth");
 
         group.MapGet("/state", GetState).AllowAnonymous();
-        group.MapPost("/setup", Setup).AllowAnonymous();
-        group.MapPost("/login", Login).AllowAnonymous();
-        group.MapPost("/logout", Logout).RequireAuthorization();
-        group.MapPost("/logout-everywhere", LogoutEverywhere).RequireAuthorization();
+        group.MapPost("/setup", Setup).AllowAnonymous().RequireRateLimiting(ThrottleOptions.RateLimitPolicy);
+        group.MapPost("/login", Login).AllowAnonymous().RequireRateLimiting(ThrottleOptions.RateLimitPolicy);
+        group.MapPost("/logout", Logout).RequireAuthorization(Policies.SignedIn);
+        group.MapPost("/logout-everywhere", LogoutEverywhere).RequireAuthorization(Policies.SignedIn);
 
         return app;
     }
 
-    private static async Task<IResult> GetState(HttpContext http, InkpactDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> GetState(HttpContext http, InkpactDbContext db, IAntiforgery antiforgery, CancellationToken cancellationToken)
     {
         var user = await LoadUser(http, db, cancellationToken);
         var setupRequired = user is null && !await db.Users.AnyAsync(cancellationToken);
-        return Results.Ok(new AuthState(setupRequired, user));
+        // The token is made for whoever is signed in right now, so it is asked for again after every login and logout.
+        var tokens = antiforgery.GetAndStoreTokens(http);
+        return Results.Ok(new AuthState(setupRequired, user, tokens.RequestToken));
     }
 
     private static async Task<IResult> Setup(
@@ -95,6 +101,7 @@ public static class AuthEndpoints
         var hash = hasher.Hash(password);
         var now = time.GetUtcNow();
         var user = new User { Email = email, DisplayName = displayName, PasswordHash = hash, IsAdmin = true, CreatedAt = now };
+        var workspace = new Workspace { Name = workspaceName, OwnerId = user.Id, CreatedAt = now };
 
         try
         {
@@ -106,7 +113,10 @@ public static class AuthEndpoints
             }
 
             db.Users.Add(user);
-            db.Workspaces.Add(new Workspace { Name = workspaceName, OwnerId = user.Id, CreatedAt = now });
+            db.Workspaces.Add(workspace);
+            db.WorkspaceMembers.Add(new WorkspaceMember { WorkspaceId = workspace.Id, UserId = user.Id, Role = WorkspaceRole.Owner, CreatedAt = now });
+            // In the same transaction: an account without its audit row, or the other way round, cannot exist.
+            db.AuditEvents.Add(AuditLog.Create(http, time, AuditEventTypes.SetupCompleted, user.Id, email));
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
@@ -124,23 +134,39 @@ public static class AuthEndpoints
         HttpContext http,
         InkpactDbContext db,
         IPasswordHasher hasher,
+        LoginThrottling throttle,
+        IAuditLog audit,
         CancellationToken cancellationToken)
     {
         var email = NormalizeEmail(request.Email);
         var password = request.Password ?? "";
+        // Keyed by what was typed, so garbage cannot be used to avoid the count. An address that has no account counts too.
+        var key = LoginThrottling.KeyFor(request.Email);
+
+        if (await throttle.GetLockRemainingAsync(key, cancellationToken) is { } lockedFor)
+        {
+            // Nothing is checked while locked, not even the right password. The hash is still computed, so a
+            // locked attempt takes as long as any other and says nothing about the account.
+            hasher.VerifyDummy(password);
+            await audit.WriteAsync(http, AuditEventTypes.LoginLocked, email: Typed(request.Email), cancellationToken: cancellationToken);
+            http.Response.Headers.RetryAfter = RetryAfterSeconds(lockedFor);
+            return Error(StatusCodes.Status429TooManyRequests, "login_locked");
+        }
+
         var user = email is null
             ? null
             : await db.Users.SingleOrDefaultAsync(u => u.NormalizedEmail == email, cancellationToken);
 
-        if (user?.PasswordHash is null)
+        if (user?.PasswordHash is null || !hasher.Verify(user.PasswordHash, password))
         {
-            // Same work and same answer as a wrong password, so the response does not say which emails exist.
-            hasher.VerifyDummy(password);
-            return Error(StatusCodes.Status401Unauthorized, "invalid_credentials");
-        }
+            if (user?.PasswordHash is null)
+            {
+                // Same work as a wrong password, so the response time does not say which emails exist.
+                hasher.VerifyDummy(password);
+            }
 
-        if (!hasher.Verify(user.PasswordHash, password))
-        {
+            await throttle.RecordFailureAsync(key, cancellationToken);
+            await audit.WriteAsync(http, AuditEventTypes.LoginFailed, user?.Id, Typed(request.Email), cancellationToken);
             return Error(StatusCodes.Status401Unauthorized, "invalid_credentials");
         }
 
@@ -150,20 +176,25 @@ public static class AuthEndpoints
             await db.SaveChangesAsync(cancellationToken);
         }
 
+        await throttle.ResetAsync(key, cancellationToken);
+        await audit.WriteAsync(http, AuditEventTypes.LoginSucceeded, user.Id, cancellationToken: cancellationToken);
         await SignIn(http, user);
         return Results.NoContent();
     }
 
-    private static async Task Logout(HttpContext http)
+    private static async Task<IResult> Logout(HttpContext http, IAuditLog audit, CancellationToken cancellationToken)
     {
+        await audit.WriteAsync(http, AuditEventTypes.Logout, GetUserId(http.User), cancellationToken: cancellationToken);
         // The cookie handler removes this session's row from the store.
         await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        http.Response.StatusCode = StatusCodes.Status204NoContent;
+        return Results.NoContent();
     }
 
-    private static async Task<IResult> LogoutEverywhere(HttpContext http, PostgresTicketStore store)
+    private static async Task<IResult> LogoutEverywhere(HttpContext http, PostgresTicketStore store, IAuditLog audit, CancellationToken cancellationToken)
     {
-        await store.RemoveAllForUserAsync(GetUserId(http.User));
+        var userId = GetUserId(http.User);
+        await audit.WriteAsync(http, AuditEventTypes.LogoutEverywhere, userId, cancellationToken: cancellationToken);
+        await store.RemoveAllForUserAsync(userId);
         await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Results.NoContent();
     }
@@ -199,6 +230,16 @@ public static class AuthEndpoints
     }
 
     private static Guid GetUserId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    /// <summary>What was typed, shortened to what the audit table holds.</summary>
+    private static string? Typed(string? email)
+    {
+        var trimmed = email?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed.Length > MaxEmailLength ? trimmed[..MaxEmailLength] : trimmed;
+    }
+
+    private static string RetryAfterSeconds(TimeSpan wait) =>
+        Math.Max(1, (int)Math.Ceiling(wait.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Trimmed, lower case, and a plausible address. Returns null otherwise.</summary>
     internal static string? NormalizeEmail(string? email)
@@ -237,9 +278,9 @@ public static class AuthEndpoints
 }
 
 /// <summary>
-/// API responses are never cached. Every state-changing API call must be JSON. A cross-site form or fetch cannot send that without a CORS
-/// preflight, which the app never allows, so this is the CSRF defence until the tokens of run 1.06.
-/// Attachment uploads (run 1.14) will need their own, authenticated, exception.
+/// API responses are never cached. Every state-changing API call must be JSON: a cross-site form or fetch cannot
+/// send that without a CORS preflight, which the app never allows. Attachment uploads (run 1.14) will need their
+/// own, authenticated, exception.
 /// </summary>
 public static class JsonOnlyApi
 {
