@@ -67,3 +67,6 @@ playwright-report/
 
 # Spike 0.4: yrs output for the Yjs round-trip check
 crdt-out/
+
+# Signed-in browser state saved by the Playwright setup project
+web/e2e/.auth/
