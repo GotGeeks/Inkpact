@@ -7,5 +7,45 @@
     "label": "Language",
     "en": "English",
     "nl": "Nederlands"
+  },
+  "fields": {
+    "email": "Email",
+    "password": "Password",
+    "displayName": "Your name"
+  },
+  "login": {
+    "title": "Sign in",
+    "submit": "Sign in"
+  },
+  "setup": {
+    "title": "Welcome to Inkpact",
+    "intro": "Create the administrator account for this installation.",
+    "code": "Setup code",
+    "codeHint": "Shown in the server log when Inkpact starts.",
+    "passwordHint": "At least 12 characters. A few random words work well.",
+    "workspaceName": "Name of your first workspace",
+    "workspaceDefault": "Private",
+    "submit": "Create account"
+  },
+  "home": {
+    "signedInAs": "Signed in as {name}",
+    "placeholder": "Your notes will appear here.",
+    "logout": "Sign out",
+    "logoutEverywhere": "Sign out everywhere"
+  },
+  "errors": {
+    "invalid_credentials": "The email or password is not right.",
+    "setup_code_invalid": "That setup code is not right. Look for it in the server log.",
+    "setup_not_available": "This installation has already been set up. Sign in instead.",
+    "email_invalid": "Enter a valid email address.",
+    "display_name_invalid": "Enter your name, up to 200 characters.",
+    "workspace_name_invalid": "Enter a name for the workspace, up to 200 characters.",
+    "password_too_short": "The password needs at least 12 characters.",
+    "password_too_long": "The password can be at most 128 characters.",
+    "password_same_as_email": "The password cannot be your email address.",
+    "not_authenticated": "You are not signed in.",
+    "network_error": "Could not reach the server. Check your connection and try again.",
+    "server_error": "Something went wrong on the server. Try again in a moment.",
+    "unknown": "Something went wrong. Try again."
   }
 }

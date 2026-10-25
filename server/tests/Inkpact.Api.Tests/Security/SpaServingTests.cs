@@ -111,7 +111,7 @@ public class SpaServingTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task The_api_health_endpoint_is_not_cached_as_a_static_file()
+    public async Task The_api_health_endpoint_is_never_cached()
     {
         var (factory, client, webRoot) = await StartAsync();
         using var _ = webRoot;
@@ -121,6 +121,6 @@ public class SpaServingTests(PostgresFixture postgres)
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         response.Content.Headers.ContentType!.MediaType.ShouldBe("application/json");
-        response.Headers.CacheControl.ShouldBeNull();
+        response.Headers.CacheControl!.NoStore.ShouldBeTrue();
     }
 }
