@@ -17,6 +17,11 @@ interface PageState extends PageHandle {
 
 const MIN_RECONNECT_MS = 250
 const MAX_RECONNECT_MS = 5000
+// A connection that loses the network (Wi-Fi off, leaving coverage) is not closed by anyone: the socket
+// stays "open" and edits vanish into it. So the client pings, and gives up on a connection that has
+// been silent this long.
+const PING_INTERVAL_MS = 3000
+const DEAD_AFTER_MS = 8000
 // An empty Yjs update: no structs, empty delete set.
 const EMPTY_UPDATE_LENGTH = 2
 
@@ -31,11 +36,22 @@ export class SyncClient {
   private readonly url: string
   private readonly onStatus: (status: Status) => void
   private reconnectMs = MIN_RECONNECT_MS
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private heartbeat: ReturnType<typeof setInterval> | null = null
+  private lastReceivedAt = 0
   private destroyed = false
+
+  // The browser knows when the network goes and comes back (not every environment, e.g. Node, has these).
+  private readonly onOffline = () => this.dropSocket()
+  private readonly onOnline = () => this.reconnectNow()
 
   constructor(url: string, onStatus: (status: Status) => void = () => {}) {
     this.url = url
     this.onStatus = onStatus
+    if (typeof window !== 'undefined') {
+      window.addEventListener('offline', this.onOffline)
+      window.addEventListener('online', this.onOnline)
+    }
     this.open()
   }
 
@@ -88,34 +104,92 @@ export class SyncClient {
 
   destroy() {
     this.destroyed = true
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('offline', this.onOffline)
+      window.removeEventListener('online', this.onOnline)
+    }
+    this.stopHeartbeat()
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     for (const state of this.pages.values()) state.detach()
     this.pages.clear()
     this.socket.close()
   }
 
   private open() {
+    this.reconnectTimer = null
     this.onStatus('connecting')
-    this.socket = new WebSocket(this.url)
-    this.socket.binaryType = 'arraybuffer'
+    const socket = new WebSocket(this.url)
+    this.socket = socket
+    socket.binaryType = 'arraybuffer'
 
-    this.socket.onopen = () => {
+    // Every handler first checks that its socket is still the current one: a dead socket we gave up on may
+    // still report a close much later, and that must not disturb the connection that replaced it.
+    socket.onopen = () => {
+      if (socket !== this.socket) return
       this.reconnectMs = MIN_RECONNECT_MS
+      this.lastReceivedAt = Date.now()
+      this.startHeartbeat()
       this.onStatus('connected')
       for (const pageId of this.pages.keys()) this.send(MessageType.Subscribe, pageId)
     }
 
-    this.socket.onmessage = (event: MessageEvent<ArrayBuffer>) => {
+    socket.onmessage = (event: MessageEvent<ArrayBuffer>) => {
+      if (socket !== this.socket) return
+      this.lastReceivedAt = Date.now() // any message proves the connection is alive, not only a pong
       const frame = decodeFrame(new Uint8Array(event.data))
       if (frame) this.handle(frame)
     }
 
-    this.socket.onclose = () => {
-      for (const state of this.pages.values()) state.synced = false
-      this.onStatus('disconnected')
-      if (this.destroyed) return
-      setTimeout(() => this.open(), this.reconnectMs)
-      this.reconnectMs = Math.min(this.reconnectMs * 2, MAX_RECONNECT_MS)
+    socket.onclose = () => {
+      if (socket === this.socket) this.connectionLost()
     }
+  }
+
+  private connectionLost() {
+    this.stopHeartbeat()
+    for (const state of this.pages.values()) state.synced = false
+    this.onStatus('disconnected')
+    if (this.destroyed || this.reconnectTimer) return
+    this.reconnectTimer = setTimeout(() => this.open(), this.reconnectMs)
+    this.reconnectMs = Math.min(this.reconnectMs * 2, MAX_RECONNECT_MS)
+  }
+
+  /** Gives up on the current socket without waiting for it to report anything. */
+  private dropSocket() {
+    if (this.destroyed) return
+    const socket = this.socket
+    socket.onopen = socket.onmessage = socket.onclose = null
+    try {
+      socket.close()
+    } catch {
+      // Already gone.
+    }
+    this.connectionLost()
+  }
+
+  /** The network came back: do not wait for the backoff, and do not trust a socket from before the outage. */
+  private reconnectNow() {
+    if (this.destroyed) return
+    this.dropSocket()
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+    this.reconnectMs = MIN_RECONNECT_MS
+    this.open()
+  }
+
+  private startHeartbeat() {
+    this.stopHeartbeat()
+    this.heartbeat = setInterval(() => {
+      if (Date.now() - this.lastReceivedAt > DEAD_AFTER_MS) {
+        this.dropSocket()
+        return
+      }
+      if (this.socket.readyState === WebSocket.OPEN) this.socket.send(new Uint8Array([MessageType.Ping]))
+    }, PING_INTERVAL_MS)
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeat) clearInterval(this.heartbeat)
+    this.heartbeat = null
   }
 
   private handle(frame: IncomingFrame) {

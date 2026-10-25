@@ -7,6 +7,12 @@ public enum MessageType : byte
     Update = 2,
     Sync = 3,
     Awareness = 4,
+
+    /// <summary>A single byte, no page id: the client asks whether the connection is alive.</summary>
+    Ping = 5,
+
+    /// <summary>A single byte, no page id: the server's answer to <see cref="Ping"/>.</summary>
+    Pong = 6,
 }
 
 /// <summary>

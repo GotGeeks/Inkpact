@@ -91,6 +91,13 @@ public sealed class SyncHub(IUpdateStore store, ILogger<SyncHub> logger)
 
     private async Task HandleAsync(Connection connection, byte[] message, CancellationToken cancellationToken)
     {
+        // A phone that loses Wi-Fi never closes its socket, so clients ping and give up on silence.
+        if (message is [(byte)MessageType.Ping])
+        {
+            connection.Enqueue([(byte)MessageType.Pong]);
+            return;
+        }
+
         var frame = Frame.Parse(message);
         switch (frame.Type)
         {

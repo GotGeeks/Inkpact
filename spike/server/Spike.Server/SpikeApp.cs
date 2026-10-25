@@ -29,7 +29,13 @@ public static class SpikeApp
         var app = builder.Build();
         await app.Services.GetRequiredService<IUpdateStore>().EnsureSchemaAsync(CancellationToken.None);
 
-        app.UseWebSockets();
+        // The server also has to find out about a client that vanished without a close (a phone leaving the
+        // Wi-Fi), or its presence stays on everyone's screen. The default interval is two minutes.
+        app.UseWebSockets(new WebSocketOptions
+        {
+            KeepAliveInterval = TimeSpan.FromSeconds(15),
+            KeepAliveTimeout = TimeSpan.FromSeconds(15),
+        });
 
         // Spike only: no auth, no Origin check, no permission check on subscribe (all in 1.09).
         app.Map("/ws", async (HttpContext context, SyncHub hub) =>

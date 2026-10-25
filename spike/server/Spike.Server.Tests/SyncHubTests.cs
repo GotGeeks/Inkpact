@@ -94,6 +94,17 @@ public sealed class SyncHubTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Ping_is_answered_with_a_pong_and_does_not_need_a_subscription()
+    {
+        using var client = await TestClient.ConnectAsync(fixture);
+
+        await client.SendAsync([(byte)MessageType.Ping]);
+
+        var answer = await client.ReceiveBytesAsync();
+        Assert.Equal(new[] { (byte)MessageType.Pong }, answer);
+    }
+
+    [Fact]
     public async Task Update_for_a_page_that_was_not_subscribed_closes_the_socket()
     {
         var page = PostgresFixture.NewPageId();
@@ -205,6 +216,13 @@ public sealed class SyncHubTests(PostgresFixture fixture)
             using var cts = new CancellationTokenSource(Timeout);
             var (message, _) = await ReceiveRawAsync(cts.Token);
             return Frame.Parse(message);
+        }
+
+        public async Task<byte[]> ReceiveBytesAsync()
+        {
+            using var cts = new CancellationTokenSource(Timeout);
+            var (message, _) = await ReceiveRawAsync(cts.Token);
+            return message;
         }
 
         public async Task<WebSocketCloseStatus?> ReceiveCloseAsync()
