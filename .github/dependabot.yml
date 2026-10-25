@@ -1,0 +1,16 @@
+version: 2
+
+updates:
+  # global.json pins the .NET SDK exactly (see the note in CONTRIBUTING.md), so someone has to move it when a
+  # patch comes out. This does it: a pull request every week there is a newer SDK, and CI then proves the build
+  # works with it before it is merged. The rest of the dependencies (NuGet, pnpm, the GitHub Actions) get their
+  # tooling in run 1.20.
+  - package-ecosystem: dotnet-sdk
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencies

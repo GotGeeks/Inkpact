@@ -101,12 +101,16 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-web
+      # Dependabot writes its own commit messages (long release notes, its own sign-off), and GitHub sets the
+      # author of its pull requests, which nobody else can fake. Everything else is checked.
       - name: Conventional commits
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
         run: pnpm exec commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       - name: DCO sign-off
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
         run: bash .github/scripts/check-dco.sh "$BASE_SHA" "$HEAD_SHA"
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

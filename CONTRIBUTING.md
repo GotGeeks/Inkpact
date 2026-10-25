@@ -15,6 +15,8 @@ dotnet tool restore   # installs dotnet-ef, for migrations
 dotnet build server
 ```
 
+The .NET SDK is pinned to an exact version in `global.json`, so every machine and CI build the same way (and so a broken new release cannot stop the build). Dependabot opens a pull request when a newer SDK is out; CI checks that the build works with it, then you merge it.
+
 Use pnpm only, never npm or yarn. Ask in the issue before adding a dependency, and say why it is needed.
 
 ## Before you open a pull request
