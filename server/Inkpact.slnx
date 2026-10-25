@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Inkpact.Api/Inkpact.Api.csproj" />
+    <Project Path="src/Inkpact.Data/Inkpact.Data.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Inkpact.Api.Tests/Inkpact.Api.Tests.csproj" />
+  </Folder>
+</Solution>
