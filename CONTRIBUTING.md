@@ -11,6 +11,7 @@ You need .NET 10, Node 24 with Corepack enabled (`corepack enable`), and Docker 
 ```bash
 pnpm install --frozen-lockfile
 pnpm --filter web dev
+dotnet tool restore   # installs dotnet-ef, for migrations
 dotnet build server
 ```
 
