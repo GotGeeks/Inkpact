@@ -7,5 +7,45 @@
     "label": "Taal",
     "en": "English",
     "nl": "Nederlands"
+  },
+  "fields": {
+    "email": "E-mailadres",
+    "password": "Wachtwoord",
+    "displayName": "Je naam"
+  },
+  "login": {
+    "title": "Inloggen",
+    "submit": "Inloggen"
+  },
+  "setup": {
+    "title": "Welkom bij Inkpact",
+    "intro": "Maak het beheerdersaccount voor deze installatie aan.",
+    "code": "Installatiecode",
+    "codeHint": "Staat in het serverlogboek zodra Inkpact start.",
+    "passwordHint": "Minstens 12 tekens. Een paar willekeurige woorden werkt goed.",
+    "workspaceName": "Naam van je eerste werkruimte",
+    "workspaceDefault": "Privé",
+    "submit": "Account aanmaken"
+  },
+  "home": {
+    "signedInAs": "Ingelogd als {name}",
+    "placeholder": "Je notities verschijnen hier.",
+    "logout": "Uitloggen",
+    "logoutEverywhere": "Overal uitloggen"
+  },
+  "errors": {
+    "invalid_credentials": "Het e-mailadres of wachtwoord klopt niet.",
+    "setup_code_invalid": "Die installatiecode klopt niet. Zoek hem in het serverlogboek.",
+    "setup_not_available": "Deze installatie is al ingesteld. Log in.",
+    "email_invalid": "Vul een geldig e-mailadres in.",
+    "display_name_invalid": "Vul je naam in, hooguit 200 tekens.",
+    "workspace_name_invalid": "Vul een naam in voor de werkruimte, hooguit 200 tekens.",
+    "password_too_short": "Het wachtwoord moet minstens 12 tekens hebben.",
+    "password_too_long": "Het wachtwoord mag hooguit 128 tekens hebben.",
+    "password_same_as_email": "Het wachtwoord mag niet je e-mailadres zijn.",
+    "not_authenticated": "Je bent niet ingelogd.",
+    "network_error": "De server is niet bereikbaar. Controleer je verbinding en probeer het opnieuw.",
+    "server_error": "Er ging iets mis op de server. Probeer het zo opnieuw.",
+    "unknown": "Er ging iets mis. Probeer het opnieuw."
   }
 }

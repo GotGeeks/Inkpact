@@ -2,7 +2,7 @@
 import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { locales, type Locale } from '../i18n'
+import { applyLocale, locales, type Locale } from '../i18n'
 import { useSettingsStore } from '../stores/settings'
 
 const { t, locale } = useI18n()
@@ -16,6 +16,7 @@ function select(next: unknown) {
   if (typeof next !== 'string') return
   settings.setLocale(next as Locale)
   locale.value = next
+  applyLocale(next as Locale)
 }
 </script>
 
