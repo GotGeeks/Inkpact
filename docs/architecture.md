@@ -267,9 +267,18 @@ Yjs merges note content, but the page tree, titles, tags and to-do fields live i
 | To-do completed vs edited | Last write wins per field; completing a to-do never touches its content |
 | Offline tree changes (desktop, phase 3) | Queued and replayed through these same rules; rejected changes are shown to the user |
 
-Every page carries a version number. Clients send the version they last saw, so the server can detect and log conflicts even where last write wins.
+Every page carries a version number, raised by every change to its title or place. Clients send the version they last saw, so the server can detect and log conflicts even where last write wins: the change is applied, logged as `tree_conflict`, and the answer says `conflict: true`.
+
+**How the rules are kept:**
+
+- **One change at a time per workspace.** Every tree operation runs in its own transaction and starts by raising the workspace's `tree_version`, which locks the workspace row until the transaction ends. Each operation is therefore checked against the state the one before it left, which is what stops two moves that are each valid from forming a cycle together, and two inserts at the same spot from getting the same key. A unique index on the keys of live siblings (the top level included) makes a tie a database error too.
+- **The trash marks only the page that was deleted.** Its descendants are in the trash because an ancestor is, so they leave and come back with it, and a child that was trashed on its own earlier stays in the trash when its parent is restored. The trash shows the top-most trashed pages, which is what a person restores. A page that is only hidden by an ancestor cannot be restored alone (`restore_the_parent`). Metadata operations on a page in the trash are refused (`page_in_trash`).
+- **Restoring** puts a page back between the same neighbours when its parent is still usable and its old key is free; if the key was taken it goes right after the nearest key below it; if the parent is gone or in the trash it goes to the end of the top level and the answer says `restoredTo: "root"`.
+- **Clients never send a key.** They say where a page goes by naming its neighbours (`afterId`, `beforeId`, which must be live siblings next to each other), and only the server makes the key.
 
 **Ordering:** siblings are sorted by fractional index keys, strings that always leave room between two neighbours, using the established fractional-indexing algorithm (as used by Figma and Linear) rather than a home-grown scheme; use a maintained library on both sides, and only if no maintained .NET one exists, port the small reference implementation and test it against the original. Dragging a page writes one row and never renumbers its siblings.
+
+**The port:** no maintained .NET library exists (the only package is a 2024 release with no license). `FractionalIndex` is therefore a port of `fractional-indexing` 4.0.0 (CC0) with its default alphabets, and a test checks it against about 2,100 cases made by the original package (the generator script is in the repository; the original is not a dependency), plus FsCheck properties on ordering and key length.
 
 ### Permission resolution
 

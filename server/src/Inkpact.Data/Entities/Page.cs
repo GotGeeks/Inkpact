@@ -25,6 +25,9 @@ public class Page
 
     public DateTimeOffset UpdatedAt { get; set; }
 
+    /// <summary>+1 on every change to the page's place or title. Clients send the one they last saw, so conflicts show up.</summary>
+    public int Version { get; set; } = 1;
+
     /// <summary>Set when the page is in the trash; null for live pages.</summary>
     public DateTimeOffset? DeletedAt { get; set; }
 

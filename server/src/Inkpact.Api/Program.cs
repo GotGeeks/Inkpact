@@ -1,4 +1,5 @@
 using Inkpact.Api.Auth;
+using Inkpact.Api.Pages;
 using Inkpact.Api.Permissions;
 using Inkpact.Api.Security;
 using Inkpact.Data;
@@ -14,6 +15,7 @@ builder.Services.AddInkpactPolicies();
 builder.Services.AddCsrfProtection();
 builder.Services.AddLoginThrottling(builder.Configuration);
 builder.Services.AddScoped<IAuditLog, AuditLog>();
+builder.Services.AddScoped<TreeService>();
 
 var app = builder.Build();
 
@@ -63,6 +65,7 @@ app.UseAuthorization();
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapAuthEndpoints();
 app.MapWorkspaceEndpoints();
+app.MapPageEndpoints();
 
 // An unknown API path is a JSON 404 with an error code, never the HTML shell.
 app.MapFallback("/api/{**path}", () => Results.Json(new ApiError("not_found"), statusCode: StatusCodes.Status404NotFound))

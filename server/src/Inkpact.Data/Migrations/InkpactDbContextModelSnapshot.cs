@@ -155,6 +155,10 @@ namespace Inkpact.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
                     b.Property<Guid>("WorkspaceId")
                         .HasColumnType("uuid")
                         .HasColumnName("workspace_id");
@@ -171,7 +175,11 @@ namespace Inkpact.Data.Migrations
                         .HasFilter("external_id IS NOT NULL");
 
                     b.HasIndex("WorkspaceId", "ParentId", "SortKey")
-                        .HasDatabaseName("ix_pages_workspace_id_parent_id_sort_key");
+                        .IsUnique()
+                        .HasDatabaseName("ix_pages_workspace_id_parent_id_sort_key")
+                        .HasFilter("deleted_at IS NULL");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("WorkspaceId", "ParentId", "SortKey"), false);
 
                     b.ToTable("pages", (string)null);
                 });
@@ -298,6 +306,10 @@ namespace Inkpact.Data.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid")
                         .HasColumnName("owner_id");
+
+                    b.Property<long>("TreeVersion")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tree_version");
 
                     b.HasKey("Id")
                         .HasName("pk_workspaces");
