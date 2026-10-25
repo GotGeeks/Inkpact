@@ -1,4 +1,5 @@
 using Npgsql;
+using Spike.Crdt;
 
 namespace Spike.Server;
 
@@ -13,6 +14,17 @@ public static class SpikeApp
         builder.Services.AddSingleton(_ => NpgsqlDataSource.Create(connectionString));
         builder.Services.AddSingleton<IUpdateStore, PostgresUpdateStore>();
         builder.Services.AddSingleton<SyncHub>();
+
+        // Off unless configured: the sidecar needs Node, and the sync hub does not need compaction to run.
+        if (builder.Configuration.GetValue<bool>("Compaction:Enabled"))
+        {
+            var sidecarScript = Path.GetFullPath(
+                builder.Configuration["Sidecar:Script"] ?? throw new InvalidOperationException("Sidecar:Script is not set"),
+                builder.Environment.ContentRootPath);
+            builder.Services.AddSingleton<ICrdtCodec>(_ => new YjsSidecarCodec(sidecarScript));
+            builder.Services.AddSingleton<Compactor>();
+            builder.Services.AddHostedService<CompactionWorker>();
+        }
 
         var app = builder.Build();
         await app.Services.GetRequiredService<IUpdateStore>().EnsureSchemaAsync(CancellationToken.None);
