@@ -1,0 +1,11485 @@
+{
+ "source": "fractional-indexing 4.0.0 (CC0), https://github.com/rocicorp/fractional-indexing",
+ "between": [
+  {
+   "a": null,
+   "b": null,
+   "expected": "a0"
+  },
+  {
+   "a": null,
+   "b": null,
+   "expected": "a0"
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "expected": "a1"
+  },
+  {
+   "a": "a1",
+   "b": null,
+   "expected": "a2"
+  },
+  {
+   "a": "a2",
+   "b": null,
+   "expected": "a3"
+  },
+  {
+   "a": "a3",
+   "b": null,
+   "expected": "a4"
+  },
+  {
+   "a": "a4",
+   "b": null,
+   "expected": "a5"
+  },
+  {
+   "a": "a5",
+   "b": null,
+   "expected": "a6"
+  },
+  {
+   "a": "a6",
+   "b": null,
+   "expected": "a7"
+  },
+  {
+   "a": "a7",
+   "b": null,
+   "expected": "a8"
+  },
+  {
+   "a": "a8",
+   "b": null,
+   "expected": "a9"
+  },
+  {
+   "a": "a9",
+   "b": null,
+   "expected": "aA"
+  },
+  {
+   "a": "aA",
+   "b": null,
+   "expected": "aB"
+  },
+  {
+   "a": "aB",
+   "b": null,
+   "expected": "aC"
+  },
+  {
+   "a": "aC",
+   "b": null,
+   "expected": "aD"
+  },
+  {
+   "a": "aD",
+   "b": null,
+   "expected": "aE"
+  },
+  {
+   "a": "aE",
+   "b": null,
+   "expected": "aF"
+  },
+  {
+   "a": "aF",
+   "b": null,
+   "expected": "aG"
+  },
+  {
+   "a": "aG",
+   "b": null,
+   "expected": "aH"
+  },
+  {
+   "a": "aH",
+   "b": null,
+   "expected": "aI"
+  },
+  {
+   "a": "aI",
+   "b": null,
+   "expected": "aJ"
+  },
+  {
+   "a": "aJ",
+   "b": null,
+   "expected": "aK"
+  },
+  {
+   "a": "aK",
+   "b": null,
+   "expected": "aL"
+  },
+  {
+   "a": "aL",
+   "b": null,
+   "expected": "aM"
+  },
+  {
+   "a": "aM",
+   "b": null,
+   "expected": "aN"
+  },
+  {
+   "a": "aN",
+   "b": null,
+   "expected": "aO"
+  },
+  {
+   "a": "aO",
+   "b": null,
+   "expected": "aP"
+  },
+  {
+   "a": "aP",
+   "b": null,
+   "expected": "aQ"
+  },
+  {
+   "a": "aQ",
+   "b": null,
+   "expected": "aR"
+  },
+  {
+   "a": "aR",
+   "b": null,
+   "expected": "aS"
+  },
+  {
+   "a": "aS",
+   "b": null,
+   "expected": "aT"
+  },
+  {
+   "a": "aT",
+   "b": null,
+   "expected": "aU"
+  },
+  {
+   "a": "aU",
+   "b": null,
+   "expected": "aV"
+  },
+  {
+   "a": "aV",
+   "b": null,
+   "expected": "aW"
+  },
+  {
+   "a": "aW",
+   "b": null,
+   "expected": "aX"
+  },
+  {
+   "a": "aX",
+   "b": null,
+   "expected": "aY"
+  },
+  {
+   "a": "aY",
+   "b": null,
+   "expected": "aZ"
+  },
+  {
+   "a": "aZ",
+   "b": null,
+   "expected": "aa"
+  },
+  {
+   "a": "aa",
+   "b": null,
+   "expected": "ab"
+  },
+  {
+   "a": "ab",
+   "b": null,
+   "expected": "ac"
+  },
+  {
+   "a": "ac",
+   "b": null,
+   "expected": "ad"
+  },
+  {
+   "a": "ad",
+   "b": null,
+   "expected": "ae"
+  },
+  {
+   "a": "ae",
+   "b": null,
+   "expected": "af"
+  },
+  {
+   "a": "af",
+   "b": null,
+   "expected": "ag"
+  },
+  {
+   "a": "ag",
+   "b": null,
+   "expected": "ah"
+  },
+  {
+   "a": "ah",
+   "b": null,
+   "expected": "ai"
+  },
+  {
+   "a": "ai",
+   "b": null,
+   "expected": "aj"
+  },
+  {
+   "a": "aj",
+   "b": null,
+   "expected": "ak"
+  },
+  {
+   "a": "ak",
+   "b": null,
+   "expected": "al"
+  },
+  {
+   "a": "al",
+   "b": null,
+   "expected": "am"
+  },
+  {
+   "a": "am",
+   "b": null,
+   "expected": "an"
+  },
+  {
+   "a": "an",
+   "b": null,
+   "expected": "ao"
+  },
+  {
+   "a": "ao",
+   "b": null,
+   "expected": "ap"
+  },
+  {
+   "a": "ap",
+   "b": null,
+   "expected": "aq"
+  },
+  {
+   "a": "aq",
+   "b": null,
+   "expected": "ar"
+  },
+  {
+   "a": "ar",
+   "b": null,
+   "expected": "as"
+  },
+  {
+   "a": "as",
+   "b": null,
+   "expected": "at"
+  },
+  {
+   "a": "at",
+   "b": null,
+   "expected": "au"
+  },
+  {
+   "a": "au",
+   "b": null,
+   "expected": "av"
+  },
+  {
+   "a": "av",
+   "b": null,
+   "expected": "aw"
+  },
+  {
+   "a": "aw",
+   "b": null,
+   "expected": "ax"
+  },
+  {
+   "a": "ax",
+   "b": null,
+   "expected": "ay"
+  },
+  {
+   "a": "ay",
+   "b": null,
+   "expected": "az"
+  },
+  {
+   "a": "az",
+   "b": null,
+   "expected": "b00"
+  },
+  {
+   "a": "b00",
+   "b": null,
+   "expected": "b01"
+  },
+  {
+   "a": "b01",
+   "b": null,
+   "expected": "b02"
+  },
+  {
+   "a": "b02",
+   "b": null,
+   "expected": "b03"
+  },
+  {
+   "a": "b03",
+   "b": null,
+   "expected": "b04"
+  },
+  {
+   "a": "b04",
+   "b": null,
+   "expected": "b05"
+  },
+  {
+   "a": "b05",
+   "b": null,
+   "expected": "b06"
+  },
+  {
+   "a": "b06",
+   "b": null,
+   "expected": "b07"
+  },
+  {
+   "a": "b07",
+   "b": null,
+   "expected": "b08"
+  },
+  {
+   "a": "b08",
+   "b": null,
+   "expected": "b09"
+  },
+  {
+   "a": "b09",
+   "b": null,
+   "expected": "b0A"
+  },
+  {
+   "a": "b0A",
+   "b": null,
+   "expected": "b0B"
+  },
+  {
+   "a": "b0B",
+   "b": null,
+   "expected": "b0C"
+  },
+  {
+   "a": "b0C",
+   "b": null,
+   "expected": "b0D"
+  },
+  {
+   "a": "b0D",
+   "b": null,
+   "expected": "b0E"
+  },
+  {
+   "a": "b0E",
+   "b": null,
+   "expected": "b0F"
+  },
+  {
+   "a": "b0F",
+   "b": null,
+   "expected": "b0G"
+  },
+  {
+   "a": "b0G",
+   "b": null,
+   "expected": "b0H"
+  },
+  {
+   "a": "b0H",
+   "b": null,
+   "expected": "b0I"
+  },
+  {
+   "a": "b0I",
+   "b": null,
+   "expected": "b0J"
+  },
+  {
+   "a": "b0J",
+   "b": null,
+   "expected": "b0K"
+  },
+  {
+   "a": "b0K",
+   "b": null,
+   "expected": "b0L"
+  },
+  {
+   "a": "b0L",
+   "b": null,
+   "expected": "b0M"
+  },
+  {
+   "a": "b0M",
+   "b": null,
+   "expected": "b0N"
+  },
+  {
+   "a": "b0N",
+   "b": null,
+   "expected": "b0O"
+  },
+  {
+   "a": "b0O",
+   "b": null,
+   "expected": "b0P"
+  },
+  {
+   "a": "b0P",
+   "b": null,
+   "expected": "b0Q"
+  },
+  {
+   "a": "b0Q",
+   "b": null,
+   "expected": "b0R"
+  },
+  {
+   "a": "b0R",
+   "b": null,
+   "expected": "b0S"
+  },
+  {
+   "a": "b0S",
+   "b": null,
+   "expected": "b0T"
+  },
+  {
+   "a": "b0T",
+   "b": null,
+   "expected": "b0U"
+  },
+  {
+   "a": "b0U",
+   "b": null,
+   "expected": "b0V"
+  },
+  {
+   "a": "b0V",
+   "b": null,
+   "expected": "b0W"
+  },
+  {
+   "a": "b0W",
+   "b": null,
+   "expected": "b0X"
+  },
+  {
+   "a": "b0X",
+   "b": null,
+   "expected": "b0Y"
+  },
+  {
+   "a": "b0Y",
+   "b": null,
+   "expected": "b0Z"
+  },
+  {
+   "a": "b0Z",
+   "b": null,
+   "expected": "b0a"
+  },
+  {
+   "a": "b0a",
+   "b": null,
+   "expected": "b0b"
+  },
+  {
+   "a": "b0b",
+   "b": null,
+   "expected": "b0c"
+  },
+  {
+   "a": "b0c",
+   "b": null,
+   "expected": "b0d"
+  },
+  {
+   "a": "b0d",
+   "b": null,
+   "expected": "b0e"
+  },
+  {
+   "a": "b0e",
+   "b": null,
+   "expected": "b0f"
+  },
+  {
+   "a": "b0f",
+   "b": null,
+   "expected": "b0g"
+  },
+  {
+   "a": "b0g",
+   "b": null,
+   "expected": "b0h"
+  },
+  {
+   "a": "b0h",
+   "b": null,
+   "expected": "b0i"
+  },
+  {
+   "a": "b0i",
+   "b": null,
+   "expected": "b0j"
+  },
+  {
+   "a": "b0j",
+   "b": null,
+   "expected": "b0k"
+  },
+  {
+   "a": "b0k",
+   "b": null,
+   "expected": "b0l"
+  },
+  {
+   "a": "b0l",
+   "b": null,
+   "expected": "b0m"
+  },
+  {
+   "a": "b0m",
+   "b": null,
+   "expected": "b0n"
+  },
+  {
+   "a": "b0n",
+   "b": null,
+   "expected": "b0o"
+  },
+  {
+   "a": "b0o",
+   "b": null,
+   "expected": "b0p"
+  },
+  {
+   "a": "b0p",
+   "b": null,
+   "expected": "b0q"
+  },
+  {
+   "a": "b0q",
+   "b": null,
+   "expected": "b0r"
+  },
+  {
+   "a": "b0r",
+   "b": null,
+   "expected": "b0s"
+  },
+  {
+   "a": "b0s",
+   "b": null,
+   "expected": "b0t"
+  },
+  {
+   "a": "b0t",
+   "b": null,
+   "expected": "b0u"
+  },
+  {
+   "a": "b0u",
+   "b": null,
+   "expected": "b0v"
+  },
+  {
+   "a": "b0v",
+   "b": null,
+   "expected": "b0w"
+  },
+  {
+   "a": "b0w",
+   "b": null,
+   "expected": "b0x"
+  },
+  {
+   "a": "b0x",
+   "b": null,
+   "expected": "b0y"
+  },
+  {
+   "a": "b0y",
+   "b": null,
+   "expected": "b0z"
+  },
+  {
+   "a": "b0z",
+   "b": null,
+   "expected": "b10"
+  },
+  {
+   "a": "b10",
+   "b": null,
+   "expected": "b11"
+  },
+  {
+   "a": "b11",
+   "b": null,
+   "expected": "b12"
+  },
+  {
+   "a": "b12",
+   "b": null,
+   "expected": "b13"
+  },
+  {
+   "a": "b13",
+   "b": null,
+   "expected": "b14"
+  },
+  {
+   "a": "b14",
+   "b": null,
+   "expected": "b15"
+  },
+  {
+   "a": "b15",
+   "b": null,
+   "expected": "b16"
+  },
+  {
+   "a": "b16",
+   "b": null,
+   "expected": "b17"
+  },
+  {
+   "a": "b17",
+   "b": null,
+   "expected": "b18"
+  },
+  {
+   "a": "b18",
+   "b": null,
+   "expected": "b19"
+  },
+  {
+   "a": "b19",
+   "b": null,
+   "expected": "b1A"
+  },
+  {
+   "a": "b1A",
+   "b": null,
+   "expected": "b1B"
+  },
+  {
+   "a": "b1B",
+   "b": null,
+   "expected": "b1C"
+  },
+  {
+   "a": "b1C",
+   "b": null,
+   "expected": "b1D"
+  },
+  {
+   "a": "b1D",
+   "b": null,
+   "expected": "b1E"
+  },
+  {
+   "a": "b1E",
+   "b": null,
+   "expected": "b1F"
+  },
+  {
+   "a": "b1F",
+   "b": null,
+   "expected": "b1G"
+  },
+  {
+   "a": "b1G",
+   "b": null,
+   "expected": "b1H"
+  },
+  {
+   "a": "b1H",
+   "b": null,
+   "expected": "b1I"
+  },
+  {
+   "a": "b1I",
+   "b": null,
+   "expected": "b1J"
+  },
+  {
+   "a": "b1J",
+   "b": null,
+   "expected": "b1K"
+  },
+  {
+   "a": "b1K",
+   "b": null,
+   "expected": "b1L"
+  },
+  {
+   "a": "b1L",
+   "b": null,
+   "expected": "b1M"
+  },
+  {
+   "a": "b1M",
+   "b": null,
+   "expected": "b1N"
+  },
+  {
+   "a": "b1N",
+   "b": null,
+   "expected": "b1O"
+  },
+  {
+   "a": "b1O",
+   "b": null,
+   "expected": "b1P"
+  },
+  {
+   "a": "b1P",
+   "b": null,
+   "expected": "b1Q"
+  },
+  {
+   "a": "b1Q",
+   "b": null,
+   "expected": "b1R"
+  },
+  {
+   "a": "b1R",
+   "b": null,
+   "expected": "b1S"
+  },
+  {
+   "a": "b1S",
+   "b": null,
+   "expected": "b1T"
+  },
+  {
+   "a": "b1T",
+   "b": null,
+   "expected": "b1U"
+  },
+  {
+   "a": "b1U",
+   "b": null,
+   "expected": "b1V"
+  },
+  {
+   "a": "b1V",
+   "b": null,
+   "expected": "b1W"
+  },
+  {
+   "a": "b1W",
+   "b": null,
+   "expected": "b1X"
+  },
+  {
+   "a": "b1X",
+   "b": null,
+   "expected": "b1Y"
+  },
+  {
+   "a": "b1Y",
+   "b": null,
+   "expected": "b1Z"
+  },
+  {
+   "a": "b1Z",
+   "b": null,
+   "expected": "b1a"
+  },
+  {
+   "a": "b1a",
+   "b": null,
+   "expected": "b1b"
+  },
+  {
+   "a": "b1b",
+   "b": null,
+   "expected": "b1c"
+  },
+  {
+   "a": "b1c",
+   "b": null,
+   "expected": "b1d"
+  },
+  {
+   "a": "b1d",
+   "b": null,
+   "expected": "b1e"
+  },
+  {
+   "a": "b1e",
+   "b": null,
+   "expected": "b1f"
+  },
+  {
+   "a": "b1f",
+   "b": null,
+   "expected": "b1g"
+  },
+  {
+   "a": "b1g",
+   "b": null,
+   "expected": "b1h"
+  },
+  {
+   "a": "b1h",
+   "b": null,
+   "expected": "b1i"
+  },
+  {
+   "a": "b1i",
+   "b": null,
+   "expected": "b1j"
+  },
+  {
+   "a": "b1j",
+   "b": null,
+   "expected": "b1k"
+  },
+  {
+   "a": "b1k",
+   "b": null,
+   "expected": "b1l"
+  },
+  {
+   "a": "b1l",
+   "b": null,
+   "expected": "b1m"
+  },
+  {
+   "a": "b1m",
+   "b": null,
+   "expected": "b1n"
+  },
+  {
+   "a": "b1n",
+   "b": null,
+   "expected": "b1o"
+  },
+  {
+   "a": "b1o",
+   "b": null,
+   "expected": "b1p"
+  },
+  {
+   "a": "b1p",
+   "b": null,
+   "expected": "b1q"
+  },
+  {
+   "a": "b1q",
+   "b": null,
+   "expected": "b1r"
+  },
+  {
+   "a": "b1r",
+   "b": null,
+   "expected": "b1s"
+  },
+  {
+   "a": "b1s",
+   "b": null,
+   "expected": "b1t"
+  },
+  {
+   "a": "b1t",
+   "b": null,
+   "expected": "b1u"
+  },
+  {
+   "a": "b1u",
+   "b": null,
+   "expected": "b1v"
+  },
+  {
+   "a": "b1v",
+   "b": null,
+   "expected": "b1w"
+  },
+  {
+   "a": "b1w",
+   "b": null,
+   "expected": "b1x"
+  },
+  {
+   "a": "b1x",
+   "b": null,
+   "expected": "b1y"
+  },
+  {
+   "a": "b1y",
+   "b": null,
+   "expected": "b1z"
+  },
+  {
+   "a": "b1z",
+   "b": null,
+   "expected": "b20"
+  },
+  {
+   "a": "b20",
+   "b": null,
+   "expected": "b21"
+  },
+  {
+   "a": "b21",
+   "b": null,
+   "expected": "b22"
+  },
+  {
+   "a": "b22",
+   "b": null,
+   "expected": "b23"
+  },
+  {
+   "a": "b23",
+   "b": null,
+   "expected": "b24"
+  },
+  {
+   "a": "b24",
+   "b": null,
+   "expected": "b25"
+  },
+  {
+   "a": "b25",
+   "b": null,
+   "expected": "b26"
+  },
+  {
+   "a": "b26",
+   "b": null,
+   "expected": "b27"
+  },
+  {
+   "a": "b27",
+   "b": null,
+   "expected": "b28"
+  },
+  {
+   "a": "b28",
+   "b": null,
+   "expected": "b29"
+  },
+  {
+   "a": "b29",
+   "b": null,
+   "expected": "b2A"
+  },
+  {
+   "a": "b2A",
+   "b": null,
+   "expected": "b2B"
+  },
+  {
+   "a": "b2B",
+   "b": null,
+   "expected": "b2C"
+  },
+  {
+   "a": "b2C",
+   "b": null,
+   "expected": "b2D"
+  },
+  {
+   "a": "b2D",
+   "b": null,
+   "expected": "b2E"
+  },
+  {
+   "a": "b2E",
+   "b": null,
+   "expected": "b2F"
+  },
+  {
+   "a": "b2F",
+   "b": null,
+   "expected": "b2G"
+  },
+  {
+   "a": "b2G",
+   "b": null,
+   "expected": "b2H"
+  },
+  {
+   "a": "b2H",
+   "b": null,
+   "expected": "b2I"
+  },
+  {
+   "a": "b2I",
+   "b": null,
+   "expected": "b2J"
+  },
+  {
+   "a": "b2J",
+   "b": null,
+   "expected": "b2K"
+  },
+  {
+   "a": "b2K",
+   "b": null,
+   "expected": "b2L"
+  },
+  {
+   "a": "b2L",
+   "b": null,
+   "expected": "b2M"
+  },
+  {
+   "a": "b2M",
+   "b": null,
+   "expected": "b2N"
+  },
+  {
+   "a": "b2N",
+   "b": null,
+   "expected": "b2O"
+  },
+  {
+   "a": "b2O",
+   "b": null,
+   "expected": "b2P"
+  },
+  {
+   "a": "b2P",
+   "b": null,
+   "expected": "b2Q"
+  },
+  {
+   "a": "b2Q",
+   "b": null,
+   "expected": "b2R"
+  },
+  {
+   "a": "b2R",
+   "b": null,
+   "expected": "b2S"
+  },
+  {
+   "a": "b2S",
+   "b": null,
+   "expected": "b2T"
+  },
+  {
+   "a": "b2T",
+   "b": null,
+   "expected": "b2U"
+  },
+  {
+   "a": "b2U",
+   "b": null,
+   "expected": "b2V"
+  },
+  {
+   "a": "b2V",
+   "b": null,
+   "expected": "b2W"
+  },
+  {
+   "a": "b2W",
+   "b": null,
+   "expected": "b2X"
+  },
+  {
+   "a": "b2X",
+   "b": null,
+   "expected": "b2Y"
+  },
+  {
+   "a": "b2Y",
+   "b": null,
+   "expected": "b2Z"
+  },
+  {
+   "a": "b2Z",
+   "b": null,
+   "expected": "b2a"
+  },
+  {
+   "a": "b2a",
+   "b": null,
+   "expected": "b2b"
+  },
+  {
+   "a": "b2b",
+   "b": null,
+   "expected": "b2c"
+  },
+  {
+   "a": "b2c",
+   "b": null,
+   "expected": "b2d"
+  },
+  {
+   "a": "b2d",
+   "b": null,
+   "expected": "b2e"
+  },
+  {
+   "a": "b2e",
+   "b": null,
+   "expected": "b2f"
+  },
+  {
+   "a": "b2f",
+   "b": null,
+   "expected": "b2g"
+  },
+  {
+   "a": "b2g",
+   "b": null,
+   "expected": "b2h"
+  },
+  {
+   "a": "b2h",
+   "b": null,
+   "expected": "b2i"
+  },
+  {
+   "a": "b2i",
+   "b": null,
+   "expected": "b2j"
+  },
+  {
+   "a": "b2j",
+   "b": null,
+   "expected": "b2k"
+  },
+  {
+   "a": "b2k",
+   "b": null,
+   "expected": "b2l"
+  },
+  {
+   "a": "b2l",
+   "b": null,
+   "expected": "b2m"
+  },
+  {
+   "a": "b2m",
+   "b": null,
+   "expected": "b2n"
+  },
+  {
+   "a": "b2n",
+   "b": null,
+   "expected": "b2o"
+  },
+  {
+   "a": "b2o",
+   "b": null,
+   "expected": "b2p"
+  },
+  {
+   "a": "b2p",
+   "b": null,
+   "expected": "b2q"
+  },
+  {
+   "a": "b2q",
+   "b": null,
+   "expected": "b2r"
+  },
+  {
+   "a": "b2r",
+   "b": null,
+   "expected": "b2s"
+  },
+  {
+   "a": "b2s",
+   "b": null,
+   "expected": "b2t"
+  },
+  {
+   "a": "b2t",
+   "b": null,
+   "expected": "b2u"
+  },
+  {
+   "a": "b2u",
+   "b": null,
+   "expected": "b2v"
+  },
+  {
+   "a": "b2v",
+   "b": null,
+   "expected": "b2w"
+  },
+  {
+   "a": "b2w",
+   "b": null,
+   "expected": "b2x"
+  },
+  {
+   "a": "b2x",
+   "b": null,
+   "expected": "b2y"
+  },
+  {
+   "a": "b2y",
+   "b": null,
+   "expected": "b2z"
+  },
+  {
+   "a": "b2z",
+   "b": null,
+   "expected": "b30"
+  },
+  {
+   "a": "b30",
+   "b": null,
+   "expected": "b31"
+  },
+  {
+   "a": "b31",
+   "b": null,
+   "expected": "b32"
+  },
+  {
+   "a": "b32",
+   "b": null,
+   "expected": "b33"
+  },
+  {
+   "a": "b33",
+   "b": null,
+   "expected": "b34"
+  },
+  {
+   "a": "b34",
+   "b": null,
+   "expected": "b35"
+  },
+  {
+   "a": "b35",
+   "b": null,
+   "expected": "b36"
+  },
+  {
+   "a": "b36",
+   "b": null,
+   "expected": "b37"
+  },
+  {
+   "a": "b37",
+   "b": null,
+   "expected": "b38"
+  },
+  {
+   "a": "b38",
+   "b": null,
+   "expected": "b39"
+  },
+  {
+   "a": "b39",
+   "b": null,
+   "expected": "b3A"
+  },
+  {
+   "a": "b3A",
+   "b": null,
+   "expected": "b3B"
+  },
+  {
+   "a": "b3B",
+   "b": null,
+   "expected": "b3C"
+  },
+  {
+   "a": "b3C",
+   "b": null,
+   "expected": "b3D"
+  },
+  {
+   "a": "b3D",
+   "b": null,
+   "expected": "b3E"
+  },
+  {
+   "a": "b3E",
+   "b": null,
+   "expected": "b3F"
+  },
+  {
+   "a": "b3F",
+   "b": null,
+   "expected": "b3G"
+  },
+  {
+   "a": "b3G",
+   "b": null,
+   "expected": "b3H"
+  },
+  {
+   "a": "b3H",
+   "b": null,
+   "expected": "b3I"
+  },
+  {
+   "a": "b3I",
+   "b": null,
+   "expected": "b3J"
+  },
+  {
+   "a": "b3J",
+   "b": null,
+   "expected": "b3K"
+  },
+  {
+   "a": "b3K",
+   "b": null,
+   "expected": "b3L"
+  },
+  {
+   "a": "b3L",
+   "b": null,
+   "expected": "b3M"
+  },
+  {
+   "a": "b3M",
+   "b": null,
+   "expected": "b3N"
+  },
+  {
+   "a": "b3N",
+   "b": null,
+   "expected": "b3O"
+  },
+  {
+   "a": "b3O",
+   "b": null,
+   "expected": "b3P"
+  },
+  {
+   "a": "b3P",
+   "b": null,
+   "expected": "b3Q"
+  },
+  {
+   "a": "b3Q",
+   "b": null,
+   "expected": "b3R"
+  },
+  {
+   "a": "b3R",
+   "b": null,
+   "expected": "b3S"
+  },
+  {
+   "a": "b3S",
+   "b": null,
+   "expected": "b3T"
+  },
+  {
+   "a": "b3T",
+   "b": null,
+   "expected": "b3U"
+  },
+  {
+   "a": "b3U",
+   "b": null,
+   "expected": "b3V"
+  },
+  {
+   "a": "b3V",
+   "b": null,
+   "expected": "b3W"
+  },
+  {
+   "a": "b3W",
+   "b": null,
+   "expected": "b3X"
+  },
+  {
+   "a": "b3X",
+   "b": null,
+   "expected": "b3Y"
+  },
+  {
+   "a": "b3Y",
+   "b": null,
+   "expected": "b3Z"
+  },
+  {
+   "a": "b3Z",
+   "b": null,
+   "expected": "b3a"
+  },
+  {
+   "a": "b3a",
+   "b": null,
+   "expected": "b3b"
+  },
+  {
+   "a": "b3b",
+   "b": null,
+   "expected": "b3c"
+  },
+  {
+   "a": "b3c",
+   "b": null,
+   "expected": "b3d"
+  },
+  {
+   "a": "b3d",
+   "b": null,
+   "expected": "b3e"
+  },
+  {
+   "a": "b3e",
+   "b": null,
+   "expected": "b3f"
+  },
+  {
+   "a": "b3f",
+   "b": null,
+   "expected": "b3g"
+  },
+  {
+   "a": "b3g",
+   "b": null,
+   "expected": "b3h"
+  },
+  {
+   "a": "b3h",
+   "b": null,
+   "expected": "b3i"
+  },
+  {
+   "a": "b3i",
+   "b": null,
+   "expected": "b3j"
+  },
+  {
+   "a": "b3j",
+   "b": null,
+   "expected": "b3k"
+  },
+  {
+   "a": "b3k",
+   "b": null,
+   "expected": "b3l"
+  },
+  {
+   "a": "b3l",
+   "b": null,
+   "expected": "b3m"
+  },
+  {
+   "a": "b3m",
+   "b": null,
+   "expected": "b3n"
+  },
+  {
+   "a": "b3n",
+   "b": null,
+   "expected": "b3o"
+  },
+  {
+   "a": "b3o",
+   "b": null,
+   "expected": "b3p"
+  },
+  {
+   "a": "b3p",
+   "b": null,
+   "expected": "b3q"
+  },
+  {
+   "a": "b3q",
+   "b": null,
+   "expected": "b3r"
+  },
+  {
+   "a": "b3r",
+   "b": null,
+   "expected": "b3s"
+  },
+  {
+   "a": "b3s",
+   "b": null,
+   "expected": "b3t"
+  },
+  {
+   "a": "b3t",
+   "b": null,
+   "expected": "b3u"
+  },
+  {
+   "a": "b3u",
+   "b": null,
+   "expected": "b3v"
+  },
+  {
+   "a": "b3v",
+   "b": null,
+   "expected": "b3w"
+  },
+  {
+   "a": "b3w",
+   "b": null,
+   "expected": "b3x"
+  },
+  {
+   "a": "b3x",
+   "b": null,
+   "expected": "b3y"
+  },
+  {
+   "a": "b3y",
+   "b": null,
+   "expected": "b3z"
+  },
+  {
+   "a": "b3z",
+   "b": null,
+   "expected": "b40"
+  },
+  {
+   "a": "b40",
+   "b": null,
+   "expected": "b41"
+  },
+  {
+   "a": "b41",
+   "b": null,
+   "expected": "b42"
+  },
+  {
+   "a": "b42",
+   "b": null,
+   "expected": "b43"
+  },
+  {
+   "a": "b43",
+   "b": null,
+   "expected": "b44"
+  },
+  {
+   "a": "b44",
+   "b": null,
+   "expected": "b45"
+  },
+  {
+   "a": "b45",
+   "b": null,
+   "expected": "b46"
+  },
+  {
+   "a": "b46",
+   "b": null,
+   "expected": "b47"
+  },
+  {
+   "a": "b47",
+   "b": null,
+   "expected": "b48"
+  },
+  {
+   "a": "b48",
+   "b": null,
+   "expected": "b49"
+  },
+  {
+   "a": "b49",
+   "b": null,
+   "expected": "b4A"
+  },
+  {
+   "a": "b4A",
+   "b": null,
+   "expected": "b4B"
+  },
+  {
+   "a": "b4B",
+   "b": null,
+   "expected": "b4C"
+  },
+  {
+   "a": "b4C",
+   "b": null,
+   "expected": "b4D"
+  },
+  {
+   "a": "b4D",
+   "b": null,
+   "expected": "b4E"
+  },
+  {
+   "a": "b4E",
+   "b": null,
+   "expected": "b4F"
+  },
+  {
+   "a": "b4F",
+   "b": null,
+   "expected": "b4G"
+  },
+  {
+   "a": "b4G",
+   "b": null,
+   "expected": "b4H"
+  },
+  {
+   "a": "b4H",
+   "b": null,
+   "expected": "b4I"
+  },
+  {
+   "a": "b4I",
+   "b": null,
+   "expected": "b4J"
+  },
+  {
+   "a": "b4J",
+   "b": null,
+   "expected": "b4K"
+  },
+  {
+   "a": "b4K",
+   "b": null,
+   "expected": "b4L"
+  },
+  {
+   "a": "b4L",
+   "b": null,
+   "expected": "b4M"
+  },
+  {
+   "a": "b4M",
+   "b": null,
+   "expected": "b4N"
+  },
+  {
+   "a": "b4N",
+   "b": null,
+   "expected": "b4O"
+  },
+  {
+   "a": "b4O",
+   "b": null,
+   "expected": "b4P"
+  },
+  {
+   "a": "b4P",
+   "b": null,
+   "expected": "b4Q"
+  },
+  {
+   "a": "b4Q",
+   "b": null,
+   "expected": "b4R"
+  },
+  {
+   "a": "b4R",
+   "b": null,
+   "expected": "b4S"
+  },
+  {
+   "a": "b4S",
+   "b": null,
+   "expected": "b4T"
+  },
+  {
+   "a": "b4T",
+   "b": null,
+   "expected": "b4U"
+  },
+  {
+   "a": "b4U",
+   "b": null,
+   "expected": "b4V"
+  },
+  {
+   "a": "b4V",
+   "b": null,
+   "expected": "b4W"
+  },
+  {
+   "a": "b4W",
+   "b": null,
+   "expected": "b4X"
+  },
+  {
+   "a": "b4X",
+   "b": null,
+   "expected": "b4Y"
+  },
+  {
+   "a": "b4Y",
+   "b": null,
+   "expected": "b4Z"
+  },
+  {
+   "a": "b4Z",
+   "b": null,
+   "expected": "b4a"
+  },
+  {
+   "a": "b4a",
+   "b": null,
+   "expected": "b4b"
+  },
+  {
+   "a": "b4b",
+   "b": null,
+   "expected": "b4c"
+  },
+  {
+   "a": "b4c",
+   "b": null,
+   "expected": "b4d"
+  },
+  {
+   "a": "b4d",
+   "b": null,
+   "expected": "b4e"
+  },
+  {
+   "a": "b4e",
+   "b": null,
+   "expected": "b4f"
+  },
+  {
+   "a": "b4f",
+   "b": null,
+   "expected": "b4g"
+  },
+  {
+   "a": "b4g",
+   "b": null,
+   "expected": "b4h"
+  },
+  {
+   "a": "b4h",
+   "b": null,
+   "expected": "b4i"
+  },
+  {
+   "a": "b4i",
+   "b": null,
+   "expected": "b4j"
+  },
+  {
+   "a": "b4j",
+   "b": null,
+   "expected": "b4k"
+  },
+  {
+   "a": "b4k",
+   "b": null,
+   "expected": "b4l"
+  },
+  {
+   "a": "b4l",
+   "b": null,
+   "expected": "b4m"
+  },
+  {
+   "a": "b4m",
+   "b": null,
+   "expected": "b4n"
+  },
+  {
+   "a": "b4n",
+   "b": null,
+   "expected": "b4o"
+  },
+  {
+   "a": "b4o",
+   "b": null,
+   "expected": "b4p"
+  },
+  {
+   "a": "b4p",
+   "b": null,
+   "expected": "b4q"
+  },
+  {
+   "a": "b4q",
+   "b": null,
+   "expected": "b4r"
+  },
+  {
+   "a": "b4r",
+   "b": null,
+   "expected": "b4s"
+  },
+  {
+   "a": "b4s",
+   "b": null,
+   "expected": "b4t"
+  },
+  {
+   "a": "b4t",
+   "b": null,
+   "expected": "b4u"
+  },
+  {
+   "a": "b4u",
+   "b": null,
+   "expected": "b4v"
+  },
+  {
+   "a": "b4v",
+   "b": null,
+   "expected": "b4w"
+  },
+  {
+   "a": "b4w",
+   "b": null,
+   "expected": "b4x"
+  },
+  {
+   "a": "b4x",
+   "b": null,
+   "expected": "b4y"
+  },
+  {
+   "a": "b4y",
+   "b": null,
+   "expected": "b4z"
+  },
+  {
+   "a": "b4z",
+   "b": null,
+   "expected": "b50"
+  },
+  {
+   "a": "b50",
+   "b": null,
+   "expected": "b51"
+  },
+  {
+   "a": "b51",
+   "b": null,
+   "expected": "b52"
+  },
+  {
+   "a": "b52",
+   "b": null,
+   "expected": "b53"
+  },
+  {
+   "a": "b53",
+   "b": null,
+   "expected": "b54"
+  },
+  {
+   "a": "b54",
+   "b": null,
+   "expected": "b55"
+  },
+  {
+   "a": "b55",
+   "b": null,
+   "expected": "b56"
+  },
+  {
+   "a": "b56",
+   "b": null,
+   "expected": "b57"
+  },
+  {
+   "a": "b57",
+   "b": null,
+   "expected": "b58"
+  },
+  {
+   "a": "b58",
+   "b": null,
+   "expected": "b59"
+  },
+  {
+   "a": "b59",
+   "b": null,
+   "expected": "b5A"
+  },
+  {
+   "a": "b5A",
+   "b": null,
+   "expected": "b5B"
+  },
+  {
+   "a": "b5B",
+   "b": null,
+   "expected": "b5C"
+  },
+  {
+   "a": "b5C",
+   "b": null,
+   "expected": "b5D"
+  },
+  {
+   "a": "b5D",
+   "b": null,
+   "expected": "b5E"
+  },
+  {
+   "a": "b5E",
+   "b": null,
+   "expected": "b5F"
+  },
+  {
+   "a": "b5F",
+   "b": null,
+   "expected": "b5G"
+  },
+  {
+   "a": "b5G",
+   "b": null,
+   "expected": "b5H"
+  },
+  {
+   "a": "b5H",
+   "b": null,
+   "expected": "b5I"
+  },
+  {
+   "a": "b5I",
+   "b": null,
+   "expected": "b5J"
+  },
+  {
+   "a": "b5J",
+   "b": null,
+   "expected": "b5K"
+  },
+  {
+   "a": "b5K",
+   "b": null,
+   "expected": "b5L"
+  },
+  {
+   "a": "b5L",
+   "b": null,
+   "expected": "b5M"
+  },
+  {
+   "a": "b5M",
+   "b": null,
+   "expected": "b5N"
+  },
+  {
+   "a": "b5N",
+   "b": null,
+   "expected": "b5O"
+  },
+  {
+   "a": "b5O",
+   "b": null,
+   "expected": "b5P"
+  },
+  {
+   "a": "b5P",
+   "b": null,
+   "expected": "b5Q"
+  },
+  {
+   "a": "b5Q",
+   "b": null,
+   "expected": "b5R"
+  },
+  {
+   "a": null,
+   "b": null,
+   "expected": "a0"
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "expected": "Zz"
+  },
+  {
+   "a": null,
+   "b": "Zz",
+   "expected": "Zy"
+  },
+  {
+   "a": null,
+   "b": "Zy",
+   "expected": "Zx"
+  },
+  {
+   "a": null,
+   "b": "Zx",
+   "expected": "Zw"
+  },
+  {
+   "a": null,
+   "b": "Zw",
+   "expected": "Zv"
+  },
+  {
+   "a": null,
+   "b": "Zv",
+   "expected": "Zu"
+  },
+  {
+   "a": null,
+   "b": "Zu",
+   "expected": "Zt"
+  },
+  {
+   "a": null,
+   "b": "Zt",
+   "expected": "Zs"
+  },
+  {
+   "a": null,
+   "b": "Zs",
+   "expected": "Zr"
+  },
+  {
+   "a": null,
+   "b": "Zr",
+   "expected": "Zq"
+  },
+  {
+   "a": null,
+   "b": "Zq",
+   "expected": "Zp"
+  },
+  {
+   "a": null,
+   "b": "Zp",
+   "expected": "Zo"
+  },
+  {
+   "a": null,
+   "b": "Zo",
+   "expected": "Zn"
+  },
+  {
+   "a": null,
+   "b": "Zn",
+   "expected": "Zm"
+  },
+  {
+   "a": null,
+   "b": "Zm",
+   "expected": "Zl"
+  },
+  {
+   "a": null,
+   "b": "Zl",
+   "expected": "Zk"
+  },
+  {
+   "a": null,
+   "b": "Zk",
+   "expected": "Zj"
+  },
+  {
+   "a": null,
+   "b": "Zj",
+   "expected": "Zi"
+  },
+  {
+   "a": null,
+   "b": "Zi",
+   "expected": "Zh"
+  },
+  {
+   "a": null,
+   "b": "Zh",
+   "expected": "Zg"
+  },
+  {
+   "a": null,
+   "b": "Zg",
+   "expected": "Zf"
+  },
+  {
+   "a": null,
+   "b": "Zf",
+   "expected": "Ze"
+  },
+  {
+   "a": null,
+   "b": "Ze",
+   "expected": "Zd"
+  },
+  {
+   "a": null,
+   "b": "Zd",
+   "expected": "Zc"
+  },
+  {
+   "a": null,
+   "b": "Zc",
+   "expected": "Zb"
+  },
+  {
+   "a": null,
+   "b": "Zb",
+   "expected": "Za"
+  },
+  {
+   "a": null,
+   "b": "Za",
+   "expected": "ZZ"
+  },
+  {
+   "a": null,
+   "b": "ZZ",
+   "expected": "ZY"
+  },
+  {
+   "a": null,
+   "b": "ZY",
+   "expected": "ZX"
+  },
+  {
+   "a": null,
+   "b": "ZX",
+   "expected": "ZW"
+  },
+  {
+   "a": null,
+   "b": "ZW",
+   "expected": "ZV"
+  },
+  {
+   "a": null,
+   "b": "ZV",
+   "expected": "ZU"
+  },
+  {
+   "a": null,
+   "b": "ZU",
+   "expected": "ZT"
+  },
+  {
+   "a": null,
+   "b": "ZT",
+   "expected": "ZS"
+  },
+  {
+   "a": null,
+   "b": "ZS",
+   "expected": "ZR"
+  },
+  {
+   "a": null,
+   "b": "ZR",
+   "expected": "ZQ"
+  },
+  {
+   "a": null,
+   "b": "ZQ",
+   "expected": "ZP"
+  },
+  {
+   "a": null,
+   "b": "ZP",
+   "expected": "ZO"
+  },
+  {
+   "a": null,
+   "b": "ZO",
+   "expected": "ZN"
+  },
+  {
+   "a": null,
+   "b": "ZN",
+   "expected": "ZM"
+  },
+  {
+   "a": null,
+   "b": "ZM",
+   "expected": "ZL"
+  },
+  {
+   "a": null,
+   "b": "ZL",
+   "expected": "ZK"
+  },
+  {
+   "a": null,
+   "b": "ZK",
+   "expected": "ZJ"
+  },
+  {
+   "a": null,
+   "b": "ZJ",
+   "expected": "ZI"
+  },
+  {
+   "a": null,
+   "b": "ZI",
+   "expected": "ZH"
+  },
+  {
+   "a": null,
+   "b": "ZH",
+   "expected": "ZG"
+  },
+  {
+   "a": null,
+   "b": "ZG",
+   "expected": "ZF"
+  },
+  {
+   "a": null,
+   "b": "ZF",
+   "expected": "ZE"
+  },
+  {
+   "a": null,
+   "b": "ZE",
+   "expected": "ZD"
+  },
+  {
+   "a": null,
+   "b": "ZD",
+   "expected": "ZC"
+  },
+  {
+   "a": null,
+   "b": "ZC",
+   "expected": "ZB"
+  },
+  {
+   "a": null,
+   "b": "ZB",
+   "expected": "ZA"
+  },
+  {
+   "a": null,
+   "b": "ZA",
+   "expected": "Z9"
+  },
+  {
+   "a": null,
+   "b": "Z9",
+   "expected": "Z8"
+  },
+  {
+   "a": null,
+   "b": "Z8",
+   "expected": "Z7"
+  },
+  {
+   "a": null,
+   "b": "Z7",
+   "expected": "Z6"
+  },
+  {
+   "a": null,
+   "b": "Z6",
+   "expected": "Z5"
+  },
+  {
+   "a": null,
+   "b": "Z5",
+   "expected": "Z4"
+  },
+  {
+   "a": null,
+   "b": "Z4",
+   "expected": "Z3"
+  },
+  {
+   "a": null,
+   "b": "Z3",
+   "expected": "Z2"
+  },
+  {
+   "a": null,
+   "b": "Z2",
+   "expected": "Z1"
+  },
+  {
+   "a": null,
+   "b": "Z1",
+   "expected": "Z0"
+  },
+  {
+   "a": null,
+   "b": "Z0",
+   "expected": "Yzz"
+  },
+  {
+   "a": null,
+   "b": "Yzz",
+   "expected": "Yzy"
+  },
+  {
+   "a": null,
+   "b": "Yzy",
+   "expected": "Yzx"
+  },
+  {
+   "a": null,
+   "b": "Yzx",
+   "expected": "Yzw"
+  },
+  {
+   "a": null,
+   "b": "Yzw",
+   "expected": "Yzv"
+  },
+  {
+   "a": null,
+   "b": "Yzv",
+   "expected": "Yzu"
+  },
+  {
+   "a": null,
+   "b": "Yzu",
+   "expected": "Yzt"
+  },
+  {
+   "a": null,
+   "b": "Yzt",
+   "expected": "Yzs"
+  },
+  {
+   "a": null,
+   "b": "Yzs",
+   "expected": "Yzr"
+  },
+  {
+   "a": null,
+   "b": "Yzr",
+   "expected": "Yzq"
+  },
+  {
+   "a": null,
+   "b": "Yzq",
+   "expected": "Yzp"
+  },
+  {
+   "a": null,
+   "b": "Yzp",
+   "expected": "Yzo"
+  },
+  {
+   "a": null,
+   "b": "Yzo",
+   "expected": "Yzn"
+  },
+  {
+   "a": null,
+   "b": "Yzn",
+   "expected": "Yzm"
+  },
+  {
+   "a": null,
+   "b": "Yzm",
+   "expected": "Yzl"
+  },
+  {
+   "a": null,
+   "b": "Yzl",
+   "expected": "Yzk"
+  },
+  {
+   "a": null,
+   "b": "Yzk",
+   "expected": "Yzj"
+  },
+  {
+   "a": null,
+   "b": "Yzj",
+   "expected": "Yzi"
+  },
+  {
+   "a": null,
+   "b": "Yzi",
+   "expected": "Yzh"
+  },
+  {
+   "a": null,
+   "b": "Yzh",
+   "expected": "Yzg"
+  },
+  {
+   "a": null,
+   "b": "Yzg",
+   "expected": "Yzf"
+  },
+  {
+   "a": null,
+   "b": "Yzf",
+   "expected": "Yze"
+  },
+  {
+   "a": null,
+   "b": "Yze",
+   "expected": "Yzd"
+  },
+  {
+   "a": null,
+   "b": "Yzd",
+   "expected": "Yzc"
+  },
+  {
+   "a": null,
+   "b": "Yzc",
+   "expected": "Yzb"
+  },
+  {
+   "a": null,
+   "b": "Yzb",
+   "expected": "Yza"
+  },
+  {
+   "a": null,
+   "b": "Yza",
+   "expected": "YzZ"
+  },
+  {
+   "a": null,
+   "b": "YzZ",
+   "expected": "YzY"
+  },
+  {
+   "a": null,
+   "b": "YzY",
+   "expected": "YzX"
+  },
+  {
+   "a": null,
+   "b": "YzX",
+   "expected": "YzW"
+  },
+  {
+   "a": null,
+   "b": "YzW",
+   "expected": "YzV"
+  },
+  {
+   "a": null,
+   "b": "YzV",
+   "expected": "YzU"
+  },
+  {
+   "a": null,
+   "b": "YzU",
+   "expected": "YzT"
+  },
+  {
+   "a": null,
+   "b": "YzT",
+   "expected": "YzS"
+  },
+  {
+   "a": null,
+   "b": "YzS",
+   "expected": "YzR"
+  },
+  {
+   "a": null,
+   "b": "YzR",
+   "expected": "YzQ"
+  },
+  {
+   "a": null,
+   "b": "YzQ",
+   "expected": "YzP"
+  },
+  {
+   "a": null,
+   "b": "YzP",
+   "expected": "YzO"
+  },
+  {
+   "a": null,
+   "b": "YzO",
+   "expected": "YzN"
+  },
+  {
+   "a": null,
+   "b": "YzN",
+   "expected": "YzM"
+  },
+  {
+   "a": null,
+   "b": "YzM",
+   "expected": "YzL"
+  },
+  {
+   "a": null,
+   "b": "YzL",
+   "expected": "YzK"
+  },
+  {
+   "a": null,
+   "b": "YzK",
+   "expected": "YzJ"
+  },
+  {
+   "a": null,
+   "b": "YzJ",
+   "expected": "YzI"
+  },
+  {
+   "a": null,
+   "b": "YzI",
+   "expected": "YzH"
+  },
+  {
+   "a": null,
+   "b": "YzH",
+   "expected": "YzG"
+  },
+  {
+   "a": null,
+   "b": "YzG",
+   "expected": "YzF"
+  },
+  {
+   "a": null,
+   "b": "YzF",
+   "expected": "YzE"
+  },
+  {
+   "a": null,
+   "b": "YzE",
+   "expected": "YzD"
+  },
+  {
+   "a": null,
+   "b": "YzD",
+   "expected": "YzC"
+  },
+  {
+   "a": null,
+   "b": "YzC",
+   "expected": "YzB"
+  },
+  {
+   "a": null,
+   "b": "YzB",
+   "expected": "YzA"
+  },
+  {
+   "a": null,
+   "b": "YzA",
+   "expected": "Yz9"
+  },
+  {
+   "a": null,
+   "b": "Yz9",
+   "expected": "Yz8"
+  },
+  {
+   "a": null,
+   "b": "Yz8",
+   "expected": "Yz7"
+  },
+  {
+   "a": null,
+   "b": "Yz7",
+   "expected": "Yz6"
+  },
+  {
+   "a": null,
+   "b": "Yz6",
+   "expected": "Yz5"
+  },
+  {
+   "a": null,
+   "b": "Yz5",
+   "expected": "Yz4"
+  },
+  {
+   "a": null,
+   "b": "Yz4",
+   "expected": "Yz3"
+  },
+  {
+   "a": null,
+   "b": "Yz3",
+   "expected": "Yz2"
+  },
+  {
+   "a": null,
+   "b": "Yz2",
+   "expected": "Yz1"
+  },
+  {
+   "a": null,
+   "b": "Yz1",
+   "expected": "Yz0"
+  },
+  {
+   "a": null,
+   "b": "Yz0",
+   "expected": "Yyz"
+  },
+  {
+   "a": null,
+   "b": "Yyz",
+   "expected": "Yyy"
+  },
+  {
+   "a": null,
+   "b": "Yyy",
+   "expected": "Yyx"
+  },
+  {
+   "a": null,
+   "b": "Yyx",
+   "expected": "Yyw"
+  },
+  {
+   "a": null,
+   "b": "Yyw",
+   "expected": "Yyv"
+  },
+  {
+   "a": null,
+   "b": "Yyv",
+   "expected": "Yyu"
+  },
+  {
+   "a": null,
+   "b": "Yyu",
+   "expected": "Yyt"
+  },
+  {
+   "a": null,
+   "b": "Yyt",
+   "expected": "Yys"
+  },
+  {
+   "a": null,
+   "b": "Yys",
+   "expected": "Yyr"
+  },
+  {
+   "a": null,
+   "b": "Yyr",
+   "expected": "Yyq"
+  },
+  {
+   "a": null,
+   "b": "Yyq",
+   "expected": "Yyp"
+  },
+  {
+   "a": null,
+   "b": "Yyp",
+   "expected": "Yyo"
+  },
+  {
+   "a": null,
+   "b": "Yyo",
+   "expected": "Yyn"
+  },
+  {
+   "a": null,
+   "b": "Yyn",
+   "expected": "Yym"
+  },
+  {
+   "a": null,
+   "b": "Yym",
+   "expected": "Yyl"
+  },
+  {
+   "a": null,
+   "b": "Yyl",
+   "expected": "Yyk"
+  },
+  {
+   "a": null,
+   "b": "Yyk",
+   "expected": "Yyj"
+  },
+  {
+   "a": null,
+   "b": "Yyj",
+   "expected": "Yyi"
+  },
+  {
+   "a": null,
+   "b": "Yyi",
+   "expected": "Yyh"
+  },
+  {
+   "a": null,
+   "b": "Yyh",
+   "expected": "Yyg"
+  },
+  {
+   "a": null,
+   "b": "Yyg",
+   "expected": "Yyf"
+  },
+  {
+   "a": null,
+   "b": "Yyf",
+   "expected": "Yye"
+  },
+  {
+   "a": null,
+   "b": "Yye",
+   "expected": "Yyd"
+  },
+  {
+   "a": null,
+   "b": "Yyd",
+   "expected": "Yyc"
+  },
+  {
+   "a": null,
+   "b": "Yyc",
+   "expected": "Yyb"
+  },
+  {
+   "a": null,
+   "b": "Yyb",
+   "expected": "Yya"
+  },
+  {
+   "a": null,
+   "b": "Yya",
+   "expected": "YyZ"
+  },
+  {
+   "a": null,
+   "b": "YyZ",
+   "expected": "YyY"
+  },
+  {
+   "a": null,
+   "b": "YyY",
+   "expected": "YyX"
+  },
+  {
+   "a": null,
+   "b": "YyX",
+   "expected": "YyW"
+  },
+  {
+   "a": null,
+   "b": "YyW",
+   "expected": "YyV"
+  },
+  {
+   "a": null,
+   "b": "YyV",
+   "expected": "YyU"
+  },
+  {
+   "a": null,
+   "b": "YyU",
+   "expected": "YyT"
+  },
+  {
+   "a": null,
+   "b": "YyT",
+   "expected": "YyS"
+  },
+  {
+   "a": null,
+   "b": "YyS",
+   "expected": "YyR"
+  },
+  {
+   "a": null,
+   "b": "YyR",
+   "expected": "YyQ"
+  },
+  {
+   "a": null,
+   "b": "YyQ",
+   "expected": "YyP"
+  },
+  {
+   "a": null,
+   "b": "YyP",
+   "expected": "YyO"
+  },
+  {
+   "a": null,
+   "b": "YyO",
+   "expected": "YyN"
+  },
+  {
+   "a": null,
+   "b": "YyN",
+   "expected": "YyM"
+  },
+  {
+   "a": null,
+   "b": "YyM",
+   "expected": "YyL"
+  },
+  {
+   "a": null,
+   "b": "YyL",
+   "expected": "YyK"
+  },
+  {
+   "a": null,
+   "b": "YyK",
+   "expected": "YyJ"
+  },
+  {
+   "a": null,
+   "b": "YyJ",
+   "expected": "YyI"
+  },
+  {
+   "a": null,
+   "b": "YyI",
+   "expected": "YyH"
+  },
+  {
+   "a": null,
+   "b": "YyH",
+   "expected": "YyG"
+  },
+  {
+   "a": null,
+   "b": "YyG",
+   "expected": "YyF"
+  },
+  {
+   "a": null,
+   "b": "YyF",
+   "expected": "YyE"
+  },
+  {
+   "a": null,
+   "b": "YyE",
+   "expected": "YyD"
+  },
+  {
+   "a": null,
+   "b": "YyD",
+   "expected": "YyC"
+  },
+  {
+   "a": null,
+   "b": "YyC",
+   "expected": "YyB"
+  },
+  {
+   "a": null,
+   "b": "YyB",
+   "expected": "YyA"
+  },
+  {
+   "a": null,
+   "b": "YyA",
+   "expected": "Yy9"
+  },
+  {
+   "a": null,
+   "b": "Yy9",
+   "expected": "Yy8"
+  },
+  {
+   "a": null,
+   "b": "Yy8",
+   "expected": "Yy7"
+  },
+  {
+   "a": null,
+   "b": "Yy7",
+   "expected": "Yy6"
+  },
+  {
+   "a": null,
+   "b": "Yy6",
+   "expected": "Yy5"
+  },
+  {
+   "a": null,
+   "b": "Yy5",
+   "expected": "Yy4"
+  },
+  {
+   "a": null,
+   "b": "Yy4",
+   "expected": "Yy3"
+  },
+  {
+   "a": null,
+   "b": "Yy3",
+   "expected": "Yy2"
+  },
+  {
+   "a": null,
+   "b": "Yy2",
+   "expected": "Yy1"
+  },
+  {
+   "a": null,
+   "b": "Yy1",
+   "expected": "Yy0"
+  },
+  {
+   "a": null,
+   "b": "Yy0",
+   "expected": "Yxz"
+  },
+  {
+   "a": null,
+   "b": "Yxz",
+   "expected": "Yxy"
+  },
+  {
+   "a": null,
+   "b": "Yxy",
+   "expected": "Yxx"
+  },
+  {
+   "a": null,
+   "b": "Yxx",
+   "expected": "Yxw"
+  },
+  {
+   "a": null,
+   "b": "Yxw",
+   "expected": "Yxv"
+  },
+  {
+   "a": null,
+   "b": "Yxv",
+   "expected": "Yxu"
+  },
+  {
+   "a": null,
+   "b": "Yxu",
+   "expected": "Yxt"
+  },
+  {
+   "a": null,
+   "b": "Yxt",
+   "expected": "Yxs"
+  },
+  {
+   "a": null,
+   "b": "Yxs",
+   "expected": "Yxr"
+  },
+  {
+   "a": null,
+   "b": "Yxr",
+   "expected": "Yxq"
+  },
+  {
+   "a": null,
+   "b": "Yxq",
+   "expected": "Yxp"
+  },
+  {
+   "a": null,
+   "b": "Yxp",
+   "expected": "Yxo"
+  },
+  {
+   "a": null,
+   "b": "Yxo",
+   "expected": "Yxn"
+  },
+  {
+   "a": null,
+   "b": "Yxn",
+   "expected": "Yxm"
+  },
+  {
+   "a": null,
+   "b": "Yxm",
+   "expected": "Yxl"
+  },
+  {
+   "a": null,
+   "b": "Yxl",
+   "expected": "Yxk"
+  },
+  {
+   "a": null,
+   "b": "Yxk",
+   "expected": "Yxj"
+  },
+  {
+   "a": null,
+   "b": "Yxj",
+   "expected": "Yxi"
+  },
+  {
+   "a": null,
+   "b": "Yxi",
+   "expected": "Yxh"
+  },
+  {
+   "a": null,
+   "b": "Yxh",
+   "expected": "Yxg"
+  },
+  {
+   "a": null,
+   "b": "Yxg",
+   "expected": "Yxf"
+  },
+  {
+   "a": null,
+   "b": "Yxf",
+   "expected": "Yxe"
+  },
+  {
+   "a": null,
+   "b": "Yxe",
+   "expected": "Yxd"
+  },
+  {
+   "a": null,
+   "b": "Yxd",
+   "expected": "Yxc"
+  },
+  {
+   "a": null,
+   "b": "Yxc",
+   "expected": "Yxb"
+  },
+  {
+   "a": null,
+   "b": "Yxb",
+   "expected": "Yxa"
+  },
+  {
+   "a": null,
+   "b": "Yxa",
+   "expected": "YxZ"
+  },
+  {
+   "a": null,
+   "b": "YxZ",
+   "expected": "YxY"
+  },
+  {
+   "a": null,
+   "b": "YxY",
+   "expected": "YxX"
+  },
+  {
+   "a": null,
+   "b": "YxX",
+   "expected": "YxW"
+  },
+  {
+   "a": null,
+   "b": "YxW",
+   "expected": "YxV"
+  },
+  {
+   "a": null,
+   "b": "YxV",
+   "expected": "YxU"
+  },
+  {
+   "a": null,
+   "b": "YxU",
+   "expected": "YxT"
+  },
+  {
+   "a": null,
+   "b": "YxT",
+   "expected": "YxS"
+  },
+  {
+   "a": null,
+   "b": "YxS",
+   "expected": "YxR"
+  },
+  {
+   "a": null,
+   "b": "YxR",
+   "expected": "YxQ"
+  },
+  {
+   "a": null,
+   "b": "YxQ",
+   "expected": "YxP"
+  },
+  {
+   "a": null,
+   "b": "YxP",
+   "expected": "YxO"
+  },
+  {
+   "a": null,
+   "b": "YxO",
+   "expected": "YxN"
+  },
+  {
+   "a": null,
+   "b": "YxN",
+   "expected": "YxM"
+  },
+  {
+   "a": null,
+   "b": "YxM",
+   "expected": "YxL"
+  },
+  {
+   "a": null,
+   "b": "YxL",
+   "expected": "YxK"
+  },
+  {
+   "a": null,
+   "b": "YxK",
+   "expected": "YxJ"
+  },
+  {
+   "a": null,
+   "b": "YxJ",
+   "expected": "YxI"
+  },
+  {
+   "a": null,
+   "b": "YxI",
+   "expected": "YxH"
+  },
+  {
+   "a": null,
+   "b": "YxH",
+   "expected": "YxG"
+  },
+  {
+   "a": null,
+   "b": "YxG",
+   "expected": "YxF"
+  },
+  {
+   "a": null,
+   "b": "YxF",
+   "expected": "YxE"
+  },
+  {
+   "a": null,
+   "b": "YxE",
+   "expected": "YxD"
+  },
+  {
+   "a": null,
+   "b": "YxD",
+   "expected": "YxC"
+  },
+  {
+   "a": null,
+   "b": "YxC",
+   "expected": "YxB"
+  },
+  {
+   "a": null,
+   "b": "YxB",
+   "expected": "YxA"
+  },
+  {
+   "a": null,
+   "b": "YxA",
+   "expected": "Yx9"
+  },
+  {
+   "a": null,
+   "b": "Yx9",
+   "expected": "Yx8"
+  },
+  {
+   "a": null,
+   "b": "Yx8",
+   "expected": "Yx7"
+  },
+  {
+   "a": null,
+   "b": "Yx7",
+   "expected": "Yx6"
+  },
+  {
+   "a": null,
+   "b": "Yx6",
+   "expected": "Yx5"
+  },
+  {
+   "a": null,
+   "b": "Yx5",
+   "expected": "Yx4"
+  },
+  {
+   "a": null,
+   "b": "Yx4",
+   "expected": "Yx3"
+  },
+  {
+   "a": null,
+   "b": "Yx3",
+   "expected": "Yx2"
+  },
+  {
+   "a": null,
+   "b": "Yx2",
+   "expected": "Yx1"
+  },
+  {
+   "a": null,
+   "b": "Yx1",
+   "expected": "Yx0"
+  },
+  {
+   "a": null,
+   "b": "Yx0",
+   "expected": "Ywz"
+  },
+  {
+   "a": null,
+   "b": "Ywz",
+   "expected": "Ywy"
+  },
+  {
+   "a": null,
+   "b": "Ywy",
+   "expected": "Ywx"
+  },
+  {
+   "a": null,
+   "b": "Ywx",
+   "expected": "Yww"
+  },
+  {
+   "a": null,
+   "b": "Yww",
+   "expected": "Ywv"
+  },
+  {
+   "a": null,
+   "b": "Ywv",
+   "expected": "Ywu"
+  },
+  {
+   "a": null,
+   "b": "Ywu",
+   "expected": "Ywt"
+  },
+  {
+   "a": null,
+   "b": "Ywt",
+   "expected": "Yws"
+  },
+  {
+   "a": null,
+   "b": "Yws",
+   "expected": "Ywr"
+  },
+  {
+   "a": null,
+   "b": "Ywr",
+   "expected": "Ywq"
+  },
+  {
+   "a": null,
+   "b": "Ywq",
+   "expected": "Ywp"
+  },
+  {
+   "a": null,
+   "b": "Ywp",
+   "expected": "Ywo"
+  },
+  {
+   "a": null,
+   "b": "Ywo",
+   "expected": "Ywn"
+  },
+  {
+   "a": null,
+   "b": "Ywn",
+   "expected": "Ywm"
+  },
+  {
+   "a": null,
+   "b": "Ywm",
+   "expected": "Ywl"
+  },
+  {
+   "a": null,
+   "b": "Ywl",
+   "expected": "Ywk"
+  },
+  {
+   "a": null,
+   "b": "Ywk",
+   "expected": "Ywj"
+  },
+  {
+   "a": null,
+   "b": "Ywj",
+   "expected": "Ywi"
+  },
+  {
+   "a": null,
+   "b": "Ywi",
+   "expected": "Ywh"
+  },
+  {
+   "a": null,
+   "b": "Ywh",
+   "expected": "Ywg"
+  },
+  {
+   "a": null,
+   "b": "Ywg",
+   "expected": "Ywf"
+  },
+  {
+   "a": null,
+   "b": "Ywf",
+   "expected": "Ywe"
+  },
+  {
+   "a": null,
+   "b": "Ywe",
+   "expected": "Ywd"
+  },
+  {
+   "a": null,
+   "b": "Ywd",
+   "expected": "Ywc"
+  },
+  {
+   "a": null,
+   "b": "Ywc",
+   "expected": "Ywb"
+  },
+  {
+   "a": null,
+   "b": "Ywb",
+   "expected": "Ywa"
+  },
+  {
+   "a": null,
+   "b": "Ywa",
+   "expected": "YwZ"
+  },
+  {
+   "a": null,
+   "b": "YwZ",
+   "expected": "YwY"
+  },
+  {
+   "a": null,
+   "b": "YwY",
+   "expected": "YwX"
+  },
+  {
+   "a": null,
+   "b": "YwX",
+   "expected": "YwW"
+  },
+  {
+   "a": null,
+   "b": "YwW",
+   "expected": "YwV"
+  },
+  {
+   "a": null,
+   "b": "YwV",
+   "expected": "YwU"
+  },
+  {
+   "a": null,
+   "b": "YwU",
+   "expected": "YwT"
+  },
+  {
+   "a": null,
+   "b": "YwT",
+   "expected": "YwS"
+  },
+  {
+   "a": null,
+   "b": "YwS",
+   "expected": "YwR"
+  },
+  {
+   "a": null,
+   "b": "YwR",
+   "expected": "YwQ"
+  },
+  {
+   "a": null,
+   "b": "YwQ",
+   "expected": "YwP"
+  },
+  {
+   "a": null,
+   "b": "YwP",
+   "expected": "YwO"
+  },
+  {
+   "a": null,
+   "b": "YwO",
+   "expected": "YwN"
+  },
+  {
+   "a": null,
+   "b": "YwN",
+   "expected": "YwM"
+  },
+  {
+   "a": null,
+   "b": "YwM",
+   "expected": "YwL"
+  },
+  {
+   "a": null,
+   "b": "YwL",
+   "expected": "YwK"
+  },
+  {
+   "a": null,
+   "b": "YwK",
+   "expected": "YwJ"
+  },
+  {
+   "a": null,
+   "b": "YwJ",
+   "expected": "YwI"
+  },
+  {
+   "a": null,
+   "b": "YwI",
+   "expected": "YwH"
+  },
+  {
+   "a": null,
+   "b": "YwH",
+   "expected": "YwG"
+  },
+  {
+   "a": null,
+   "b": "YwG",
+   "expected": "YwF"
+  },
+  {
+   "a": null,
+   "b": "YwF",
+   "expected": "YwE"
+  },
+  {
+   "a": null,
+   "b": "YwE",
+   "expected": "YwD"
+  },
+  {
+   "a": null,
+   "b": "YwD",
+   "expected": "YwC"
+  },
+  {
+   "a": null,
+   "b": "YwC",
+   "expected": "YwB"
+  },
+  {
+   "a": null,
+   "b": "YwB",
+   "expected": "YwA"
+  },
+  {
+   "a": null,
+   "b": "YwA",
+   "expected": "Yw9"
+  },
+  {
+   "a": null,
+   "b": "Yw9",
+   "expected": "Yw8"
+  },
+  {
+   "a": null,
+   "b": "Yw8",
+   "expected": "Yw7"
+  },
+  {
+   "a": null,
+   "b": "Yw7",
+   "expected": "Yw6"
+  },
+  {
+   "a": null,
+   "b": "Yw6",
+   "expected": "Yw5"
+  },
+  {
+   "a": null,
+   "b": "Yw5",
+   "expected": "Yw4"
+  },
+  {
+   "a": null,
+   "b": "Yw4",
+   "expected": "Yw3"
+  },
+  {
+   "a": null,
+   "b": "Yw3",
+   "expected": "Yw2"
+  },
+  {
+   "a": null,
+   "b": "Yw2",
+   "expected": "Yw1"
+  },
+  {
+   "a": null,
+   "b": "Yw1",
+   "expected": "Yw0"
+  },
+  {
+   "a": null,
+   "b": "Yw0",
+   "expected": "Yvz"
+  },
+  {
+   "a": null,
+   "b": "Yvz",
+   "expected": "Yvy"
+  },
+  {
+   "a": null,
+   "b": "Yvy",
+   "expected": "Yvx"
+  },
+  {
+   "a": null,
+   "b": "Yvx",
+   "expected": "Yvw"
+  },
+  {
+   "a": null,
+   "b": "Yvw",
+   "expected": "Yvv"
+  },
+  {
+   "a": null,
+   "b": "Yvv",
+   "expected": "Yvu"
+  },
+  {
+   "a": null,
+   "b": "Yvu",
+   "expected": "Yvt"
+  },
+  {
+   "a": null,
+   "b": "Yvt",
+   "expected": "Yvs"
+  },
+  {
+   "a": null,
+   "b": "Yvs",
+   "expected": "Yvr"
+  },
+  {
+   "a": null,
+   "b": "Yvr",
+   "expected": "Yvq"
+  },
+  {
+   "a": null,
+   "b": "Yvq",
+   "expected": "Yvp"
+  },
+  {
+   "a": null,
+   "b": "Yvp",
+   "expected": "Yvo"
+  },
+  {
+   "a": null,
+   "b": "Yvo",
+   "expected": "Yvn"
+  },
+  {
+   "a": null,
+   "b": "Yvn",
+   "expected": "Yvm"
+  },
+  {
+   "a": null,
+   "b": "Yvm",
+   "expected": "Yvl"
+  },
+  {
+   "a": null,
+   "b": "Yvl",
+   "expected": "Yvk"
+  },
+  {
+   "a": null,
+   "b": "Yvk",
+   "expected": "Yvj"
+  },
+  {
+   "a": null,
+   "b": "Yvj",
+   "expected": "Yvi"
+  },
+  {
+   "a": null,
+   "b": "Yvi",
+   "expected": "Yvh"
+  },
+  {
+   "a": null,
+   "b": "Yvh",
+   "expected": "Yvg"
+  },
+  {
+   "a": null,
+   "b": "Yvg",
+   "expected": "Yvf"
+  },
+  {
+   "a": null,
+   "b": "Yvf",
+   "expected": "Yve"
+  },
+  {
+   "a": null,
+   "b": "Yve",
+   "expected": "Yvd"
+  },
+  {
+   "a": null,
+   "b": "Yvd",
+   "expected": "Yvc"
+  },
+  {
+   "a": null,
+   "b": "Yvc",
+   "expected": "Yvb"
+  },
+  {
+   "a": null,
+   "b": "Yvb",
+   "expected": "Yva"
+  },
+  {
+   "a": null,
+   "b": "Yva",
+   "expected": "YvZ"
+  },
+  {
+   "a": null,
+   "b": "YvZ",
+   "expected": "YvY"
+  },
+  {
+   "a": null,
+   "b": "YvY",
+   "expected": "YvX"
+  },
+  {
+   "a": null,
+   "b": "YvX",
+   "expected": "YvW"
+  },
+  {
+   "a": null,
+   "b": "YvW",
+   "expected": "YvV"
+  },
+  {
+   "a": null,
+   "b": "YvV",
+   "expected": "YvU"
+  },
+  {
+   "a": null,
+   "b": "YvU",
+   "expected": "YvT"
+  },
+  {
+   "a": null,
+   "b": "YvT",
+   "expected": "YvS"
+  },
+  {
+   "a": null,
+   "b": "YvS",
+   "expected": "YvR"
+  },
+  {
+   "a": null,
+   "b": "YvR",
+   "expected": "YvQ"
+  },
+  {
+   "a": null,
+   "b": "YvQ",
+   "expected": "YvP"
+  },
+  {
+   "a": null,
+   "b": "YvP",
+   "expected": "YvO"
+  },
+  {
+   "a": null,
+   "b": "YvO",
+   "expected": "YvN"
+  },
+  {
+   "a": null,
+   "b": "YvN",
+   "expected": "YvM"
+  },
+  {
+   "a": null,
+   "b": "YvM",
+   "expected": "YvL"
+  },
+  {
+   "a": null,
+   "b": "YvL",
+   "expected": "YvK"
+  },
+  {
+   "a": null,
+   "b": "YvK",
+   "expected": "YvJ"
+  },
+  {
+   "a": null,
+   "b": "YvJ",
+   "expected": "YvI"
+  },
+  {
+   "a": null,
+   "b": "YvI",
+   "expected": "YvH"
+  },
+  {
+   "a": null,
+   "b": "YvH",
+   "expected": "YvG"
+  },
+  {
+   "a": null,
+   "b": "YvG",
+   "expected": "YvF"
+  },
+  {
+   "a": null,
+   "b": "YvF",
+   "expected": "YvE"
+  },
+  {
+   "a": null,
+   "b": "YvE",
+   "expected": "YvD"
+  },
+  {
+   "a": null,
+   "b": "YvD",
+   "expected": "YvC"
+  },
+  {
+   "a": null,
+   "b": "YvC",
+   "expected": "YvB"
+  },
+  {
+   "a": null,
+   "b": "YvB",
+   "expected": "YvA"
+  },
+  {
+   "a": null,
+   "b": "YvA",
+   "expected": "Yv9"
+  },
+  {
+   "a": null,
+   "b": "Yv9",
+   "expected": "Yv8"
+  },
+  {
+   "a": null,
+   "b": "Yv8",
+   "expected": "Yv7"
+  },
+  {
+   "a": null,
+   "b": "Yv7",
+   "expected": "Yv6"
+  },
+  {
+   "a": null,
+   "b": "Yv6",
+   "expected": "Yv5"
+  },
+  {
+   "a": null,
+   "b": "Yv5",
+   "expected": "Yv4"
+  },
+  {
+   "a": null,
+   "b": "Yv4",
+   "expected": "Yv3"
+  },
+  {
+   "a": null,
+   "b": "Yv3",
+   "expected": "Yv2"
+  },
+  {
+   "a": null,
+   "b": "Yv2",
+   "expected": "Yv1"
+  },
+  {
+   "a": null,
+   "b": "Yv1",
+   "expected": "Yv0"
+  },
+  {
+   "a": null,
+   "b": "Yv0",
+   "expected": "Yuz"
+  },
+  {
+   "a": null,
+   "b": "Yuz",
+   "expected": "Yuy"
+  },
+  {
+   "a": null,
+   "b": "Yuy",
+   "expected": "Yux"
+  },
+  {
+   "a": null,
+   "b": "Yux",
+   "expected": "Yuw"
+  },
+  {
+   "a": null,
+   "b": "Yuw",
+   "expected": "Yuv"
+  },
+  {
+   "a": null,
+   "b": "Yuv",
+   "expected": "Yuu"
+  },
+  {
+   "a": null,
+   "b": "Yuu",
+   "expected": "Yut"
+  },
+  {
+   "a": null,
+   "b": "Yut",
+   "expected": "Yus"
+  },
+  {
+   "a": null,
+   "b": "Yus",
+   "expected": "Yur"
+  },
+  {
+   "a": null,
+   "b": "Yur",
+   "expected": "Yuq"
+  },
+  {
+   "a": null,
+   "b": "Yuq",
+   "expected": "Yup"
+  },
+  {
+   "a": null,
+   "b": "Yup",
+   "expected": "Yuo"
+  },
+  {
+   "a": null,
+   "b": "Yuo",
+   "expected": "Yun"
+  },
+  {
+   "a": null,
+   "b": "Yun",
+   "expected": "Yum"
+  },
+  {
+   "a": null,
+   "b": "Yum",
+   "expected": "Yul"
+  },
+  {
+   "a": null,
+   "b": "Yul",
+   "expected": "Yuk"
+  },
+  {
+   "a": null,
+   "b": "Yuk",
+   "expected": "Yuj"
+  },
+  {
+   "a": null,
+   "b": "Yuj",
+   "expected": "Yui"
+  },
+  {
+   "a": null,
+   "b": "Yui",
+   "expected": "Yuh"
+  },
+  {
+   "a": null,
+   "b": "Yuh",
+   "expected": "Yug"
+  },
+  {
+   "a": null,
+   "b": "Yug",
+   "expected": "Yuf"
+  },
+  {
+   "a": null,
+   "b": "Yuf",
+   "expected": "Yue"
+  },
+  {
+   "a": null,
+   "b": "Yue",
+   "expected": "Yud"
+  },
+  {
+   "a": null,
+   "b": "Yud",
+   "expected": "Yuc"
+  },
+  {
+   "a": null,
+   "b": "Yuc",
+   "expected": "Yub"
+  },
+  {
+   "a": null,
+   "b": "Yub",
+   "expected": "Yua"
+  },
+  {
+   "a": null,
+   "b": "Yua",
+   "expected": "YuZ"
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "expected": "a0V"
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "expected": "a0G"
+  },
+  {
+   "a": "a0",
+   "b": "a0G",
+   "expected": "a08"
+  },
+  {
+   "a": "a0",
+   "b": "a08",
+   "expected": "a04"
+  },
+  {
+   "a": "a0",
+   "b": "a04",
+   "expected": "a02"
+  },
+  {
+   "a": "a0",
+   "b": "a02",
+   "expected": "a01"
+  },
+  {
+   "a": "a0",
+   "b": "a01",
+   "expected": "a00V"
+  },
+  {
+   "a": "a0",
+   "b": "a00V",
+   "expected": "a00G"
+  },
+  {
+   "a": "a0",
+   "b": "a00G",
+   "expected": "a008"
+  },
+  {
+   "a": "a0",
+   "b": "a008",
+   "expected": "a004"
+  },
+  {
+   "a": "a0",
+   "b": "a004",
+   "expected": "a002"
+  },
+  {
+   "a": "a0",
+   "b": "a002",
+   "expected": "a001"
+  },
+  {
+   "a": "a0",
+   "b": "a001",
+   "expected": "a000V"
+  },
+  {
+   "a": "a0",
+   "b": "a000V",
+   "expected": "a000G"
+  },
+  {
+   "a": "a0",
+   "b": "a000G",
+   "expected": "a0008"
+  },
+  {
+   "a": "a0",
+   "b": "a0008",
+   "expected": "a0004"
+  },
+  {
+   "a": "a0",
+   "b": "a0004",
+   "expected": "a0002"
+  },
+  {
+   "a": "a0",
+   "b": "a0002",
+   "expected": "a0001"
+  },
+  {
+   "a": "a0",
+   "b": "a0001",
+   "expected": "a0000V"
+  },
+  {
+   "a": "a0",
+   "b": "a0000V",
+   "expected": "a0000G"
+  },
+  {
+   "a": "a0",
+   "b": "a0000G",
+   "expected": "a00008"
+  },
+  {
+   "a": "a0",
+   "b": "a00008",
+   "expected": "a00004"
+  },
+  {
+   "a": "a0",
+   "b": "a00004",
+   "expected": "a00002"
+  },
+  {
+   "a": "a0",
+   "b": "a00002",
+   "expected": "a00001"
+  },
+  {
+   "a": "a0",
+   "b": "a00001",
+   "expected": "a00000V"
+  },
+  {
+   "a": "a0",
+   "b": "a00000V",
+   "expected": "a00000G"
+  },
+  {
+   "a": "a0",
+   "b": "a00000G",
+   "expected": "a000008"
+  },
+  {
+   "a": "a0",
+   "b": "a000008",
+   "expected": "a000004"
+  },
+  {
+   "a": "a0",
+   "b": "a000004",
+   "expected": "a000002"
+  },
+  {
+   "a": "a0",
+   "b": "a000002",
+   "expected": "a000001"
+  },
+  {
+   "a": "a0",
+   "b": "a000001",
+   "expected": "a000000V"
+  },
+  {
+   "a": "a0",
+   "b": "a000000V",
+   "expected": "a000000G"
+  },
+  {
+   "a": "a0",
+   "b": "a000000G",
+   "expected": "a0000008"
+  },
+  {
+   "a": "a0",
+   "b": "a0000008",
+   "expected": "a0000004"
+  },
+  {
+   "a": "a0",
+   "b": "a0000004",
+   "expected": "a0000002"
+  },
+  {
+   "a": "a0",
+   "b": "a0000002",
+   "expected": "a0000001"
+  },
+  {
+   "a": "a0",
+   "b": "a0000001",
+   "expected": "a0000000V"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000V",
+   "expected": "a0000000G"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000G",
+   "expected": "a00000008"
+  },
+  {
+   "a": "a0",
+   "b": "a00000008",
+   "expected": "a00000004"
+  },
+  {
+   "a": "a0",
+   "b": "a00000004",
+   "expected": "a00000002"
+  },
+  {
+   "a": "a0",
+   "b": "a00000002",
+   "expected": "a00000001"
+  },
+  {
+   "a": "a0",
+   "b": "a00000001",
+   "expected": "a00000000V"
+  },
+  {
+   "a": "a0",
+   "b": "a00000000V",
+   "expected": "a00000000G"
+  },
+  {
+   "a": "a0",
+   "b": "a00000000G",
+   "expected": "a000000008"
+  },
+  {
+   "a": "a0",
+   "b": "a000000008",
+   "expected": "a000000004"
+  },
+  {
+   "a": "a0",
+   "b": "a000000004",
+   "expected": "a000000002"
+  },
+  {
+   "a": "a0",
+   "b": "a000000002",
+   "expected": "a000000001"
+  },
+  {
+   "a": "a0",
+   "b": "a000000001",
+   "expected": "a000000000V"
+  },
+  {
+   "a": "a0",
+   "b": "a000000000V",
+   "expected": "a000000000G"
+  },
+  {
+   "a": "a0",
+   "b": "a000000000G",
+   "expected": "a0000000008"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000008",
+   "expected": "a0000000004"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000004",
+   "expected": "a0000000002"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000002",
+   "expected": "a0000000001"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000001",
+   "expected": "a0000000000V"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000000V",
+   "expected": "a0000000000G"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000000G",
+   "expected": "a00000000008"
+  },
+  {
+   "a": "a0",
+   "b": "a00000000008",
+   "expected": "a00000000004"
+  },
+  {
+   "a": "a0",
+   "b": "a00000000004",
+   "expected": "a00000000002"
+  },
+  {
+   "a": "a0",
+   "b": "a00000000002",
+   "expected": "a00000000001"
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "expected": "a0V"
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "expected": "a0G"
+  },
+  {
+   "a": "a0",
+   "b": "a0G",
+   "expected": "a08"
+  },
+  {
+   "a": "a0",
+   "b": "a08",
+   "expected": "a04"
+  },
+  {
+   "a": "a0",
+   "b": "a04",
+   "expected": "a02"
+  },
+  {
+   "a": "a0",
+   "b": "a02",
+   "expected": "a01"
+  },
+  {
+   "a": "a0",
+   "b": "a01",
+   "expected": "a00V"
+  },
+  {
+   "a": "a0",
+   "b": "a00V",
+   "expected": "a00G"
+  },
+  {
+   "a": "a0",
+   "b": "a00G",
+   "expected": "a008"
+  },
+  {
+   "a": "a0",
+   "b": "a008",
+   "expected": "a004"
+  },
+  {
+   "a": "a0",
+   "b": "a004",
+   "expected": "a002"
+  },
+  {
+   "a": "a0",
+   "b": "a002",
+   "expected": "a001"
+  },
+  {
+   "a": "a0",
+   "b": "a001",
+   "expected": "a000V"
+  },
+  {
+   "a": "a0",
+   "b": "a000V",
+   "expected": "a000G"
+  },
+  {
+   "a": "a0",
+   "b": "a000G",
+   "expected": "a0008"
+  },
+  {
+   "a": "a0",
+   "b": "a0008",
+   "expected": "a0004"
+  },
+  {
+   "a": "a0",
+   "b": "a0004",
+   "expected": "a0002"
+  },
+  {
+   "a": "a0",
+   "b": "a0002",
+   "expected": "a0001"
+  },
+  {
+   "a": "a0",
+   "b": "a0001",
+   "expected": "a0000V"
+  },
+  {
+   "a": "a0",
+   "b": "a0000V",
+   "expected": "a0000G"
+  },
+  {
+   "a": "a0",
+   "b": "a0000G",
+   "expected": "a00008"
+  },
+  {
+   "a": "a0",
+   "b": "a00008",
+   "expected": "a00004"
+  },
+  {
+   "a": "a0",
+   "b": "a00004",
+   "expected": "a00002"
+  },
+  {
+   "a": "a0",
+   "b": "a00002",
+   "expected": "a00001"
+  },
+  {
+   "a": "a0",
+   "b": "a00001",
+   "expected": "a00000V"
+  },
+  {
+   "a": "a0",
+   "b": "a00000V",
+   "expected": "a00000G"
+  },
+  {
+   "a": "a0",
+   "b": "a00000G",
+   "expected": "a000008"
+  },
+  {
+   "a": "a0",
+   "b": "a000008",
+   "expected": "a000004"
+  },
+  {
+   "a": "a0",
+   "b": "a000004",
+   "expected": "a000002"
+  },
+  {
+   "a": "a0",
+   "b": "a000002",
+   "expected": "a000001"
+  },
+  {
+   "a": "a0",
+   "b": "a000001",
+   "expected": "a000000V"
+  },
+  {
+   "a": "a0",
+   "b": "a000000V",
+   "expected": "a000000G"
+  },
+  {
+   "a": "a0",
+   "b": "a000000G",
+   "expected": "a0000008"
+  },
+  {
+   "a": "a0",
+   "b": "a0000008",
+   "expected": "a0000004"
+  },
+  {
+   "a": "a0",
+   "b": "a0000004",
+   "expected": "a0000002"
+  },
+  {
+   "a": "a0",
+   "b": "a0000002",
+   "expected": "a0000001"
+  },
+  {
+   "a": "a0",
+   "b": "a0000001",
+   "expected": "a0000000V"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000V",
+   "expected": "a0000000G"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000G",
+   "expected": "a00000008"
+  },
+  {
+   "a": "a0",
+   "b": "a00000008",
+   "expected": "a00000004"
+  },
+  {
+   "a": "a0",
+   "b": "a00000004",
+   "expected": "a00000002"
+  },
+  {
+   "a": "a0",
+   "b": "a00000002",
+   "expected": "a00000001"
+  },
+  {
+   "a": "a0",
+   "b": "a00000001",
+   "expected": "a00000000V"
+  },
+  {
+   "a": "a0",
+   "b": "a00000000V",
+   "expected": "a00000000G"
+  },
+  {
+   "a": "a0",
+   "b": "a00000000G",
+   "expected": "a000000008"
+  },
+  {
+   "a": "a0",
+   "b": "a000000008",
+   "expected": "a000000004"
+  },
+  {
+   "a": "a0",
+   "b": "a000000004",
+   "expected": "a000000002"
+  },
+  {
+   "a": "a0",
+   "b": "a000000002",
+   "expected": "a000000001"
+  },
+  {
+   "a": "a0",
+   "b": "a000000001",
+   "expected": "a000000000V"
+  },
+  {
+   "a": "a0",
+   "b": "a000000000V",
+   "expected": "a000000000G"
+  },
+  {
+   "a": "a0",
+   "b": "a000000000G",
+   "expected": "a0000000008"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000008",
+   "expected": "a0000000004"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000004",
+   "expected": "a0000000002"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000002",
+   "expected": "a0000000001"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000001",
+   "expected": "a0000000000V"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000000V",
+   "expected": "a0000000000G"
+  },
+  {
+   "a": "a0",
+   "b": "a0000000000G",
+   "expected": "a00000000008"
+  },
+  {
+   "a": "a0",
+   "b": "a00000000008",
+   "expected": "a00000000004"
+  },
+  {
+   "a": "a0",
+   "b": "a00000000004",
+   "expected": "a00000000002"
+  },
+  {
+   "a": "a0",
+   "b": "a00000000002",
+   "expected": "a00000000001"
+  },
+  {
+   "a": null,
+   "b": null,
+   "expected": "a0"
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "expected": "Zz"
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "expected": "ZzV"
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "expected": "a1"
+  },
+  {
+   "a": "a1",
+   "b": null,
+   "expected": "a2"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzV",
+   "expected": "ZzG"
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "expected": "a0V"
+  },
+  {
+   "a": "a0V",
+   "b": "a1",
+   "expected": "a0l"
+  },
+  {
+   "a": "ZzV",
+   "b": "a0",
+   "expected": "Zzl"
+  },
+  {
+   "a": "a2",
+   "b": null,
+   "expected": "a3"
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "expected": "a0G"
+  },
+  {
+   "a": "a0",
+   "b": "a0G",
+   "expected": "a08"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzG",
+   "expected": "Zz8"
+  },
+  {
+   "a": "Zzl",
+   "b": "a0",
+   "expected": "Zzt"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzV",
+   "expected": "ZzO"
+  },
+  {
+   "a": "Zz8",
+   "b": "ZzG",
+   "expected": "ZzC"
+  },
+  {
+   "a": "Zzt",
+   "b": "a0",
+   "expected": "Zzx"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz8",
+   "expected": "Zz4"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzl",
+   "expected": "Zzd"
+  },
+  {
+   "a": "a0V",
+   "b": "a0l",
+   "expected": "a0d"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzV",
+   "expected": "ZzS"
+  },
+  {
+   "a": "ZzC",
+   "b": "ZzG",
+   "expected": "ZzE"
+  },
+  {
+   "a": null,
+   "b": "Zz",
+   "expected": "Zy"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzd",
+   "expected": "ZzZ"
+  },
+  {
+   "a": "Zzt",
+   "b": "Zzx",
+   "expected": "Zzv"
+  },
+  {
+   "a": "a0V",
+   "b": "a0d",
+   "expected": "a0Z"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzO",
+   "expected": "ZzK"
+  },
+  {
+   "a": "ZzC",
+   "b": "ZzE",
+   "expected": "ZzD"
+  },
+  {
+   "a": "a0",
+   "b": "a08",
+   "expected": "a04"
+  },
+  {
+   "a": "Zzt",
+   "b": "Zzv",
+   "expected": "Zzu"
+  },
+  {
+   "a": "a0G",
+   "b": "a0V",
+   "expected": "a0O"
+  },
+  {
+   "a": "ZzD",
+   "b": "ZzE",
+   "expected": "ZzDV"
+  },
+  {
+   "a": "a08",
+   "b": "a0G",
+   "expected": "a0C"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzl",
+   "expected": "Zzh"
+  },
+  {
+   "a": "a0G",
+   "b": "a0O",
+   "expected": "a0K"
+  },
+  {
+   "a": "a3",
+   "b": null,
+   "expected": "a4"
+  },
+  {
+   "a": "ZzE",
+   "b": "ZzG",
+   "expected": "ZzF"
+  },
+  {
+   "a": "a0K",
+   "b": "a0O",
+   "expected": "a0M"
+  },
+  {
+   "a": "ZzC",
+   "b": "ZzD",
+   "expected": "ZzCV"
+  },
+  {
+   "a": "ZzK",
+   "b": "ZzO",
+   "expected": "ZzM"
+  },
+  {
+   "a": "ZzV",
+   "b": "ZzZ",
+   "expected": "ZzX"
+  },
+  {
+   "a": "ZzF",
+   "b": "ZzG",
+   "expected": "ZzFV"
+  },
+  {
+   "a": "ZzCV",
+   "b": "ZzD",
+   "expected": "ZzCl"
+  },
+  {
+   "a": "a0C",
+   "b": "a0G",
+   "expected": "a0E"
+  },
+  {
+   "a": "Zzu",
+   "b": "Zzv",
+   "expected": "ZzuV"
+  },
+  {
+   "a": "ZzC",
+   "b": "ZzCV",
+   "expected": "ZzCG"
+  },
+  {
+   "a": "ZzF",
+   "b": "ZzFV",
+   "expected": "ZzFG"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz4",
+   "expected": "Zz2"
+  },
+  {
+   "a": "Zzv",
+   "b": "Zzx",
+   "expected": "Zzw"
+  },
+  {
+   "a": "a0Z",
+   "b": "a0d",
+   "expected": "a0b"
+  },
+  {
+   "a": "ZzE",
+   "b": "ZzF",
+   "expected": "ZzEV"
+  },
+  {
+   "a": "a4",
+   "b": null,
+   "expected": "a5"
+  },
+  {
+   "a": "a0E",
+   "b": "a0G",
+   "expected": "a0F"
+  },
+  {
+   "a": "ZzS",
+   "b": "ZzV",
+   "expected": "ZzU"
+  },
+  {
+   "a": "ZzFV",
+   "b": "ZzG",
+   "expected": "ZzFl"
+  },
+  {
+   "a": "a04",
+   "b": "a08",
+   "expected": "a06"
+  },
+  {
+   "a": "a3",
+   "b": "a4",
+   "expected": "a3V"
+  },
+  {
+   "a": "a2",
+   "b": "a3",
+   "expected": "a2V"
+  },
+  {
+   "a": "a0C",
+   "b": "a0E",
+   "expected": "a0D"
+  },
+  {
+   "a": "a2V",
+   "b": "a3",
+   "expected": "a2l"
+  },
+  {
+   "a": "a0b",
+   "b": "a0d",
+   "expected": "a0c"
+  },
+  {
+   "a": "a2l",
+   "b": "a3",
+   "expected": "a2t"
+  },
+  {
+   "a": "ZzCG",
+   "b": "ZzCV",
+   "expected": "ZzCO"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz2",
+   "expected": "Zz1"
+  },
+  {
+   "a": "a1",
+   "b": "a2",
+   "expected": "a1V"
+  },
+  {
+   "a": "ZzFl",
+   "b": "ZzG",
+   "expected": "ZzFt"
+  },
+  {
+   "a": "a2",
+   "b": "a2V",
+   "expected": "a2G"
+  },
+  {
+   "a": "Zzu",
+   "b": "ZzuV",
+   "expected": "ZzuG"
+  },
+  {
+   "a": "a2t",
+   "b": "a3",
+   "expected": "a2x"
+  },
+  {
+   "a": "a0K",
+   "b": "a0M",
+   "expected": "a0L"
+  },
+  {
+   "a": "ZzCl",
+   "b": "ZzD",
+   "expected": "ZzCt"
+  },
+  {
+   "a": "a0F",
+   "b": "a0G",
+   "expected": "a0FV"
+  },
+  {
+   "a": "a3",
+   "b": "a3V",
+   "expected": "a3G"
+  },
+  {
+   "a": "ZzCO",
+   "b": "ZzCV",
+   "expected": "ZzCS"
+  },
+  {
+   "a": "a4",
+   "b": "a5",
+   "expected": "a4V"
+  },
+  {
+   "a": "ZzCl",
+   "b": "ZzCt",
+   "expected": "ZzCp"
+  },
+  {
+   "a": "ZzU",
+   "b": "ZzV",
+   "expected": "ZzUV"
+  },
+  {
+   "a": "ZzCO",
+   "b": "ZzCS",
+   "expected": "ZzCQ"
+  },
+  {
+   "a": "ZzUV",
+   "b": "ZzV",
+   "expected": "ZzUl"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzK",
+   "expected": "ZzI"
+  },
+  {
+   "a": "a0E",
+   "b": "a0F",
+   "expected": "a0EV"
+  },
+  {
+   "a": "Zzu",
+   "b": "ZzuG",
+   "expected": "Zzu8"
+  },
+  {
+   "a": "ZzuV",
+   "b": "Zzv",
+   "expected": "Zzul"
+  },
+  {
+   "a": "Zz8",
+   "b": "ZzC",
+   "expected": "ZzA"
+  },
+  {
+   "a": "a0c",
+   "b": "a0d",
+   "expected": "a0cV"
+  },
+  {
+   "a": "a1V",
+   "b": "a2",
+   "expected": "a1l"
+  },
+  {
+   "a": "ZzFV",
+   "b": "ZzFl",
+   "expected": "ZzFd"
+  },
+  {
+   "a": "ZzCl",
+   "b": "ZzCp",
+   "expected": "ZzCn"
+  },
+  {
+   "a": "ZzFl",
+   "b": "ZzFt",
+   "expected": "ZzFp"
+  },
+  {
+   "a": "a2V",
+   "b": "a2l",
+   "expected": "a2d"
+  },
+  {
+   "a": "ZzFl",
+   "b": "ZzFp",
+   "expected": "ZzFn"
+  },
+  {
+   "a": "ZzCV",
+   "b": "ZzCl",
+   "expected": "ZzCd"
+  },
+  {
+   "a": "a0D",
+   "b": "a0E",
+   "expected": "a0DV"
+  },
+  {
+   "a": "Zzul",
+   "b": "Zzv",
+   "expected": "Zzut"
+  },
+  {
+   "a": "ZzFt",
+   "b": "ZzG",
+   "expected": "ZzFx"
+  },
+  {
+   "a": "ZzCQ",
+   "b": "ZzCS",
+   "expected": "ZzCR"
+  },
+  {
+   "a": "ZzCS",
+   "b": "ZzCV",
+   "expected": "ZzCU"
+  },
+  {
+   "a": "Zz8",
+   "b": "ZzA",
+   "expected": "Zz9"
+  },
+  {
+   "a": "ZzFd",
+   "b": "ZzFl",
+   "expected": "ZzFh"
+  },
+  {
+   "a": "a0DV",
+   "b": "a0E",
+   "expected": "a0Dl"
+  },
+  {
+   "a": "a0C",
+   "b": "a0D",
+   "expected": "a0CV"
+  },
+  {
+   "a": "ZzCO",
+   "b": "ZzCQ",
+   "expected": "ZzCP"
+  },
+  {
+   "a": "Zzt",
+   "b": "Zzu",
+   "expected": "ZztV"
+  },
+  {
+   "a": "Zzu",
+   "b": "Zzu8",
+   "expected": "Zzu4"
+  },
+  {
+   "a": "ZzCt",
+   "b": "ZzD",
+   "expected": "ZzCx"
+  },
+  {
+   "a": "a0V",
+   "b": "a0Z",
+   "expected": "a0X"
+  },
+  {
+   "a": "ZzEV",
+   "b": "ZzF",
+   "expected": "ZzEl"
+  },
+  {
+   "a": "a5",
+   "b": null,
+   "expected": "a6"
+  },
+  {
+   "a": "a3G",
+   "b": "a3V",
+   "expected": "a3O"
+  },
+  {
+   "a": "a2",
+   "b": "a2G",
+   "expected": "a28"
+  },
+  {
+   "a": null,
+   "b": "Zy",
+   "expected": "Zx"
+  },
+  {
+   "a": "ZzCl",
+   "b": "ZzCn",
+   "expected": "ZzCm"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz1",
+   "expected": "Zz0V"
+  },
+  {
+   "a": "a5",
+   "b": "a6",
+   "expected": "a5V"
+  },
+  {
+   "a": "ZzFl",
+   "b": "ZzFn",
+   "expected": "ZzFm"
+  },
+  {
+   "a": "a0G",
+   "b": "a0K",
+   "expected": "a0I"
+  },
+  {
+   "a": "a28",
+   "b": "a2G",
+   "expected": "a2C"
+  },
+  {
+   "a": "ZzC",
+   "b": "ZzCG",
+   "expected": "ZzC8"
+  },
+  {
+   "a": "ZzDV",
+   "b": "ZzE",
+   "expected": "ZzDl"
+  },
+  {
+   "a": "a2C",
+   "b": "a2G",
+   "expected": "a2E"
+  },
+  {
+   "a": "a0cV",
+   "b": "a0d",
+   "expected": "a0cl"
+  },
+  {
+   "a": "a0cV",
+   "b": "a0cl",
+   "expected": "a0cd"
+  },
+  {
+   "a": "ZzCx",
+   "b": "ZzD",
+   "expected": "ZzCz"
+  },
+  {
+   "a": "ZzC",
+   "b": "ZzC8",
+   "expected": "ZzC4"
+  },
+  {
+   "a": "ZzCR",
+   "b": "ZzCS",
+   "expected": "ZzCRV"
+  },
+  {
+   "a": "ZzM",
+   "b": "ZzO",
+   "expected": "ZzN"
+  },
+  {
+   "a": "Zzu8",
+   "b": "ZzuG",
+   "expected": "ZzuC"
+  },
+  {
+   "a": "ZzEl",
+   "b": "ZzF",
+   "expected": "ZzEt"
+  },
+  {
+   "a": "a2G",
+   "b": "a2V",
+   "expected": "a2O"
+  },
+  {
+   "a": "ZzFV",
+   "b": "ZzFd",
+   "expected": "ZzFZ"
+  },
+  {
+   "a": "a2l",
+   "b": "a2t",
+   "expected": "a2p"
+  },
+  {
+   "a": "a2C",
+   "b": "a2E",
+   "expected": "a2D"
+  },
+  {
+   "a": "a0CV",
+   "b": "a0D",
+   "expected": "a0Cl"
+  },
+  {
+   "a": "a0E",
+   "b": "a0EV",
+   "expected": "a0EG"
+  },
+  {
+   "a": "ZzD",
+   "b": "ZzDV",
+   "expected": "ZzDG"
+  },
+  {
+   "a": "ZzI",
+   "b": "ZzK",
+   "expected": "ZzJ"
+  },
+  {
+   "a": "ZzFZ",
+   "b": "ZzFd",
+   "expected": "ZzFb"
+  },
+  {
+   "a": "ZzCt",
+   "b": "ZzCx",
+   "expected": "ZzCv"
+  },
+  {
+   "a": "ZzE",
+   "b": "ZzEV",
+   "expected": "ZzEG"
+  },
+  {
+   "a": "a2x",
+   "b": "a3",
+   "expected": "a2z"
+  },
+  {
+   "a": "a4",
+   "b": "a4V",
+   "expected": "a4G"
+  },
+  {
+   "a": "ZzCV",
+   "b": "ZzCd",
+   "expected": "ZzCZ"
+  },
+  {
+   "a": "ZzFd",
+   "b": "ZzFh",
+   "expected": "ZzFf"
+  },
+  {
+   "a": "ZzC",
+   "b": "ZzC4",
+   "expected": "ZzC2"
+  },
+  {
+   "a": "Zz1",
+   "b": "Zz2",
+   "expected": "Zz1V"
+  },
+  {
+   "a": "a0cV",
+   "b": "a0cd",
+   "expected": "a0cZ"
+  },
+  {
+   "a": "ZzFt",
+   "b": "ZzFx",
+   "expected": "ZzFv"
+  },
+  {
+   "a": "ZzDG",
+   "b": "ZzDV",
+   "expected": "ZzDO"
+  },
+  {
+   "a": "ZzCS",
+   "b": "ZzCU",
+   "expected": "ZzCT"
+  },
+  {
+   "a": "a1",
+   "b": "a1V",
+   "expected": "a1G"
+  },
+  {
+   "a": null,
+   "b": null,
+   "expected": "a0"
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "expected": "Zz"
+  },
+  {
+   "a": null,
+   "b": "Zz",
+   "expected": "Zy"
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "expected": "ZzV"
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "expected": "a1"
+  },
+  {
+   "a": "ZzV",
+   "b": "a0",
+   "expected": "Zzl"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzl",
+   "expected": "Zzd"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzV",
+   "expected": "ZzG"
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "expected": "a0V"
+  },
+  {
+   "a": "Zy",
+   "b": "Zz",
+   "expected": "ZyV"
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "expected": "a0G"
+  },
+  {
+   "a": "ZyV",
+   "b": "Zz",
+   "expected": "Zyl"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzV",
+   "expected": "ZzO"
+  },
+  {
+   "a": "a0G",
+   "b": "a0V",
+   "expected": "a0O"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzl",
+   "expected": "Zzh"
+  },
+  {
+   "a": "ZyV",
+   "b": "Zyl",
+   "expected": "Zyd"
+  },
+  {
+   "a": "Zzl",
+   "b": "a0",
+   "expected": "Zzt"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzO",
+   "expected": "ZzK"
+  },
+  {
+   "a": "a1",
+   "b": null,
+   "expected": "a2"
+  },
+  {
+   "a": null,
+   "b": "Zy",
+   "expected": "Zx"
+  },
+  {
+   "a": "a1",
+   "b": "a2",
+   "expected": "a1V"
+  },
+  {
+   "a": "Zx",
+   "b": "Zy",
+   "expected": "ZxV"
+  },
+  {
+   "a": "ZxV",
+   "b": "Zy",
+   "expected": "Zxl"
+  },
+  {
+   "a": "Zy",
+   "b": "ZyV",
+   "expected": "ZyG"
+  },
+  {
+   "a": null,
+   "b": "Zx",
+   "expected": "Zw"
+  },
+  {
+   "a": "a1V",
+   "b": "a2",
+   "expected": "a1l"
+  },
+  {
+   "a": "ZzK",
+   "b": "ZzO",
+   "expected": "ZzM"
+  },
+  {
+   "a": "Zzh",
+   "b": "Zzl",
+   "expected": "Zzj"
+  },
+  {
+   "a": "a2",
+   "b": null,
+   "expected": "a3"
+  },
+  {
+   "a": "ZyG",
+   "b": "ZyV",
+   "expected": "ZyO"
+  },
+  {
+   "a": "ZzM",
+   "b": "ZzO",
+   "expected": "ZzN"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzG",
+   "expected": "Zz8"
+  },
+  {
+   "a": "Zw",
+   "b": "Zx",
+   "expected": "ZwV"
+  },
+  {
+   "a": "ZzN",
+   "b": "ZzO",
+   "expected": "ZzNV"
+  },
+  {
+   "a": "Zx",
+   "b": "ZxV",
+   "expected": "ZxG"
+  },
+  {
+   "a": "ZwV",
+   "b": "Zx",
+   "expected": "Zwl"
+  },
+  {
+   "a": "a2",
+   "b": "a3",
+   "expected": "a2V"
+  },
+  {
+   "a": "a0O",
+   "b": "a0V",
+   "expected": "a0S"
+  },
+  {
+   "a": null,
+   "b": "Zw",
+   "expected": "Zv"
+  },
+  {
+   "a": "a3",
+   "b": null,
+   "expected": "a4"
+  },
+  {
+   "a": "Zw",
+   "b": "ZwV",
+   "expected": "ZwG"
+  },
+  {
+   "a": "a3",
+   "b": "a4",
+   "expected": "a3V"
+  },
+  {
+   "a": "ZzNV",
+   "b": "ZzO",
+   "expected": "ZzNl"
+  },
+  {
+   "a": "ZxV",
+   "b": "Zxl",
+   "expected": "Zxd"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzt",
+   "expected": "Zzp"
+  },
+  {
+   "a": "Zw",
+   "b": "ZwG",
+   "expected": "Zw8"
+  },
+  {
+   "a": "a0O",
+   "b": "a0S",
+   "expected": "a0Q"
+  },
+  {
+   "a": "a2",
+   "b": "a2V",
+   "expected": "a2G"
+  },
+  {
+   "a": "a1",
+   "b": "a1V",
+   "expected": "a1G"
+  },
+  {
+   "a": "ZzM",
+   "b": "ZzN",
+   "expected": "ZzMV"
+  },
+  {
+   "a": "a3",
+   "b": "a3V",
+   "expected": "a3G"
+  },
+  {
+   "a": "Zw8",
+   "b": "ZwG",
+   "expected": "ZwC"
+  },
+  {
+   "a": "a0G",
+   "b": "a0O",
+   "expected": "a0K"
+  },
+  {
+   "a": "a3V",
+   "b": "a4",
+   "expected": "a3l"
+  },
+  {
+   "a": "a1l",
+   "b": "a2",
+   "expected": "a1t"
+  },
+  {
+   "a": "Zzt",
+   "b": "a0",
+   "expected": "Zzx"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzd",
+   "expected": "ZzZ"
+  },
+  {
+   "a": "Zv",
+   "b": "Zw",
+   "expected": "ZvV"
+  },
+  {
+   "a": "a1t",
+   "b": "a2",
+   "expected": "a1x"
+  },
+  {
+   "a": "a1t",
+   "b": "a1x",
+   "expected": "a1v"
+  },
+  {
+   "a": "Zzh",
+   "b": "Zzj",
+   "expected": "Zzi"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zz",
+   "expected": "Zyt"
+  },
+  {
+   "a": "a2G",
+   "b": "a2V",
+   "expected": "a2O"
+  },
+  {
+   "a": "a3",
+   "b": "a3G",
+   "expected": "a38"
+  },
+  {
+   "a": "ZzNl",
+   "b": "ZzO",
+   "expected": "ZzNt"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzK",
+   "expected": "ZzI"
+  },
+  {
+   "a": "Zv",
+   "b": "ZvV",
+   "expected": "ZvG"
+  },
+  {
+   "a": "a3G",
+   "b": "a3V",
+   "expected": "a3O"
+  },
+  {
+   "a": "Zyt",
+   "b": "Zz",
+   "expected": "Zyx"
+  },
+  {
+   "a": "ZzN",
+   "b": "ZzNV",
+   "expected": "ZzNG"
+  },
+  {
+   "a": "a1l",
+   "b": "a1t",
+   "expected": "a1p"
+  },
+  {
+   "a": "a2G",
+   "b": "a2O",
+   "expected": "a2K"
+  },
+  {
+   "a": "a38",
+   "b": "a3G",
+   "expected": "a3C"
+  },
+  {
+   "a": "ZzNG",
+   "b": "ZzNV",
+   "expected": "ZzNO"
+  },
+  {
+   "a": "Zy",
+   "b": "ZyG",
+   "expected": "Zy8"
+  },
+  {
+   "a": "a0G",
+   "b": "a0K",
+   "expected": "a0I"
+  },
+  {
+   "a": "a0",
+   "b": "a0G",
+   "expected": "a08"
+  },
+  {
+   "a": "a0S",
+   "b": "a0V",
+   "expected": "a0U"
+  },
+  {
+   "a": "a3G",
+   "b": "a3O",
+   "expected": "a3K"
+  },
+  {
+   "a": "Zy8",
+   "b": "ZyG",
+   "expected": "ZyC"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zyt",
+   "expected": "Zyp"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzI",
+   "expected": "ZzH"
+  },
+  {
+   "a": "Zzh",
+   "b": "Zzi",
+   "expected": "ZzhV"
+  },
+  {
+   "a": "ZvG",
+   "b": "ZvV",
+   "expected": "ZvO"
+  },
+  {
+   "a": "Zyp",
+   "b": "Zyt",
+   "expected": "Zyr"
+  },
+  {
+   "a": "a1x",
+   "b": "a2",
+   "expected": "a1z"
+  },
+  {
+   "a": "Zxd",
+   "b": "Zxl",
+   "expected": "Zxh"
+  },
+  {
+   "a": "a1l",
+   "b": "a1p",
+   "expected": "a1n"
+  },
+  {
+   "a": "ZzM",
+   "b": "ZzMV",
+   "expected": "ZzMG"
+  },
+  {
+   "a": "ZzMV",
+   "b": "ZzN",
+   "expected": "ZzMl"
+  },
+  {
+   "a": "ZzM",
+   "b": "ZzMG",
+   "expected": "ZzM8"
+  },
+  {
+   "a": "a1z",
+   "b": "a2",
+   "expected": "a1zV"
+  },
+  {
+   "a": "ZzNl",
+   "b": "ZzNt",
+   "expected": "ZzNp"
+  },
+  {
+   "a": "a4",
+   "b": null,
+   "expected": "a5"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zyp",
+   "expected": "Zyn"
+  },
+  {
+   "a": "ZwG",
+   "b": "ZwV",
+   "expected": "ZwO"
+  },
+  {
+   "a": "a0S",
+   "b": "a0U",
+   "expected": "a0T"
+  },
+  {
+   "a": "ZvG",
+   "b": "ZvO",
+   "expected": "ZvK"
+  },
+  {
+   "a": "a0V",
+   "b": "a1",
+   "expected": "a0l"
+  },
+  {
+   "a": "a1n",
+   "b": "a1p",
+   "expected": "a1o"
+  },
+  {
+   "a": "a0I",
+   "b": "a0K",
+   "expected": "a0J"
+  },
+  {
+   "a": "Zyr",
+   "b": "Zyt",
+   "expected": "Zys"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz8",
+   "expected": "Zz4"
+  },
+  {
+   "a": "a0I",
+   "b": "a0J",
+   "expected": "a0IV"
+  },
+  {
+   "a": "ZwV",
+   "b": "Zwl",
+   "expected": "Zwd"
+  },
+  {
+   "a": "Zxl",
+   "b": "Zy",
+   "expected": "Zxt"
+  },
+  {
+   "a": "a0V",
+   "b": "a0l",
+   "expected": "a0d"
+  },
+  {
+   "a": "a3l",
+   "b": "a4",
+   "expected": "a3t"
+  },
+  {
+   "a": "a0G",
+   "b": "a0I",
+   "expected": "a0H"
+  },
+  {
+   "a": "Zwd",
+   "b": "Zwl",
+   "expected": "Zwh"
+  },
+  {
+   "a": "Zzp",
+   "b": "Zzt",
+   "expected": "Zzr"
+  },
+  {
+   "a": "a3K",
+   "b": "a3O",
+   "expected": "a3M"
+  },
+  {
+   "a": "ZvK",
+   "b": "ZvO",
+   "expected": "ZvM"
+  },
+  {
+   "a": "Zzp",
+   "b": "Zzr",
+   "expected": "Zzq"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzh",
+   "expected": "Zzf"
+  },
+  {
+   "a": "a0U",
+   "b": "a0V",
+   "expected": "a0UV"
+  },
+  {
+   "a": "a1zV",
+   "b": "a2",
+   "expected": "a1zl"
+  },
+  {
+   "a": "ZzNG",
+   "b": "ZzNO",
+   "expected": "ZzNK"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzf",
+   "expected": "Zze"
+  },
+  {
+   "a": "Zw8",
+   "b": "ZwC",
+   "expected": "ZwA"
+  },
+  {
+   "a": "a2",
+   "b": "a2G",
+   "expected": "a28"
+  },
+  {
+   "a": "ZzNV",
+   "b": "ZzNl",
+   "expected": "ZzNd"
+  },
+  {
+   "a": "ZyG",
+   "b": "ZyO",
+   "expected": "ZyK"
+  },
+  {
+   "a": "Zzq",
+   "b": "Zzr",
+   "expected": "ZzqV"
+  },
+  {
+   "a": "ZzNl",
+   "b": "ZzNp",
+   "expected": "ZzNn"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzp",
+   "expected": "Zzn"
+  },
+  {
+   "a": "Zzf",
+   "b": "Zzh",
+   "expected": "Zzg"
+  },
+  {
+   "a": "Zyx",
+   "b": "Zz",
+   "expected": "Zyz"
+  },
+  {
+   "a": "ZyG",
+   "b": "ZyK",
+   "expected": "ZyI"
+  },
+  {
+   "a": "a2V",
+   "b": "a3",
+   "expected": "a2l"
+  },
+  {
+   "a": "ZzqV",
+   "b": "Zzr",
+   "expected": "Zzql"
+  },
+  {
+   "a": "Zzf",
+   "b": "Zzg",
+   "expected": "ZzfV"
+  },
+  {
+   "a": "ZyG",
+   "b": "ZyI",
+   "expected": "ZyH"
+  },
+  {
+   "a": "Zxd",
+   "b": "Zxh",
+   "expected": "Zxf"
+  },
+  {
+   "a": "ZyV",
+   "b": "Zyd",
+   "expected": "ZyZ"
+  },
+  {
+   "a": "a1t",
+   "b": "a1v",
+   "expected": "a1u"
+  },
+  {
+   "a": "Zy",
+   "b": "Zy8",
+   "expected": "Zy4"
+  },
+  {
+   "a": "a3l",
+   "b": "a3t",
+   "expected": "a3p"
+  },
+  {
+   "a": "ZyI",
+   "b": "ZyK",
+   "expected": "ZyJ"
+  },
+  {
+   "a": "a1u",
+   "b": "a1v",
+   "expected": "a1uV"
+  },
+  {
+   "a": "Zyz",
+   "b": "Zz",
+   "expected": "ZyzV"
+  },
+  {
+   "a": "Zyx",
+   "b": "Zyz",
+   "expected": "Zyy"
+  },
+  {
+   "a": "a0V",
+   "b": "a0d",
+   "expected": "a0Z"
+  },
+  {
+   "a": "a3",
+   "b": "a38",
+   "expected": "a34"
+  },
+  {
+   "a": "ZzI",
+   "b": "ZzK",
+   "expected": "ZzJ"
+  },
+  {
+   "a": "ZzMV",
+   "b": "ZzMl",
+   "expected": "ZzMd"
+  },
+  {
+   "a": "a1uV",
+   "b": "a1v",
+   "expected": "a1ul"
+  },
+  {
+   "a": "a2V",
+   "b": "a2l",
+   "expected": "a2d"
+  },
+  {
+   "a": "Zz8",
+   "b": "ZzG",
+   "expected": "ZzC"
+  },
+  {
+   "a": "ZzNG",
+   "b": "ZzNK",
+   "expected": "ZzNI"
+  },
+  {
+   "a": null,
+   "b": null,
+   "expected": "a0"
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "expected": "Zz"
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "expected": "ZzV"
+  },
+  {
+   "a": null,
+   "b": "Zz",
+   "expected": "Zy"
+  },
+  {
+   "a": "ZzV",
+   "b": "a0",
+   "expected": "Zzl"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzV",
+   "expected": "ZzG"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzV",
+   "expected": "ZzO"
+  },
+  {
+   "a": "Zy",
+   "b": "Zz",
+   "expected": "ZyV"
+  },
+  {
+   "a": "ZyV",
+   "b": "Zz",
+   "expected": "Zyl"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzO",
+   "expected": "ZzK"
+  },
+  {
+   "a": "ZyV",
+   "b": "Zyl",
+   "expected": "Zyd"
+  },
+  {
+   "a": "Zy",
+   "b": "ZyV",
+   "expected": "ZyG"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzV",
+   "expected": "ZzS"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzG",
+   "expected": "Zz8"
+  },
+  {
+   "a": "ZzS",
+   "b": "ZzV",
+   "expected": "ZzU"
+  },
+  {
+   "a": "Zzl",
+   "b": "a0",
+   "expected": "Zzt"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zz",
+   "expected": "Zyt"
+  },
+  {
+   "a": "ZzS",
+   "b": "ZzU",
+   "expected": "ZzT"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zyt",
+   "expected": "Zyp"
+  },
+  {
+   "a": "ZzS",
+   "b": "ZzT",
+   "expected": "ZzSV"
+  },
+  {
+   "a": "ZzK",
+   "b": "ZzO",
+   "expected": "ZzM"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzl",
+   "expected": "Zzd"
+  },
+  {
+   "a": "ZzM",
+   "b": "ZzO",
+   "expected": "ZzN"
+  },
+  {
+   "a": null,
+   "b": "Zy",
+   "expected": "Zx"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzl",
+   "expected": "Zzh"
+  },
+  {
+   "a": "Zyt",
+   "b": "Zz",
+   "expected": "Zyx"
+  },
+  {
+   "a": "Zzt",
+   "b": "a0",
+   "expected": "Zzx"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzd",
+   "expected": "ZzZ"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzK",
+   "expected": "ZzI"
+  },
+  {
+   "a": "ZzU",
+   "b": "ZzV",
+   "expected": "ZzUV"
+  },
+  {
+   "a": "ZyV",
+   "b": "Zyd",
+   "expected": "ZyZ"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz8",
+   "expected": "Zz4"
+  },
+  {
+   "a": "ZzU",
+   "b": "ZzUV",
+   "expected": "ZzUG"
+  },
+  {
+   "a": null,
+   "b": "Zx",
+   "expected": "Zw"
+  },
+  {
+   "a": null,
+   "b": "Zw",
+   "expected": "Zv"
+  },
+  {
+   "a": "ZzI",
+   "b": "ZzK",
+   "expected": "ZzJ"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzh",
+   "expected": "Zzf"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzS",
+   "expected": "ZzQ"
+  },
+  {
+   "a": "ZzT",
+   "b": "ZzU",
+   "expected": "ZzTV"
+  },
+  {
+   "a": "ZzV",
+   "b": "ZzZ",
+   "expected": "ZzX"
+  },
+  {
+   "a": "ZzQ",
+   "b": "ZzS",
+   "expected": "ZzR"
+  },
+  {
+   "a": "ZzR",
+   "b": "ZzS",
+   "expected": "ZzRV"
+  },
+  {
+   "a": "Zx",
+   "b": "Zy",
+   "expected": "ZxV"
+  },
+  {
+   "a": "Zz8",
+   "b": "ZzG",
+   "expected": "ZzC"
+  },
+  {
+   "a": "ZzN",
+   "b": "ZzO",
+   "expected": "ZzNV"
+  },
+  {
+   "a": "ZzZ",
+   "b": "Zzd",
+   "expected": "Zzb"
+  },
+  {
+   "a": "ZzI",
+   "b": "ZzJ",
+   "expected": "ZzIV"
+  },
+  {
+   "a": "ZzK",
+   "b": "ZzM",
+   "expected": "ZzL"
+  },
+  {
+   "a": "ZzM",
+   "b": "ZzN",
+   "expected": "ZzMV"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzQ",
+   "expected": "ZzP"
+  },
+  {
+   "a": "ZzUV",
+   "b": "ZzV",
+   "expected": "ZzUl"
+  },
+  {
+   "a": "Zzb",
+   "b": "Zzd",
+   "expected": "Zzc"
+  },
+  {
+   "a": "ZzT",
+   "b": "ZzTV",
+   "expected": "ZzTG"
+  },
+  {
+   "a": "ZzIV",
+   "b": "ZzJ",
+   "expected": "ZzIl"
+  },
+  {
+   "a": "ZzTG",
+   "b": "ZzTV",
+   "expected": "ZzTO"
+  },
+  {
+   "a": "ZzTV",
+   "b": "ZzU",
+   "expected": "ZzTl"
+  },
+  {
+   "a": "ZzMV",
+   "b": "ZzN",
+   "expected": "ZzMl"
+  },
+  {
+   "a": "Zzx",
+   "b": "a0",
+   "expected": "Zzz"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzf",
+   "expected": "Zze"
+  },
+  {
+   "a": "ZzU",
+   "b": "ZzUG",
+   "expected": "ZzU8"
+  },
+  {
+   "a": "ZzTl",
+   "b": "ZzU",
+   "expected": "ZzTt"
+  },
+  {
+   "a": "Zzx",
+   "b": "Zzz",
+   "expected": "Zzy"
+  },
+  {
+   "a": "ZzV",
+   "b": "ZzX",
+   "expected": "ZzW"
+  },
+  {
+   "a": "Zx",
+   "b": "ZxV",
+   "expected": "ZxG"
+  },
+  {
+   "a": "ZxG",
+   "b": "ZxV",
+   "expected": "ZxO"
+  },
+  {
+   "a": "ZzR",
+   "b": "ZzRV",
+   "expected": "ZzRG"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zze",
+   "expected": "ZzdV"
+  },
+  {
+   "a": "ZzIl",
+   "b": "ZzJ",
+   "expected": "ZzIt"
+  },
+  {
+   "a": "ZzRG",
+   "b": "ZzRV",
+   "expected": "ZzRO"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzI",
+   "expected": "ZzH"
+  },
+  {
+   "a": "ZzN",
+   "b": "ZzNV",
+   "expected": "ZzNG"
+  },
+  {
+   "a": "ZzRG",
+   "b": "ZzRO",
+   "expected": "ZzRK"
+  },
+  {
+   "a": "ZzRV",
+   "b": "ZzS",
+   "expected": "ZzRl"
+  },
+  {
+   "a": "ZzL",
+   "b": "ZzM",
+   "expected": "ZzLV"
+  },
+  {
+   "a": "ZzUV",
+   "b": "ZzUl",
+   "expected": "ZzUd"
+  },
+  {
+   "a": "Zyp",
+   "b": "Zyt",
+   "expected": "Zyr"
+  },
+  {
+   "a": "Zzx",
+   "b": "Zzy",
+   "expected": "ZzxV"
+  },
+  {
+   "a": "ZzTO",
+   "b": "ZzTV",
+   "expected": "ZzTS"
+  },
+  {
+   "a": "ZzUd",
+   "b": "ZzUl",
+   "expected": "ZzUh"
+  },
+  {
+   "a": "ZzUl",
+   "b": "ZzV",
+   "expected": "ZzUt"
+  },
+  {
+   "a": "ZxG",
+   "b": "ZxO",
+   "expected": "ZxK"
+  },
+  {
+   "a": "ZzMV",
+   "b": "ZzMl",
+   "expected": "ZzMd"
+  },
+  {
+   "a": "Zyd",
+   "b": "Zyl",
+   "expected": "Zyh"
+  },
+  {
+   "a": "ZzU",
+   "b": "ZzU8",
+   "expected": "ZzU4"
+  },
+  {
+   "a": "ZzUl",
+   "b": "ZzUt",
+   "expected": "ZzUp"
+  },
+  {
+   "a": "ZzTO",
+   "b": "ZzTS",
+   "expected": "ZzTQ"
+  },
+  {
+   "a": "Zzz",
+   "b": "a0",
+   "expected": "ZzzV"
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "expected": "a1"
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "expected": "a0V"
+  },
+  {
+   "a": "ZzTG",
+   "b": "ZzTO",
+   "expected": "ZzTK"
+  },
+  {
+   "a": "Zzh",
+   "b": "Zzl",
+   "expected": "Zzj"
+  },
+  {
+   "a": "Zzz",
+   "b": "ZzzV",
+   "expected": "ZzzG"
+  },
+  {
+   "a": "Zzc",
+   "b": "Zzd",
+   "expected": "ZzcV"
+  },
+  {
+   "a": "ZzJ",
+   "b": "ZzK",
+   "expected": "ZzJV"
+  },
+  {
+   "a": "ZzTl",
+   "b": "ZzTt",
+   "expected": "ZzTp"
+  },
+  {
+   "a": "Zzz",
+   "b": "ZzzG",
+   "expected": "Zzz8"
+  },
+  {
+   "a": "ZzMl",
+   "b": "ZzN",
+   "expected": "ZzMt"
+  },
+  {
+   "a": "ZzTS",
+   "b": "ZzTV",
+   "expected": "ZzTU"
+  },
+  {
+   "a": "Zyh",
+   "b": "Zyl",
+   "expected": "Zyj"
+  },
+  {
+   "a": "ZzTp",
+   "b": "ZzTt",
+   "expected": "ZzTr"
+  },
+  {
+   "a": "ZzTG",
+   "b": "ZzTK",
+   "expected": "ZzTI"
+  },
+  {
+   "a": "ZzI",
+   "b": "ZzIV",
+   "expected": "ZzIG"
+  },
+  {
+   "a": "Zzj",
+   "b": "Zzl",
+   "expected": "Zzk"
+  },
+  {
+   "a": "ZxK",
+   "b": "ZxO",
+   "expected": "ZxM"
+  },
+  {
+   "a": "Zzf",
+   "b": "Zzh",
+   "expected": "Zzg"
+  },
+  {
+   "a": "Zy",
+   "b": "ZyG",
+   "expected": "Zy8"
+  },
+  {
+   "a": "ZzNV",
+   "b": "ZzO",
+   "expected": "ZzNl"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzt",
+   "expected": "Zzp"
+  },
+  {
+   "a": "Zx",
+   "b": "ZxG",
+   "expected": "Zx8"
+  },
+  {
+   "a": "ZzU4",
+   "b": "ZzU8",
+   "expected": "ZzU6"
+  },
+  {
+   "a": "Zy8",
+   "b": "ZyG",
+   "expected": "ZyC"
+  },
+  {
+   "a": "ZzIV",
+   "b": "ZzIl",
+   "expected": "ZzId"
+  },
+  {
+   "a": "a1",
+   "b": null,
+   "expected": "a2"
+  },
+  {
+   "a": "ZzS",
+   "b": "ZzSV",
+   "expected": "ZzSG"
+  },
+  {
+   "a": "Zyp",
+   "b": "Zyr",
+   "expected": "Zyq"
+  },
+  {
+   "a": null,
+   "b": "Zv",
+   "expected": "Zu"
+  },
+  {
+   "a": "Zyh",
+   "b": "Zyj",
+   "expected": "Zyi"
+  },
+  {
+   "a": "ZzTr",
+   "b": "ZzTt",
+   "expected": "ZzTs"
+  },
+  {
+   "a": "ZzTl",
+   "b": "ZzTp",
+   "expected": "ZzTn"
+  },
+  {
+   "a": "ZzdV",
+   "b": "Zze",
+   "expected": "Zzdl"
+  },
+  {
+   "a": "ZzU8",
+   "b": "ZzUG",
+   "expected": "ZzUC"
+  },
+  {
+   "a": "ZzcV",
+   "b": "Zzd",
+   "expected": "Zzcl"
+  },
+  {
+   "a": "ZyV",
+   "b": "ZyZ",
+   "expected": "ZyX"
+  },
+  {
+   "a": "Zyp",
+   "b": "Zyq",
+   "expected": "ZypV"
+  },
+  {
+   "a": "ZyV",
+   "b": "ZyX",
+   "expected": "ZyW"
+  },
+  {
+   "a": "ZzTV",
+   "b": "ZzTl",
+   "expected": "ZzTd"
+  },
+  {
+   "a": "ZzU4",
+   "b": "ZzU6",
+   "expected": "ZzU5"
+  },
+  {
+   "a": "ZzTQ",
+   "b": "ZzTS",
+   "expected": "ZzTR"
+  },
+  {
+   "a": "ZzUd",
+   "b": "ZzUh",
+   "expected": "ZzUf"
+  },
+  {
+   "a": "ZzIt",
+   "b": "ZzJ",
+   "expected": "ZzIx"
+  },
+  {
+   "a": "Zzz8",
+   "b": "ZzzG",
+   "expected": "ZzzC"
+  },
+  {
+   "a": "Zy8",
+   "b": "ZyC",
+   "expected": "ZyA"
+  },
+  {
+   "a": "ZzzV",
+   "b": "a0",
+   "expected": "Zzzl"
+  },
+  {
+   "a": "ZypV",
+   "b": "Zyq",
+   "expected": "Zypl"
+  },
+  {
+   "a": "ZzMV",
+   "b": "ZzMd",
+   "expected": "ZzMZ"
+  },
+  {
+   "a": "ZzRV",
+   "b": "ZzRl",
+   "expected": "ZzRd"
+  },
+  {
+   "a": "ZzNl",
+   "b": "ZzO",
+   "expected": "ZzNt"
+  },
+  {
+   "a": "ZzTI",
+   "b": "ZzTK",
+   "expected": "ZzTJ"
+  },
+  {
+   "a": "ZzI",
+   "b": "ZzIG",
+   "expected": "ZzI8"
+  },
+  {
+   "a": "ZzU",
+   "b": "ZzU4",
+   "expected": "ZzU2"
+  },
+  {
+   "a": "Zu",
+   "b": "Zv",
+   "expected": "ZuV"
+  },
+  {
+   "a": "ZzQ",
+   "b": "ZzR",
+   "expected": "ZzQV"
+  },
+  {
+   "a": "ZzW",
+   "b": "ZzX",
+   "expected": "ZzWV"
+  },
+  {
+   "a": "ZzJV",
+   "b": "ZzK",
+   "expected": "ZzJl"
+  },
+  {
+   "a": "ZzP",
+   "b": "ZzQ",
+   "expected": "ZzPV"
+  },
+  {
+   "a": "ZzM",
+   "b": "ZzMV",
+   "expected": "ZzMG"
+  },
+  {
+   "a": "a1",
+   "b": "a2",
+   "expected": "a1V"
+  },
+  {
+   "a": "ZxV",
+   "b": "Zy",
+   "expected": "Zxl"
+  },
+  {
+   "a": "ZyA",
+   "b": "ZyC",
+   "expected": "ZyB"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zyp",
+   "expected": "Zyn"
+  },
+  {
+   "a": null,
+   "b": null,
+   "expected": "a0"
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "expected": "Zz"
+  },
+  {
+   "a": null,
+   "b": "Zz",
+   "expected": "Zy"
+  },
+  {
+   "a": null,
+   "b": "Zy",
+   "expected": "Zx"
+  },
+  {
+   "a": "Zx",
+   "b": "Zy",
+   "expected": "ZxV"
+  },
+  {
+   "a": "Zy",
+   "b": "Zz",
+   "expected": "ZyV"
+  },
+  {
+   "a": null,
+   "b": "Zx",
+   "expected": "Zw"
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "expected": "a1"
+  },
+  {
+   "a": "ZyV",
+   "b": "Zz",
+   "expected": "Zyl"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zz",
+   "expected": "Zyt"
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "expected": "ZzV"
+  },
+  {
+   "a": "Zy",
+   "b": "ZyV",
+   "expected": "ZyG"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzV",
+   "expected": "ZzG"
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "expected": "a0V"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zyt",
+   "expected": "Zyp"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzV",
+   "expected": "ZzO"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zyp",
+   "expected": "Zyn"
+  },
+  {
+   "a": "Zyn",
+   "b": "Zyp",
+   "expected": "Zyo"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzO",
+   "expected": "ZzK"
+  },
+  {
+   "a": "a0V",
+   "b": "a1",
+   "expected": "a0l"
+  },
+  {
+   "a": "a1",
+   "b": null,
+   "expected": "a2"
+  },
+  {
+   "a": "Zyp",
+   "b": "Zyt",
+   "expected": "Zyr"
+  },
+  {
+   "a": "Zyn",
+   "b": "Zyo",
+   "expected": "ZynV"
+  },
+  {
+   "a": "ZzV",
+   "b": "a0",
+   "expected": "Zzl"
+  },
+  {
+   "a": "ZyV",
+   "b": "Zyl",
+   "expected": "Zyd"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzl",
+   "expected": "Zzd"
+  },
+  {
+   "a": "Zyt",
+   "b": "Zz",
+   "expected": "Zyx"
+  },
+  {
+   "a": "Zyn",
+   "b": "ZynV",
+   "expected": "ZynG"
+  },
+  {
+   "a": "Zyp",
+   "b": "Zyr",
+   "expected": "Zyq"
+  },
+  {
+   "a": null,
+   "b": "Zw",
+   "expected": "Zv"
+  },
+  {
+   "a": "Zyq",
+   "b": "Zyr",
+   "expected": "ZyqV"
+  },
+  {
+   "a": "Zyr",
+   "b": "Zyt",
+   "expected": "Zys"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzd",
+   "expected": "ZzZ"
+  },
+  {
+   "a": "Zx",
+   "b": "ZxV",
+   "expected": "ZxG"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzl",
+   "expected": "Zzh"
+  },
+  {
+   "a": "Zyo",
+   "b": "Zyp",
+   "expected": "ZyoV"
+  },
+  {
+   "a": "ZynG",
+   "b": "ZynV",
+   "expected": "ZynO"
+  },
+  {
+   "a": "Zyr",
+   "b": "Zys",
+   "expected": "ZyrV"
+  },
+  {
+   "a": "Zw",
+   "b": "Zx",
+   "expected": "ZwV"
+  },
+  {
+   "a": "Zyt",
+   "b": "Zyx",
+   "expected": "Zyv"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zyn",
+   "expected": "Zym"
+  },
+  {
+   "a": "ZyrV",
+   "b": "Zys",
+   "expected": "Zyrl"
+  },
+  {
+   "a": "ZxV",
+   "b": "Zy",
+   "expected": "Zxl"
+  },
+  {
+   "a": "a0l",
+   "b": "a1",
+   "expected": "a0t"
+  },
+  {
+   "a": "Zzl",
+   "b": "a0",
+   "expected": "Zzt"
+  },
+  {
+   "a": "a0l",
+   "b": "a0t",
+   "expected": "a0p"
+  },
+  {
+   "a": "ZynO",
+   "b": "ZynV",
+   "expected": "ZynS"
+  },
+  {
+   "a": "Zy",
+   "b": "ZyG",
+   "expected": "Zy8"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzG",
+   "expected": "Zz8"
+  },
+  {
+   "a": "ZyqV",
+   "b": "Zyr",
+   "expected": "Zyql"
+  },
+  {
+   "a": "ZwV",
+   "b": "Zx",
+   "expected": "Zwl"
+  },
+  {
+   "a": "ZzV",
+   "b": "ZzZ",
+   "expected": "ZzX"
+  },
+  {
+   "a": "a0t",
+   "b": "a1",
+   "expected": "a0x"
+  },
+  {
+   "a": null,
+   "b": "Zv",
+   "expected": "Zu"
+  },
+  {
+   "a": "ZyqV",
+   "b": "Zyql",
+   "expected": "Zyqd"
+  },
+  {
+   "a": "a0l",
+   "b": "a0p",
+   "expected": "a0n"
+  },
+  {
+   "a": "ZzK",
+   "b": "ZzO",
+   "expected": "ZzM"
+  },
+  {
+   "a": "Zys",
+   "b": "Zyt",
+   "expected": "ZysV"
+  },
+  {
+   "a": "a1",
+   "b": "a2",
+   "expected": "a1V"
+  },
+  {
+   "a": "Zyn",
+   "b": "ZynG",
+   "expected": "Zyn8"
+  },
+  {
+   "a": "ZzZ",
+   "b": "Zzd",
+   "expected": "Zzb"
+  },
+  {
+   "a": "ZynV",
+   "b": "Zyo",
+   "expected": "Zynl"
+  },
+  {
+   "a": "Zyqd",
+   "b": "Zyql",
+   "expected": "Zyqh"
+  },
+  {
+   "a": "ZzM",
+   "b": "ZzO",
+   "expected": "ZzN"
+  },
+  {
+   "a": null,
+   "b": "Zu",
+   "expected": "Zt"
+  },
+  {
+   "a": "Zyd",
+   "b": "Zyl",
+   "expected": "Zyh"
+  },
+  {
+   "a": "Zyql",
+   "b": "Zyr",
+   "expected": "Zyqt"
+  },
+  {
+   "a": "Zzb",
+   "b": "Zzd",
+   "expected": "Zzc"
+  },
+  {
+   "a": "Zzt",
+   "b": "a0",
+   "expected": "Zzx"
+  },
+  {
+   "a": "ZwV",
+   "b": "Zwl",
+   "expected": "Zwd"
+  },
+  {
+   "a": "Zyqd",
+   "b": "Zyqh",
+   "expected": "Zyqf"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz8",
+   "expected": "Zz4"
+  },
+  {
+   "a": "a1V",
+   "b": "a2",
+   "expected": "a1l"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz4",
+   "expected": "Zz2"
+  },
+  {
+   "a": "Zyn8",
+   "b": "ZynG",
+   "expected": "ZynC"
+  },
+  {
+   "a": "ZzN",
+   "b": "ZzO",
+   "expected": "ZzNV"
+  },
+  {
+   "a": "Zzb",
+   "b": "Zzc",
+   "expected": "ZzbV"
+  },
+  {
+   "a": "ZynO",
+   "b": "ZynS",
+   "expected": "ZynQ"
+  },
+  {
+   "a": "a1",
+   "b": "a1V",
+   "expected": "a1G"
+  },
+  {
+   "a": "ZzbV",
+   "b": "Zzc",
+   "expected": "Zzbl"
+  },
+  {
+   "a": "ZyG",
+   "b": "ZyV",
+   "expected": "ZyO"
+  },
+  {
+   "a": "a1l",
+   "b": "a2",
+   "expected": "a1t"
+  },
+  {
+   "a": "ZyoV",
+   "b": "Zyp",
+   "expected": "Zyol"
+  },
+  {
+   "a": "a1t",
+   "b": "a2",
+   "expected": "a1x"
+  },
+  {
+   "a": "a1G",
+   "b": "a1V",
+   "expected": "a1O"
+  },
+  {
+   "a": "Zyql",
+   "b": "Zyqt",
+   "expected": "Zyqp"
+  },
+  {
+   "a": "ZxV",
+   "b": "Zxl",
+   "expected": "Zxd"
+  },
+  {
+   "a": "Zwl",
+   "b": "Zx",
+   "expected": "Zwt"
+  },
+  {
+   "a": null,
+   "b": "Zt",
+   "expected": "Zs"
+  },
+  {
+   "a": "Zx",
+   "b": "ZxG",
+   "expected": "Zx8"
+  },
+  {
+   "a": "ZzM",
+   "b": "ZzN",
+   "expected": "ZzMV"
+  },
+  {
+   "a": "Zx",
+   "b": "Zx8",
+   "expected": "Zx4"
+  },
+  {
+   "a": "a0t",
+   "b": "a0x",
+   "expected": "a0v"
+  },
+  {
+   "a": "a1O",
+   "b": "a1V",
+   "expected": "a1S"
+  },
+  {
+   "a": "ZzNV",
+   "b": "ZzO",
+   "expected": "ZzNl"
+  },
+  {
+   "a": "ZynV",
+   "b": "Zynl",
+   "expected": "Zynd"
+  },
+  {
+   "a": "ZyoV",
+   "b": "Zyol",
+   "expected": "Zyod"
+  },
+  {
+   "a": "ZzN",
+   "b": "ZzNV",
+   "expected": "ZzNG"
+  },
+  {
+   "a": "a1",
+   "b": "a1G",
+   "expected": "a18"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zym",
+   "expected": "ZylV"
+  },
+  {
+   "a": "ZzK",
+   "b": "ZzM",
+   "expected": "ZzL"
+  },
+  {
+   "a": "ZzZ",
+   "b": "Zzb",
+   "expected": "Zza"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzK",
+   "expected": "ZzI"
+  },
+  {
+   "a": "a0n",
+   "b": "a0p",
+   "expected": "a0o"
+  },
+  {
+   "a": "a1O",
+   "b": "a1S",
+   "expected": "a1Q"
+  },
+  {
+   "a": "ZzZ",
+   "b": "Zza",
+   "expected": "ZzZV"
+  },
+  {
+   "a": "Zx4",
+   "b": "Zx8",
+   "expected": "Zx6"
+  },
+  {
+   "a": "ZzNV",
+   "b": "ZzNl",
+   "expected": "ZzNd"
+  },
+  {
+   "a": "a0n",
+   "b": "a0o",
+   "expected": "a0nV"
+  },
+  {
+   "a": "Zxd",
+   "b": "Zxl",
+   "expected": "Zxh"
+  },
+  {
+   "a": "ZynC",
+   "b": "ZynG",
+   "expected": "ZynE"
+  },
+  {
+   "a": "Zzb",
+   "b": "ZzbV",
+   "expected": "ZzbG"
+  },
+  {
+   "a": "Zyod",
+   "b": "Zyol",
+   "expected": "Zyoh"
+  },
+  {
+   "a": "a2",
+   "b": null,
+   "expected": "a3"
+  },
+  {
+   "a": "a1G",
+   "b": "a1O",
+   "expected": "a1K"
+  },
+  {
+   "a": "Zu",
+   "b": "Zv",
+   "expected": "ZuV"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzh",
+   "expected": "Zzf"
+  },
+  {
+   "a": "Zyq",
+   "b": "ZyqV",
+   "expected": "ZyqG"
+  },
+  {
+   "a": "a18",
+   "b": "a1G",
+   "expected": "a1C"
+  },
+  {
+   "a": "Zyt",
+   "b": "Zyv",
+   "expected": "Zyu"
+  },
+  {
+   "a": "Zv",
+   "b": "Zw",
+   "expected": "ZvV"
+  },
+  {
+   "a": "ZzZ",
+   "b": "ZzZV",
+   "expected": "ZzZG"
+  },
+  {
+   "a": "Zv",
+   "b": "ZvV",
+   "expected": "ZvG"
+  },
+  {
+   "a": "a18",
+   "b": "a1C",
+   "expected": "a1A"
+  },
+  {
+   "a": "ZzMV",
+   "b": "ZzN",
+   "expected": "ZzMl"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzI",
+   "expected": "ZzH"
+  },
+  {
+   "a": "Zyql",
+   "b": "Zyqp",
+   "expected": "Zyqn"
+  },
+  {
+   "a": "Zzh",
+   "b": "Zzl",
+   "expected": "Zzj"
+  },
+  {
+   "a": "Zyq",
+   "b": "ZyqG",
+   "expected": "Zyq8"
+  },
+  {
+   "a": "ZynG",
+   "b": "ZynO",
+   "expected": "ZynK"
+  },
+  {
+   "a": "a1Q",
+   "b": "a1S",
+   "expected": "a1R"
+  },
+  {
+   "a": "a3",
+   "b": null,
+   "expected": "a4"
+  },
+  {
+   "a": "Zyo",
+   "b": "ZyoV",
+   "expected": "ZyoG"
+  },
+  {
+   "a": "Zwl",
+   "b": "Zwt",
+   "expected": "Zwp"
+  },
+  {
+   "a": "Zzf",
+   "b": "Zzh",
+   "expected": "Zzg"
+  },
+  {
+   "a": "Zwd",
+   "b": "Zwl",
+   "expected": "Zwh"
+  },
+  {
+   "a": "a0n",
+   "b": "a0nV",
+   "expected": "a0nG"
+  },
+  {
+   "a": "ZynV",
+   "b": "Zynd",
+   "expected": "ZynZ"
+  },
+  {
+   "a": "Zyqn",
+   "b": "Zyqp",
+   "expected": "Zyqo"
+  },
+  {
+   "a": "ZzMl",
+   "b": "ZzN",
+   "expected": "ZzMt"
+  },
+  {
+   "a": "ZxG",
+   "b": "ZxV",
+   "expected": "ZxO"
+  },
+  {
+   "a": "a0t",
+   "b": "a0v",
+   "expected": "a0u"
+  },
+  {
+   "a": "Zyqh",
+   "b": "Zyql",
+   "expected": "Zyqj"
+  },
+  {
+   "a": "a1",
+   "b": "a18",
+   "expected": "a14"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzt",
+   "expected": "Zzp"
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "expected": "a0G"
+  },
+  {
+   "a": "a1A",
+   "b": "a1C",
+   "expected": "a1B"
+  },
+  {
+   "a": "Zyod",
+   "b": "Zyoh",
+   "expected": "Zyof"
+  },
+  {
+   "a": "Zyr",
+   "b": "ZyrV",
+   "expected": "ZyrG"
+  },
+  {
+   "a": "Zz8",
+   "b": "ZzG",
+   "expected": "ZzC"
+  },
+  {
+   "a": null,
+   "b": null,
+   "expected": "a0"
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "expected": "a1"
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "expected": "Zz"
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "expected": "a0V"
+  },
+  {
+   "a": null,
+   "b": "Zz",
+   "expected": "Zy"
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "expected": "a0G"
+  },
+  {
+   "a": "a0V",
+   "b": "a1",
+   "expected": "a0l"
+  },
+  {
+   "a": "a0",
+   "b": "a0G",
+   "expected": "a08"
+  },
+  {
+   "a": "a1",
+   "b": null,
+   "expected": "a2"
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "expected": "ZzV"
+  },
+  {
+   "a": "a0l",
+   "b": "a1",
+   "expected": "a0t"
+  },
+  {
+   "a": "a0l",
+   "b": "a0t",
+   "expected": "a0p"
+  },
+  {
+   "a": "a0l",
+   "b": "a0p",
+   "expected": "a0n"
+  },
+  {
+   "a": null,
+   "b": "Zy",
+   "expected": "Zx"
+  },
+  {
+   "a": "a08",
+   "b": "a0G",
+   "expected": "a0C"
+  },
+  {
+   "a": "ZzV",
+   "b": "a0",
+   "expected": "Zzl"
+  },
+  {
+   "a": "a1",
+   "b": "a2",
+   "expected": "a1V"
+  },
+  {
+   "a": "Zzl",
+   "b": "a0",
+   "expected": "Zzt"
+  },
+  {
+   "a": "a0p",
+   "b": "a0t",
+   "expected": "a0r"
+  },
+  {
+   "a": "a0p",
+   "b": "a0r",
+   "expected": "a0q"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzt",
+   "expected": "Zzp"
+  },
+  {
+   "a": null,
+   "b": "Zx",
+   "expected": "Zw"
+  },
+  {
+   "a": "a0r",
+   "b": "a0t",
+   "expected": "a0s"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzV",
+   "expected": "ZzG"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzl",
+   "expected": "Zzd"
+  },
+  {
+   "a": "Zy",
+   "b": "Zz",
+   "expected": "ZyV"
+  },
+  {
+   "a": "a0",
+   "b": "a08",
+   "expected": "a04"
+  },
+  {
+   "a": "a2",
+   "b": null,
+   "expected": "a3"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzd",
+   "expected": "ZzZ"
+  },
+  {
+   "a": "Zx",
+   "b": "Zy",
+   "expected": "ZxV"
+  },
+  {
+   "a": "a0t",
+   "b": "a1",
+   "expected": "a0x"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzl",
+   "expected": "Zzh"
+  },
+  {
+   "a": "Zzp",
+   "b": "Zzt",
+   "expected": "Zzr"
+  },
+  {
+   "a": "a3",
+   "b": null,
+   "expected": "a4"
+  },
+  {
+   "a": "ZzZ",
+   "b": "Zzd",
+   "expected": "Zzb"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzp",
+   "expected": "Zzn"
+  },
+  {
+   "a": "ZzV",
+   "b": "ZzZ",
+   "expected": "ZzX"
+  },
+  {
+   "a": "a1",
+   "b": "a1V",
+   "expected": "a1G"
+  },
+  {
+   "a": "a0q",
+   "b": "a0r",
+   "expected": "a0qV"
+  },
+  {
+   "a": "a1G",
+   "b": "a1V",
+   "expected": "a1O"
+  },
+  {
+   "a": "a04",
+   "b": "a08",
+   "expected": "a06"
+  },
+  {
+   "a": "a0t",
+   "b": "a0x",
+   "expected": "a0v"
+  },
+  {
+   "a": "a0n",
+   "b": "a0p",
+   "expected": "a0o"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzG",
+   "expected": "Zz8"
+  },
+  {
+   "a": "a0n",
+   "b": "a0o",
+   "expected": "a0nV"
+  },
+  {
+   "a": "a0V",
+   "b": "a0l",
+   "expected": "a0d"
+  },
+  {
+   "a": "Zzh",
+   "b": "Zzl",
+   "expected": "Zzj"
+  },
+  {
+   "a": "a0s",
+   "b": "a0t",
+   "expected": "a0sV"
+  },
+  {
+   "a": "a0l",
+   "b": "a0n",
+   "expected": "a0m"
+  },
+  {
+   "a": null,
+   "b": "Zw",
+   "expected": "Zv"
+  },
+  {
+   "a": "a1V",
+   "b": "a2",
+   "expected": "a1l"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzn",
+   "expected": "Zzm"
+  },
+  {
+   "a": "Zzm",
+   "b": "Zzn",
+   "expected": "ZzmV"
+  },
+  {
+   "a": "a1G",
+   "b": "a1O",
+   "expected": "a1K"
+  },
+  {
+   "a": "Zzb",
+   "b": "Zzd",
+   "expected": "Zzc"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzV",
+   "expected": "ZzO"
+  },
+  {
+   "a": "a0x",
+   "b": "a1",
+   "expected": "a0z"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzh",
+   "expected": "Zzf"
+  },
+  {
+   "a": "a4",
+   "b": null,
+   "expected": "a5"
+  },
+  {
+   "a": null,
+   "b": "Zv",
+   "expected": "Zu"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzm",
+   "expected": "ZzlV"
+  },
+  {
+   "a": "a0sV",
+   "b": "a0t",
+   "expected": "a0sl"
+  },
+  {
+   "a": "Zzh",
+   "b": "Zzj",
+   "expected": "Zzi"
+  },
+  {
+   "a": "a0o",
+   "b": "a0p",
+   "expected": "a0oV"
+  },
+  {
+   "a": "Zx",
+   "b": "ZxV",
+   "expected": "ZxG"
+  },
+  {
+   "a": "ZxG",
+   "b": "ZxV",
+   "expected": "ZxO"
+  },
+  {
+   "a": "a0r",
+   "b": "a0s",
+   "expected": "a0rV"
+  },
+  {
+   "a": "a08",
+   "b": "a0C",
+   "expected": "a0A"
+  },
+  {
+   "a": "Zzb",
+   "b": "Zzc",
+   "expected": "ZzbV"
+  },
+  {
+   "a": "a1l",
+   "b": "a2",
+   "expected": "a1t"
+  },
+  {
+   "a": "Zw",
+   "b": "Zx",
+   "expected": "ZwV"
+  },
+  {
+   "a": "a0r",
+   "b": "a0rV",
+   "expected": "a0rG"
+  },
+  {
+   "a": "a2",
+   "b": "a3",
+   "expected": "a2V"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzf",
+   "expected": "Zze"
+  },
+  {
+   "a": "a0A",
+   "b": "a0C",
+   "expected": "a0B"
+  },
+  {
+   "a": "a1G",
+   "b": "a1K",
+   "expected": "a1I"
+  },
+  {
+   "a": "a1G",
+   "b": "a1I",
+   "expected": "a1H"
+  },
+  {
+   "a": "a0l",
+   "b": "a0m",
+   "expected": "a0lV"
+  },
+  {
+   "a": "a2V",
+   "b": "a3",
+   "expected": "a2l"
+  },
+  {
+   "a": "a0rG",
+   "b": "a0rV",
+   "expected": "a0rO"
+  },
+  {
+   "a": "a0V",
+   "b": "a0d",
+   "expected": "a0Z"
+  },
+  {
+   "a": "Zy",
+   "b": "ZyV",
+   "expected": "ZyG"
+  },
+  {
+   "a": "Zzf",
+   "b": "Zzh",
+   "expected": "Zzg"
+  },
+  {
+   "a": "a0G",
+   "b": "a0V",
+   "expected": "a0O"
+  },
+  {
+   "a": "Zz8",
+   "b": "ZzG",
+   "expected": "ZzC"
+  },
+  {
+   "a": "ZzbV",
+   "b": "Zzc",
+   "expected": "Zzbl"
+  },
+  {
+   "a": "a0sV",
+   "b": "a0sl",
+   "expected": "a0sd"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz8",
+   "expected": "Zz4"
+  },
+  {
+   "a": "ZxO",
+   "b": "ZxV",
+   "expected": "ZxS"
+  },
+  {
+   "a": "Zzg",
+   "b": "Zzh",
+   "expected": "ZzgV"
+  },
+  {
+   "a": "a0v",
+   "b": "a0x",
+   "expected": "a0w"
+  },
+  {
+   "a": "a0o",
+   "b": "a0oV",
+   "expected": "a0oG"
+  },
+  {
+   "a": "Zzn",
+   "b": "Zzp",
+   "expected": "Zzo"
+  },
+  {
+   "a": "ZxV",
+   "b": "Zy",
+   "expected": "Zxl"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zze",
+   "expected": "ZzdV"
+  },
+  {
+   "a": "a2V",
+   "b": "a2l",
+   "expected": "a2d"
+  },
+  {
+   "a": "Zzg",
+   "b": "ZzgV",
+   "expected": "ZzgG"
+  },
+  {
+   "a": "a0qV",
+   "b": "a0r",
+   "expected": "a0ql"
+  },
+  {
+   "a": "a0rV",
+   "b": "a0s",
+   "expected": "a0rl"
+  },
+  {
+   "a": "Zxl",
+   "b": "Zy",
+   "expected": "Zxt"
+  },
+  {
+   "a": "a0sl",
+   "b": "a0t",
+   "expected": "a0st"
+  },
+  {
+   "a": "a2",
+   "b": "a2V",
+   "expected": "a2G"
+  },
+  {
+   "a": "a0n",
+   "b": "a0nV",
+   "expected": "a0nG"
+  },
+  {
+   "a": "Zxt",
+   "b": "Zy",
+   "expected": "Zxx"
+  },
+  {
+   "a": "Zzi",
+   "b": "Zzj",
+   "expected": "ZziV"
+  },
+  {
+   "a": "Zzm",
+   "b": "ZzmV",
+   "expected": "ZzmG"
+  },
+  {
+   "a": "Zx",
+   "b": "ZxG",
+   "expected": "Zx8"
+  },
+  {
+   "a": "ZzmV",
+   "b": "Zzn",
+   "expected": "Zzml"
+  },
+  {
+   "a": "a1t",
+   "b": "a2",
+   "expected": "a1x"
+  },
+  {
+   "a": "Zzg",
+   "b": "ZzgG",
+   "expected": "Zzg8"
+  },
+  {
+   "a": "a0sd",
+   "b": "a0sl",
+   "expected": "a0sh"
+  },
+  {
+   "a": "Zx",
+   "b": "Zx8",
+   "expected": "Zx4"
+  },
+  {
+   "a": "a0w",
+   "b": "a0x",
+   "expected": "a0wV"
+  },
+  {
+   "a": "ZxV",
+   "b": "Zxl",
+   "expected": "Zxd"
+  },
+  {
+   "a": "a08",
+   "b": "a0A",
+   "expected": "a09"
+  },
+  {
+   "a": "a0wV",
+   "b": "a0x",
+   "expected": "a0wl"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzV",
+   "expected": "ZzS"
+  },
+  {
+   "a": "a0lV",
+   "b": "a0m",
+   "expected": "a0ll"
+  },
+  {
+   "a": "Zxd",
+   "b": "Zxl",
+   "expected": "Zxh"
+  },
+  {
+   "a": "Zzi",
+   "b": "ZziV",
+   "expected": "ZziG"
+  },
+  {
+   "a": "a0oV",
+   "b": "a0p",
+   "expected": "a0ol"
+  },
+  {
+   "a": "ZzbV",
+   "b": "Zzbl",
+   "expected": "Zzbd"
+  },
+  {
+   "a": "a0p",
+   "b": "a0q",
+   "expected": "a0pV"
+  },
+  {
+   "a": "ZzZ",
+   "b": "Zzb",
+   "expected": "Zza"
+  },
+  {
+   "a": "Zzb",
+   "b": "ZzbV",
+   "expected": "ZzbG"
+  },
+  {
+   "a": "a4",
+   "b": "a5",
+   "expected": "a4V"
+  },
+  {
+   "a": "a0o",
+   "b": "a0oG",
+   "expected": "a0o8"
+  },
+  {
+   "a": "Zzo",
+   "b": "Zzp",
+   "expected": "ZzoV"
+  },
+  {
+   "a": "a0rV",
+   "b": "a0rl",
+   "expected": "a0rd"
+  },
+  {
+   "a": "Zx",
+   "b": "Zx4",
+   "expected": "Zx2"
+  },
+  {
+   "a": "a0nG",
+   "b": "a0nV",
+   "expected": "a0nO"
+  },
+  {
+   "a": "a0oG",
+   "b": "a0oV",
+   "expected": "a0oO"
+  },
+  {
+   "a": "Zv",
+   "b": "Zw",
+   "expected": "ZvV"
+  },
+  {
+   "a": "Zy",
+   "b": "ZyG",
+   "expected": "Zy8"
+  },
+  {
+   "a": "Zzg8",
+   "b": "ZzgG",
+   "expected": "ZzgC"
+  },
+  {
+   "a": "Zzg8",
+   "b": "ZzgC",
+   "expected": "ZzgA"
+  },
+  {
+   "a": "a0o",
+   "b": "a0o8",
+   "expected": "a0o4"
+  },
+  {
+   "a": "a2G",
+   "b": "a2V",
+   "expected": "a2O"
+  },
+  {
+   "a": "a0ll",
+   "b": "a0m",
+   "expected": "a0lt"
+  },
+  {
+   "a": "a1G",
+   "b": "a1H",
+   "expected": "a1GV"
+  },
+  {
+   "a": "a0sd",
+   "b": "a0sh",
+   "expected": "a0sf"
+  },
+  {
+   "a": "Zzd",
+   "b": "ZzdV",
+   "expected": "ZzdG"
+  },
+  {
+   "a": "Zx8",
+   "b": "ZxG",
+   "expected": "ZxC"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz4",
+   "expected": "Zz2"
+  },
+  {
+   "a": "Zx",
+   "b": "Zx2",
+   "expected": "Zx1"
+  },
+  {
+   "a": "ZzV",
+   "b": "ZzX",
+   "expected": "ZzW"
+  },
+  {
+   "a": "a1I",
+   "b": "a1K",
+   "expected": "a1J"
+  },
+  {
+   "a": "Zzn",
+   "b": "Zzo",
+   "expected": "ZznV"
+  },
+  {
+   "a": "Zx",
+   "b": "Zx1",
+   "expected": "Zx0V"
+  },
+  {
+   "a": "a0sd",
+   "b": "a0sf",
+   "expected": "a0se"
+  },
+  {
+   "a": null,
+   "b": null,
+   "expected": "a0"
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "expected": "Zz"
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "expected": "ZzV"
+  },
+  {
+   "a": null,
+   "b": "Zz",
+   "expected": "Zy"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzV",
+   "expected": "ZzG"
+  },
+  {
+   "a": null,
+   "b": "Zy",
+   "expected": "Zx"
+  },
+  {
+   "a": null,
+   "b": "Zx",
+   "expected": "Zw"
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "expected": "a1"
+  },
+  {
+   "a": "a1",
+   "b": null,
+   "expected": "a2"
+  },
+  {
+   "a": "Zx",
+   "b": "Zy",
+   "expected": "ZxV"
+  },
+  {
+   "a": "a2",
+   "b": null,
+   "expected": "a3"
+  },
+  {
+   "a": "Zy",
+   "b": "Zz",
+   "expected": "ZyV"
+  },
+  {
+   "a": null,
+   "b": "Zw",
+   "expected": "Zv"
+  },
+  {
+   "a": null,
+   "b": "Zv",
+   "expected": "Zu"
+  },
+  {
+   "a": "Zy",
+   "b": "ZyV",
+   "expected": "ZyG"
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "expected": "a0V"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzV",
+   "expected": "ZzO"
+  },
+  {
+   "a": "ZyV",
+   "b": "Zz",
+   "expected": "Zyl"
+  },
+  {
+   "a": "ZyG",
+   "b": "ZyV",
+   "expected": "ZyO"
+  },
+  {
+   "a": "Zw",
+   "b": "Zx",
+   "expected": "ZwV"
+  },
+  {
+   "a": "a3",
+   "b": null,
+   "expected": "a4"
+  },
+  {
+   "a": "a3",
+   "b": "a4",
+   "expected": "a3V"
+  },
+  {
+   "a": "ZxV",
+   "b": "Zy",
+   "expected": "Zxl"
+  },
+  {
+   "a": "a3V",
+   "b": "a4",
+   "expected": "a3l"
+  },
+  {
+   "a": "a3",
+   "b": "a3V",
+   "expected": "a3G"
+  },
+  {
+   "a": "a4",
+   "b": null,
+   "expected": "a5"
+  },
+  {
+   "a": "a0V",
+   "b": "a1",
+   "expected": "a0l"
+  },
+  {
+   "a": "a4",
+   "b": "a5",
+   "expected": "a4V"
+  },
+  {
+   "a": "a4V",
+   "b": "a5",
+   "expected": "a4l"
+  },
+  {
+   "a": "a4l",
+   "b": "a5",
+   "expected": "a4t"
+  },
+  {
+   "a": "ZxV",
+   "b": "Zxl",
+   "expected": "Zxd"
+  },
+  {
+   "a": "ZzV",
+   "b": "a0",
+   "expected": "Zzl"
+  },
+  {
+   "a": "ZxV",
+   "b": "Zxd",
+   "expected": "ZxZ"
+  },
+  {
+   "a": "Zxl",
+   "b": "Zy",
+   "expected": "Zxt"
+  },
+  {
+   "a": "ZxZ",
+   "b": "Zxd",
+   "expected": "Zxb"
+  },
+  {
+   "a": "a3V",
+   "b": "a3l",
+   "expected": "a3d"
+  },
+  {
+   "a": "ZyO",
+   "b": "ZyV",
+   "expected": "ZyS"
+  },
+  {
+   "a": "Zzl",
+   "b": "a0",
+   "expected": "Zzt"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzt",
+   "expected": "Zzp"
+  },
+  {
+   "a": "a4",
+   "b": "a4V",
+   "expected": "a4G"
+  },
+  {
+   "a": "Zzp",
+   "b": "Zzt",
+   "expected": "Zzr"
+  },
+  {
+   "a": "a4",
+   "b": "a4G",
+   "expected": "a48"
+  },
+  {
+   "a": "a2",
+   "b": "a3",
+   "expected": "a2V"
+  },
+  {
+   "a": "Zzt",
+   "b": "a0",
+   "expected": "Zzx"
+  },
+  {
+   "a": "Zy",
+   "b": "ZyG",
+   "expected": "Zy8"
+  },
+  {
+   "a": "a4",
+   "b": "a48",
+   "expected": "a44"
+  },
+  {
+   "a": "a3l",
+   "b": "a4",
+   "expected": "a3t"
+  },
+  {
+   "a": "Zxd",
+   "b": "Zxl",
+   "expected": "Zxh"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzG",
+   "expected": "Zz8"
+  },
+  {
+   "a": "ZyV",
+   "b": "Zyl",
+   "expected": "Zyd"
+  },
+  {
+   "a": "a0l",
+   "b": "a1",
+   "expected": "a0t"
+  },
+  {
+   "a": "Zu",
+   "b": "Zv",
+   "expected": "ZuV"
+  },
+  {
+   "a": "ZyO",
+   "b": "ZyS",
+   "expected": "ZyQ"
+  },
+  {
+   "a": "Zy8",
+   "b": "ZyG",
+   "expected": "ZyC"
+  },
+  {
+   "a": "Zy",
+   "b": "Zy8",
+   "expected": "Zy4"
+  },
+  {
+   "a": "Zy8",
+   "b": "ZyC",
+   "expected": "ZyA"
+  },
+  {
+   "a": "Zy4",
+   "b": "Zy8",
+   "expected": "Zy6"
+  },
+  {
+   "a": "ZyO",
+   "b": "ZyQ",
+   "expected": "ZyP"
+  },
+  {
+   "a": "ZwV",
+   "b": "Zx",
+   "expected": "Zwl"
+  },
+  {
+   "a": "ZyG",
+   "b": "ZyO",
+   "expected": "ZyK"
+  },
+  {
+   "a": "ZwV",
+   "b": "Zwl",
+   "expected": "Zwd"
+  },
+  {
+   "a": "a4G",
+   "b": "a4V",
+   "expected": "a4O"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz8",
+   "expected": "Zz4"
+  },
+  {
+   "a": "Zwl",
+   "b": "Zx",
+   "expected": "Zwt"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zz",
+   "expected": "Zyt"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zyt",
+   "expected": "Zyp"
+  },
+  {
+   "a": "Zv",
+   "b": "Zw",
+   "expected": "ZvV"
+  },
+  {
+   "a": "ZyV",
+   "b": "Zyd",
+   "expected": "ZyZ"
+  },
+  {
+   "a": "Zzx",
+   "b": "a0",
+   "expected": "Zzz"
+  },
+  {
+   "a": "Zy6",
+   "b": "Zy8",
+   "expected": "Zy7"
+  },
+  {
+   "a": "Zy6",
+   "b": "Zy7",
+   "expected": "Zy6V"
+  },
+  {
+   "a": "a4G",
+   "b": "a4O",
+   "expected": "a4K"
+  },
+  {
+   "a": "Zwl",
+   "b": "Zwt",
+   "expected": "Zwp"
+  },
+  {
+   "a": "Zx",
+   "b": "ZxV",
+   "expected": "ZxG"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzV",
+   "expected": "ZzS"
+  },
+  {
+   "a": "Zzz",
+   "b": "a0",
+   "expected": "ZzzV"
+  },
+  {
+   "a": "a0l",
+   "b": "a0t",
+   "expected": "a0p"
+  },
+  {
+   "a": "a48",
+   "b": "a4G",
+   "expected": "a4C"
+  },
+  {
+   "a": "ZxG",
+   "b": "ZxV",
+   "expected": "ZxO"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzl",
+   "expected": "Zzd"
+  },
+  {
+   "a": "ZyS",
+   "b": "ZyV",
+   "expected": "ZyU"
+  },
+  {
+   "a": "a0l",
+   "b": "a0p",
+   "expected": "a0n"
+  },
+  {
+   "a": "ZxG",
+   "b": "ZxO",
+   "expected": "ZxK"
+  },
+  {
+   "a": "ZxZ",
+   "b": "Zxb",
+   "expected": "Zxa"
+  },
+  {
+   "a": "a3d",
+   "b": "a3l",
+   "expected": "a3h"
+  },
+  {
+   "a": "ZwV",
+   "b": "Zwd",
+   "expected": "ZwZ"
+  },
+  {
+   "a": "Zwd",
+   "b": "Zwl",
+   "expected": "Zwh"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzS",
+   "expected": "ZzQ"
+  },
+  {
+   "a": "Zy4",
+   "b": "Zy6",
+   "expected": "Zy5"
+  },
+  {
+   "a": "a0l",
+   "b": "a0n",
+   "expected": "a0m"
+  },
+  {
+   "a": "Zyp",
+   "b": "Zyt",
+   "expected": "Zyr"
+  },
+  {
+   "a": "a3t",
+   "b": "a4",
+   "expected": "a3x"
+  },
+  {
+   "a": "a1",
+   "b": "a2",
+   "expected": "a1V"
+  },
+  {
+   "a": "ZxV",
+   "b": "ZxZ",
+   "expected": "ZxX"
+  },
+  {
+   "a": "Zxt",
+   "b": "Zy",
+   "expected": "Zxx"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz4",
+   "expected": "Zz2"
+  },
+  {
+   "a": "Zy7",
+   "b": "Zy8",
+   "expected": "Zy7V"
+  },
+  {
+   "a": "Zz2",
+   "b": "Zz4",
+   "expected": "Zz3"
+  },
+  {
+   "a": "ZxO",
+   "b": "ZxV",
+   "expected": "ZxS"
+  },
+  {
+   "a": "Zwt",
+   "b": "Zx",
+   "expected": "Zwx"
+  },
+  {
+   "a": "ZxV",
+   "b": "ZxX",
+   "expected": "ZxW"
+  },
+  {
+   "a": "ZyK",
+   "b": "ZyO",
+   "expected": "ZyM"
+  },
+  {
+   "a": "Zx",
+   "b": "ZxG",
+   "expected": "Zx8"
+  },
+  {
+   "a": "a0m",
+   "b": "a0n",
+   "expected": "a0mV"
+  },
+  {
+   "a": "a0l",
+   "b": "a0m",
+   "expected": "a0lV"
+  },
+  {
+   "a": null,
+   "b": "Zu",
+   "expected": "Zt"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzd",
+   "expected": "ZzZ"
+  },
+  {
+   "a": "ZvV",
+   "b": "Zw",
+   "expected": "Zvl"
+  },
+  {
+   "a": "a4",
+   "b": "a44",
+   "expected": "a42"
+  },
+  {
+   "a": "ZyO",
+   "b": "ZyP",
+   "expected": "ZyOV"
+  },
+  {
+   "a": "a3",
+   "b": "a3G",
+   "expected": "a38"
+  },
+  {
+   "a": "a3G",
+   "b": "a3V",
+   "expected": "a3O"
+  },
+  {
+   "a": "a4C",
+   "b": "a4G",
+   "expected": "a4E"
+  },
+  {
+   "a": "ZyK",
+   "b": "ZyM",
+   "expected": "ZyL"
+  },
+  {
+   "a": "a0V",
+   "b": "a0l",
+   "expected": "a0d"
+  },
+  {
+   "a": "Zu",
+   "b": "ZuV",
+   "expected": "ZuG"
+  },
+  {
+   "a": "ZyK",
+   "b": "ZyL",
+   "expected": "ZyKV"
+  },
+  {
+   "a": "a4",
+   "b": "a42",
+   "expected": "a41"
+  },
+  {
+   "a": "ZxW",
+   "b": "ZxX",
+   "expected": "ZxWV"
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "expected": "a0G"
+  },
+  {
+   "a": "Zwd",
+   "b": "Zwh",
+   "expected": "Zwf"
+  },
+  {
+   "a": "ZyG",
+   "b": "ZyK",
+   "expected": "ZyI"
+  },
+  {
+   "a": "ZwZ",
+   "b": "Zwd",
+   "expected": "Zwb"
+  },
+  {
+   "a": "ZxO",
+   "b": "ZxS",
+   "expected": "ZxQ"
+  },
+  {
+   "a": "a0t",
+   "b": "a1",
+   "expected": "a0x"
+  },
+  {
+   "a": "ZzQ",
+   "b": "ZzS",
+   "expected": "ZzR"
+  },
+  {
+   "a": "Zyl",
+   "b": "Zyp",
+   "expected": "Zyn"
+  },
+  {
+   "a": "Zxl",
+   "b": "Zxt",
+   "expected": "Zxp"
+  },
+  {
+   "a": "a4O",
+   "b": "a4V",
+   "expected": "a4S"
+  },
+  {
+   "a": "a4E",
+   "b": "a4G",
+   "expected": "a4F"
+  },
+  {
+   "a": "Zz2",
+   "b": "Zz3",
+   "expected": "Zz2V"
+  },
+  {
+   "a": "ZzR",
+   "b": "ZzS",
+   "expected": "ZzRV"
+  },
+  {
+   "a": "a0p",
+   "b": "a0t",
+   "expected": "a0r"
+  },
+  {
+   "a": "Zxx",
+   "b": "Zy",
+   "expected": "Zxz"
+  },
+  {
+   "a": "Zxl",
+   "b": "Zxp",
+   "expected": "Zxn"
+  },
+  {
+   "a": "ZyK",
+   "b": "ZyKV",
+   "expected": "ZyKG"
+  },
+  {
+   "a": "Zz2",
+   "b": "Zz2V",
+   "expected": "Zz2G"
+  },
+  {
+   "a": "a0l",
+   "b": "a0lV",
+   "expected": "a0lG"
+  },
+  {
+   "a": "a3d",
+   "b": "a3h",
+   "expected": "a3f"
+  },
+  {
+   "a": "Zwl",
+   "b": "Zwp",
+   "expected": "Zwn"
+  },
+  {
+   "a": "Zxh",
+   "b": "Zxl",
+   "expected": "Zxj"
+  },
+  {
+   "a": "a3l",
+   "b": "a3t",
+   "expected": "a3p"
+  },
+  {
+   "a": "ZwZ",
+   "b": "Zwb",
+   "expected": "Zwa"
+  },
+  {
+   "a": "Zwp",
+   "b": "Zwt",
+   "expected": "Zwr"
+  },
+  {
+   "a": "a0l",
+   "b": "a0lG",
+   "expected": "a0l8"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz2",
+   "expected": "Zz1"
+  },
+  {
+   "a": "a4K",
+   "b": "a4O",
+   "expected": "a4M"
+  },
+  {
+   "a": "Zwb",
+   "b": "Zwd",
+   "expected": "Zwc"
+  },
+  {
+   "a": "a44",
+   "b": "a48",
+   "expected": "a46"
+  },
+  {
+   "a": "Zy6V",
+   "b": "Zy7",
+   "expected": "Zy6l"
+  },
+  {
+   "a": null,
+   "b": null,
+   "expected": "a0"
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "expected": "Zz"
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "expected": "a1"
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "expected": "a0V"
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "expected": "a0G"
+  },
+  {
+   "a": "a0",
+   "b": "a0G",
+   "expected": "a08"
+  },
+  {
+   "a": "a08",
+   "b": "a0G",
+   "expected": "a0C"
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "expected": "ZzV"
+  },
+  {
+   "a": "a08",
+   "b": "a0C",
+   "expected": "a0A"
+  },
+  {
+   "a": "a0G",
+   "b": "a0V",
+   "expected": "a0O"
+  },
+  {
+   "a": "ZzV",
+   "b": "a0",
+   "expected": "Zzl"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzV",
+   "expected": "ZzG"
+  },
+  {
+   "a": "a0G",
+   "b": "a0O",
+   "expected": "a0K"
+  },
+  {
+   "a": "a0A",
+   "b": "a0C",
+   "expected": "a0B"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzV",
+   "expected": "ZzO"
+  },
+  {
+   "a": "Zzl",
+   "b": "a0",
+   "expected": "Zzt"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzl",
+   "expected": "Zzd"
+  },
+  {
+   "a": "a08",
+   "b": "a0A",
+   "expected": "a09"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzl",
+   "expected": "Zzh"
+  },
+  {
+   "a": "a1",
+   "b": null,
+   "expected": "a2"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzh",
+   "expected": "Zzf"
+  },
+  {
+   "a": "a0V",
+   "b": "a1",
+   "expected": "a0l"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzd",
+   "expected": "ZzZ"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzV",
+   "expected": "ZzS"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzS",
+   "expected": "ZzQ"
+  },
+  {
+   "a": "ZzZ",
+   "b": "Zzd",
+   "expected": "Zzb"
+  },
+  {
+   "a": "a0",
+   "b": "a08",
+   "expected": "a04"
+  },
+  {
+   "a": "a0G",
+   "b": "a0K",
+   "expected": "a0I"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzO",
+   "expected": "ZzK"
+  },
+  {
+   "a": "a0l",
+   "b": "a1",
+   "expected": "a0t"
+  },
+  {
+   "a": "a08",
+   "b": "a09",
+   "expected": "a08V"
+  },
+  {
+   "a": "a09",
+   "b": "a0A",
+   "expected": "a09V"
+  },
+  {
+   "a": "a0B",
+   "b": "a0C",
+   "expected": "a0BV"
+  },
+  {
+   "a": "a1",
+   "b": "a2",
+   "expected": "a1V"
+  },
+  {
+   "a": "a0A",
+   "b": "a0B",
+   "expected": "a0AV"
+  },
+  {
+   "a": "a1",
+   "b": "a1V",
+   "expected": "a1G"
+  },
+  {
+   "a": "a0V",
+   "b": "a0l",
+   "expected": "a0d"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzG",
+   "expected": "Zz8"
+  },
+  {
+   "a": "ZzQ",
+   "b": "ZzS",
+   "expected": "ZzR"
+  },
+  {
+   "a": "Zzh",
+   "b": "Zzl",
+   "expected": "Zzj"
+  },
+  {
+   "a": "Zzt",
+   "b": "a0",
+   "expected": "Zzx"
+  },
+  {
+   "a": null,
+   "b": "Zz",
+   "expected": "Zy"
+  },
+  {
+   "a": "Zz8",
+   "b": "ZzG",
+   "expected": "ZzC"
+  },
+  {
+   "a": "a0I",
+   "b": "a0K",
+   "expected": "a0J"
+  },
+  {
+   "a": "Zzh",
+   "b": "Zzj",
+   "expected": "Zzi"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzt",
+   "expected": "Zzp"
+  },
+  {
+   "a": "Zzx",
+   "b": "a0",
+   "expected": "Zzz"
+  },
+  {
+   "a": "a1G",
+   "b": "a1V",
+   "expected": "a1O"
+  },
+  {
+   "a": "a0C",
+   "b": "a0G",
+   "expected": "a0E"
+  },
+  {
+   "a": "a0C",
+   "b": "a0E",
+   "expected": "a0D"
+  },
+  {
+   "a": "Zzh",
+   "b": "Zzi",
+   "expected": "ZzhV"
+  },
+  {
+   "a": "Zzi",
+   "b": "Zzj",
+   "expected": "ZziV"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzQ",
+   "expected": "ZzP"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzP",
+   "expected": "ZzOV"
+  },
+  {
+   "a": "a1",
+   "b": "a1G",
+   "expected": "a18"
+  },
+  {
+   "a": "Zzh",
+   "b": "ZzhV",
+   "expected": "ZzhG"
+  },
+  {
+   "a": "ZzQ",
+   "b": "ZzR",
+   "expected": "ZzQV"
+  },
+  {
+   "a": "a0A",
+   "b": "a0AV",
+   "expected": "a0AG"
+  },
+  {
+   "a": "Zzh",
+   "b": "ZzhG",
+   "expected": "Zzh8"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz8",
+   "expected": "Zz4"
+  },
+  {
+   "a": "a0B",
+   "b": "a0BV",
+   "expected": "a0BG"
+  },
+  {
+   "a": "a18",
+   "b": "a1G",
+   "expected": "a1C"
+  },
+  {
+   "a": "a08",
+   "b": "a08V",
+   "expected": "a08G"
+  },
+  {
+   "a": "a0O",
+   "b": "a0V",
+   "expected": "a0S"
+  },
+  {
+   "a": "a0B",
+   "b": "a0BG",
+   "expected": "a0B8"
+  },
+  {
+   "a": "a18",
+   "b": "a1C",
+   "expected": "a1A"
+  },
+  {
+   "a": "ZzK",
+   "b": "ZzO",
+   "expected": "ZzM"
+  },
+  {
+   "a": "a08G",
+   "b": "a08V",
+   "expected": "a08O"
+  },
+  {
+   "a": "a0B",
+   "b": "a0B8",
+   "expected": "a0B4"
+  },
+  {
+   "a": "a1",
+   "b": "a18",
+   "expected": "a14"
+  },
+  {
+   "a": "a1O",
+   "b": "a1V",
+   "expected": "a1S"
+  },
+  {
+   "a": "a0l",
+   "b": "a0t",
+   "expected": "a0p"
+  },
+  {
+   "a": "a0AV",
+   "b": "a0B",
+   "expected": "a0Al"
+  },
+  {
+   "a": "a1S",
+   "b": "a1V",
+   "expected": "a1U"
+  },
+  {
+   "a": "a1U",
+   "b": "a1V",
+   "expected": "a1UV"
+  },
+  {
+   "a": "a0A",
+   "b": "a0AG",
+   "expected": "a0A8"
+  },
+  {
+   "a": "a0p",
+   "b": "a0t",
+   "expected": "a0r"
+  },
+  {
+   "a": null,
+   "b": "Zy",
+   "expected": "Zx"
+  },
+  {
+   "a": "a09",
+   "b": "a09V",
+   "expected": "a09G"
+  },
+  {
+   "a": "Zzi",
+   "b": "ZziV",
+   "expected": "ZziG"
+  },
+  {
+   "a": "a0I",
+   "b": "a0J",
+   "expected": "a0IV"
+  },
+  {
+   "a": "a0A8",
+   "b": "a0AG",
+   "expected": "a0AC"
+  },
+  {
+   "a": "a0K",
+   "b": "a0O",
+   "expected": "a0M"
+  },
+  {
+   "a": "a1V",
+   "b": "a2",
+   "expected": "a1l"
+  },
+  {
+   "a": "a0AG",
+   "b": "a0AV",
+   "expected": "a0AO"
+  },
+  {
+   "a": "a0p",
+   "b": "a0r",
+   "expected": "a0q"
+  },
+  {
+   "a": "a08",
+   "b": "a08G",
+   "expected": "a088"
+  },
+  {
+   "a": "a0BV",
+   "b": "a0C",
+   "expected": "a0Bl"
+  },
+  {
+   "a": "a0K",
+   "b": "a0M",
+   "expected": "a0L"
+  },
+  {
+   "a": "a0AO",
+   "b": "a0AV",
+   "expected": "a0AS"
+  },
+  {
+   "a": "ZziV",
+   "b": "Zzj",
+   "expected": "Zzil"
+  },
+  {
+   "a": "Zzf",
+   "b": "Zzh",
+   "expected": "Zzg"
+  },
+  {
+   "a": null,
+   "b": "Zx",
+   "expected": "Zw"
+  },
+  {
+   "a": "Zx",
+   "b": "Zy",
+   "expected": "ZxV"
+  },
+  {
+   "a": "a1S",
+   "b": "a1U",
+   "expected": "a1T"
+  },
+  {
+   "a": "a0r",
+   "b": "a0t",
+   "expected": "a0s"
+  },
+  {
+   "a": "a0BV",
+   "b": "a0Bl",
+   "expected": "a0Bd"
+  },
+  {
+   "a": "Zw",
+   "b": "Zx",
+   "expected": "ZwV"
+  },
+  {
+   "a": "a0BG",
+   "b": "a0BV",
+   "expected": "a0BO"
+  },
+  {
+   "a": "a0B4",
+   "b": "a0B8",
+   "expected": "a0B6"
+  },
+  {
+   "a": "a0IV",
+   "b": "a0J",
+   "expected": "a0Il"
+  },
+  {
+   "a": "a2",
+   "b": null,
+   "expected": "a3"
+  },
+  {
+   "a": "ZzhG",
+   "b": "ZzhV",
+   "expected": "ZzhO"
+  },
+  {
+   "a": "a2",
+   "b": "a3",
+   "expected": "a2V"
+  },
+  {
+   "a": "a0C",
+   "b": "a0D",
+   "expected": "a0CV"
+  },
+  {
+   "a": "a0p",
+   "b": "a0q",
+   "expected": "a0pV"
+  },
+  {
+   "a": "a0Bd",
+   "b": "a0Bl",
+   "expected": "a0Bh"
+  },
+  {
+   "a": "a0r",
+   "b": "a0s",
+   "expected": "a0rV"
+  },
+  {
+   "a": "ZzP",
+   "b": "ZzQ",
+   "expected": "ZzPV"
+  },
+  {
+   "a": "a3",
+   "b": null,
+   "expected": "a4"
+  },
+  {
+   "a": "a0AO",
+   "b": "a0AS",
+   "expected": "a0AQ"
+  },
+  {
+   "a": "a0B6",
+   "b": "a0B8",
+   "expected": "a0B7"
+  },
+  {
+   "a": "ZzQV",
+   "b": "ZzR",
+   "expected": "ZzQl"
+  },
+  {
+   "a": "a08",
+   "b": "a088",
+   "expected": "a084"
+  },
+  {
+   "a": "Zzb",
+   "b": "Zzd",
+   "expected": "Zzc"
+  },
+  {
+   "a": "a0q",
+   "b": "a0r",
+   "expected": "a0qV"
+  },
+  {
+   "a": "a1",
+   "b": "a14",
+   "expected": "a12"
+  },
+  {
+   "a": "a0M",
+   "b": "a0O",
+   "expected": "a0N"
+  },
+  {
+   "a": "a0E",
+   "b": "a0G",
+   "expected": "a0F"
+  },
+  {
+   "a": "a3",
+   "b": "a4",
+   "expected": "a3V"
+  },
+  {
+   "a": "a0Bh",
+   "b": "a0Bl",
+   "expected": "a0Bj"
+  },
+  {
+   "a": "a0N",
+   "b": "a0O",
+   "expected": "a0NV"
+  },
+  {
+   "a": "a1l",
+   "b": "a2",
+   "expected": "a1t"
+  },
+  {
+   "a": "a0AQ",
+   "b": "a0AS",
+   "expected": "a0AR"
+  },
+  {
+   "a": "Zzg",
+   "b": "Zzh",
+   "expected": "ZzgV"
+  },
+  {
+   "a": "a0BV",
+   "b": "a0Bd",
+   "expected": "a0BZ"
+  },
+  {
+   "a": "a0q",
+   "b": "a0qV",
+   "expected": "a0qG"
+  },
+  {
+   "a": "a12",
+   "b": "a14",
+   "expected": "a13"
+  },
+  {
+   "a": "Zzb",
+   "b": "Zzc",
+   "expected": "ZzbV"
+  },
+  {
+   "a": "a0BG",
+   "b": "a0BO",
+   "expected": "a0BK"
+  },
+  {
+   "a": "a0AQ",
+   "b": "a0AR",
+   "expected": "a0AQV"
+  },
+  {
+   "a": "a0B4",
+   "b": "a0B6",
+   "expected": "a0B5"
+  },
+  {
+   "a": "ZzZ",
+   "b": "Zzb",
+   "expected": "Zza"
+  },
+  {
+   "a": "Zzh8",
+   "b": "ZzhG",
+   "expected": "ZzhC"
+  },
+  {
+   "a": "a0A",
+   "b": "a0A8",
+   "expected": "a0A4"
+  },
+  {
+   "a": "a0AO",
+   "b": "a0AQ",
+   "expected": "a0AP"
+  },
+  {
+   "a": "ZzZ",
+   "b": "Zza",
+   "expected": "ZzZV"
+  },
+  {
+   "a": null,
+   "b": "Zw",
+   "expected": "Zv"
+  },
+  {
+   "a": "ZzZ",
+   "b": "ZzZV",
+   "expected": "ZzZG"
+  },
+  {
+   "a": "ZwV",
+   "b": "Zx",
+   "expected": "Zwl"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzOV",
+   "expected": "ZzOG"
+  },
+  {
+   "a": "a14",
+   "b": "a18",
+   "expected": "a16"
+  },
+  {
+   "a": "a3",
+   "b": "a3V",
+   "expected": "a3G"
+  },
+  {
+   "a": "Zz",
+   "b": "Zz4",
+   "expected": "Zz2"
+  },
+  {
+   "a": "ZzS",
+   "b": "ZzV",
+   "expected": "ZzU"
+  },
+  {
+   "a": "a088",
+   "b": "a08G",
+   "expected": "a08C"
+  },
+  {
+   "a": "a0AP",
+   "b": "a0AQ",
+   "expected": "a0APV"
+  },
+  {
+   "a": "a0M",
+   "b": "a0N",
+   "expected": "a0MV"
+  },
+  {
+   "a": "Zzz",
+   "b": "a0",
+   "expected": "ZzzV"
+  },
+  {
+   "a": "Zzz",
+   "b": "ZzzV",
+   "expected": "ZzzG"
+  },
+  {
+   "a": null,
+   "b": null,
+   "expected": "a0"
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "expected": "a1"
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "expected": "Zz"
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "expected": "a0V"
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "expected": "a0G"
+  },
+  {
+   "a": "a0",
+   "b": "a0G",
+   "expected": "a08"
+  },
+  {
+   "a": "a0V",
+   "b": "a1",
+   "expected": "a0l"
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "expected": "ZzV"
+  },
+  {
+   "a": "a08",
+   "b": "a0G",
+   "expected": "a0C"
+  },
+  {
+   "a": null,
+   "b": "Zz",
+   "expected": "Zy"
+  },
+  {
+   "a": "a08",
+   "b": "a0C",
+   "expected": "a0A"
+  },
+  {
+   "a": null,
+   "b": "Zy",
+   "expected": "Zx"
+  },
+  {
+   "a": "a0A",
+   "b": "a0C",
+   "expected": "a0B"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzV",
+   "expected": "ZzG"
+  },
+  {
+   "a": "Zy",
+   "b": "Zz",
+   "expected": "ZyV"
+  },
+  {
+   "a": "a1",
+   "b": null,
+   "expected": "a2"
+  },
+  {
+   "a": "a0C",
+   "b": "a0G",
+   "expected": "a0E"
+  },
+  {
+   "a": "Zx",
+   "b": "Zy",
+   "expected": "ZxV"
+  },
+  {
+   "a": "ZxV",
+   "b": "Zy",
+   "expected": "Zxl"
+  },
+  {
+   "a": null,
+   "b": "Zx",
+   "expected": "Zw"
+  },
+  {
+   "a": "a08",
+   "b": "a0A",
+   "expected": "a09"
+  },
+  {
+   "a": "ZzV",
+   "b": "a0",
+   "expected": "Zzl"
+  },
+  {
+   "a": "a0E",
+   "b": "a0G",
+   "expected": "a0F"
+  },
+  {
+   "a": "a0F",
+   "b": "a0G",
+   "expected": "a0FV"
+  },
+  {
+   "a": null,
+   "b": "Zw",
+   "expected": "Zv"
+  },
+  {
+   "a": "Zzl",
+   "b": "a0",
+   "expected": "Zzt"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzV",
+   "expected": "ZzO"
+  },
+  {
+   "a": "a0",
+   "b": "a08",
+   "expected": "a04"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzO",
+   "expected": "ZzK"
+  },
+  {
+   "a": "a0",
+   "b": "a04",
+   "expected": "a02"
+  },
+  {
+   "a": "Zx",
+   "b": "ZxV",
+   "expected": "ZxG"
+  },
+  {
+   "a": "a0G",
+   "b": "a0V",
+   "expected": "a0O"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzK",
+   "expected": "ZzI"
+  },
+  {
+   "a": "a0C",
+   "b": "a0E",
+   "expected": "a0D"
+  },
+  {
+   "a": "a0V",
+   "b": "a0l",
+   "expected": "a0d"
+  },
+  {
+   "a": "a02",
+   "b": "a04",
+   "expected": "a03"
+  },
+  {
+   "a": "a0C",
+   "b": "a0D",
+   "expected": "a0CV"
+  },
+  {
+   "a": "a0E",
+   "b": "a0F",
+   "expected": "a0EV"
+  },
+  {
+   "a": "a0C",
+   "b": "a0CV",
+   "expected": "a0CG"
+  },
+  {
+   "a": "ZzK",
+   "b": "ZzO",
+   "expected": "ZzM"
+  },
+  {
+   "a": "ZzI",
+   "b": "ZzK",
+   "expected": "ZzJ"
+  },
+  {
+   "a": "ZxG",
+   "b": "ZxV",
+   "expected": "ZxO"
+  },
+  {
+   "a": "ZzJ",
+   "b": "ZzK",
+   "expected": "ZzJV"
+  },
+  {
+   "a": "a2",
+   "b": null,
+   "expected": "a3"
+  },
+  {
+   "a": "a08",
+   "b": "a09",
+   "expected": "a08V"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzl",
+   "expected": "Zzd"
+  },
+  {
+   "a": "Zw",
+   "b": "Zx",
+   "expected": "ZwV"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzt",
+   "expected": "Zzp"
+  },
+  {
+   "a": "a0EV",
+   "b": "a0F",
+   "expected": "a0El"
+  },
+  {
+   "a": "a3",
+   "b": null,
+   "expected": "a4"
+  },
+  {
+   "a": "ZzG",
+   "b": "ZzI",
+   "expected": "ZzH"
+  },
+  {
+   "a": "a0O",
+   "b": "a0V",
+   "expected": "a0S"
+  },
+  {
+   "a": "ZwV",
+   "b": "Zx",
+   "expected": "Zwl"
+  },
+  {
+   "a": "a04",
+   "b": "a08",
+   "expected": "a06"
+  },
+  {
+   "a": "a04",
+   "b": "a06",
+   "expected": "a05"
+  },
+  {
+   "a": "Zxl",
+   "b": "Zy",
+   "expected": "Zxt"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzl",
+   "expected": "Zzh"
+  },
+  {
+   "a": "ZxG",
+   "b": "ZxO",
+   "expected": "ZxK"
+  },
+  {
+   "a": "ZxG",
+   "b": "ZxK",
+   "expected": "ZxI"
+  },
+  {
+   "a": "a4",
+   "b": null,
+   "expected": "a5"
+  },
+  {
+   "a": "a0O",
+   "b": "a0S",
+   "expected": "a0Q"
+  },
+  {
+   "a": "Zxl",
+   "b": "Zxt",
+   "expected": "Zxp"
+  },
+  {
+   "a": "Zv",
+   "b": "Zw",
+   "expected": "ZvV"
+  },
+  {
+   "a": "a3",
+   "b": "a4",
+   "expected": "a3V"
+  },
+  {
+   "a": "a08V",
+   "b": "a09",
+   "expected": "a08l"
+  },
+  {
+   "a": "a0FV",
+   "b": "a0G",
+   "expected": "a0Fl"
+  },
+  {
+   "a": "ZzV",
+   "b": "Zzd",
+   "expected": "ZzZ"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzp",
+   "expected": "Zzn"
+  },
+  {
+   "a": "ZvV",
+   "b": "Zw",
+   "expected": "Zvl"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzh",
+   "expected": "Zzf"
+  },
+  {
+   "a": "ZzI",
+   "b": "ZzJ",
+   "expected": "ZzIV"
+  },
+  {
+   "a": "a0CG",
+   "b": "a0CV",
+   "expected": "a0CO"
+  },
+  {
+   "a": null,
+   "b": "Zv",
+   "expected": "Zu"
+  },
+  {
+   "a": "a0E",
+   "b": "a0EV",
+   "expected": "a0EG"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzV",
+   "expected": "ZzS"
+  },
+  {
+   "a": "Zz",
+   "b": "ZzG",
+   "expected": "Zz8"
+  },
+  {
+   "a": "a4",
+   "b": "a5",
+   "expected": "a4V"
+  },
+  {
+   "a": "a0d",
+   "b": "a0l",
+   "expected": "a0h"
+  },
+  {
+   "a": "a0Q",
+   "b": "a0S",
+   "expected": "a0R"
+  },
+  {
+   "a": "a08V",
+   "b": "a08l",
+   "expected": "a08d"
+  },
+  {
+   "a": "a0CG",
+   "b": "a0CO",
+   "expected": "a0CK"
+  },
+  {
+   "a": "a3V",
+   "b": "a4",
+   "expected": "a3l"
+  },
+  {
+   "a": "ZzJ",
+   "b": "ZzJV",
+   "expected": "ZzJG"
+  },
+  {
+   "a": "Zwl",
+   "b": "Zx",
+   "expected": "Zwt"
+  },
+  {
+   "a": "a08V",
+   "b": "a08d",
+   "expected": "a08Z"
+  },
+  {
+   "a": "ZzZ",
+   "b": "Zzd",
+   "expected": "Zzb"
+  },
+  {
+   "a": "ZzK",
+   "b": "ZzM",
+   "expected": "ZzL"
+  },
+  {
+   "a": "a0h",
+   "b": "a0l",
+   "expected": "a0j"
+  },
+  {
+   "a": "ZzJV",
+   "b": "ZzK",
+   "expected": "ZzJl"
+  },
+  {
+   "a": "a05",
+   "b": "a06",
+   "expected": "a05V"
+  },
+  {
+   "a": "ZzIV",
+   "b": "ZzJ",
+   "expected": "ZzIl"
+  },
+  {
+   "a": "a0D",
+   "b": "a0E",
+   "expected": "a0DV"
+  },
+  {
+   "a": "a04",
+   "b": "a05",
+   "expected": "a04V"
+  },
+  {
+   "a": "ZzZ",
+   "b": "Zzb",
+   "expected": "Zza"
+  },
+  {
+   "a": "a0E",
+   "b": "a0EG",
+   "expected": "a0E8"
+  },
+  {
+   "a": "a03",
+   "b": "a04",
+   "expected": "a03V"
+  },
+  {
+   "a": "a0D",
+   "b": "a0DV",
+   "expected": "a0DG"
+  },
+  {
+   "a": "a0G",
+   "b": "a0O",
+   "expected": "a0K"
+  },
+  {
+   "a": "ZzS",
+   "b": "ZzV",
+   "expected": "ZzU"
+  },
+  {
+   "a": "ZzIl",
+   "b": "ZzJ",
+   "expected": "ZzIt"
+  },
+  {
+   "a": "a4",
+   "b": "a4V",
+   "expected": "a4G"
+  },
+  {
+   "a": "ZwV",
+   "b": "Zwl",
+   "expected": "Zwd"
+  },
+  {
+   "a": "Zwt",
+   "b": "Zx",
+   "expected": "Zwx"
+  },
+  {
+   "a": "a0CO",
+   "b": "a0CV",
+   "expected": "a0CS"
+  },
+  {
+   "a": "ZzJl",
+   "b": "ZzK",
+   "expected": "ZzJt"
+  },
+  {
+   "a": "a3",
+   "b": "a3V",
+   "expected": "a3G"
+  },
+  {
+   "a": "ZvV",
+   "b": "Zvl",
+   "expected": "Zvd"
+  },
+  {
+   "a": "a08",
+   "b": "a08V",
+   "expected": "a08G"
+  },
+  {
+   "a": "ZzO",
+   "b": "ZzS",
+   "expected": "ZzQ"
+  },
+  {
+   "a": "a0CO",
+   "b": "a0CS",
+   "expected": "a0CQ"
+  },
+  {
+   "a": "ZxG",
+   "b": "ZxI",
+   "expected": "ZxH"
+  },
+  {
+   "a": "Zxt",
+   "b": "Zy",
+   "expected": "Zxx"
+  },
+  {
+   "a": "ZzI",
+   "b": "ZzIV",
+   "expected": "ZzIG"
+  },
+  {
+   "a": "a0E8",
+   "b": "a0EG",
+   "expected": "a0EC"
+  },
+  {
+   "a": "a0E8",
+   "b": "a0EC",
+   "expected": "a0EA"
+  },
+  {
+   "a": "Zx",
+   "b": "ZxG",
+   "expected": "Zx8"
+  },
+  {
+   "a": "a04",
+   "b": "a04V",
+   "expected": "a04G"
+  },
+  {
+   "a": "Zzd",
+   "b": "Zzf",
+   "expected": "Zze"
+  },
+  {
+   "a": "a08d",
+   "b": "a08l",
+   "expected": "a08h"
+  },
+  {
+   "a": "ZzIG",
+   "b": "ZzIV",
+   "expected": "ZzIO"
+  },
+  {
+   "a": "ZzIG",
+   "b": "ZzIO",
+   "expected": "ZzIK"
+  },
+  {
+   "a": "a04",
+   "b": "a04G",
+   "expected": "a048"
+  },
+  {
+   "a": "ZzIK",
+   "b": "ZzIO",
+   "expected": "ZzIM"
+  },
+  {
+   "a": "Zx",
+   "b": "Zx8",
+   "expected": "Zx4"
+  },
+  {
+   "a": "Zzl",
+   "b": "Zzn",
+   "expected": "Zzm"
+  },
+  {
+   "a": "ZyV",
+   "b": "Zz",
+   "expected": "Zyl"
+  },
+  {
+   "a": "a0",
+   "b": "a02",
+   "expected": "a01"
+  },
+  {
+   "a": "Zx",
+   "b": "Zx4",
+   "expected": "Zx2"
+  },
+  {
+   "a": "ZvV",
+   "b": "Zvd",
+   "expected": "ZvZ"
+  },
+  {
+   "a": "a0CV",
+   "b": "a0D",
+   "expected": "a0Cl"
+  },
+  {
+   "a": "Zwd",
+   "b": "Zwl",
+   "expected": "Zwh"
+  },
+  {
+   "a": "Zzm",
+   "b": "Zzn",
+   "expected": "ZzmV"
+  },
+  {
+   "a": "a0R",
+   "b": "a0S",
+   "expected": "a0RV"
+  },
+  {
+   "a": "a08G",
+   "b": "a08V",
+   "expected": "a08O"
+  },
+  {
+   "a": "Zza",
+   "b": "Zzb",
+   "expected": "ZzaV"
+  },
+  {
+   "a": "a08V",
+   "b": "a08Z",
+   "expected": "a08X"
+  },
+  {
+   "a": "ZzI",
+   "b": "ZzIG",
+   "expected": "ZzI8"
+  },
+  {
+   "a": "Zx4",
+   "b": "Zx8",
+   "expected": "Zx6"
+  },
+  {
+   "a": "a0C",
+   "b": "a0CG",
+   "expected": "a0C8"
+  },
+  {
+   "a": "a03",
+   "b": "a03V",
+   "expected": "a03G"
+  },
+  {
+   "a": "a0j",
+   "b": "a0l",
+   "expected": "a0k"
+  },
+  {
+   "a": "ZxV",
+   "b": "Zxl",
+   "expected": "Zxd"
+  },
+  {
+   "a": "ZzIV",
+   "b": "ZzIl",
+   "expected": "ZzId"
+  },
+  {
+   "a": "a0G",
+   "b": "a0K",
+   "expected": "a0I"
+  },
+  {
+   "a": "a0S",
+   "b": "a0V",
+   "expected": "a0U"
+  },
+  {
+   "a": "a04G",
+   "b": "a04V",
+   "expected": "a04O"
+  },
+  {
+   "a": "a08l",
+   "b": "a09",
+   "expected": "a08t"
+  },
+  {
+   "a": "Zy",
+   "b": "ZyV",
+   "expected": "ZyG"
+  },
+  {
+   "a": "Zy",
+   "b": "ZyG",
+   "expected": "Zy8"
+  },
+  {
+   "a": "a08Z",
+   "b": "a08d",
+   "expected": "a08b"
+  },
+  {
+   "a": "a1",
+   "b": "a0",
+   "expected": "a0V"
+  },
+  {
+   "a": "zzzzzzzzzzzzzzzzzzzzzzzzzzz",
+   "b": null,
+   "expected": "zzzzzzzzzzzzzzzzzzzzzzzzzzzV"
+  }
+ ],
+ "many": [
+  {
+   "a": null,
+   "b": null,
+   "n": 0,
+   "expected": []
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "n": 0,
+   "expected": []
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "n": 0,
+   "expected": []
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "n": 0,
+   "expected": []
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "n": 0,
+   "expected": []
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "n": 0,
+   "expected": []
+  },
+  {
+   "a": "az",
+   "b": "b00",
+   "n": 0,
+   "expected": []
+  },
+  {
+   "a": null,
+   "b": null,
+   "n": 1,
+   "expected": [
+    "a0"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "n": 1,
+   "expected": [
+    "a1"
+   ]
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "n": 1,
+   "expected": [
+    "Zz"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "n": 1,
+   "expected": [
+    "a0V"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "n": 1,
+   "expected": [
+    "a0G"
+   ]
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "n": 1,
+   "expected": [
+    "ZzV"
+   ]
+  },
+  {
+   "a": "az",
+   "b": "b00",
+   "n": 1,
+   "expected": [
+    "azV"
+   ]
+  },
+  {
+   "a": null,
+   "b": null,
+   "n": 2,
+   "expected": [
+    "a0",
+    "a1"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "n": 2,
+   "expected": [
+    "a1",
+    "a2"
+   ]
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "n": 2,
+   "expected": [
+    "Zy",
+    "Zz"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "n": 2,
+   "expected": [
+    "a0G",
+    "a0V"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "n": 2,
+   "expected": [
+    "a08",
+    "a0G"
+   ]
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "n": 2,
+   "expected": [
+    "ZzG",
+    "ZzV"
+   ]
+  },
+  {
+   "a": "az",
+   "b": "b00",
+   "n": 2,
+   "expected": [
+    "azG",
+    "azV"
+   ]
+  },
+  {
+   "a": null,
+   "b": null,
+   "n": 3,
+   "expected": [
+    "a0",
+    "a1",
+    "a2"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "n": 3,
+   "expected": [
+    "a1",
+    "a2",
+    "a3"
+   ]
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "n": 3,
+   "expected": [
+    "Zx",
+    "Zy",
+    "Zz"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "n": 3,
+   "expected": [
+    "a0G",
+    "a0V",
+    "a0l"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "n": 3,
+   "expected": [
+    "a08",
+    "a0G",
+    "a0O"
+   ]
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "n": 3,
+   "expected": [
+    "ZzG",
+    "ZzV",
+    "Zzl"
+   ]
+  },
+  {
+   "a": "az",
+   "b": "b00",
+   "n": 3,
+   "expected": [
+    "azG",
+    "azV",
+    "azl"
+   ]
+  },
+  {
+   "a": null,
+   "b": null,
+   "n": 4,
+   "expected": [
+    "a0",
+    "a1",
+    "a2",
+    "a3"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "n": 4,
+   "expected": [
+    "a1",
+    "a2",
+    "a3",
+    "a4"
+   ]
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "n": 4,
+   "expected": [
+    "Zw",
+    "Zx",
+    "Zy",
+    "Zz"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "n": 4,
+   "expected": [
+    "a08",
+    "a0G",
+    "a0V",
+    "a0l"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "n": 4,
+   "expected": [
+    "a04",
+    "a08",
+    "a0G",
+    "a0O"
+   ]
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "n": 4,
+   "expected": [
+    "Zz8",
+    "ZzG",
+    "ZzV",
+    "Zzl"
+   ]
+  },
+  {
+   "a": "az",
+   "b": "b00",
+   "n": 4,
+   "expected": [
+    "az8",
+    "azG",
+    "azV",
+    "azl"
+   ]
+  },
+  {
+   "a": null,
+   "b": null,
+   "n": 5,
+   "expected": [
+    "a0",
+    "a1",
+    "a2",
+    "a3",
+    "a4"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "n": 5,
+   "expected": [
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5"
+   ]
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "n": 5,
+   "expected": [
+    "Zv",
+    "Zw",
+    "Zx",
+    "Zy",
+    "Zz"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "n": 5,
+   "expected": [
+    "a08",
+    "a0G",
+    "a0V",
+    "a0d",
+    "a0l"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "n": 5,
+   "expected": [
+    "a04",
+    "a08",
+    "a0G",
+    "a0K",
+    "a0O"
+   ]
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "n": 5,
+   "expected": [
+    "Zz8",
+    "ZzG",
+    "ZzV",
+    "Zzd",
+    "Zzl"
+   ]
+  },
+  {
+   "a": "az",
+   "b": "b00",
+   "n": 5,
+   "expected": [
+    "az8",
+    "azG",
+    "azV",
+    "azd",
+    "azl"
+   ]
+  },
+  {
+   "a": null,
+   "b": null,
+   "n": 7,
+   "expected": [
+    "a0",
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "n": 7,
+   "expected": [
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6",
+    "a7"
+   ]
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "n": 7,
+   "expected": [
+    "Zt",
+    "Zu",
+    "Zv",
+    "Zw",
+    "Zx",
+    "Zy",
+    "Zz"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "n": 7,
+   "expected": [
+    "a08",
+    "a0G",
+    "a0O",
+    "a0V",
+    "a0d",
+    "a0l",
+    "a0t"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "n": 7,
+   "expected": [
+    "a04",
+    "a08",
+    "a0C",
+    "a0G",
+    "a0K",
+    "a0O",
+    "a0S"
+   ]
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "n": 7,
+   "expected": [
+    "Zz8",
+    "ZzG",
+    "ZzO",
+    "ZzV",
+    "Zzd",
+    "Zzl",
+    "Zzt"
+   ]
+  },
+  {
+   "a": "az",
+   "b": "b00",
+   "n": 7,
+   "expected": [
+    "az8",
+    "azG",
+    "azO",
+    "azV",
+    "azd",
+    "azl",
+    "azt"
+   ]
+  },
+  {
+   "a": null,
+   "b": null,
+   "n": 10,
+   "expected": [
+    "a0",
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6",
+    "a7",
+    "a8",
+    "a9"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "n": 10,
+   "expected": [
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6",
+    "a7",
+    "a8",
+    "a9",
+    "aA"
+   ]
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "n": 10,
+   "expected": [
+    "Zq",
+    "Zr",
+    "Zs",
+    "Zt",
+    "Zu",
+    "Zv",
+    "Zw",
+    "Zx",
+    "Zy",
+    "Zz"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "n": 10,
+   "expected": [
+    "a04",
+    "a08",
+    "a0G",
+    "a0K",
+    "a0O",
+    "a0V",
+    "a0Z",
+    "a0d",
+    "a0l",
+    "a0t"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "n": 10,
+   "expected": [
+    "a02",
+    "a04",
+    "a08",
+    "a0A",
+    "a0C",
+    "a0G",
+    "a0I",
+    "a0K",
+    "a0O",
+    "a0S"
+   ]
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "n": 10,
+   "expected": [
+    "Zz4",
+    "Zz8",
+    "ZzG",
+    "ZzK",
+    "ZzO",
+    "ZzV",
+    "ZzZ",
+    "Zzd",
+    "Zzl",
+    "Zzt"
+   ]
+  },
+  {
+   "a": "az",
+   "b": "b00",
+   "n": 10,
+   "expected": [
+    "az4",
+    "az8",
+    "azG",
+    "azK",
+    "azO",
+    "azV",
+    "azZ",
+    "azd",
+    "azl",
+    "azt"
+   ]
+  },
+  {
+   "a": null,
+   "b": null,
+   "n": 25,
+   "expected": [
+    "a0",
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6",
+    "a7",
+    "a8",
+    "a9",
+    "aA",
+    "aB",
+    "aC",
+    "aD",
+    "aE",
+    "aF",
+    "aG",
+    "aH",
+    "aI",
+    "aJ",
+    "aK",
+    "aL",
+    "aM",
+    "aN",
+    "aO"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": null,
+   "n": 25,
+   "expected": [
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6",
+    "a7",
+    "a8",
+    "a9",
+    "aA",
+    "aB",
+    "aC",
+    "aD",
+    "aE",
+    "aF",
+    "aG",
+    "aH",
+    "aI",
+    "aJ",
+    "aK",
+    "aL",
+    "aM",
+    "aN",
+    "aO",
+    "aP"
+   ]
+  },
+  {
+   "a": null,
+   "b": "a0",
+   "n": 25,
+   "expected": [
+    "Zb",
+    "Zc",
+    "Zd",
+    "Ze",
+    "Zf",
+    "Zg",
+    "Zh",
+    "Zi",
+    "Zj",
+    "Zk",
+    "Zl",
+    "Zm",
+    "Zn",
+    "Zo",
+    "Zp",
+    "Zq",
+    "Zr",
+    "Zs",
+    "Zt",
+    "Zu",
+    "Zv",
+    "Zw",
+    "Zx",
+    "Zy",
+    "Zz"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a1",
+   "n": 25,
+   "expected": [
+    "a02",
+    "a04",
+    "a06",
+    "a08",
+    "a0A",
+    "a0C",
+    "a0G",
+    "a0I",
+    "a0K",
+    "a0O",
+    "a0Q",
+    "a0S",
+    "a0V",
+    "a0X",
+    "a0Z",
+    "a0b",
+    "a0d",
+    "a0f",
+    "a0h",
+    "a0l",
+    "a0n",
+    "a0p",
+    "a0t",
+    "a0v",
+    "a0x"
+   ]
+  },
+  {
+   "a": "a0",
+   "b": "a0V",
+   "n": 25,
+   "expected": [
+    "a01",
+    "a02",
+    "a03",
+    "a04",
+    "a05",
+    "a06",
+    "a08",
+    "a09",
+    "a0A",
+    "a0C",
+    "a0D",
+    "a0E",
+    "a0G",
+    "a0H",
+    "a0I",
+    "a0J",
+    "a0K",
+    "a0L",
+    "a0M",
+    "a0O",
+    "a0P",
+    "a0Q",
+    "a0S",
+    "a0T",
+    "a0U"
+   ]
+  },
+  {
+   "a": "Zz",
+   "b": "a0",
+   "n": 25,
+   "expected": [
+    "Zz2",
+    "Zz4",
+    "Zz6",
+    "Zz8",
+    "ZzA",
+    "ZzC",
+    "ZzG",
+    "ZzI",
+    "ZzK",
+    "ZzO",
+    "ZzQ",
+    "ZzS",
+    "ZzV",
+    "ZzX",
+    "ZzZ",
+    "Zzb",
+    "Zzd",
+    "Zzf",
+    "Zzh",
+    "Zzl",
+    "Zzn",
+    "Zzp",
+    "Zzt",
+    "Zzv",
+    "Zzx"
+   ]
+  },
+  {
+   "a": "az",
+   "b": "b00",
+   "n": 25,
+   "expected": [
+    "az2",
+    "az4",
+    "az6",
+    "az8",
+    "azA",
+    "azC",
+    "azG",
+    "azI",
+    "azK",
+    "azO",
+    "azQ",
+    "azS",
+    "azV",
+    "azX",
+    "azZ",
+    "azb",
+    "azd",
+    "azf",
+    "azh",
+    "azl",
+    "azn",
+    "azp",
+    "azt",
+    "azv",
+    "azx"
+   ]
+  }
+ ],
+ "errors": [
+  {
+   "a": "a0",
+   "b": "a0"
+  },
+  {
+   "a": "a00",
+   "b": "a1"
+  },
+  {
+   "a": "a",
+   "b": null
+  },
+  {
+   "a": null,
+   "b": "a"
+  },
+  {
+   "a": "!0",
+   "b": null
+  },
+  {
+   "a": "A00000000000000000000000000",
+   "b": null
+  },
+  {
+   "a": "a0",
+   "b": "a00"
+  }
+ ]
+}
