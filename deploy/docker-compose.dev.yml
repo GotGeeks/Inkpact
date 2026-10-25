@@ -1,0 +1,21 @@
+# Postgres for local development and the Playwright suite. The full compose file for running Inkpact is run 1.13.
+#   docker compose -f deploy/docker-compose.dev.yml up -d --wait
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: inkpact_dev
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - inkpact-dev-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d inkpact_dev']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  inkpact-dev-data:
