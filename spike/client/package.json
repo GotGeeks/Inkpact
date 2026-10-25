@@ -5,6 +5,7 @@
   "packageManager": "pnpm@12.11.2",
   "scripts": {
     "dev": "vite",
+    "dev:lan": "vite --host",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "check:sync": "node scripts/sync-check.ts",

@@ -8,6 +8,9 @@ export const MessageType = {
   Update: 2,
   Sync: 3,
   Awareness: 4,
+  // Session-level, no page id: the whole frame is this one byte. The client pings, the server answers.
+  Ping: 5,
+  Pong: 6,
 } as const
 
 export type IncomingFrame =
@@ -27,6 +30,7 @@ export function encodeFrame(type: number, pageId: string, payload?: Uint8Array):
 export function decodeFrame(data: Uint8Array): IncomingFrame | null {
   const decoder = decoding.createDecoder(data)
   const type = decoding.readVarUint(decoder)
+  if (type === MessageType.Pong) return null // liveness only; the caller has already counted it
   const pageId = decoding.readVarString(decoder)
   switch (type) {
     case MessageType.Update:
