@@ -59,6 +59,27 @@ public abstract class CodecContractTests(SidecarFixture yjs, ITestOutputHelper o
 
     [Theory]
     [MemberData(nameof(Fixtures))]
+    public void Fingerprint_of_a_merge_equals_the_fingerprint_of_a_replay(string name)
+    {
+        var updates = Fixture.Load(name).UpdateBytes;
+
+        // The check compaction relies on: two ways of building the same document give the same fingerprint.
+        Assert.Equal(Codec.Fingerprint(Codec.Merge(updates)), Codec.Fingerprint(Codec.Replay(updates)));
+    }
+
+    [Theory]
+    [MemberData(nameof(Fixtures))]
+    public void Fingerprint_changes_when_an_update_is_missing(string name)
+    {
+        var updates = Fixture.Load(name).UpdateBytes;
+
+        Assert.NotEqual(
+            Codec.Fingerprint(Codec.Merge(updates)),
+            Codec.Fingerprint(Codec.Merge(updates.Take(updates.Count - 1))));
+    }
+
+    [Theory]
+    [MemberData(nameof(Fixtures))]
     public void Merging_a_snapshot_again_changes_nothing(string name)
     {
         var merged = Codec.Merge(Fixture.Load(name).UpdateBytes);

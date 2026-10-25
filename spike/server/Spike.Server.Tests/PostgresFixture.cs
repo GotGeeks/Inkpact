@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace Spike.Server.Tests;
@@ -17,12 +18,15 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public IUpdateStore Store => App.Services.GetRequiredService<IUpdateStore>();
 
+    public NpgsqlDataSource DataSource => App.Services.GetRequiredService<NpgsqlDataSource>();
+
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
         App = await SpikeApp.BuildAsync(
         [
             "--urls", "http://127.0.0.1:0",
+            "--Compaction:Enabled", "false",
             "--ConnectionStrings:Spike", _postgres.GetConnectionString(),
         ]);
         await App.StartAsync();

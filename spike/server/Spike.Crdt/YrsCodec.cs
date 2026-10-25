@@ -26,11 +26,37 @@ public sealed class YrsCodec(bool garbageCollect = true) : ICrdtCodec
         return read.StateDiffV1(EmptyStateVector);
     }
 
+    public byte[] Replay(IEnumerable<byte[]> updates)
+    {
+        using var doc = new Doc(new DocOptions { SkipGarbageCollection = !garbageCollect });
+        foreach (var update in updates)
+        {
+            using var write = doc.WriteTransaction();
+            var result = write.ApplyV1(update);
+            if (result != TransactionUpdateResult.Ok)
+            {
+                throw new InvalidDataException($"yrs rejected an update: {result}");
+            }
+
+            write.Commit();
+        }
+
+        using var read = doc.ReadTransaction();
+        return read.StateDiffV1(EmptyStateVector);
+    }
+
     public byte[] Diff(byte[] state, byte[] stateVector)
     {
         using var doc = Load([state]);
         using var read = doc.ReadTransaction();
         return read.StateDiffV1(stateVector);
+    }
+
+    public byte[] Fingerprint(byte[] state)
+    {
+        using var doc = Load([state]);
+        using var read = doc.ReadTransaction();
+        return read.Snapshot();
     }
 
     public byte[] StateVector(byte[] state)

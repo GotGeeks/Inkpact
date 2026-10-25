@@ -30,8 +30,21 @@ public sealed class YjsSidecarCodec : ICrdtCodec, IDisposable
     public byte[] Merge(IEnumerable<byte[]> updates) =>
         Bytes(Call(new JsonObject { ["op"] = "merge", ["updates"] = new JsonArray([.. updates.Select(Base64)]) }));
 
+    /// <summary>
+    /// Same as <see cref="Merge"/>, but with all updates in one Yjs transaction. Not for use: it can lose a
+    /// deletion when a snapshot is merged with newer updates (run 0.5). Exists to pin that in a test.
+    /// </summary>
+    public byte[] MergeInOneTransaction(IEnumerable<byte[]> updates) =>
+        Bytes(Call(new JsonObject { ["op"] = "mergeInOneTransaction", ["updates"] = new JsonArray([.. updates.Select(Base64)]) }));
+
+    public byte[] Replay(IEnumerable<byte[]> updates) =>
+        Bytes(Call(new JsonObject { ["op"] = "replay", ["updates"] = new JsonArray([.. updates.Select(Base64)]) }));
+
     public byte[] Diff(byte[] state, byte[] stateVector) =>
         Bytes(Call(new JsonObject { ["op"] = "diff", ["state"] = Base64(state), ["stateVector"] = Base64(stateVector) }));
+
+    public byte[] Fingerprint(byte[] state) =>
+        Bytes(Call(new JsonObject { ["op"] = "fingerprint", ["state"] = Base64(state) }));
 
     public byte[] StateVector(byte[] state) =>
         Bytes(Call(new JsonObject { ["op"] = "stateVector", ["state"] = Base64(state) }));
