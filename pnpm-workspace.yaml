@@ -1,0 +1,8 @@
+packages:
+  - web
+
+# Do not install versions published less than a day ago.
+minimumReleaseAge: 1440
+
+# Install scripts stay blocked. Add a package here only after asking.
+onlyBuiltDependencies: []

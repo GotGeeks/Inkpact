@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Inkpact.Data\Inkpact.Data.csproj" />
+  </ItemGroup>
+
+</Project>
