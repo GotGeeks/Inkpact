@@ -1,0 +1,9 @@
+{
+  "name": "inkpact",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "node": ">=24"
+  }
+}

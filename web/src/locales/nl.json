@@ -1,0 +1,11 @@
+{
+  "app": {
+    "name": "Inkpact",
+    "tagline": "Notities die synchroniseren, zonder limieten."
+  },
+  "language": {
+    "label": "Taal",
+    "en": "English",
+    "nl": "Nederlands"
+  }
+}
