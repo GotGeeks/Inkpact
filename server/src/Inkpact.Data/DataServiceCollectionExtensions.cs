@@ -18,7 +18,9 @@ public static class DataServiceCollectionExtensions
                 $"Connection string '{ConnectionStringName}' is missing. Set ConnectionStrings:{ConnectionStringName}.");
         }
 
-        services.AddDbContext<InkpactDbContext>(options => options.UseNpgsql(connectionString));
+        // A factory for singletons (the session store), and a scoped context per request for everything else.
+        services.AddDbContextFactory<InkpactDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddScoped(provider => provider.GetRequiredService<IDbContextFactory<InkpactDbContext>>().CreateDbContext());
         services.Configure<DatabaseOptions>(options =>
         {
             // Read by hand so this project does not need the configuration binder package.

@@ -27,5 +27,8 @@ public class User
 
     public string? OidcSubject { get; set; }
 
+    /// <summary>The account created at first-run setup. Admin pages arrive in phase 2.</summary>
+    public bool IsAdmin { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 }

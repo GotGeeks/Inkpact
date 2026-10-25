@@ -4,4 +4,12 @@
     <ProjectReference Include="..\Inkpact.Data\Inkpact.Data.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Geralt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inkpact.Api.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -101,6 +101,51 @@ namespace Inkpact.Data.Migrations
                     b.ToTable("pages", (string)null);
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.Session", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<byte[]>("Ticket")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("ticket");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("user_agent");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sessions");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_sessions_expires_at");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_sessions_user_id");
+
+                    b.ToTable("sessions", (string)null);
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -123,6 +168,10 @@ namespace Inkpact.Data.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)")
                         .HasColumnName("email");
+
+                    b.Property<bool>("IsAdmin")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_admin");
 
                     b.Property<string>("NormalizedEmail")
                         .IsRequired()
@@ -202,6 +251,18 @@ namespace Inkpact.Data.Migrations
                     b.Navigation("Parent");
 
                     b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.Session", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sessions_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.Workspace", b =>

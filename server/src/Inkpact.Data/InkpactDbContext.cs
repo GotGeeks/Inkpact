@@ -11,6 +11,8 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
 
     public DbSet<Page> Pages => Set<Page>();
 
+    public DbSet<Session> Sessions => Set<Session>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(user =>
@@ -46,6 +48,17 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             page.HasIndex(p => new { p.WorkspaceId, p.ExternalSourceType, p.ExternalId })
                 .IsUnique()
                 .HasFilter("external_id IS NOT NULL");
+        });
+
+        modelBuilder.Entity<Session>(session =>
+        {
+            session.ToTable("sessions");
+            session.HasKey(s => s.Id);
+            session.Property(s => s.Id).HasMaxLength(64);
+            session.Property(s => s.UserAgent).HasMaxLength(256);
+            session.HasOne(s => s.User).WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+            session.HasIndex(s => s.UserId);
+            session.HasIndex(s => s.ExpiresAt);
         });
 
         modelBuilder.UseSnakeCaseNames();
