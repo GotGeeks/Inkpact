@@ -1,4 +1,5 @@
 using Inkpact.Api.Auth;
+using Inkpact.Api.Permissions;
 using Inkpact.Api.Security;
 using Inkpact.Data;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -9,6 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 builder.Services.AddInkpactData(builder.Configuration);
 builder.Services.AddInkpactAuth(builder.Configuration);
+builder.Services.AddInkpactPolicies();
+builder.Services.AddCsrfProtection();
+builder.Services.AddLoginThrottling(builder.Configuration);
+builder.Services.AddScoped<IAuditLog, AuditLog>();
 
 var app = builder.Build();
 
@@ -48,12 +53,16 @@ app.Use((context, next) =>
 
 app.UseJsonOnlyApi();
 app.UseAuthentication();
+// Per address, before anything costly; then the CSRF token, which is checked against the signed-in user.
+app.UseRateLimiter();
+app.UseCsrfProtection();
 app.UseAuthorization();
 
 // Every endpoint declares an authorisation policy; one that does not is denied by the fallback policy.
 // Health is the one anonymous endpoint, so it says so explicitly. The permission service arrives in run 1.06.
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapAuthEndpoints();
+app.MapWorkspaceEndpoints();
 
 // An unknown API path is a JSON 404 with an error code, never the HTML shell.
 app.MapFallback("/api/{**path}", () => Results.Json(new ApiError("not_found"), statusCode: StatusCodes.Status404NotFound))

@@ -17,6 +17,7 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="Shouldly" />
+    <Using Include="System.Net.Http.Json" />
     <ProjectReference Include="..\..\src\Inkpact.Api\Inkpact.Api.csproj" />
   </ItemGroup>
 

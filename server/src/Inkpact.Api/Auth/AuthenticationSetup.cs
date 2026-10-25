@@ -4,7 +4,6 @@ using System.Text;
 using Inkpact.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -34,11 +33,6 @@ public static class AuthenticationSetup
         // The store is a singleton that needs the database; options are built after the container exists.
         services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
             .Configure<ITicketStore>((options, store) => options.SessionStore = store);
-
-        // Deny by default: an endpoint without its own policy needs a signed-in user. The permission
-        // service and the test that every endpoint names its policy come in run 1.06.
-        services.AddAuthorization(options =>
-            options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
         AddDataProtection(services, config);
         AddForwardedHeaders(services, config);

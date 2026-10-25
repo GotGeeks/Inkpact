@@ -86,9 +86,12 @@ public class MigrationIntegrationTests(PostgresFixture postgres)
             list.Add(reader.GetString(1));
         }
 
-        columns.Keys.Where(t => t != "__EFMigrationsHistory").Order().ShouldBe(["pages", "sessions", "users", "workspaces"]);
+        columns.Keys.Where(t => t != "__EFMigrationsHistory").Order().ShouldBe(["audit_events", "login_throttles", "pages", "sessions", "users", "workspace_members", "workspaces"]);
         columns["users"].ShouldBe(["id", "email", "normalized_email", "display_name", "password_hash", "oidc_subject", "created_at", "is_admin"]);
         columns["workspaces"].ShouldBe(["id", "name", "owner_id", "created_at"]);
+        columns["workspace_members"].ShouldBe(["workspace_id", "user_id", "role", "created_at"]);
+        columns["audit_events"].ShouldBe(["id", "occurred_at", "type", "user_id", "email", "ip", "user_agent"]);
+        columns["login_throttles"].ShouldBe(["key", "failures", "locked_until", "last_failure_at"]);
         columns["sessions"].ShouldBe(["id", "user_id", "ticket", "created_at", "last_seen_at", "expires_at", "user_agent"]);
         columns["pages"].ShouldBe(
         [

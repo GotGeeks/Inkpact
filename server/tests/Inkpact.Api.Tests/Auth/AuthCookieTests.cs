@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Inkpact.Api.Auth;
 using Inkpact.Api.Tests.Testing;
 
 namespace Inkpact.Api.Tests.Auth;
@@ -28,6 +29,7 @@ public class AuthCookieTests(PostgresFixture postgres)
                 workspaceName = "Private",
             }),
         };
+        request.Headers.Add(CsrfProtection.HeaderName, (await client.GetStateAsync()).CsrfToken);
         configure?.Invoke(request);
         var response = await client.SendAsync(request);
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);

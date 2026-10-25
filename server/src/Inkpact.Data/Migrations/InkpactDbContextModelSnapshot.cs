@@ -22,6 +22,81 @@ namespace Inkpact.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Inkpact.Data.Entities.AuditEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("Ip")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("ip");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("type");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("user_agent");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_events");
+
+                    b.HasIndex("OccurredAt")
+                        .HasDatabaseName("ix_audit_events_occurred_at");
+
+                    b.HasIndex("UserId", "OccurredAt")
+                        .HasDatabaseName("ix_audit_events_user_id_occurred_at");
+
+                    b.ToTable("audit_events", (string)null);
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.LoginThrottle", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("key");
+
+                    b.Property<int>("Failures")
+                        .HasColumnType("integer")
+                        .HasColumnName("failures");
+
+                    b.Property<DateTimeOffset>("LastFailureAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_failure_at");
+
+                    b.Property<DateTimeOffset?>("LockedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("locked_until");
+
+                    b.HasKey("Key")
+                        .HasName("pk_login_throttles");
+
+                    b.ToTable("login_throttles", (string)null);
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.Page", b =>
                 {
                     b.Property<Guid>("Id")
@@ -233,6 +308,44 @@ namespace Inkpact.Data.Migrations
                     b.ToTable("workspaces", (string)null);
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.WorkspaceMember", b =>
+                {
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("role");
+
+                    b.HasKey("WorkspaceId", "UserId")
+                        .HasName("pk_workspace_members");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_workspace_members_user_id");
+
+                    b.ToTable("workspace_members", (string)null);
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.AuditEvent", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_audit_events_user_id");
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.Page", b =>
                 {
                     b.HasOne("Inkpact.Data.Entities.Page", "Parent")
@@ -275,6 +388,27 @@ namespace Inkpact.Data.Migrations
                         .HasConstraintName("fk_workspaces_owner_id");
 
                     b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.WorkspaceMember", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_workspace_members_user_id");
+
+                    b.HasOne("Inkpact.Data.Entities.Workspace", "Workspace")
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_workspace_members_workspace_id");
+
+                    b.Navigation("User");
+
+                    b.Navigation("Workspace");
                 });
 #pragma warning restore 612, 618
         }
