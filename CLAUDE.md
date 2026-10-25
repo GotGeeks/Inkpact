@@ -25,13 +25,17 @@ pnpm --filter web dev
 pnpm --filter web test          # Vitest
 pnpm --filter web lint          # ESLint incl. vue-i18n rules + Prettier
 pnpm --filter web typecheck     # vue-tsc
-pnpm --filter web e2e           # Playwright
+pnpm --filter web e2e:install   # once: Playwright browsers
+pnpm --filter web e2e           # Playwright against the built bundle and the real server (needs Postgres)
 
 # Server
 dotnet build server
 dotnet test server              # unit + Testcontainers integration (needs Docker)
 dotnet format server --verify-no-changes
 dotnet ef migrations add <Name> --project server/src/Inkpact.Data
+
+# Postgres for development and e2e (port 5432)
+docker compose -f deploy/docker-compose.dev.yml up -d --wait
 
 # Everything
 docker compose -f deploy/docker-compose.yml up
