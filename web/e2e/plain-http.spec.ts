@@ -18,10 +18,19 @@ test('signing in works over plain http on a non-localhost name', async ({
   await signInThroughTheForm(page)
   await expectHome(page)
 
-  // Without HTTPS the cookie has the plain name and no Secure flag, so the browser keeps it.
+  // Without HTTPS the cookies have plain names and no Secure flag, so the browser keeps them.
   const cookies = await context.cookies()
-  expect(cookies.map((cookie) => cookie.name)).toEqual(['inkpact'])
-  expect(cookies[0]).toMatchObject({ httpOnly: true, secure: false, sameSite: 'Lax' })
+  expect(cookies.map((cookie) => cookie.name).sort()).toEqual(['inkpact', 'inkpact-csrf'])
+  expect(cookies.find((cookie) => cookie.name === 'inkpact')).toMatchObject({
+    httpOnly: true,
+    secure: false,
+    sameSite: 'Lax',
+  })
+  expect(cookies.find((cookie) => cookie.name === 'inkpact-csrf')).toMatchObject({
+    httpOnly: true,
+    secure: false,
+    sameSite: 'Strict',
+  })
 
   await page.reload()
   await expectHome(page)
