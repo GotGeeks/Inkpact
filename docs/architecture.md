@@ -377,7 +377,7 @@ Nothing reaches users unless every check is green, and a release is a single mer
 
 - Server: dotnet format check, build, xUnit unit tests, Testcontainers integration tests, migration upgrade test
 - Client: ESLint (including the vue-i18n rules), Prettier, vue-tsc type check, Vitest
-- End-to-end: Playwright on desktop and phone viewports against the real container; any CSP violation fails the run
+- End-to-end: Playwright on desktop and phone viewports (and WebKit) against the real server and the built bundle (the container from 1.13); any CSP violation fails the run
 - Security: CodeQL for C# and TypeScript, GitHub dependency review, `pnpm audit`, the vulnerable NuGet package check, a Trivy image scan, and a licence check of all dependencies
 - Reports posted on the PR: coverage, and bundle size compared with main, with a warning on regressions
 
@@ -423,8 +423,8 @@ Every feature ships with unit tests, every user-facing string goes through i18n,
 
 These are in place in phase 1A, because each is painful to add once code and data exist.
 
-- **Strict CSP:** `default-src 'self'`, no `unsafe-inline` or `unsafe-eval`, `frame-ancestors 'none'`, `connect-src` limited to the app's own origin and its WebSocket. Vue's runtime-only build and Tailwind's static CSS need neither exception; a CI end-to-end test fails on any CSP violation
-- **Other security headers:** HSTS (set in Traefik), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, a restrictive `Permissions-Policy`
+- **Strict CSP:** `default-src 'self'`, no `unsafe-inline` or `unsafe-eval`, no nonces or hashes, `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'none'`, `connect-src 'self'`, which also covers the app's own WebSocket. Vue's runtime-only build and Tailwind's static CSS need no exception. `upgrade-insecure-requests` is deliberately left out, because it blanks every page of an install served over plain HTTP on a LAN address. The ASP.NET Core app sets the policy on every response, including errors and 404s; a CI end-to-end test (Chromium, Pixel 7, iPhone 15 on WebKit, and plain HTTP on a non-localhost name) fails on any CSP violation or uncaught page error. The exact value is pinned in a server test, so loosening it shows up in review
+- **Other security headers:** HSTS (set in Traefik), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, a restrictive `Permissions-Policy`, `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy: same-origin`, `X-Frame-Options: DENY`, and no `Server` header
 - **Content sanitising:** pasted HTML, imported Markdown and rendered content pass through an allow-list sanitiser (DOMPurify on the client, a matching server-side check on import), so stored XSS can't reach shared notes later
 - **Safe attachment serving:** files served with `Content-Disposition: attachment` (images excepted), their own sandboxing CSP and `nosniff`; SVG never rendered inline. Notes reference attachments by id, never by URL, so moving them to a separate domain or S3 later needs no content migration
 - **Deny-by-default authorisation:** every endpoint and every WebSocket connection goes through the one permission service, even while there is a single user; a test fails for any endpoint without an explicit policy
