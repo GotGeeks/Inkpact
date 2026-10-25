@@ -38,7 +38,7 @@ Inkpact runs as exactly one application instance. The sync hub keeps connection 
 | --- | --- | --- |
 | Backend | ASP.NET Core (.NET 10), minimal APIs + WebSockets, EF Core | Your strongest stack; fast, single container |
 | Database | PostgreSQL via Npgsql | Requirement; `bytea` for CRDT state, built-in full-text search |
-| CRDT | Yjs on the client, yrs via YDotNet on the server where needed | Most mature CRDT ecosystem, editor bindings ready-made |
+| CRDT | Yjs on the client, Yjs in a Node sidecar on the server where needed | Most mature CRDT ecosystem, editor bindings ready-made |
 | Editor | TipTap (ProseMirror) with the Yjs collaboration extension, Notion-style block handles and a slash menu | Proven rich editor, works in mobile browsers |
 | Frontend | Vue 3 (Composition API), TypeScript, Vite, Pinia, pnpm workspaces | Official TipTap bindings (@tiptap/vue-3); same bundle for web and desktop |
 | Styling | Tailwind CSS v4 with headless components (Reka UI) | Utility-first, easy responsive layouts and dark mode, no component-library lock-in |
@@ -82,7 +82,7 @@ Each page is one Yjs document; the server stores its update log in Postgres and 
 
 **Offline (desktop phase):** the client keeps its Yjs state in IndexedDB (web) or SQLite (desktop) and replays on reconnect; CRDT merge makes this conflict-free by design.
 
-**Server CRDT handling:** keep the server mostly agnostic — store and relay opaque update blobs, and only decode them for compaction and text extraction via yrs bindings (YDotNet) or a small Node sidecar if the bindings fall short.
+**Server CRDT handling:** keep the server mostly agnostic — store and relay opaque update blobs, and only decode them for compaction, diffs and text extraction. A small Node sidecar running Yjs does that work; YDotNet was evaluated in spike 0.4 and diverges from Yjs on out-of-order updates (see `docs/spike-findings.md`). Compaction applies updates one at a time, never in one transaction, and verifies by comparing Yjs snapshot fingerprints.
 
 ## Working in runs with Claude Code
 
@@ -460,7 +460,7 @@ The biggest risk is scope and maintenance load, not technology; every phase must
 | Risk | Mitigation |
 | --- | --- |
 | Scope creep toward "Notion clone" | Non-goals list above; feature requests wait until after v1.0 |
-| Yjs decoding in .NET is immature | Server stores opaque blobs; fall back to a Node sidecar for compaction and text extraction |
+| Yjs decoding in .NET is immature | Server stores opaque blobs; a Node sidecar running Yjs does compaction, diffs and text extraction (decided in spike 0.4) |
 | Mobile editing on TipTap has rough edges (selection, virtual keyboard) | Test on your own Android phone from phase 1, not at the end |
 | Second long-term project next to GarageStack | Ship small phases, keep CI and releases automated, recruit contributors early |
 | Storage growth from update logs | Compaction job and history retention from the first release |
