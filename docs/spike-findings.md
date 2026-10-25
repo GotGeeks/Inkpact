@@ -1,6 +1,6 @@
 # Phase 0 spike findings
 
-Written in run 0.7. Sources: `docs/runs/0.1.md` to `0.6.md`. The spike code in `spike/` is deleted after the gate; this file and the scenarios in the last section survive.
+Written in run 0.7. Sources: `docs/runs/0.1.md` to `0.6.md`. The spike code was deleted after the gate and stays reachable at the git tag `phase0-spike` (for example `git show phase0-spike:spike/server/Spike.Server/Compactor.cs`). This file and the scenarios in the last section are what survive.
 
 ## Gate
 
@@ -86,7 +86,7 @@ Dev gotcha: a stale Vite process can load Yjs twice and stop sync. Restart Vite 
 
 ## Sync scenarios to keep as integration tests in 1A
 
-From the spike's Playwright suite (`spike/client/e2e/sync.spec.ts`), `check:sync` and the server tests:
+From the spike's Playwright suite (`spike/client/e2e/sync.spec.ts` at the tag), `check:sync` and the server tests:
 
 1. **Concurrent typing.** Two browser contexts type into one page at once; both end with identical text containing every character, in order.
 2. **Offline and back.** One browser's socket is cut and reconnects are refused; it shows disconnected, both sides keep typing, the online side does not see the offline edit; after going back online both converge.

@@ -132,7 +132,7 @@ Phase 1A, Joplin escape velocity, is the main milestone: the point where you can
 
 ### Phase 0 — Sync spike (throwaway code)
 
-Prove the sync core before building anything around it. Spike code lives in `spike/` and is deleted after the gate; only the findings and test scenarios survive.
+Prove the sync core before building anything around it. Spike code lived in `spike/` and was deleted after the gate (it stays reachable at the git tag `phase0-spike`); only the findings and test scenarios survive.
 
 | Run | Delivers | Model |
 | --- | --- | --- |
