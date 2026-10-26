@@ -88,7 +88,7 @@ public class MigrationIntegrationTests(PostgresFixture postgres)
 
         columns.Keys.Where(t => t != "__EFMigrationsHistory").Order().ShouldBe(["audit_events", "login_throttles", "pages", "sessions", "users", "workspace_members", "workspaces"]);
         columns["users"].ShouldBe(["id", "email", "normalized_email", "display_name", "password_hash", "oidc_subject", "created_at", "is_admin"]);
-        columns["workspaces"].ShouldBe(["id", "name", "owner_id", "created_at"]);
+        columns["workspaces"].ShouldBe(["id", "name", "owner_id", "created_at", "tree_version"]);
         columns["workspace_members"].ShouldBe(["workspace_id", "user_id", "role", "created_at"]);
         columns["audit_events"].ShouldBe(["id", "occurred_at", "type", "user_id", "email", "ip", "user_agent"]);
         columns["login_throttles"].ShouldBe(["key", "failures", "locked_until", "last_failure_at"]);
@@ -96,7 +96,7 @@ public class MigrationIntegrationTests(PostgresFixture postgres)
         columns["pages"].ShouldBe(
         [
             "id", "workspace_id", "parent_id", "title", "sort_key", "created_at", "updated_at", "deleted_at",
-            "is_todo", "completed_at", "due_at", "external_source_type", "external_id",
+            "is_todo", "completed_at", "due_at", "external_source_type", "external_id", "version",
         ]);
     }
 

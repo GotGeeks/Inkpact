@@ -24,6 +24,14 @@ public static class AuthTestExtensions
         return await client.SendAsync(request);
     }
 
+    /// <summary>Patches with JSON and a fresh CSRF token, like <see cref="PostJsonAsync"/>.</summary>
+    public static async Task<HttpResponseMessage> PatchJsonAsync(this HttpClient client, string path, object? body = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Patch, path) { Content = JsonContent.Create(body ?? new { }) };
+        request.Headers.Add(CsrfProtection.HeaderName, (await client.GetStateAsync()).CsrfToken);
+        return await client.SendAsync(request);
+    }
+
     /// <summary>Posts JSON without any CSRF token, to see what is refused.</summary>
     public static Task<HttpResponseMessage> PostJsonWithoutTokenAsync(this HttpClient client, string path, object? body = null) =>
         client.PostAsJsonAsync(path, body ?? new { });

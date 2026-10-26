@@ -50,7 +50,11 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             page.Property(p => p.ExternalId).HasMaxLength(200);
             page.HasOne(p => p.Workspace).WithMany().HasForeignKey(p => p.WorkspaceId).OnDelete(DeleteBehavior.Restrict);
             page.HasOne(p => p.Parent).WithMany().HasForeignKey(p => p.ParentId).OnDelete(DeleteBehavior.Restrict);
-            page.HasIndex(p => new { p.WorkspaceId, p.ParentId, p.SortKey });
+            // Two live siblings never share a key, also at the top level (where the parent is null).
+            page.HasIndex(p => new { p.WorkspaceId, p.ParentId, p.SortKey })
+                .IsUnique()
+                .AreNullsDistinct(false)
+                .HasFilter("deleted_at IS NULL");
             page.HasIndex(p => new { p.WorkspaceId, p.ExternalSourceType, p.ExternalId })
                 .IsUnique()
                 .HasFilter("external_id IS NOT NULL");
