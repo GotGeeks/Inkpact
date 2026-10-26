@@ -173,9 +173,9 @@ public sealed class SyncTestClient(WebSocket socket) : IAsyncDisposable
             {
                 await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, new CancellationTokenSource(Timeout).Token);
             }
-            catch (Exception ex) when (ex is WebSocketException or OperationCanceledException)
+            catch (Exception ex) when (ex is WebSocketException or OperationCanceledException or IOException)
             {
-                // Gone already.
+                // The server closed it at the same moment, or is gone already.
             }
         }
 

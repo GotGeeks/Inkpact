@@ -56,6 +56,15 @@ public class SyncFuzzTests(PostgresFixture postgres, ITestOutputHelper output) :
         hub.OpenPages.ShouldBe(0);
     }
 
+    /// <summary>The case CI found: a ping answered before the socket is closed for what follows it.</summary>
+    [Fact]
+    public async Task A_ping_before_a_message_that_closes_the_socket_does_not_count_as_the_answer()
+    {
+        (await RunAsync([[(byte)MessageType.Ping], Frame.Encode(MessageType.Update, _pageId, [])])).ShouldBeTrue();
+
+        _outcomes.ShouldBe(new Dictionary<string, int> { ["closed"] = 1 });
+    }
+
     private async Task<bool> RunAsync(byte[][] messages)
     {
         await using var client = await _jos.ConnectAsync();
@@ -64,7 +73,9 @@ public class SyncFuzzTests(PostgresFixture postgres, ITestOutputHelper output) :
             await client.SendAsync(message);
         }
 
+        // Pings in the generated messages are answered too; only the pong to this last one means everything was handled.
         await client.SendAsync([(byte)MessageType.Ping]);
+        var pongsExpected = messages.Count(message => message is [(byte)MessageType.Ping]) + 1;
         while (true)
         {
             var received = await client.ReceiveAsync();
@@ -78,8 +89,13 @@ public class SyncFuzzTests(PostgresFixture postgres, ITestOutputHelper output) :
 
             if (received.Type == MessageType.Pong)
             {
-                Count("answered");
-                break;
+                if (--pongsExpected == 0)
+                {
+                    Count("answered");
+                    break;
+                }
+
+                continue;
             }
 
             received.Type.ShouldBeOneOf(MessageType.Sync, MessageType.Error, MessageType.Awareness);
