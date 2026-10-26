@@ -184,6 +184,44 @@ namespace Inkpact.Data.Migrations
                     b.ToTable("pages", (string)null);
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.PageUpdate", b =>
+                {
+                    b.Property<long>("Seq")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("seq");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Seq"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("data");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("page_id");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Seq")
+                        .HasName("pk_page_updates");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_page_updates_user_id");
+
+                    b.HasIndex("PageId", "Seq")
+                        .HasDatabaseName("ix_page_updates_page_id_seq");
+
+                    b.ToTable("page_updates", (string)null);
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.Session", b =>
                 {
                     b.Property<string>("Id")
@@ -376,6 +414,22 @@ namespace Inkpact.Data.Migrations
                     b.Navigation("Parent");
 
                     b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.PageUpdate", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.Page", null)
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_page_updates_page_id");
+
+                    b.HasOne("Inkpact.Data.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_page_updates_user_id");
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.Session", b =>

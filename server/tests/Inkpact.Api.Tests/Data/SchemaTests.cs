@@ -180,6 +180,55 @@ public class SchemaTests(PostgresFixture postgres) : DatabaseTestBase(postgres)
     }
 
     [Fact]
+    public async Task Page_updates_are_numbered_in_the_order_they_are_appended_and_go_with_their_page()
+    {
+        var (user, workspace) = await SeedWorkspaceAsync();
+        var page = NewPage(workspace.Id, "a0");
+        await using (var db = CreateContext())
+        {
+            db.Pages.Add(page);
+            await db.SaveChangesAsync();
+            for (var i = 0; i < 3; i++)
+            {
+                db.PageUpdates.Add(new PageUpdate { PageId = page.Id, UserId = user.Id, Data = [(byte)i], CreatedAt = Now });
+                await db.SaveChangesAsync();
+            }
+        }
+
+        await using var other = CreateContext();
+        var updates = await other.PageUpdates.OrderBy(u => u.Seq).ToListAsync();
+        updates.Select(u => u.Data[0]).ShouldBe([(byte)0, (byte)1, (byte)2]);
+        updates.Select(u => u.Seq).ShouldBeInOrder(SortDirection.Ascending);
+        updates.Select(u => u.Seq).Distinct().Count().ShouldBe(3);
+
+        other.Pages.Remove(await other.Pages.SingleAsync(p => p.Id == page.Id));
+        await other.SaveChangesAsync();
+        (await other.PageUpdates.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task A_page_update_keeps_its_bytes_when_its_author_is_removed()
+    {
+        var (_, workspace) = await SeedWorkspaceAsync();
+        var page = NewPage(workspace.Id, "a0");
+        var author = NewUser("author@example.com");
+        await using (var db = CreateContext())
+        {
+            db.AddRange(page, author);
+            await db.SaveChangesAsync();
+            db.PageUpdates.Add(new PageUpdate { PageId = page.Id, UserId = author.Id, Data = [42], CreatedAt = Now });
+            await db.SaveChangesAsync();
+            db.Users.Remove(author);
+            await db.SaveChangesAsync();
+        }
+
+        await using var other = CreateContext();
+        var update = await other.PageUpdates.SingleAsync();
+        update.UserId.ShouldBeNull();
+        update.Data.ShouldBe([(byte)42]);
+    }
+
+    [Fact]
     public async Task Ids_are_time_ordered()
     {
         var first = new User().Id;
