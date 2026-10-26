@@ -60,6 +60,8 @@ export function useErrorMessage() {
         return t('errors.page_in_trash')
       case 'restore_the_parent':
         return t('errors.restore_the_parent')
+      case 'too_many_pages':
+        return t('errors.too_many_pages')
       case 'csrf_invalid':
         return t('errors.csrf_invalid')
       case 'network_error':

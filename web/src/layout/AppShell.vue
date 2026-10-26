@@ -12,7 +12,9 @@ import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import { useMediaQuery } from '../composables/useMediaQuery'
+import { useAuthStore } from '../stores/auth'
 import { useNotificationsStore } from '../stores/notifications'
+import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import SidebarContent from './SidebarContent.vue'
 import NoticeToaster from './NoticeToaster.vue'
@@ -22,6 +24,8 @@ const route = useRoute()
 const router = useRouter()
 const tree = useTreeStore()
 const notifications = useNotificationsStore()
+const sync = useSyncStore()
+const auth = useAuthStore()
 
 // From the md breakpoint (48 rem) the sidebar stays beside the page; below it, a drawer opens from a button.
 const wide = useMediaQuery('(min-width: 48rem)', true)
@@ -40,7 +44,30 @@ async function start() {
 }
 
 onMounted(start)
-onBeforeUnmount(() => tree.reset())
+onBeforeUnmount(() => {
+  tree.reset()
+  sync.destroy()
+})
+
+// The server ended the session (or connecting kept failing and the sign-in state says so): back to the login page, and
+// to this page again afterwards.
+watch(
+  () => sync.sessionEnded,
+  async (ended) => {
+    if (!ended) return
+    if (auth.user) {
+      // Still signed in after all: start over with a new socket.
+      window.location.reload()
+      return
+    }
+    sync.destroy()
+    const redirect = route.fullPath
+    await router.replace({
+      name: 'login',
+      query: redirect && redirect !== '/' ? { redirect } : {},
+    })
+  },
+)
 
 // A page is only found in the tree when the branches above it are open.
 watch([selectedId, () => tree.loaded], ([id, loaded]) => {

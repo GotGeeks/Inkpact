@@ -7,10 +7,9 @@ const UPDATE = 2
 const SYNC = 3
 const PING = 5
 
-// The real client and the browser scenarios (typing together, going offline) come with the editor in run 1.11. This
-// checks what only a real browser can: that the strict policy lets the app open its own socket (connect-src 'self'
-// must cover ws: and wss:, which older WebKit did not), that the session cookie goes along, and that two tabs see each
-// other's updates.
+// The app's own client is tested in sync-client.spec.ts. This one writes the frames by hand and checks what only a real
+// browser can: that the strict policy lets the app open its own socket (connect-src 'self' must cover ws: and wss:, which
+// older WebKit did not), that the session cookie goes along, and that two tabs see each other's updates.
 test('the app opens its own sync socket under the strict policy, and two tabs see each other', async ({
   page,
   context,

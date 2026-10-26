@@ -12,11 +12,14 @@
     "e2e:install": "playwright install --with-deps chromium webkit"
   },
   "dependencies": {
+    "lib0": "0.2.119",
     "pinia": "^4.1.0",
     "reka-ui": "^2.11.0",
     "vue": "^3.5.44",
     "vue-i18n": "^11.4.16",
-    "vue-router": "^5.4.0"
+    "vue-router": "^5.4.0",
+    "y-protocols": "^1.0.7",
+    "yjs": "13.6.33"
   },
   "devDependencies": {
     "@intlify/eslint-plugin-vue-i18n": "^4.5.1",
