@@ -2,13 +2,19 @@
 import { ySyncPluginKey } from '@tiptap/y-tiptap'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import type { Editor } from '@tiptap/core'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import type { EditorView } from '@tiptap/pm/view'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useKeyboardInset } from '../composables/useKeyboardInset'
+import { useMediaQuery } from '../composables/useMediaQuery'
 import { useSyncStore } from '../stores/sync'
 import { editorClasses } from './editorClasses'
 import { createExtensions } from './extensions'
 import { applyFirstParagraph } from './firstParagraph'
+import EditorToolbar from './EditorToolbar.vue'
 import { sanitizePastedHtml } from './sanitize'
+import SlashMenu from './SlashMenu.vue'
+import { createSlashState } from './slashExtension'
 
 const props = defineProps<{ pageId: string; readOnly: boolean }>()
 
@@ -49,6 +55,56 @@ function checkProjection(current: Editor) {
   if (ySyncPluginKey.getState(current.state)?.binding?.projectionError) contentError.value = true
 }
 
+const slashState = createSlashState()
+
+// The toolbar is the phone's way to undo, redo and insert blocks: on a touch screen or a narrow window, while the
+// editor (or the toolbar itself, reached with the keyboard) has the focus.
+const TOOLBAR_HEIGHT = 56
+const touch = useMediaQuery('(pointer: coarse)')
+const wide = useMediaQuery('(min-width: 48rem)', true)
+const toolbarWanted = computed(() => (touch.value || !wide.value) && editable.value)
+const focusWithin = ref(false)
+const toolbar = useTemplateRef<InstanceType<typeof EditorToolbar>>('toolbar')
+const showToolbar = computed(() => toolbarWanted.value && focusWithin.value)
+useKeyboardInset(showToolbar)
+
+/**
+ * Focus moves from the editor to the toolbar through a moment where neither has it, so a loss is only believed once
+ * the focus has settled; otherwise the toolbar would go away under the finger that reaches for it.
+ */
+function refreshFocus() {
+  const active = document.activeElement
+  focusWithin.value =
+    !!active &&
+    (editor.value?.view.dom.contains(active) === true ||
+      toolbar.value?.$el?.contains(active) === true)
+}
+function focusChanged() {
+  setTimeout(refreshFocus, 0)
+}
+
+/**
+ * Keeps the caret above the toolbar, and so above the keyboard, when ProseMirror scrolls it into view. The browser does
+ * not know about the toolbar, and ProseMirror's own margin did not move the page's scroller. Returns false when
+ * nothing needs to be done, which leaves it to ProseMirror.
+ */
+function keepCaretAboveToolbar(view: EditorView): boolean {
+  if (!showToolbar.value) return false
+  const caret = view.coordsAtPos(view.state.selection.head)
+  const screen = window.visualViewport
+  const limit =
+    (screen ? screen.offsetTop + screen.height : window.innerHeight) - TOOLBAR_HEIGHT - 8
+  const hidden = caret.bottom - limit
+  if (hidden <= 0) return false
+  let scroller: HTMLElement | null = view.dom.parentElement
+  while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
+    scroller = scroller.parentElement
+  }
+  if (!scroller) return false
+  scroller.scrollTop += hidden
+  return true
+}
+
 function attributes() {
   return {
     role: 'textbox',
@@ -64,6 +120,7 @@ const editor = useEditor({
     placeholder: t('editor.placeholder'),
     // Written out, so the lint rule that finds unused translations can see the keys.
     checkboxLabel: (checked) => (checked ? t('editor.checkboxDone') : t('editor.checkboxNotDone')),
+    slash: { state: slashState, translate: (key) => t(key) },
   }),
   editable: editable.value,
   // TipTap would add its stylesheet as a <style> element, which the strict policy blocks (see style.css).
@@ -75,9 +132,15 @@ const editor = useEditor({
     disableCollaboration()
     contentError.value = true
   },
+  onFocus: refreshFocus,
+  onBlur: focusChanged,
   onCreate: ({ editor: created }) => checkProjection(created),
   onTransaction: ({ editor: changed }) => checkProjection(changed),
-  editorProps: { attributes: attributes(), transformPastedHTML: sanitizePastedHtml },
+  editorProps: {
+    attributes: attributes(),
+    transformPastedHTML: sanitizePastedHtml,
+    handleScrollToSelection: keepCaretAboveToolbar,
+  },
 })
 
 watch([editor, editable], ([current, can]) => current?.setEditable(can, false), { immediate: true })
@@ -92,7 +155,10 @@ defineExpose({ focus: () => editor.value?.commands.focus('start') })
 </script>
 
 <template>
-  <div class="flex flex-col gap-space-md">
+  <div
+    class="flex flex-col gap-space-md"
+    :class="showToolbar ? 'pb-[calc(3.5rem+var(--keyboard-inset,0px))]' : ''"
+  >
     <p
       v-if="contentError"
       role="alert"
@@ -101,5 +167,13 @@ defineExpose({ focus: () => editor.value?.commands.focus('start') })
       {{ t('editor.newerVersion') }}
     </p>
     <EditorContent :editor="editor" data-testid="editor" />
+    <SlashMenu :state="slashState" :reserve-bottom="showToolbar ? TOOLBAR_HEIGHT : 0" />
+    <EditorToolbar
+      v-if="editor && showToolbar"
+      ref="toolbar"
+      :editor="editor"
+      @focusin="refreshFocus"
+      @focusout="focusChanged"
+    />
   </div>
 </template>

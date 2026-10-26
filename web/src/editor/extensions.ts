@@ -6,7 +6,9 @@ import { mergeAttributes, type Extensions } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import type * as Y from 'yjs'
 import { FIELD } from './firstParagraph'
+import type { Translate } from './blockCommands'
 import { isAllowedLink } from './links'
+import { createSlashExtension, type SlashState } from './slashExtension'
 
 /**
  * TipTap's table writes a `style` attribute (a minimum width, and widths on the columns), which the strict policy
@@ -23,12 +25,15 @@ export interface EditorExtensionsOptions {
   placeholder: string
   /** The label of a task item's checkbox; the node view calls it for every item. */
   checkboxLabel: (checked: boolean) => string
+  /** The slash menu; without it (the tests that only need the schema) `/` is just a character. */
+  slash?: { state: SlashState; translate: Translate }
 }
 
 export function createExtensions({
   doc,
   placeholder,
   checkboxLabel,
+  slash,
 }: EditorExtensionsOptions): Extensions {
   return [
     StarterKit.configure({
@@ -57,5 +62,6 @@ export function createExtensions({
     TableHeader,
     TableCell,
     Placeholder.configure({ placeholder }),
+    ...(slash ? [createSlashExtension(slash.state, slash.translate)] : []),
   ]
 }

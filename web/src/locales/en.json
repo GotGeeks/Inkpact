@@ -105,7 +105,82 @@
     "placeholder": "Start writing…",
     "checkboxDone": "Done",
     "checkboxNotDone": "Not done",
-    "newerVersion": "This page was made with a newer version of Inkpact. Reload the page to keep editing."
+    "newerVersion": "This page was made with a newer version of Inkpact. Reload the page to keep editing.",
+    "blocks": {
+      "text": {
+        "label": "Text",
+        "description": "Plain paragraph",
+        "keywords": "paragraph plain normal"
+      },
+      "heading1": {
+        "label": "Heading 1",
+        "description": "Large section title",
+        "keywords": "h1 title header big"
+      },
+      "heading2": {
+        "label": "Heading 2",
+        "description": "Medium section title",
+        "keywords": "h2 title header subtitle"
+      },
+      "heading3": {
+        "label": "Heading 3",
+        "description": "Small section title",
+        "keywords": "h3 title header small"
+      },
+      "bulletList": {
+        "label": "Bullet list",
+        "description": "A list with bullets",
+        "keywords": "unordered ul points"
+      },
+      "numberedList": {
+        "label": "Numbered list",
+        "description": "A list with numbers",
+        "keywords": "ordered ol steps"
+      },
+      "checklist": {
+        "label": "Checklist",
+        "description": "Track tasks with checkboxes",
+        "keywords": "todo task check checkbox"
+      },
+      "quote": {
+        "label": "Quote",
+        "description": "Set a passage apart",
+        "keywords": "blockquote citation"
+      },
+      "codeBlock": {
+        "label": "Code block",
+        "description": "Monospaced code",
+        "keywords": "snippet pre monospace"
+      },
+      "table": {
+        "label": "Table",
+        "description": "Rows and columns, 3 by 3",
+        "keywords": "grid rows columns"
+      },
+      "divider": {
+        "label": "Divider",
+        "description": "A horizontal line",
+        "keywords": "line rule separator hr"
+      }
+    },
+    "slash": {
+      "label": "Insert a block",
+      "empty": "No results",
+      "results": "{count} block available | {count} blocks available",
+      "categoryBasic": "Basic",
+      "categoryLists": "Lists",
+      "categoryBlocks": "Blocks"
+    },
+    "toolbar": {
+      "label": "Formatting",
+      "undo": "Undo",
+      "redo": "Redo",
+      "heading": "Heading",
+      "bold": "Bold",
+      "italic": "Italic",
+      "code": "Code",
+      "insert": "Insert a block"
+    }
   },
   "title": {
     "label": "Title"

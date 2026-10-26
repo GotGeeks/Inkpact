@@ -27,3 +27,14 @@ if (typeof globalThis.ClipboardEvent === 'undefined') {
     }
   } as unknown as typeof ClipboardEvent
 }
+
+/** jsdom has no layout, so ProseMirror's scroll-to-caret finds no rectangles on a text range or an element. */
+if (typeof Range !== 'undefined') {
+  Range.prototype.getClientRects ??= () =>
+    ({
+      length: 0,
+      item: () => null,
+      [Symbol.iterator]: [][Symbol.iterator],
+    }) as unknown as DOMRectList
+  Range.prototype.getBoundingClientRect ??= () => new DOMRect()
+}
