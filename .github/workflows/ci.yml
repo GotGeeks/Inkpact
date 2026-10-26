@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  # The full suite on request, for a branch that needs it before merging.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,6 +15,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # A pull request gets the quick checks: lint, types, unit tests, format and build, commit messages. The slow suites
+  # (the server's Testcontainers tests and the Playwright run, which downloads browsers) run on the contributor's machine
+  # before the push (`pnpm check`, see CONTRIBUTING) and again on main and on request, so a break there is found at once.
+  #
   # Which jobs the change needs. A skipped job counts as passed for a required check, so a pull request that only touches
   # the web client does not wait for the server tests, and one that only touches documentation waits for neither.
   changes:
@@ -51,6 +57,7 @@ jobs:
       - name: Build
         run: dotnet build server --configuration Release
       - name: Test
+        if: github.event_name != 'pull_request'
         run: dotnet test server --configuration Release --no-build
 
   web:
@@ -78,7 +85,7 @@ jobs:
   e2e:
     name: e2e
     needs: changes
-    if: needs.changes.outputs.e2e == 'true'
+    if: github.event_name != 'pull_request' && needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:

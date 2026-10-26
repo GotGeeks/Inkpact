@@ -4,6 +4,10 @@
   "type": "module",
   "license": "AGPL-3.0-only",
   "packageManager": "pnpm@12.11.2",
+  "scripts": {
+    "check:fast": "pnpm --filter web lint && pnpm --filter web typecheck && pnpm --filter web test && pnpm --filter sidecar lint && pnpm --filter sidecar typecheck && pnpm --filter sidecar test",
+    "check": "pnpm check:fast && dotnet format server --verify-no-changes && dotnet test server && pnpm --filter web e2e"
+  },
   "engines": {
     "node": ">=24"
   },
