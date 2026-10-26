@@ -3,6 +3,7 @@ using System.Data.Common;
 using System.Net.WebSockets;
 using System.Threading.RateLimiting;
 using Inkpact.Api.Auth;
+using Inkpact.Api.Crdt;
 using Inkpact.Api.Permissions;
 using Inkpact.Data.Entities;
 
@@ -37,8 +38,9 @@ internal sealed class PageRoom
 
 /// <summary>
 /// The sync hub: one multiplexed socket per client session, and every frame carries its page id. Yjs updates are
-/// opaque: stored in order and relayed, never decoded. A subscriber gets the stored log and works out itself what the
-/// server is missing; answering with a diff needs the Yjs sidecar, which arrives with compaction (run 1.10).
+/// opaque: stored in order and relayed, never decoded here. Only the Yjs sidecar decodes them, to answer a subscribe
+/// with the diff the client is missing; when it cannot, the subscriber gets the stored log and works out itself what
+/// the server lacks. Appending an update never depends on the sidecar.
 /// </summary>
 public sealed class SyncHub(
     PageUpdateStore store,
@@ -46,6 +48,8 @@ public sealed class SyncHub(
     PostgresTicketStore tickets,
     SessionEvents sessionEvents,
     SyncOptions options,
+    IYjsCodec codec,
+    SidecarOptions sidecarOptions,
     TimeProvider time,
     IHostApplicationLifetime lifetime,
     ILogger<SyncHub> logger)
@@ -217,7 +221,7 @@ public sealed class SyncHub(
         switch (frame.Type)
         {
             case MessageType.Subscribe:
-                await SubscribeAsync(connection, frame.PageId);
+                await SubscribeAsync(connection, frame.PageId, frame.Payload);
                 break;
 
             case MessageType.Unsubscribe:
@@ -254,9 +258,10 @@ public sealed class SyncHub(
 
     /// <summary>
     /// Registering, loading and queueing the sync happen under the page lock, and so does every store-and-relay. A new
-    /// subscriber therefore gets each update exactly once: in the sync if it was stored before, live if after.
+    /// subscriber therefore gets each update exactly once: in the sync if it was stored before, live if after. The wait
+    /// for the sidecar is under the lock on purpose, and bounded by its diff timeout.
     /// </summary>
-    private async Task SubscribeAsync(SyncConnection connection, Guid pageId)
+    private async Task SubscribeAsync(SyncConnection connection, Guid pageId, ReadOnlyMemory<byte> clientStateVector)
     {
         if (connection.Pages.ContainsKey(pageId))
         {
@@ -291,8 +296,8 @@ public sealed class SyncHub(
                 room.Subscribers.Add(connection);
                 connection.Pages[pageId] = new Subscription(room, role >= WorkspaceRole.Editor);
 
-                var updates = await store.LoadAsync(pageId, connection.Aborted);
-                connection.Enqueue(Frame.EncodeSync(pageId, updates));
+                var log = await store.LoadAsync(pageId, connection.Aborted);
+                connection.Enqueue(await EncodeSyncAsync(pageId, clientStateVector, log, connection.Aborted));
                 if (room.Awareness.EncodeAll() is { } presence)
                 {
                     connection.Enqueue(Frame.Encode(MessageType.Awareness, pageId, presence));
@@ -305,6 +310,44 @@ public sealed class SyncHub(
                 room.Lock.Release();
             }
         }
+    }
+
+    /// <summary>The answer to a subscribe: the diff and the server's state vector, or the stored log when there is no diff.</summary>
+    private async Task<byte[]> EncodeSyncAsync(
+        Guid pageId, ReadOnlyMemory<byte> clientStateVector, IReadOnlyList<byte[]> log, CancellationToken cancellationToken)
+    {
+        // A page nobody has written to has nothing to diff.
+        if (log.Count == 0)
+        {
+            return Frame.EncodeSync(pageId, [], log);
+        }
+
+        try
+        {
+            // The codec enforces the diff timeout itself, and kills a sidecar that hangs. This is for a codec that does
+            // not, so that the page lock is never held for long.
+            using var backstop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            backstop.CancelAfter(sidecarOptions.DiffTimeout * 2);
+            var diff = await codec.DiffAsync(clientStateVector, log, backstop.Token);
+            return Frame.EncodeSync(pageId, diff.StateVector, [diff.Update]);
+        }
+        catch (YjsUnavailableException ex)
+        {
+            // Expected while the sidecar restarts, or when there is no Node.
+            logger.LogDebug(ex, "No Yjs diff for page {PageId}; sending the stored updates", pageId);
+        }
+        catch (YjsRejectedException ex)
+        {
+            // Either the log holds something Yjs cannot decode (compaction will run into the same), or the client sent a
+            // state vector that is not one. Either way the client can still sync from the stored updates.
+            logger.LogWarning(ex, "Yjs refused to diff page {PageId}, because of a stored update or the client's state vector; sending the stored updates", pageId);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("The Yjs codec did not answer a diff for page {PageId} in time; sending the stored updates", pageId);
+        }
+
+        return Frame.EncodeSync(pageId, [], log);
     }
 
     private async Task LeaveAsync(SyncConnection connection, Guid pageId)

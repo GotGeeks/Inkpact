@@ -1,4 +1,5 @@
 using System.Net;
+using Inkpact.Api.Crdt;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -20,6 +21,9 @@ namespace Inkpact.Api.Tests.Testing;
 /// <param name="failuresBeforeLock">Wrong passwords before an email is locked; null leaves the default (5).</param>
 /// <param name="time">The clock the app uses; null is the real one.</param>
 /// <param name="settings">Further configuration, such as the sync hub's limits.</param>
+/// <param name="sidecar">Whether to run the real Yjs sidecar. Off by default: it behaves as if Node were missing, so the hub
+/// answers a subscribe with the stored log, and most tests need nothing else.</param>
+/// <param name="codec">Replaces the Yjs codec the hub asks for a diff, for tests of how the hub copes with a codec that fails.</param>
 public class InkpactFactory(
     string connectionString,
     bool backupOnMigrate = false,
@@ -32,7 +36,9 @@ public class InkpactFactory(
     int perAddressPerMinute = 1000,
     int? failuresBeforeLock = null,
     TimeProvider? time = null,
-    IReadOnlyDictionary<string, string>? settings = null) : WebApplicationFactory<Program>
+    IReadOnlyDictionary<string, string>? settings = null,
+    bool sidecar = false,
+    IYjsCodec? codec = null) : WebApplicationFactory<Program>
 {
     public const string SetupCode = "TESTCODE";
 
@@ -56,9 +62,18 @@ public class InkpactFactory(
             builder.UseSetting("Auth:Throttle:FailuresBeforeLock", failuresBeforeLock.Value.ToString());
         }
 
+        // The test server's content root is the project folder, not where a published app has the sidecar.
+        builder.UseSetting("Sidecar:Enabled", sidecar.ToString());
+        builder.UseSetting("Sidecar:ScriptPath", SidecarFiles.ScriptPath);
+
         foreach (var (key, value) in settings ?? new Dictionary<string, string>())
         {
             builder.UseSetting(key, value);
+        }
+
+        if (codec is not null)
+        {
+            builder.ConfigureTestServices(services => services.AddSingleton(codec));
         }
 
         if (time is not null)
