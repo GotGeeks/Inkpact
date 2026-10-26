@@ -33,7 +33,8 @@ describe('PageView', () => {
 
     await vi.waitFor(() => expect(wrapper!.get('main h1').text()).toBe('Notes'))
     expect(wrapper!.get('main').text()).toContain('The page content will appear here.')
-    expect(wrapper!.find('[role="status"]').exists()).toBe(false)
+    // The trash banner is not there; the sync pill is the page's other status.
+    expect(wrapper!.find('[role="status"]:not([data-testid="sync-status"])').exists()).toBe(false)
   })
 
   it('shows "Untitled" for a page with no title', async () => {

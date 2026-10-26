@@ -21,5 +21,7 @@ export default defineConfig({
     // The first test to import a page pays for transforming it, and several files do that at once.
     testTimeout: 20_000,
     exclude: ['e2e/**', 'node_modules/**'],
+    // The page view opens the sync socket; jsdom's real one would try to connect.
+    setupFiles: ['./src/testing/setup.ts'],
   },
 })

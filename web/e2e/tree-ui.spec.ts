@@ -439,9 +439,11 @@ test.describe('the trash', () => {
 
     await page.goto(`/p/${pageId}`)
 
-    await expect(page.getByRole('status')).toContainText('This page is in the trash.')
-    await page.getByRole('status').getByRole('button', { name: 'Restore' }).click()
-    await expect(page.getByRole('status')).toHaveCount(0)
+    // The sync pill is a status too, so the banner is found by its words.
+    const banner = page.getByRole('status').filter({ hasText: 'This page is in the trash.' })
+    await expect(banner).toBeVisible()
+    await banner.getByRole('button', { name: 'Restore' }).click()
+    await expect(banner).toHaveCount(0)
   })
 
   test('a page that does not exist says so', async ({ page }) => {

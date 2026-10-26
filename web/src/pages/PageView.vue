@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute } from 'vue-router'
+import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
+import SyncStatus from '../sync/SyncStatus.vue'
 import type { PageDetail } from '../tree/types'
 
 const { t } = useI18n()
 const route = useRoute()
 const tree = useTreeStore()
+const sync = useSyncStore()
 
 const pageId = computed(() => String(route.params.pageId))
 const detail = ref<PageDetail | null>(null)
@@ -26,13 +29,27 @@ watch(
   { immediate: true },
 )
 
+// The page's content comes over the tab's one socket. Nothing edits it yet (the editor comes next), so it is read-only.
+watch(
+  pageId,
+  (id, previous) => {
+    if (previous) sync.close(previous)
+    sync.open(id, { readOnly: true })
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => sync.close(pageId.value))
+
+const syncState = computed(() => sync.pages[pageId.value]?.state)
+const notFound = computed(() => missing.value || syncState.value === 'missing')
+
 const ownTrash = computed(() => detail.value?.page.deletedAt !== undefined)
 const title = computed(() => detail.value?.page.title || t('tree.untitled'))
 </script>
 
 <template>
   <section
-    v-if="missing"
+    v-if="notFound"
     class="mx-auto flex max-w-2xl flex-col gap-space-md p-margin md:p-margin-desktop"
   >
     <h1 class="text-headline-xl-mobile md:text-headline-xl">{{ t('page.notFound') }}</h1>
@@ -60,6 +77,18 @@ const title = computed(() => detail.value?.page.title || t('tree.untitled'))
         {{ t('trash.restore') }}
       </button>
     </div>
+
+    <div class="flex items-center justify-end">
+      <SyncStatus />
+    </div>
+
+    <p
+      v-if="syncState === 'tooLarge'"
+      role="alert"
+      class="rounded border border-error p-space-md text-body-sm text-error"
+    >
+      {{ t('sync.tooLarge') }}
+    </p>
 
     <h1
       class="text-headline-xl-mobile md:text-headline-xl"

@@ -43,6 +43,7 @@
     "unknown": "Something went wrong. Try again.",
     "login_locked": "Too many wrong passwords for this account. Try again {when}.",
     "too_many_requests": "Too many attempts from this device. Try again {when}.",
+    "too_many_pages": "Too many pages are open at once. Close one and try again.",
     "forbidden": "You are not allowed to do that.",
     "not_found": "That could not be found.",
     "csrf_invalid": "The page was out of date. Reload it and try again.",
@@ -90,6 +91,14 @@
     "deleted": "Moved to the trash {when}",
     "restore": "Restore",
     "restoreNamed": "Restore {title}"
+  },
+  "sync": {
+    "status": {
+      "connecting": "Connecting…",
+      "live": "Live",
+      "offline": "Offline · changes are kept in this tab"
+    },
+    "tooLarge": "This change is too large to save. Reloading the page discards it."
   },
   "page": {
     "notFound": "This page could not be found",

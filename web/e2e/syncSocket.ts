@@ -11,7 +11,7 @@ export interface SocketLog {
 
 /**
  * Opens a sync socket inside the page, the way the app will: same origin, the page's own cookies, and the binary frames
- * of the protocol written by hand (the client library comes with the editor, in run 1.11). The socket is kept on
+ * of the protocol written by hand (the app's own client is tested in sync-client.spec.ts). The socket is kept on
  * window under a name, so later calls can use it.
  */
 export async function openSyncSocket(page: Page, name: string): Promise<SocketLog> {
