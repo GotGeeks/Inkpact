@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { computed, defineAsyncComponent, h, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute } from 'vue-router'
-import PageEditor from '../editor/PageEditor.vue'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import SyncStatus from '../sync/SyncStatus.vue'
 import TitleField from './TitleField.vue'
 import type { PageDetail } from '../tree/types'
+
+type PageEditorComponent = typeof import('../editor/PageEditor.vue').default
+
+// The title and the pill show at once; the editor (TipTap and the rest, the larger part of the page's chunk) follows.
+// The placeholder has the editor's minimum height, so nothing jumps when it arrives.
+const PageEditor = defineAsyncComponent({
+  loader: () => import('../editor/PageEditor.vue'),
+  loadingComponent: { render: () => h('div', { class: 'min-h-48', 'aria-busy': 'true' }) },
+  delay: 0,
+})
 
 const { t } = useI18n()
 const route = useRoute()
@@ -43,7 +52,7 @@ watch(syncState, (state) => {
 const notFound = computed(() => missing.value || missingOnSocket.value)
 
 const ownTrash = computed(() => detail.value?.page.deletedAt !== undefined)
-const editor = useTemplateRef<InstanceType<typeof PageEditor>>('editor')
+const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
 </script>
 
 <template>

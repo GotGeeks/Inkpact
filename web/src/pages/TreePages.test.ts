@@ -36,7 +36,8 @@ describe('PageView', () => {
         (wrapper!.get('[data-testid="page-title"]').element as HTMLTextAreaElement).value,
       ).toBe('Notes'),
     )
-    expect(wrapper!.find('[data-testid="editor"]').exists()).toBe(true)
+    // The editor is loaded behind the title.
+    await vi.waitFor(() => expect(wrapper!.find('[data-testid="editor"]').exists()).toBe(true))
     // The trash banner is not there; the sync pill is the page's other status.
     expect(wrapper!.find('[role="status"]:not([data-testid="sync-status"])').exists()).toBe(false)
   })

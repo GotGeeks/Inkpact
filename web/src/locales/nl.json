@@ -105,7 +105,102 @@
     "placeholder": "Begin met schrijven…",
     "checkboxDone": "Klaar",
     "checkboxNotDone": "Niet klaar",
-    "newerVersion": "Deze pagina is gemaakt met een nieuwere versie van Inkpact. Herlaad de pagina om verder te werken."
+    "newerVersion": "Deze pagina is gemaakt met een nieuwere versie van Inkpact. Herlaad de pagina om verder te werken.",
+    "blocks": {
+      "text": {
+        "label": "Tekst",
+        "description": "Gewone alinea",
+        "keywords": "alinea paragraaf normaal"
+      },
+      "heading1": {
+        "label": "Kop 1",
+        "description": "Grote titel van een onderdeel",
+        "keywords": "h1 titel koptekst groot"
+      },
+      "heading2": {
+        "label": "Kop 2",
+        "description": "Middelgrote titel van een onderdeel",
+        "keywords": "h2 titel koptekst ondertitel"
+      },
+      "heading3": {
+        "label": "Kop 3",
+        "description": "Kleine titel van een onderdeel",
+        "keywords": "h3 titel koptekst klein"
+      },
+      "bulletList": {
+        "label": "Lijst met opsommingstekens",
+        "description": "Een lijst met bolletjes",
+        "keywords": "lijst opsomming punten bolletjes"
+      },
+      "numberedList": {
+        "label": "Genummerde lijst",
+        "description": "Een lijst met nummers",
+        "keywords": "lijst nummering stappen"
+      },
+      "checklist": {
+        "label": "Checklist",
+        "description": "Taken afvinken met selectievakjes",
+        "keywords": "taken afvinken selectievakje todo"
+      },
+      "quote": {
+        "label": "Citaat",
+        "description": "Een passage apart zetten",
+        "keywords": "quote aanhaling"
+      },
+      "codeBlock": {
+        "label": "Codeblok",
+        "description": "Code met vaste letterbreedte",
+        "keywords": "code programmeren fragment"
+      },
+      "table": {
+        "label": "Tabel",
+        "description": "Rijen en kolommen, 3 bij 3",
+        "keywords": "rooster rijen kolommen"
+      },
+      "divider": {
+        "label": "Scheidingslijn",
+        "description": "Een horizontale lijn",
+        "keywords": "lijn streep scheiding"
+      }
+    },
+    "slash": {
+      "label": "Een blok invoegen",
+      "empty": "Geen resultaten",
+      "results": "{count} blok beschikbaar | {count} blokken beschikbaar",
+      "categoryBasic": "Basis",
+      "categoryLists": "Lijsten",
+      "categoryBlocks": "Blokken"
+    },
+    "toolbar": {
+      "label": "Opmaak",
+      "undo": "Ongedaan maken",
+      "redo": "Opnieuw",
+      "heading": "Kop",
+      "bold": "Vet",
+      "italic": "Cursief",
+      "code": "Code",
+      "insert": "Een blok invoegen"
+    },
+    "handle": {
+      "label": "Blokopties",
+      "turnInto": "Omzetten naar",
+      "duplicate": "Dupliceren",
+      "delete": "Verwijderen",
+      "moveUp": "Naar boven",
+      "moveDown": "Naar beneden"
+    },
+    "table": {
+      "label": "Tabel",
+      "addRowBefore": "Rij erboven toevoegen",
+      "addRowAfter": "Rij eronder toevoegen",
+      "addColumnBefore": "Kolom ervoor toevoegen",
+      "addColumnAfter": "Kolom erna toevoegen",
+      "deleteRow": "Rij verwijderen",
+      "deleteColumn": "Kolom verwijderen",
+      "deleteTable": "Tabel verwijderen"
+    },
+    "movedUp": "Blok omhoog verplaatst",
+    "movedDown": "Blok omlaag verplaatst"
   },
   "title": {
     "label": "Titel"

@@ -12,13 +12,17 @@
     "e2e:install": "playwright install --with-deps chromium webkit"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.8.0",
     "@tiptap/core": "^3.32.0",
     "@tiptap/extension-collaboration": "^3.32.0",
+    "@tiptap/extension-drag-handle": "^3.32.0",
     "@tiptap/extension-list": "^3.32.0",
+    "@tiptap/extension-node-range": "^3.32.0",
     "@tiptap/extension-table": "^3.32.0",
     "@tiptap/extensions": "^3.32.0",
     "@tiptap/pm": "^3.32.0",
     "@tiptap/starter-kit": "^3.32.0",
+    "@tiptap/suggestion": "^3.32.0",
     "@tiptap/vue-3": "^3.32.0",
     "@tiptap/y-tiptap": "^3.0.10",
     "dompurify": "^3.4.17",

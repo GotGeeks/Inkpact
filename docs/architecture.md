@@ -175,7 +175,8 @@ The smallest version you can use daily instead of Joplin. Build login, tree, edi
 | 1.10b | Compaction worker with every compaction guarantee: transaction, watermark, advisory lock, idempotence, verification, archive table and its 30-day purge; plain-text extract for search; property tests with injected crashes | O·high → S·high |
 | 1.11a | The TypeScript sync client: one socket per tab, ping, reconnect with backoff, resync in diff and log mode, close codes, a status pill on the page; tested against a fake hub and in the browser | O·high → S·high |
 | 1.11b | Editor: title field, headings, lists, checklists, code blocks, tables, links, on the sync client; the first paragraph made once; the browser sync scenarios from the spike as Playwright tests; DOMPurify on paste | S·med |
-| 1.12 | Editor polish: Notion-style block handles, slash menu, editor lazy-loaded, mobile fixes from the spike findings | S·med |
+| 1.12a | Editor polish: slash menu, mobile toolbar with undo and redo above the keyboard | S·med |
+| 1.12b | Editor polish: Notion-style block handles, block menu, table menu, editor lazy-loaded | S·med |
 | 1.13 | Docker image (non-root, read-only root filesystem), compose file, `edge` image to GHCR on merge; running on Unraid behind Traefik on a test subdomain | S·med |
 | 1.14 | Attachments, as far as the import needs them: storage interface with local volume, SHA-256 dedupe, upload, download, inline images, safe serving headers, size limits | S·high |
 | 1.15 | Joplin import part 1: JEX reading, notebooks, notes, tags, resources, timestamps, to-do and alarm fields; Markdown to editor content with server-side sanitising; import report | O·high → S·high |

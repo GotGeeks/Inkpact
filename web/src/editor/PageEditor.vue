@@ -2,13 +2,21 @@
 import { ySyncPluginKey } from '@tiptap/y-tiptap'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import type { Editor } from '@tiptap/core'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import type { EditorView } from '@tiptap/pm/view'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useKeyboardInset } from '../composables/useKeyboardInset'
+import { useMediaQuery } from '../composables/useMediaQuery'
 import { useSyncStore } from '../stores/sync'
 import { editorClasses } from './editorClasses'
 import { createExtensions } from './extensions'
 import { applyFirstParagraph } from './firstParagraph'
+import BlockHandle from './BlockHandle.vue'
+import EditorToolbar from './EditorToolbar.vue'
 import { sanitizePastedHtml } from './sanitize'
+import SlashMenu from './SlashMenu.vue'
+import { createSlashState } from './slashExtension'
+import TableMenu from './TableMenu.vue'
 
 const props = defineProps<{ pageId: string; readOnly: boolean }>()
 
@@ -49,6 +57,70 @@ function checkProjection(current: Editor) {
   if (ySyncPluginKey.getState(current.state)?.binding?.projectionError) contentError.value = true
 }
 
+const slashState = createSlashState()
+
+// The drag handle: the extension moves this element next to the block under the mouse, and BlockHandle fills it. Only
+// with a mouse; on a touch screen the toolbar and the slash menu do this.
+const handleElement = document.createElement('div')
+handleElement.className =
+  'hidden opacity-20 transition-opacity hover:opacity-100 focus-within:opacity-100 pointer-fine:block'
+let hoveredBlock = -1
+
+// The toolbar is the phone's way to undo, redo and insert blocks: on a touch screen or a narrow window, while the
+// editor (or the toolbar itself, reached with the keyboard) has the focus.
+const TOOLBAR_HEIGHT = 56
+const touch = useMediaQuery('(pointer: coarse)')
+const wide = useMediaQuery('(min-width: 48rem)', true)
+const toolbarWanted = computed(() => (touch.value || !wide.value) && editable.value)
+const focusWithin = ref(false)
+const showToolbar = computed(() => toolbarWanted.value && focusWithin.value)
+useKeyboardInset(showToolbar)
+
+/**
+ * Focus moves from the editor to the toolbar through a moment where neither has it, so a loss is only believed once
+ * the focus has settled; otherwise the toolbar would go away under the finger that reaches for it.
+ */
+function refreshFocus() {
+  const active = document.activeElement
+  focusWithin.value =
+    !!active &&
+    (editor.value?.view.dom.contains(active) === true ||
+      active.closest('[data-editor-chrome]') !== null)
+}
+function focusChanged() {
+  setTimeout(refreshFocus, 0)
+}
+
+// Alt+Arrow moves a block with no sign on the screen that a screen reader could follow, so it is said.
+const announcement = ref('')
+async function announceMove(direction: -1 | 1) {
+  announcement.value = ''
+  await nextTick()
+  announcement.value = direction < 0 ? t('editor.movedUp') : t('editor.movedDown')
+}
+
+/**
+ * Keeps the caret above the toolbar, and so above the keyboard, when ProseMirror scrolls it into view. The browser does
+ * not know about the toolbar, and ProseMirror's own margin did not move the page's scroller. Returns false when
+ * nothing needs to be done, which leaves it to ProseMirror.
+ */
+function keepCaretAboveToolbar(view: EditorView): boolean {
+  if (!showToolbar.value) return false
+  const caret = view.coordsAtPos(view.state.selection.head)
+  const screen = window.visualViewport
+  const limit =
+    (screen ? screen.offsetTop + screen.height : window.innerHeight) - TOOLBAR_HEIGHT - 8
+  const hidden = caret.bottom - limit
+  if (hidden <= 0) return false
+  let scroller: HTMLElement | null = view.dom.parentElement
+  while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
+    scroller = scroller.parentElement
+  }
+  if (!scroller) return false
+  scroller.scrollTop += hidden
+  return true
+}
+
 function attributes() {
   return {
     role: 'textbox',
@@ -64,6 +136,14 @@ const editor = useEditor({
     placeholder: t('editor.placeholder'),
     // Written out, so the lint rule that finds unused translations can see the keys.
     checkboxLabel: (checked) => (checked ? t('editor.checkboxDone') : t('editor.checkboxNotDone')),
+    slash: { state: slashState, translate: (key) => t(key) },
+    onBlockMoved: announceMove,
+    dragHandle: {
+      element: handleElement, // Leaving the block for the handle reports no block; the handle still belongs to the one it was next to.
+      onHover: (pos) => {
+        if (pos >= 0) hoveredBlock = pos
+      },
+    },
   }),
   editable: editable.value,
   // TipTap would add its stylesheet as a <style> element, which the strict policy blocks (see style.css).
@@ -75,12 +155,29 @@ const editor = useEditor({
     disableCollaboration()
     contentError.value = true
   },
+  onFocus: refreshFocus,
+  onBlur: focusChanged,
   onCreate: ({ editor: created }) => checkProjection(created),
   onTransaction: ({ editor: changed }) => checkProjection(changed),
-  editorProps: { attributes: attributes(), transformPastedHTML: sanitizePastedHtml },
+  editorProps: {
+    attributes: attributes(),
+    transformPastedHTML: sanitizePastedHtml,
+    handleScrollToSelection: keepCaretAboveToolbar,
+  },
 })
 
-watch([editor, editable], ([current, can]) => current?.setEditable(can, false), { immediate: true })
+const inTable = computed(
+  () => editable.value && focusWithin.value && editor.value?.isActive('table') === true,
+)
+
+watch(
+  [editor, editable],
+  ([current, can]) => {
+    current?.setEditable(can, false)
+    handleElement.toggleAttribute('hidden', !can)
+  },
+  { immediate: true },
+)
 watch(locale, () => editor.value?.setOptions({ editorProps: { attributes: attributes() } }))
 
 onBeforeUnmount(() => {
@@ -92,7 +189,10 @@ defineExpose({ focus: () => editor.value?.commands.focus('start') })
 </script>
 
 <template>
-  <div class="flex flex-col gap-space-md">
+  <div
+    class="flex flex-col gap-space-md"
+    :class="showToolbar ? 'pb-[calc(3.5rem+var(--keyboard-inset,0px))]' : ''"
+  >
     <p
       v-if="contentError"
       role="alert"
@@ -101,5 +201,26 @@ defineExpose({ focus: () => editor.value?.commands.focus('start') })
       {{ t('editor.newerVersion') }}
     </p>
     <EditorContent :editor="editor" data-testid="editor" />
+    <BlockHandle
+      v-if="editor"
+      :editor="editor"
+      :element="handleElement"
+      :hovered="() => hoveredBlock"
+    />
+    <p aria-live="polite" aria-atomic="true" class="sr-only">{{ announcement }}</p>
+    <SlashMenu :state="slashState" :reserve-bottom="showToolbar ? TOOLBAR_HEIGHT : 0" />
+    <TableMenu
+      v-if="editor && inTable"
+      :editor="editor"
+      :compact="showToolbar"
+      @focusin="refreshFocus"
+      @focusout="focusChanged"
+    />
+    <EditorToolbar
+      v-if="editor && showToolbar"
+      :editor="editor"
+      @focusin="refreshFocus"
+      @focusout="focusChanged"
+    />
   </div>
 </template>
