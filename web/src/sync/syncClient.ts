@@ -428,6 +428,8 @@ export class SyncClient {
     }
     if (this.isOpen() && page.state !== 'missing') this.send(MessageType.Unsubscribe, page.pageId)
     page.detach()
+    // A page left in the background goes later than the call that left it: whoever shows its state has to hear.
+    this.options.onPageChange?.(page.pageId)
   }
 
   private handle(frame: IncomingFrame) {

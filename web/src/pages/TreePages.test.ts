@@ -28,19 +28,27 @@ async function open(
 }
 
 describe('PageView', () => {
-  it('shows the title as the heading, and a placeholder for the content that comes later', async () => {
+  it('shows the title in its own field, above the editor', async () => {
     await open('/p/Notes', { pages: outline(['Notes']) })
 
-    await vi.waitFor(() => expect(wrapper!.get('main h1').text()).toBe('Notes'))
-    expect(wrapper!.get('main').text()).toContain('The page content will appear here.')
+    await vi.waitFor(() =>
+      expect(
+        (wrapper!.get('[data-testid="page-title"]').element as HTMLTextAreaElement).value,
+      ).toBe('Notes'),
+    )
+    expect(wrapper!.find('[data-testid="editor"]').exists()).toBe(true)
     // The trash banner is not there; the sync pill is the page's other status.
     expect(wrapper!.find('[role="status"]:not([data-testid="sync-status"])').exists()).toBe(false)
   })
 
-  it('shows "Untitled" for a page with no title', async () => {
+  it('offers "Untitled" as the placeholder of a page with no title', async () => {
     await open('/p/x', { pages: [{ ...outline(['x'])[0]!, title: '' }] })
 
-    await vi.waitFor(() => expect(wrapper!.get('main h1').text()).toBe('Untitled'))
+    await vi.waitFor(() => expect(wrapper!.find('[data-testid="page-title"]').exists()).toBe(true))
+    expect((wrapper!.get('[data-testid="page-title"]').element as HTMLTextAreaElement).value).toBe(
+      '',
+    )
+    expect(wrapper!.get('[data-testid="page-title"]').attributes('placeholder')).toBe('Untitled')
   })
 
   it('says when a page cannot be found, and leads back', async () => {

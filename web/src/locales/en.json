@@ -100,12 +100,21 @@
     },
     "tooLarge": "This change is too large to save. Reloading the page discards it."
   },
+  "editor": {
+    "label": "Page content",
+    "placeholder": "Start writing…",
+    "checkboxDone": "Done",
+    "checkboxNotDone": "Not done",
+    "newerVersion": "This page was made with a newer version of Inkpact. Reload the page to keep editing."
+  },
+  "title": {
+    "label": "Title"
+  },
   "page": {
     "notFound": "This page could not be found",
     "backToStart": "Back to the start",
     "inTrash": "This page is in the trash.",
-    "inTrashThroughParent": "A page above this one is in the trash.",
-    "placeholder": "The page content will appear here."
+    "inTrashThroughParent": "A page above this one is in the trash."
   },
   "start": {
     "title": "Welcome",
