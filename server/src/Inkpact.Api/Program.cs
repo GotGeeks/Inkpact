@@ -1,4 +1,5 @@
 using Inkpact.Api.Auth;
+using Inkpact.Api.Compaction;
 using Inkpact.Api.Crdt;
 using Inkpact.Api.Pages;
 using Inkpact.Api.Permissions;
@@ -19,6 +20,7 @@ builder.Services.AddLoginThrottling(builder.Configuration);
 builder.Services.AddScoped<IAuditLog, AuditLog>();
 builder.Services.AddScoped<TreeService>();
 builder.Services.AddYjsSidecar(builder.Configuration);
+builder.Services.AddCompaction(builder.Configuration);
 builder.Services.AddSync(builder.Configuration);
 
 var app = builder.Build();

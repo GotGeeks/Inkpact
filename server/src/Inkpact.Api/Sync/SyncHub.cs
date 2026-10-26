@@ -296,7 +296,7 @@ public sealed class SyncHub(
                 room.Subscribers.Add(connection);
                 connection.Pages[pageId] = new Subscription(room, role >= WorkspaceRole.Editor);
 
-                var log = await store.LoadAsync(pageId, connection.Aborted);
+                var log = (await store.LoadAsync(pageId, connection.Aborted)).Inputs;
                 connection.Enqueue(await EncodeSyncAsync(pageId, clientStateVector, log, connection.Aborted));
                 if (room.Awareness.EncodeAll() is { } presence)
                 {

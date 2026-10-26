@@ -1,4 +1,5 @@
 using System.Net;
+using Inkpact.Api.Compaction;
 using Inkpact.Api.Crdt;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -24,6 +25,7 @@ namespace Inkpact.Api.Tests.Testing;
 /// <param name="sidecar">Whether to run the real Yjs sidecar. Off by default: it behaves as if Node were missing, so the hub
 /// answers a subscribe with the stored log, and most tests need nothing else.</param>
 /// <param name="codec">Replaces the Yjs codec the hub asks for a diff, for tests of how the hub copes with a codec that fails.</param>
+/// <param name="compactionHooks">Replaces the no-op hooks of a compaction, to stop one half way and let the test look around.</param>
 public class InkpactFactory(
     string connectionString,
     bool backupOnMigrate = false,
@@ -38,7 +40,8 @@ public class InkpactFactory(
     TimeProvider? time = null,
     IReadOnlyDictionary<string, string>? settings = null,
     bool sidecar = false,
-    IYjsCodec? codec = null) : WebApplicationFactory<Program>
+    IYjsCodec? codec = null,
+    ICompactionHooks? compactionHooks = null) : WebApplicationFactory<Program>
 {
     public const string SetupCode = "TESTCODE";
 
@@ -74,6 +77,11 @@ public class InkpactFactory(
         if (codec is not null)
         {
             builder.ConfigureTestServices(services => services.AddSingleton(codec));
+        }
+
+        if (compactionHooks is not null)
+        {
+            builder.ConfigureTestServices(services => services.AddSingleton(compactionHooks));
         }
 
         if (time is not null)

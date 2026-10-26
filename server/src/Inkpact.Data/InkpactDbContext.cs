@@ -21,6 +21,10 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
 
     public DbSet<PageUpdate> PageUpdates => Set<PageUpdate>();
 
+    public DbSet<PageSnapshot> PageSnapshots => Set<PageSnapshot>();
+
+    public DbSet<ArchivedPageUpdate> ArchivedPageUpdates => Set<ArchivedPageUpdate>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(user =>
@@ -50,6 +54,7 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             page.Property(p => p.SortKey).HasMaxLength(100).UseCollation("C").IsRequired();
             page.Property(p => p.ExternalSourceType).HasMaxLength(50);
             page.Property(p => p.ExternalId).HasMaxLength(200);
+            page.Property(p => p.ContentText).HasDefaultValue("").IsRequired();
             page.HasOne(p => p.Workspace).WithMany().HasForeignKey(p => p.WorkspaceId).OnDelete(DeleteBehavior.Restrict);
             page.HasOne(p => p.Parent).WithMany().HasForeignKey(p => p.ParentId).OnDelete(DeleteBehavior.Restrict);
             // Two live siblings never share a key, also at the top level (where the parent is null).
@@ -116,6 +121,29 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             update.HasOne<User>().WithMany().HasForeignKey(u => u.UserId).OnDelete(DeleteBehavior.SetNull);
             // A page is loaded as its updates in order.
             update.HasIndex(u => new { u.PageId, u.Seq });
+        });
+
+        modelBuilder.Entity<PageSnapshot>(snapshot =>
+        {
+            snapshot.ToTable("page_snapshots");
+            snapshot.HasKey(s => s.PageId);
+            snapshot.Property(s => s.State).IsRequired();
+            snapshot.Property(s => s.StateVector).IsRequired();
+            snapshot.Property(s => s.HistoryComplete).HasDefaultValue(true);
+            snapshot.HasOne<Page>().WithOne().HasForeignKey<PageSnapshot>(s => s.PageId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ArchivedPageUpdate>(archived =>
+        {
+            archived.ToTable("page_updates_archive");
+            archived.HasKey(a => a.Seq);
+            archived.Property(a => a.Seq).ValueGeneratedNever();
+            archived.Property(a => a.Data).IsRequired();
+            archived.HasOne<Page>().WithMany().HasForeignKey(a => a.PageId).OnDelete(DeleteBehavior.Cascade);
+            archived.HasOne<User>().WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.SetNull);
+            // The full-history check reads one page's archive in order; the purge finds the old rows.
+            archived.HasIndex(a => new { a.PageId, a.Seq });
+            archived.HasIndex(a => a.ArchivedAt);
         });
 
         modelBuilder.UseSnakeCaseNames();

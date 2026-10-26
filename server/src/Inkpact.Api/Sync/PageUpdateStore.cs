@@ -19,20 +19,33 @@ public sealed class PageUpdateStore(IDbContextFactory<InkpactDbContext> dbFactor
     }
 
     /// <summary>
-    /// Everything a client merges to get the page, oldest first. Read in one repeatable-read transaction: once
-    /// compaction exists (run 1.10b) this also reads the snapshot, and reading the two separately can miss the updates
-    /// a compaction moves out of the log between the reads.
+    /// The page as stored: its snapshot (if a compaction has made one) and the updates still live. Read in one
+    /// repeatable-read transaction, because a compaction moves updates out of the log and into the snapshot in one
+    /// transaction, and reading the two separately can miss them in between.
     /// </summary>
-    public async Task<IReadOnlyList<byte[]>> LoadAsync(Guid pageId, CancellationToken cancellationToken)
+    public async Task<PageContent> LoadAsync(Guid pageId, CancellationToken cancellationToken)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
+        var snapshot = await db.PageSnapshots.AsNoTracking()
+            .Where(s => s.PageId == pageId)
+            .Select(s => s.State)
+            .SingleOrDefaultAsync(cancellationToken);
+        // All live rows, not those above the watermark: a row still in the log has not been merged, and rows can commit
+        // out of sequence order (see the compactor).
         var updates = await db.PageUpdates.AsNoTracking()
             .Where(u => u.PageId == pageId)
             .OrderBy(u => u.Seq)
             .Select(u => u.Data)
             .ToListAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return updates;
+        return new PageContent(snapshot, updates);
     }
+}
+
+/// <summary>A page's snapshot and the live updates after it.</summary>
+public sealed record PageContent(byte[]? Snapshot, IReadOnlyList<byte[]> Updates)
+{
+    /// <summary>What to hand the codec, or to send a client in log mode: the snapshot first, then the updates.</summary>
+    public IReadOnlyList<byte[]> Inputs => Snapshot is null ? Updates : [Snapshot, .. Updates];
 }

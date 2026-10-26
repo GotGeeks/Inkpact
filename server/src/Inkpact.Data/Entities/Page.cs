@@ -41,4 +41,7 @@ public class Page
     public string? ExternalSourceType { get; set; }
 
     public string? ExternalId { get; set; }
+
+    /// <summary>The plain text of the content, refreshed by every compaction. Feeds search (run 1.17).</summary>
+    public string ContentText { get; set; } = "";
 }
