@@ -6,7 +6,7 @@ Written in run 0.7. Sources: `docs/runs/0.1.md` to `0.6.md`. The spike code was 
 
 > Concurrent and offline edits always merge with nothing lost, and storage does not grow without bound after compaction.
 
-**Met**, with one item open: the reconnect fix from 0.6 (line 21 of the Android checklist) still has to be retested on the phone.
+**Met.** The reconnect fix from 0.6 (line 21 of the Android checklist) was retested on the phone and works.
 
 - Concurrent and offline edits: 5 Playwright scenarios, 20 of 20 in a repeated run, plus 5 headless scenarios in `check:sync`.
 - Storage: after 50,000-update runs on 3 seeds the snapshot is exactly the size of a fresh encode, so it grows with the document and not with the edit history. Live updates stay bounded by the compaction cadence. The archive grows until the purge, which exists since run 1.10b (30 days, in batches).
@@ -69,7 +69,7 @@ Applying a snapshot and the updates after it in a single `Y.transact` can end wi
 
 Tested on one phone: Chrome and Firefox, Gboard and SwiftKey (Firefox with Gboard was skipped on purpose). Not tested: HTTPS, service workers, iOS.
 
-- **Reconnect (line 21): found, fixed, retest pending.** When a phone loses its network nobody closes the WebSocket, so the client kept writing into a dead connection and never reconnected. Clean disconnects in earlier tests hid this. Fix: client ping every 3 s and drop after 8 s of silence (one-byte ping and pong, any message counts as life), immediate drop on `offline` and immediate reconnect on `online`, late close events from replaced sockets ignored, server keep-alive ping every 15 s. Two e2e scenarios cover it. The server keep-alive is not covered by a test.
+- **Reconnect (line 21): found, fixed, retested on the phone.** When a phone loses its network nobody closes the WebSocket, so the client kept writing into a dead connection and never reconnected. Clean disconnects in earlier tests hid this. Fix: client ping every 3 s and drop after 8 s of silence (one-byte ping and pong, any message counts as life), immediate drop on `offline` and immediate reconnect on `online`, late close events from replaced sockets ignored, server keep-alive ping every 15 s. Two e2e scenarios cover it. The server keep-alive is not covered by a test.
 - **Undo (line 15): not solved.** SwiftKey offers no undo. Gboard's works one character at a time and seems to need two taps. The editor needs its own undo and redo buttons.
 - Everything else worked on all three tested combinations.
 
