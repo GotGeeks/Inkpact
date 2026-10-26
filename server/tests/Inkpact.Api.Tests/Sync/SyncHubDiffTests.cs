@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Net;
+using Inkpact.Api.Compaction;
 using Inkpact.Api.Crdt;
 using Inkpact.Api.Pages;
 using Inkpact.Api.Sync;
@@ -44,9 +45,11 @@ public class SyncHubDiffTests(PostgresFixture postgres) : IAsyncLifetime
     }
 
     /// <summary>Starts the app on a fresh database. With the sidecar on, waits until its process is up.</summary>
-    private async Task StartAsync(bool sidecar = true, IYjsCodec? codec = null, Dictionary<string, string>? settings = null)
+    private async Task StartAsync(
+        bool sidecar = true, IYjsCodec? codec = null, Dictionary<string, string>? settings = null, ICompactionHooks? compactionHooks = null)
     {
-        _factory = new InkpactFactory(await postgres.CreateDatabaseAsync(), settings: settings, sidecar: sidecar, codec: codec);
+        _factory = new InkpactFactory(
+            await postgres.CreateDatabaseAsync(), settings: settings, sidecar: sidecar, codec: codec, compactionHooks: compactionHooks);
         _jos = await SyncUser.SetUpAdministratorAsync(_factory);
         _workspaceId = await UseDbAsync(db => db.Workspaces.Select(w => w.Id).SingleAsync());
         if (sidecar && settings?.ContainsKey("Sidecar:NodePath") != true && settings?.ContainsKey("Sidecar:ScriptPath") != true)
@@ -408,5 +411,118 @@ public class SyncHubDiffTests(PostgresFixture postgres) : IAsyncLifetime
         live.Payload.ShouldBe(Bytes("typed meanwhile"));
         await WaitUntilAsync(async () => (await StoredAsync(page)).Count == 2, "the update to be stored");
         (await StoredAsync(page)).ShouldBe([Bytes("stored"), Bytes("typed meanwhile")]);
+    }
+
+    // ---- scenario 10: subscribing during a compaction ----------------------------------------------------------------
+
+    /// <summary>
+    /// A codec for the log mode that still compacts: it cannot diff (the hub gives the stored log), but it hands
+    /// everything else to a real sidecar process of its own.
+    /// </summary>
+    private async Task<IYjsCodec> LogModeCodecAsync()
+    {
+        var real = await YjsSidecars.StartAsync(YjsSidecars.Create());
+        _sockets.Add(new AsyncAction(() => YjsSidecars.StopAsync(real)));
+        var codec = Substitute.For<IYjsCodec>();
+        codec.DiffAsync(default, default!, default).ThrowsAsyncForAnyArgs(new YjsUnavailableException("log mode"));
+        codec.CompactAsync(default!, default).ReturnsForAnyArgs(call => real.CompactAsync(call.ArgAt<IReadOnlyList<byte[]>>(0), call.ArgAt<CancellationToken>(1)));
+        codec.FingerprintAsync(default!, default).ReturnsForAnyArgs(call => real.FingerprintAsync(call.ArgAt<IReadOnlyList<byte[]>>(0), call.ArgAt<CancellationToken>(1)));
+        return codec;
+    }
+
+    private sealed class AsyncAction(Func<Task> action) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync() => await action();
+    }
+
+    private sealed class WaitAtStage(CompactionStage stage) : ICompactionHooks
+    {
+        public TaskCompletionSource Reached { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task AfterStageAsync(Guid pageId, CompactionStage reached, CancellationToken cancellationToken)
+        {
+            if (reached == stage)
+            {
+                Reached.TrySetResult();
+                await Release.Task;
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task A_subscriber_gets_the_whole_page_whether_it_joins_before_during_or_after_a_compaction_commits(bool logMode)
+    {
+        var hooks = new WaitAtStage(CompactionStage.TextWritten);
+        await StartAsync(codec: logMode ? await LogModeCodecAsync() : null, sidecar: !logMode, compactionHooks: hooks);
+        var page = await CreatePageAsync();
+        var stream = EditStreams.Get(80, 41);
+        var first = stream.Take(60).ToList();
+        await StoreAsync(page, first);
+        var compactor = _factory.Services.GetRequiredService<Compactor>();
+
+        // The compaction has done everything but commit: a subscriber sees the log as it was.
+        var compacting = compactor.CompactAsync(page, default);
+        await hooks.Reached.Task;
+        var during = await (await ConnectAsync()).SyncAsync(page);
+        hooks.Release.SetResult();
+        (await compacting).ShouldBe(CompactionResult.Compacted);
+
+        // After the commit: the snapshot, and the updates that came after it.
+        await StoreAsync(page, stream.Skip(60));
+        var after = await (await ConnectAsync()).SyncAsync(page);
+
+        (await FingerprintAsync(during.Updates)).ShouldBe(await FingerprintAsync(first));
+        (await FingerprintAsync(after.Updates)).ShouldBe(await FingerprintAsync(stream));
+        if (logMode)
+        {
+            during.StateVector.ShouldBeEmpty();
+            after.Updates.Count.ShouldBe(1 + stream.Count - 60);
+        }
+        else
+        {
+            after.Updates.Count.ShouldBe(1);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task A_subscriber_that_joins_again_and_again_while_the_page_is_compacted_never_misses_an_update(bool logMode)
+    {
+        await StartAsync(codec: logMode ? await LogModeCodecAsync() : null, sidecar: !logMode);
+        var page = await CreatePageAsync();
+        var stream = EditStreams.Get(120, 42);
+        await StoreAsync(page, stream);
+        var oracle = await FingerprintAsync(stream);
+        var options = _factory.Services.GetRequiredService<CompactionOptions>();
+        options.MaxUpdatesPerCompaction = 8;
+        var compactor = _factory.Services.GetRequiredService<Compactor>();
+        var client = await ConnectAsync();
+
+        var compacting = Task.Run(async () =>
+        {
+            var compactions = 0;
+            while (await compactor.CompactAsync(page, default) == CompactionResult.Compacted)
+            {
+                compactions++;
+            }
+
+            return compactions;
+        });
+        var joins = 0;
+        while (!compacting.IsCompleted)
+        {
+            var sync = await client.SyncAsync(page);
+            await client.UnsubscribeAsync(page);
+            (await FingerprintAsync(sync.Updates)).ShouldBe(oracle, $"join {joins}");
+            joins++;
+        }
+
+        (await compacting).ShouldBeGreaterThan(10);
+        joins.ShouldBeGreaterThan(3);
     }
 }

@@ -229,6 +229,91 @@ public class SchemaTests(PostgresFixture postgres) : DatabaseTestBase(postgres)
     }
 
     [Fact]
+    public async Task A_page_has_an_empty_text_until_it_is_compacted()
+    {
+        var (_, workspace) = await SeedWorkspaceAsync();
+        await using (var db = CreateContext())
+        {
+            db.Pages.Add(NewPage(workspace.Id, "a0"));
+            await db.SaveChangesAsync();
+        }
+
+        await using var read = CreateContext();
+        (await read.Pages.SingleAsync()).ContentText.ShouldBe("");
+    }
+
+    [Fact]
+    public async Task A_page_has_one_snapshot_that_trusts_its_history_until_told_otherwise_and_goes_with_the_page()
+    {
+        var (_, workspace) = await SeedWorkspaceAsync();
+        var page = NewPage(workspace.Id, "a0");
+        await using (var db = CreateContext())
+        {
+            db.Pages.Add(page);
+            await db.SaveChangesAsync();
+            db.PageSnapshots.Add(new PageSnapshot { PageId = page.Id, State = [1], StateVector = [2], Watermark = 9, Version = 1, UpdateCount = 3, UpdatedAt = Now });
+            await db.SaveChangesAsync();
+        }
+
+        await using var other = CreateContext();
+        var snapshot = await other.PageSnapshots.SingleAsync();
+        snapshot.HistoryComplete.ShouldBeTrue();
+        snapshot.Watermark.ShouldBe(9);
+
+        await using var second = CreateContext();
+        second.PageSnapshots.Add(new PageSnapshot { PageId = page.Id, State = [1], StateVector = [2], UpdatedAt = Now });
+        var exception = await Should.ThrowAsync<DbUpdateException>(() => second.SaveChangesAsync());
+        ((PostgresException)exception.InnerException!).ConstraintName.ShouldBe("pk_page_snapshots");
+
+        other.Pages.Remove(await other.Pages.SingleAsync(p => p.Id == page.Id));
+        await other.SaveChangesAsync();
+        (await other.PageSnapshots.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task An_archived_update_keeps_the_sequence_number_it_had_and_goes_with_its_page()
+    {
+        var (user, workspace) = await SeedWorkspaceAsync();
+        var page = NewPage(workspace.Id, "a0");
+        await using (var db = CreateContext())
+        {
+            db.Pages.Add(page);
+            await db.SaveChangesAsync();
+            db.ArchivedPageUpdates.Add(new ArchivedPageUpdate { Seq = 12345, PageId = page.Id, UserId = user.Id, Data = [7], CreatedAt = Now, ArchivedAt = Now });
+            await db.SaveChangesAsync();
+        }
+
+        await using var other = CreateContext();
+        (await other.ArchivedPageUpdates.SingleAsync()).Seq.ShouldBe(12345);
+
+        other.Pages.Remove(await other.Pages.SingleAsync(p => p.Id == page.Id));
+        await other.SaveChangesAsync();
+        (await other.ArchivedPageUpdates.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task An_archived_update_keeps_its_bytes_when_its_author_is_removed()
+    {
+        var (_, workspace) = await SeedWorkspaceAsync();
+        var page = NewPage(workspace.Id, "a0");
+        var author = NewUser("author@example.com");
+        await using (var db = CreateContext())
+        {
+            db.AddRange(page, author);
+            await db.SaveChangesAsync();
+            db.ArchivedPageUpdates.Add(new ArchivedPageUpdate { Seq = 1, PageId = page.Id, UserId = author.Id, Data = [42], CreatedAt = Now, ArchivedAt = Now });
+            await db.SaveChangesAsync();
+            db.Users.Remove(author);
+            await db.SaveChangesAsync();
+        }
+
+        await using var other = CreateContext();
+        var archived = await other.ArchivedPageUpdates.SingleAsync();
+        archived.UserId.ShouldBeNull();
+        archived.Data.ShouldBe([(byte)42]);
+    }
+
+    [Fact]
     public async Task Ids_are_time_ordered()
     {
         var first = new User().Id;

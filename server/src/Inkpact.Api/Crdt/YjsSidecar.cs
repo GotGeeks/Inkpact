@@ -181,6 +181,7 @@ public sealed class YjsSidecar(SidecarOptions options, string contentRoot, TimeP
             // Still here: the process ended without us asking, or because a call killed it.
             if (session.KillReason is null)
             {
+                await session.ErrorsReadAsync();
                 logger.LogError(
                     "The Yjs sidecar (process {ProcessId}) exited with code {ExitCode}. Its last output:{NewLine}{Output}",
                     session.ProcessId, session.ExitCode, Environment.NewLine, session.LastErrorLines);

@@ -22,6 +22,48 @@ namespace Inkpact.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Inkpact.Data.Entities.ArchivedPageUpdate", b =>
+                {
+                    b.Property<long>("Seq")
+                        .HasColumnType("bigint")
+                        .HasColumnName("seq");
+
+                    b.Property<DateTimeOffset>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("data");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("page_id");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Seq")
+                        .HasName("pk_page_updates_archive");
+
+                    b.HasIndex("ArchivedAt")
+                        .HasDatabaseName("ix_page_updates_archive_archived_at");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_page_updates_archive_user_id");
+
+                    b.HasIndex("PageId", "Seq")
+                        .HasDatabaseName("ix_page_updates_archive_page_id_seq");
+
+                    b.ToTable("page_updates_archive", (string)null);
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.AuditEvent", b =>
                 {
                     b.Property<long>("Id")
@@ -108,6 +150,13 @@ namespace Inkpact.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
 
+                    b.Property<string>("ContentText")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("")
+                        .HasColumnName("content_text");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -182,6 +231,50 @@ namespace Inkpact.Data.Migrations
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("WorkspaceId", "ParentId", "SortKey"), false);
 
                     b.ToTable("pages", (string)null);
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.PageSnapshot", b =>
+                {
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("page_id");
+
+                    b.Property<bool>("HistoryComplete")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("history_complete");
+
+                    b.Property<byte[]>("State")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("state");
+
+                    b.Property<byte[]>("StateVector")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("state_vector");
+
+                    b.Property<long>("UpdateCount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("update_count");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.Property<long>("Watermark")
+                        .HasColumnType("bigint")
+                        .HasColumnName("watermark");
+
+                    b.HasKey("PageId")
+                        .HasName("pk_page_snapshots");
+
+                    b.ToTable("page_snapshots", (string)null);
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.PageUpdate", b =>
@@ -387,6 +480,22 @@ namespace Inkpact.Data.Migrations
                     b.ToTable("workspace_members", (string)null);
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.ArchivedPageUpdate", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.Page", null)
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_page_updates_archive_page_id");
+
+                    b.HasOne("Inkpact.Data.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_page_updates_archive_user_id");
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.AuditEvent", b =>
                 {
                     b.HasOne("Inkpact.Data.Entities.User", null)
@@ -414,6 +523,16 @@ namespace Inkpact.Data.Migrations
                     b.Navigation("Parent");
 
                     b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.PageSnapshot", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.Page", null)
+                        .WithOne()
+                        .HasForeignKey("Inkpact.Data.Entities.PageSnapshot", "PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_page_snapshots_page_id");
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.PageUpdate", b =>

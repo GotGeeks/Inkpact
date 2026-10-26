@@ -61,8 +61,9 @@ Each page is one Yjs document; the server stores its update log in Postgres and 
 | `workspaces` | Name, owner | Every user gets a private workspace on signup |
 | `workspace_members` | User, workspace, role | Roles: owner, editor, viewer |
 | `pages` | Id, workspace, parent page, title, sort key (fractional index), timestamps, soft-delete flag, to-do flag, completed at, due at, external source type and id (Joplin now, other importers later) | Tree lives here, not in the CRDT, so permission checks stay cheap |
-| `page_snapshots` | Page id, compacted Yjs state (`bytea`), state vector, version | One current row per page |
+| `page_snapshots` | Page id, compacted Yjs state (`bytea`), state vector, watermark (highest update sequence number folded in), version, update count, whether the page's full history is still in the archive | One current row per page |
 | `page_updates` | Page id, sequence, Yjs update (`bytea`), user, timestamp | Appended live; folded into the snapshot by a compaction job |
+| `page_updates_archive` | The same columns as `page_updates`, with the sequence number the row had, and when it was archived | Where merged updates go in phase 1A; purged after 30 days |
 | `page_versions` | Page id, snapshot, created at, created by | Full snapshots, chosen for simplicity over storage; thinned by a configurable retention: everything for 24 hours, then daily for 30 days, then weekly for a year; history can be capped or turned off per workspace if storage becomes a problem |
 | `attachments` | Id, page, file name, MIME type, size, storage key | Files on disk or S3-compatible storage, not in Postgres |
 | `pages (search)` | Columns on the page row, no separate table: plain-text extract, `tsvector` | Postgres full-text search: titles weighted above tags above content, the simple configuration with unaccent so English and Dutch notes both match, prefix matching for search-as-you-type. Other backends (such as vector search for related notes) can be added later without changing page storage |
@@ -77,8 +78,8 @@ Each page is one Yjs document; the server stores its update log in Postgres and 
 2. The server checks membership, loads the page's stored updates, and asks the Yjs sidecar for the diff the client is missing. It replies with that one diff and the server's own state vector, which the client needs to send the server what it lacks. When the sidecar cannot answer (not started yet, restarting, no Node, or an update it cannot decode) it replies with the stored updates in order and an empty state vector, and the client works out what the server lacks, so syncing never depends on the sidecar. The reply is `[type][pageId][state vector][count][updates]`.
 3. Each local edit is sent as a small Yjs update; the server appends it to `page_updates` and broadcasts it to other connected clients.
 4. Awareness messages (cursors, who is viewing) are relayed but never stored.
-5. A background job merges updates into the snapshot once a threshold is hit (for example 500 updates or 10 minutes idle), writes a version point if due, and deletes the merged rows.
-6. On save of a snapshot, the plain-text extract and title are refreshed for search and the tree.
+5. A background job merges updates into the snapshot once a threshold is hit (500 updates, or 10 minutes without a new one) and moves the merged rows to the archive table in the same transaction; in phase 1A they are kept for 30 days and then purged. Writing a version point if due waits for phase B (run B.5).
+6. In the same transaction the page's plain-text extract (`content_text`) is refreshed for search. The title belongs to the tree and is not touched.
 
 **Offline (desktop phase):** the client keeps its Yjs state in IndexedDB (web) or SQLite (desktop) and replays on reconnect; CRDT merge makes this conflict-free by design.
 
@@ -305,7 +306,7 @@ Phase 1A implements the workspace-membership part (rule 1) behind the single `IP
 A page's content is always its snapshot plus the updates after it, and compaction may never change that result.
 
 - **Transactional:** the new snapshot and the removal of merged updates commit in one Postgres transaction, so a crash leaves the old state or the new one, never a mix
-- **Watermark:** a snapshot records the highest update sequence number it contains; only updates at or below it are removed, so updates arriving during compaction are untouched
+- **Watermark:** a snapshot records the highest update sequence number it contains, and never lowers it. Exactly the rows the compaction read are removed, not "every row up to the watermark": sequence numbers are handed out before commit, so a row with a lower number can commit after the read, and deleting by number would lose it. Updates arriving during compaction are untouched
 - **One at a time:** a Postgres advisory lock per page prevents two compactions on the same page
 - **Idempotent:** running compaction twice gives the same result as running it once
 - **Verified:** before committing, the new snapshot is decoded and compared with a full replay of the old snapshot plus its updates; a mismatch aborts and logs an error
