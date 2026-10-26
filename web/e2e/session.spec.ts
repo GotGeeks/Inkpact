@@ -1,9 +1,15 @@
 import { ADMIN, SIGNED_OUT } from './credentials'
 import { expect, test } from './fixtures'
-import { expectHome, expectLoginPage, signInThroughTheForm } from './helpers'
+import {
+  chooseLanguage,
+  expectHome,
+  expectLoginPage,
+  signInThroughTheForm,
+  signOut,
+} from './helpers'
 
 test.describe('signed in', () => {
-  test('the home page greets the user, and survives a reload', async ({ page }) => {
+  test('the start page shows after signing in, and survives a reload', async ({ page }) => {
     await page.goto('/')
     await expectHome(page)
 
@@ -21,18 +27,14 @@ test.describe('signed in', () => {
 
   test('the language choice is kept for the next visit', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: 'Nederlands' }).click()
-    await expect(
-      page.getByRole('heading', { level: 1, name: `Ingelogd als ${ADMIN.displayName}` }),
-    ).toBeVisible()
+    await chooseLanguage(page, 'Nederlands')
+    await expectHome(page, 'Welkom')
     await expect(page.locator('html')).toHaveAttribute('lang', 'nl')
 
     await page.reload()
-    await expect(
-      page.getByRole('heading', { level: 1, name: `Ingelogd als ${ADMIN.displayName}` }),
-    ).toBeVisible()
+    await expectHome(page, 'Welkom')
 
-    await page.getByRole('button', { name: 'English' }).click()
+    await chooseLanguage(page, 'English')
     await expectHome(page)
   })
 
@@ -144,7 +146,7 @@ test.describe('signed out', () => {
     await signInThroughTheForm(page)
     await expectHome(page)
 
-    await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+    await signOut(page)
     await expectLoginPage(page)
 
     await page.reload()
@@ -161,7 +163,7 @@ test.describe('signed out', () => {
     await signInThroughTheForm(otherPage)
     await expectHome(otherPage)
 
-    await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+    await signOut(page)
     await expectLoginPage(page)
 
     await otherPage.reload()
