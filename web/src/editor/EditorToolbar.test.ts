@@ -165,11 +165,13 @@ describe('the mobile toolbar', () => {
   it('keeps the editor focused when a button is pressed, so the keyboard stays open', async () => {
     const w = await mountEditor()
     await focusEditor(w)
-    for (const type of ['pointerdown', 'mousedown']) {
-      const event = new Event(type, { bubbles: true, cancelable: true })
-      button('bold').dispatchEvent(event)
-      expect(event.defaultPrevented, type).toBe(true)
-    }
+    const press = new Event('mousedown', { bubbles: true, cancelable: true })
+    button('bold').dispatchEvent(press)
+    expect(press.defaultPrevented).toBe(true)
+    // A cancelled pointerdown stops iOS Safari from sending the click, so the button would do nothing on an iPhone.
+    const touch = new Event('pointerdown', { bubbles: true, cancelable: true })
+    button('bold').dispatchEvent(touch)
+    expect(touch.defaultPrevented).toBe(false)
   })
 
   it('has one tab stop, and the arrow keys move along the buttons', async () => {

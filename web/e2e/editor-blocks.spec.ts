@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page, TestInfo } from '@playwright/test'
 import { expect, test } from './fixtures'
 import { chooseLanguage, closeDrawer, createPageNamed, pageIdOf } from './helpers'
 
@@ -14,6 +14,15 @@ async function openNewPage(page: Page, title: string) {
   await expect(pill(page)).toHaveAttribute('data-state', 'live')
   await expect(editorBody(page)).toHaveAttribute('contenteditable', 'true')
   return id
+}
+
+/**
+ * A tap. WebKit's automation adds a <style> element of its own when it taps, which the strict policy reports, so on the
+ * iPhone project the press is a click; the touch events are what the Pixel project covers.
+ */
+async function press(locator: Locator, testInfo: TestInfo) {
+  if (testInfo.project.name === 'iphone') await locator.click()
+  else await locator.tap()
 }
 
 const unique = (project: string, name: string) => `${name}-${project}-${Date.now().toString(36)}`
@@ -164,7 +173,7 @@ test.describe('on a phone', () => {
     await expect(toolbar(page)).toHaveCount(0)
 
     const body = editorBody(page)
-    await body.tap()
+    await press(body, testInfo)
     await expect(toolbar(page)).toBeVisible()
     await expect(toolbar(page)).toHaveAttribute('aria-label', 'Formatting')
     const undo = page.getByRole('button', { name: 'Undo' })
@@ -173,17 +182,17 @@ test.describe('on a phone', () => {
 
     await page.keyboard.type('hello world')
     await expect(undo).not.toHaveAttribute('aria-disabled', 'true')
-    await undo.tap()
+    await press(undo, testInfo)
     await expect(body).not.toContainText('hello world')
     await expect(redo).not.toHaveAttribute('aria-disabled', 'true')
-    await redo.tap()
+    await press(redo, testInfo)
     await expect(body).toContainText('hello world')
     // Pressing the buttons never took the focus from the text.
     await expect(body).toBeFocused()
 
     // Bold, then more text: the button says it is on.
     const bold = page.getByRole('button', { name: 'Bold' })
-    await bold.tap()
+    await press(bold, testInfo)
     await expect(bold).toHaveAttribute('aria-pressed', 'true')
     await page.keyboard.type(' strong')
     await expect(body.locator('strong')).toHaveText('strong')
@@ -206,7 +215,7 @@ test.describe('on a phone', () => {
       .toBe(viewportHeight - 300)
 
     // The toolbar goes with the focus: tapping outside the text, in the title, hides it.
-    await page.getByTestId('page-title').tap()
+    await press(page.getByTestId('page-title'), testInfo)
     await expect(toolbar(page)).toHaveCount(0)
     await expect
       .poll(() =>
@@ -221,7 +230,7 @@ test.describe('on a phone', () => {
     await fakeKeyboard(page)
     await openNewPage(page, unique(testInfo.project.name, 'LongPage'))
     const body = editorBody(page)
-    await body.tap()
+    await press(body, testInfo)
     for (let line = 1; line <= 40; line++) await page.keyboard.type(`line ${line}\n`)
     await page.evaluate(() =>
       (window as unknown as { __setKeyboard: (h: number) => void }).__setKeyboard(300),
@@ -249,21 +258,21 @@ test.describe('on a phone', () => {
     await fakeKeyboard(page)
     await openNewPage(page, unique(testInfo.project.name, 'SlashButton'))
     const body = editorBody(page)
-    await body.tap()
+    await press(body, testInfo)
     await page.keyboard.type('word')
 
-    await page.getByRole('button', { name: 'Insert a block' }).tap()
+    await press(page.getByRole('button', { name: 'Insert a block' }), testInfo)
     await expect(body).toContainText('word /')
     await expect(slashMenu(page)).toBeVisible()
     await expect(body).toBeFocused()
 
-    await page.getByRole('option', { name: /^Bullet list/ }).tap()
+    await press(page.getByRole('option', { name: /^Bullet list/ }), testInfo)
     await expect(body.locator('ul li')).toHaveCount(1)
     await expect(slashMenu(page)).toBeHidden()
 
     // The menu never reaches below the top of the toolbar.
     await page.keyboard.press('Control+End')
-    await page.getByRole('button', { name: 'Insert a block' }).tap()
+    await press(page.getByRole('button', { name: 'Insert a block' }), testInfo)
     await expect(slashMenu(page)).toBeVisible()
     const menuBox = (await slashMenu(page).boundingBox())!
     const barBox = (await toolbar(page).boundingBox())!

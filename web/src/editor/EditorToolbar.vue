@@ -131,7 +131,8 @@ function onKeydown(event: KeyboardEvent) {
     class="fixed inset-x-0 bottom-[var(--keyboard-inset,0px)] z-40 flex h-14 items-center gap-space-xs overflow-x-auto border-t border-border-subtle bg-surface-panel px-space-sm text-on-surface"
     @keydown="onKeydown"
   >
-    <!-- The pointer must not take the focus from the editor, or the keyboard closes with every tap. -->
+    <!-- The mouse must not take the focus from the editor, or the keyboard closes with every tap. Only mousedown is
+         cancelled: cancelling pointerdown too stops iOS Safari from sending the click at all. -->
     <button
       v-for="(button, index) in buttons"
       :key="button.id"
@@ -146,7 +147,6 @@ function onKeydown(event: KeyboardEvent) {
         button.pressed ? 'bg-surface-elevated text-primary' : 'text-on-surface',
         button.disabled ? 'opacity-40' : '',
       ]"
-      @pointerdown.prevent
       @mousedown.prevent
       @focus="current = index"
       @click="press(button)"
