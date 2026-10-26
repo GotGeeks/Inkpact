@@ -46,7 +46,7 @@ test.describe('the page tree', () => {
     await row.click()
 
     await expect(page).toHaveURL(/\/p\/[0-9a-f-]{36}$/)
-    await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible()
+    await expect(page.getByTestId('page-title')).toHaveValue(title)
     await openSidebar(page)
     await expect(rowFor(page, title)).toHaveAttribute('aria-selected', 'true')
   })
@@ -470,7 +470,7 @@ test.describe('on a phone', () => {
     await row.click()
 
     await expect(page.getByRole('dialog')).toBeHidden()
-    await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible()
+    await expect(page.getByTestId('page-title')).toHaveValue(title)
   })
 
   test('the drawer closes with Escape and opens again', async ({ page }) => {

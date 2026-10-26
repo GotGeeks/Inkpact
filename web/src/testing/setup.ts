@@ -16,3 +16,14 @@ class IdleWebSocket {
 }
 
 globalThis.WebSocket = IdleWebSocket as unknown as typeof WebSocket
+
+/** jsdom has no ClipboardEvent, which ProseMirror's `pasteHTML` makes. */
+if (typeof globalThis.ClipboardEvent === 'undefined') {
+  globalThis.ClipboardEvent = class extends Event {
+    readonly clipboardData: DataTransfer | null
+    constructor(type: string, init: { clipboardData?: DataTransfer | null } = {}) {
+      super(type, init as EventInit)
+      this.clipboardData = init.clipboardData ?? null
+    }
+  } as unknown as typeof ClipboardEvent
+}

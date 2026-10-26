@@ -77,7 +77,11 @@ describe('AppShell on a wide screen', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.params.pageId).toBe('Work')
-    await vi.waitFor(() => expect(wrapper!.get('main h1').text()).toBe('Work'))
+    await vi.waitFor(() =>
+      expect(
+        (wrapper!.get('[data-testid="page-title"]').element as HTMLTextAreaElement).value,
+      ).toBe('Work'),
+    )
     expect(wrapper!.get('[data-page-id="Work"]').attributes('aria-selected')).toBe('true')
   })
 
@@ -173,7 +177,11 @@ describe('AppShell on a narrow screen', () => {
     await flushPromises()
 
     expect(document.body.querySelector('[role="dialog"]')).toBeNull()
-    await vi.waitFor(() => expect(wrapper!.get('main h1').text()).toBe('Work'))
+    await vi.waitFor(() =>
+      expect(
+        (wrapper!.get('[data-testid="page-title"]').element as HTMLTextAreaElement).value,
+      ).toBe('Work'),
+    )
   })
 
   it('closes the drawer when the trash is opened from it', async () => {

@@ -100,12 +100,21 @@
     },
     "tooLarge": "Deze wijziging is te groot om op te slaan. Als je de pagina herlaadt, gaat ze verloren."
   },
+  "editor": {
+    "label": "Inhoud van de pagina",
+    "placeholder": "Begin met schrijven…",
+    "checkboxDone": "Klaar",
+    "checkboxNotDone": "Niet klaar",
+    "newerVersion": "Deze pagina is gemaakt met een nieuwere versie van Inkpact. Herlaad de pagina om verder te werken."
+  },
+  "title": {
+    "label": "Titel"
+  },
   "page": {
     "notFound": "Deze pagina is niet gevonden",
     "backToStart": "Terug naar het begin",
     "inTrash": "Deze pagina staat in de prullenbak.",
-    "inTrashThroughParent": "Een pagina erboven staat in de prullenbak.",
-    "placeholder": "De inhoud van de pagina verschijnt hier."
+    "inTrashThroughParent": "Een pagina erboven staat in de prullenbak."
   },
   "start": {
     "title": "Welkom",

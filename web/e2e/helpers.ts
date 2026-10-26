@@ -58,6 +58,14 @@ export async function chooseLanguage(page: Page, language: 'English' | 'Nederlan
   }
 }
 
+/** On a phone the drawer stays open after a page is made in it; close it, as a person would, to see the page. */
+export async function closeDrawer(page: Page) {
+  if (await page.getByRole('dialog').isVisible()) {
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toBeHidden()
+  }
+}
+
 /** The line of the sidebar for a page, found by its title. Titles in the tests are unique. */
 export function rowFor(page: Page, title: string): Locator {
   return page.locator('[role="treeitem"]').filter({ hasText: title }).first()

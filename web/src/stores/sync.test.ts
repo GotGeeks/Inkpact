@@ -179,14 +179,14 @@ describe('the sync pill', () => {
 })
 
 describe('the page and the shell', () => {
-  it('opens the page over the socket and shows the pill; nothing is sent while it is read-only', async () => {
+  it('opens the page over the socket and shows the pill; a new page gets its first paragraph once', async () => {
     fakeTree({ pages: outline(['Notes']) })
     const mounted = await mountAt(RouterView, '/p/Notes')
     wrapper = mounted.wrapper
 
     await vi.waitFor(() => expect(wrapper!.get('[data-testid="sync-status"]').text()).toBe('Live'))
     expect(hub.sent(0, 'Notes')).toHaveLength(1)
-    expect(hub.sent(2)).toHaveLength(0)
+    expect(hub.sent(2, 'Notes')).toHaveLength(1)
   })
 
   it('goes to the login page, and back to this page after signing in, when the session ends', async () => {

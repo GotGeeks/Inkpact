@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute } from 'vue-router'
+import PageEditor from '../editor/PageEditor.vue'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import SyncStatus from '../sync/SyncStatus.vue'
+import TitleField from './TitleField.vue'
 import type { PageDetail } from '../tree/types'
 
 const { t } = useI18n()
@@ -29,22 +31,19 @@ watch(
   { immediate: true },
 )
 
-// The page's content comes over the tab's one socket. Nothing edits it yet (the editor comes next), so it is read-only.
-watch(
-  pageId,
-  (id, previous) => {
-    if (previous) sync.close(previous)
-    sync.open(id, { readOnly: true })
-  },
-  { immediate: true },
-)
-onBeforeUnmount(() => sync.close(pageId.value))
-
+// The editor opens the page's content over the tab's one socket; the view only reads what the socket says about it.
 const syncState = computed(() => sync.pages[pageId.value]?.state)
-const notFound = computed(() => missing.value || syncState.value === 'missing')
+// Remembered: showing the not-found message unmounts the editor, which leaves the page and clears its state, and the
+// editor would come back to ask again.
+const missingOnSocket = ref(false)
+watch(pageId, () => (missingOnSocket.value = false))
+watch(syncState, (state) => {
+  if (state === 'missing') missingOnSocket.value = true
+})
+const notFound = computed(() => missing.value || missingOnSocket.value)
 
 const ownTrash = computed(() => detail.value?.page.deletedAt !== undefined)
-const title = computed(() => detail.value?.page.title || t('tree.untitled'))
+const editor = useTemplateRef<InstanceType<typeof PageEditor>>('editor')
 </script>
 
 <template>
@@ -90,12 +89,19 @@ const title = computed(() => detail.value?.page.title || t('tree.untitled'))
       {{ t('sync.tooLarge') }}
     </p>
 
-    <h1
-      class="text-headline-xl-mobile md:text-headline-xl"
-      :class="detail.page.title ? '' : 'text-on-surface-variant'"
-    >
-      {{ title }}
-    </h1>
-    <p class="text-body-lg text-on-surface-variant">{{ t('page.placeholder') }}</p>
+    <!-- The title is metadata of the page tree, not part of the document. The content of a page in the trash stays editable. -->
+    <TitleField
+      :key="`title-${detail.page.id}`"
+      :page-id="detail.page.id"
+      :title="detail.page.title"
+      :read-only="!tree.canEdit || detail.inTrash"
+      @enter="editor?.focus()"
+    />
+    <PageEditor
+      :key="detail.page.id"
+      ref="editor"
+      :page-id="detail.page.id"
+      :read-only="!tree.canEdit"
+    />
   </article>
 </template>

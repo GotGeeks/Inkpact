@@ -84,6 +84,8 @@ These hold for every change. Never weaken one to make something pass; stop and a
 - **Tree operations go through the REST API**, never through the CRDT. Follow the conflict table in architecture → "Tree and metadata conflicts".
 - **Sibling order uses fractional index keys** from a maintained library; never renumber siblings.
 - **Compaction must meet every guarantee** in architecture → "Compaction guarantees": transactional, watermark-based, advisory lock per page, idempotent, verified against a full replay. In phase 1A merged updates are archived, not deleted.
+- **A page's document starts from one fixed update** that makes its first paragraph (`web/src/editor/firstParagraph.ts`, client id 1, an empty text inside the paragraph), applied by every client before it subscribes. Never change it, and a page made any other way (the Joplin import) must start from it too: two clients typing into an empty page would otherwise each make their own paragraph.
+- **Pasted HTML goes through the DOMPurify allow-list** in `web/src/editor/sanitize.ts`, and a link's address is checked (`links.ts`) when it is made, pasted and rendered, because content from other clients arrives through Yjs and never passes a paste handler.
 - **Attachments** are stored by SHA-256 behind the storage interface and referenced by id, never by URL.
 - **Joplin import** follows the mapping table and the three-way re-import rules; it must be repeatable and lose nothing.
 
