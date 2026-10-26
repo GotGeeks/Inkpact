@@ -71,7 +71,7 @@ describe('SlashMenu', () => {
     await open('nl', '/kop')
     expect(options()).toHaveLength(3)
     expect(options()[0]!.textContent).toContain('Kop 1')
-    expect(document.querySelector('[role="status"]')!.textContent!.trim()).toBe(
+    expect(menu()!.querySelector('[role="status"]')!.textContent!.trim()).toBe(
       '3 blokken beschikbaar',
     )
     expect(document.querySelector('[role="listbox"]')!.getAttribute('aria-label')).toBe(
@@ -81,13 +81,13 @@ describe('SlashMenu', () => {
 
   it('says how many blocks match, and when none do', async () => {
     const editor = await open('en', '/quo')
-    expect(document.querySelector('[role="status"]')!.textContent!.trim()).toBe('1 block available')
+    expect(menu()!.querySelector('[role="status"]')!.textContent!.trim()).toBe('1 block available')
 
     typeText(editor, 'zz')
     await flushPromises()
     expect(options()).toHaveLength(0)
     expect(menu()!.textContent).toContain('No results')
-    expect(document.querySelector('[role="status"]')!.textContent!.trim()).toBe('No results')
+    expect(menu()!.querySelector('[role="status"]')!.textContent!.trim()).toBe('No results')
   })
 
   it('follows the arrow keys', async () => {

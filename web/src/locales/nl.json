@@ -180,7 +180,27 @@
       "italic": "Cursief",
       "code": "Code",
       "insert": "Een blok invoegen"
-    }
+    },
+    "handle": {
+      "label": "Blokopties",
+      "turnInto": "Omzetten naar",
+      "duplicate": "Dupliceren",
+      "delete": "Verwijderen",
+      "moveUp": "Naar boven",
+      "moveDown": "Naar beneden"
+    },
+    "table": {
+      "label": "Tabel",
+      "addRowBefore": "Rij erboven toevoegen",
+      "addRowAfter": "Rij eronder toevoegen",
+      "addColumnBefore": "Kolom ervoor toevoegen",
+      "addColumnAfter": "Kolom erna toevoegen",
+      "deleteRow": "Rij verwijderen",
+      "deleteColumn": "Kolom verwijderen",
+      "deleteTable": "Tabel verwijderen"
+    },
+    "movedUp": "Blok omhoog verplaatst",
+    "movedDown": "Blok omlaag verplaatst"
   },
   "title": {
     "label": "Titel"

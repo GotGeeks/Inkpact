@@ -126,6 +126,7 @@ function onKeydown(event: KeyboardEvent) {
   <div
     ref="root"
     role="toolbar"
+    data-editor-chrome
     data-testid="editor-toolbar"
     :aria-label="t('editor.toolbar.label')"
     class="fixed inset-x-0 bottom-[var(--keyboard-inset,0px)] z-40 flex h-14 items-center gap-space-xs overflow-x-auto border-t border-border-subtle bg-surface-panel px-space-sm text-on-surface"

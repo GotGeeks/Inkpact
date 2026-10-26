@@ -279,3 +279,139 @@ test.describe('on a phone', () => {
     expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(barBox.y + 1)
   })
 })
+
+test.describe('on a desktop, with a mouse (1.12b)', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'handles are for a mouse')
+  })
+
+  const texts = (page: Page) =>
+    editorBody(page).locator('> p, > h1, > h2, > h3, > ul, > blockquote')
+  const handle = (page: Page) => page.getByTestId('block-handle')
+
+  async function threeParagraphs(page: Page, name: string, project: string) {
+    const id = await openNewPage(page, unique(project, name))
+    await editorBody(page).click()
+    await page.keyboard.type('one\ntwo\nthree')
+    await expect(texts(page).filter({ hasText: /^(one|two|three)$/ })).toHaveCount(3)
+    return id
+  }
+
+  test('the editor loads behind the page: the title is there before the editor', async ({
+    page,
+  }, testInfo) => {
+    const id = await openNewPage(page, unique(testInfo.project.name, 'Behind'))
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/assets/PageEditor-*.js', async (route) => {
+      await held
+      await route.continue()
+    })
+    await page.goto(`/p/${id}`)
+    await expect(page.getByTestId('page-title')).toBeVisible()
+    await expect(page.getByTestId('editor')).toHaveCount(0)
+    release()
+    await expect(editorBody(page)).toBeVisible()
+  })
+
+  test('Alt+Arrow moves a block, and a second browser sees it', async ({
+    page,
+    context,
+  }, testInfo) => {
+    const id = await threeParagraphs(page, 'AltArrow', testInfo.project.name)
+    // The caret is at the end of "three".
+    await page.keyboard.press('Alt+ArrowUp')
+    await expect(texts(page).nth(1)).toHaveText('three')
+    await expect(page.locator('[aria-live="polite"]')).toHaveText('Block moved up')
+    await page.keyboard.press('Alt+ArrowUp')
+    await expect(texts(page).nth(0)).toHaveText('three')
+    await page.keyboard.press('Alt+ArrowDown')
+    await expect(texts(page).nth(0)).toHaveText('one')
+
+    const other = await context.newPage()
+    await other.goto(`/p/${id}`)
+    await expect(texts(other).nth(0)).toHaveText('one')
+    await expect(texts(other).nth(1)).toHaveText('three')
+    await other.close()
+  })
+
+  test('dragging the handle moves the block, which a second browser sees', async ({
+    page,
+    context,
+  }, testInfo) => {
+    const id = await threeParagraphs(page, 'Drag', testInfo.project.name)
+    await texts(page).nth(0).hover()
+    await expect(handle(page)).toBeVisible()
+
+    const target = (await texts(page).nth(2).boundingBox())!
+    await handle(page).dragTo(texts(page).nth(2), {
+      targetPosition: { x: 20, y: target.height - 2 },
+    })
+    await expect(texts(page).nth(2)).toHaveText('one')
+    await expect(texts(page).nth(0)).toHaveText('two')
+
+    const other = await context.newPage()
+    await other.goto(`/p/${id}`)
+    await expect(texts(other).nth(2)).toHaveText('one')
+    await other.close()
+  })
+
+  test('the block menu turns a block into another, duplicates, moves and deletes it', async ({
+    page,
+  }, testInfo) => {
+    await threeParagraphs(page, 'BlockMenu', testInfo.project.name)
+    const menu = page.getByTestId('block-menu')
+
+    await texts(page).nth(1).hover()
+    await handle(page).click()
+    await expect(menu).toBeVisible()
+    await menu.getByRole('menuitem', { name: 'Turn into' }).click()
+    await page.getByRole('menuitem', { name: 'Heading 2' }).click()
+    await expect(editorBody(page).locator('h2')).toHaveText('two')
+
+    await texts(page).nth(1).hover()
+    await handle(page).click()
+    await menu.getByRole('menuitem', { name: 'Duplicate' }).click()
+    await expect(editorBody(page).locator('h2')).toHaveCount(2)
+
+    await texts(page).nth(0).hover()
+    await handle(page).click()
+    await menu.getByRole('menuitem', { name: 'Move down' }).click()
+    await expect(texts(page).nth(0)).toHaveText('two')
+    await expect(texts(page).nth(1)).toHaveText('one')
+
+    await texts(page).nth(0).hover()
+    await handle(page).click()
+    await menu.getByRole('menuitem', { name: 'Delete' }).click()
+    await expect(editorBody(page).locator('h2')).toHaveCount(1)
+  })
+
+  test('a table is made from the slash menu, grown, shrunk and removed', async ({
+    page,
+  }, testInfo) => {
+    await openNewPage(page, unique(testInfo.project.name, 'Table'))
+    const body = editorBody(page)
+    await body.click()
+    await page.keyboard.type('/grid')
+    await page.keyboard.press('Enter')
+    await expect(body.locator('table')).toHaveCount(1)
+    await expect(body.locator('th')).toHaveCount(3)
+
+    const menu = page.getByTestId('table-menu')
+    await expect(menu).toBeVisible()
+    await page.getByTestId('table-addRowAfter').click()
+    await expect(body.locator('tr')).toHaveCount(4)
+    await page.getByTestId('table-addColumnAfter').click()
+    await expect(body.locator('tr').first().locator('th')).toHaveCount(4)
+    // The caret is in the header row, which goes: the first row is a header until it is deleted.
+    await page.getByTestId('table-deleteRow').click()
+    await expect(body.locator('tr')).toHaveCount(3)
+    await expect(body.locator('th')).toHaveCount(0)
+    await page.getByTestId('table-deleteColumn').click()
+    await expect(body.locator('tr').first().locator('td')).toHaveCount(3)
+
+    await page.getByTestId('table-deleteTable').click()
+    await expect(body.locator('table')).toHaveCount(0)
+    await expect(menu).toHaveCount(0)
+  })
+})

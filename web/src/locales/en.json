@@ -180,7 +180,27 @@
       "italic": "Italic",
       "code": "Code",
       "insert": "Insert a block"
-    }
+    },
+    "handle": {
+      "label": "Block options",
+      "turnInto": "Turn into",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "moveUp": "Move up",
+      "moveDown": "Move down"
+    },
+    "table": {
+      "label": "Table",
+      "addRowBefore": "Add row above",
+      "addRowAfter": "Add row below",
+      "addColumnBefore": "Add column before",
+      "addColumnAfter": "Add column after",
+      "deleteRow": "Delete row",
+      "deleteColumn": "Delete column",
+      "deleteTable": "Delete table"
+    },
+    "movedUp": "Block moved up",
+    "movedDown": "Block moved down"
   },
   "title": {
     "label": "Title"

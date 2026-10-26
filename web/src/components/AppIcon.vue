@@ -27,6 +27,7 @@ defineProps<{
     | 'bold'
     | 'italic'
     | 'slash'
+    | 'grip'
 }>()
 
 const paths = {
@@ -54,6 +55,7 @@ const paths = {
   bold: 'M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z',
   italic: 'M14 5h-4M14 19h-4M15 5l-6 14',
   slash: 'M16 4 8 20',
+  grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
 } as const
 </script>
 
