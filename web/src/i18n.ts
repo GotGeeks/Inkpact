@@ -46,5 +46,10 @@ export function createAppI18n(locale: Locale = 'en') {
     locale,
     fallbackLocale: 'en',
     messages: { en, nl },
+    // Dates are formatted by the browser (Intl) in the language of the page, never written out by hand.
+    datetimeFormats: {
+      en: { trash: { dateStyle: 'medium', timeStyle: 'short' } },
+      nl: { trash: { dateStyle: 'medium', timeStyle: 'short' } },
+    },
   })
 }

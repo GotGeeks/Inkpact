@@ -46,6 +46,20 @@ export function useErrorMessage() {
         return t('errors.forbidden')
       case 'not_found':
         return t('errors.not_found')
+      case 'title_invalid':
+        return t('errors.title_invalid')
+      case 'parent_invalid':
+        return t('errors.parent_invalid')
+      case 'parent_in_trash':
+        return t('errors.parent_in_trash')
+      case 'position_invalid':
+        return t('errors.position_invalid')
+      case 'move_cycle':
+        return t('errors.move_cycle')
+      case 'page_in_trash':
+        return t('errors.page_in_trash')
+      case 'restore_the_parent':
+        return t('errors.restore_the_parent')
       case 'csrf_invalid':
         return t('errors.csrf_invalid')
       case 'network_error':

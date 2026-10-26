@@ -22,7 +22,9 @@ export function setCsrfToken(token: string | null | undefined) {
   csrfToken = token ?? null
 }
 
-async function send(method: 'GET' | 'POST', path: string, body: unknown): Promise<Response> {
+type Method = 'GET' | 'POST' | 'PATCH'
+
+async function send(method: Method, path: string, body: unknown): Promise<Response> {
   const headers: Record<string, string> =
     method === 'GET' ? { Accept: 'application/json' } : { 'Content-Type': 'application/json' }
   if (method !== 'GET' && csrfToken) headers[csrfHeader] = csrfToken
@@ -64,14 +66,10 @@ async function toError(response: Response): Promise<ApiError> {
  * token. If the server finds the token out of date (it was issued before another tab signed in or out, say) the
  * state is fetched again and the call is repeated once. Errors become ApiError, so callers never see a Response.
  */
-export async function api<T = void>(
-  method: 'GET' | 'POST',
-  path: string,
-  body?: unknown,
-): Promise<T> {
+export async function api<T = void>(method: Method, path: string, body?: unknown): Promise<T> {
   let response = await send(method, path, body)
 
-  if (response.status === 400 && method === 'POST') {
+  if (response.status === 400 && method !== 'GET') {
     const error = await toError(response)
     if (error.code !== 'csrf_invalid') throw error
 

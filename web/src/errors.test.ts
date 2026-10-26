@@ -69,6 +69,13 @@ describe('useErrorMessage', () => {
     'forbidden',
     'not_found',
     'csrf_invalid',
+    'title_invalid',
+    'parent_invalid',
+    'parent_in_trash',
+    'position_invalid',
+    'move_cycle',
+    'page_in_trash',
+    'restore_the_parent',
     'network_error',
     'server_error',
   ])('has a message for %s in both languages, and not the generic one', (code) => {

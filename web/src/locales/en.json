@@ -27,12 +27,6 @@
     "workspaceDefault": "Private",
     "submit": "Create account"
   },
-  "home": {
-    "signedInAs": "Signed in as {name}",
-    "placeholder": "Your notes will appear here.",
-    "logout": "Sign out",
-    "logoutEverywhere": "Sign out everywhere"
-  },
   "errors": {
     "invalid_credentials": "The email or password is not right.",
     "setup_code_invalid": "That setup code is not right. Look for it in the server log.",
@@ -51,6 +45,76 @@
     "too_many_requests": "Too many attempts from this device. Try again {when}.",
     "forbidden": "You are not allowed to do that.",
     "not_found": "That could not be found.",
-    "csrf_invalid": "The page was out of date. Reload it and try again."
+    "csrf_invalid": "The page was out of date. Reload it and try again.",
+    "title_invalid": "The title can be at most 500 characters.",
+    "parent_invalid": "That page cannot be used as a parent.",
+    "parent_in_trash": "That page is in the trash.",
+    "position_invalid": "That place is no longer valid. The pages have been refreshed.",
+    "move_cycle": "A page cannot be moved below itself.",
+    "page_in_trash": "That page is in the trash. Restore it first.",
+    "restore_the_parent": "Restore the page above it first."
+  },
+  "shell": {
+    "sidebar": "Navigation",
+    "sidebarDescription": "Your pages, the trash and your account.",
+    "openMenu": "Open the page list",
+    "loadFailed": "The pages could not be loaded.",
+    "retry": "Try again"
+  },
+  "tree": {
+    "label": "Pages",
+    "newPage": "New page",
+    "empty": "There are no pages yet.",
+    "untitled": "Untitled",
+    "expand": "Expand {title}",
+    "collapse": "Collapse {title}",
+    "actions": "Actions for {title}",
+    "rename": "Rename",
+    "addSubpage": "Add subpage",
+    "moveTo": "Move to…",
+    "moveToTrash": "Move to trash",
+    "renameLabel": "Page title",
+    "moveDialog": {
+      "title": "Move “{title}” to",
+      "description": "Choose the page it should go under. It becomes the last page there.",
+      "topLevel": "Top level",
+      "cancel": "Cancel"
+    }
+  },
+  "trash": {
+    "navLabel": "Trash",
+    "link": "Trash",
+    "title": "Trash",
+    "intro": "Pages you moved to the trash. Restoring a page brings back everything below it.",
+    "empty": "The trash is empty.",
+    "deleted": "Moved to the trash {when}",
+    "restore": "Restore",
+    "restoreNamed": "Restore {title}"
+  },
+  "page": {
+    "notFound": "This page could not be found",
+    "backToStart": "Back to the start",
+    "inTrash": "This page is in the trash.",
+    "inTrashThroughParent": "A page above this one is in the trash.",
+    "placeholder": "The page content will appear here."
+  },
+  "start": {
+    "title": "Welcome",
+    "empty": "You have no pages yet. Create your first one.",
+    "pick": "Pick a page in the sidebar, or create a new one."
+  },
+  "user": {
+    "menu": "Account menu",
+    "signedInAs": "Signed in as {email}",
+    "logout": "Sign out",
+    "logoutEverywhere": "Sign out everywhere"
+  },
+  "notices": {
+    "trashed": "“{title}” was moved to the trash.",
+    "undo": "Undo",
+    "undoAlt": "Undo moving “{title}” to the trash",
+    "restored": "“{title}” was restored.",
+    "restoredToTopLevel": "“{title}” was restored to the top level, because the page it was in is gone.",
+    "dismiss": "Dismiss"
   }
 }
