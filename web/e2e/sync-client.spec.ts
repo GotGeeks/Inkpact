@@ -75,8 +75,24 @@ test('a connection that dies silently is noticed within about ten seconds', asyn
   const sockets = await controlSocket(page)
   await openNewPage(page, `Silent-${testInfo.project.name}-${Date.now().toString(36)}`)
 
+  // The pill is offline only for the moment between giving up and the first new attempt, which a poll can miss: keep
+  // every state it shows.
+  await page.evaluate(() => {
+    const seen: string[] = []
+    ;(window as unknown as { __states: string[] }).__states = seen
+    const el = document.querySelector('[data-testid="sync-status"]')!
+    new MutationObserver(() => seen.push(el.getAttribute('data-state')!)).observe(el, {
+      attributes: true,
+      attributeFilter: ['data-state'],
+    })
+  })
+
   sockets.blackhole()
-  await expect(pill(page)).toHaveAttribute('data-state', 'offline', { timeout: 15_000 })
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { __states: string[] }).__states), {
+      timeout: 15_000,
+    })
+    .toContain('offline')
   // New connections work again, so the client comes back by itself.
   await expect(pill(page)).toHaveAttribute('data-state', 'live', { timeout: 15_000 })
 })
