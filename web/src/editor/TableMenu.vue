@@ -130,7 +130,8 @@ onBeforeUnmount(() => stopFollowing?.())
     "
     :style="compact ? {} : { left: `${position.left}px`, top: `${position.top}px` }"
   >
-    <!-- The pointer must not take the focus from the table, or the caret that says which row goes is lost. -->
+    <!-- The mouse must not take the focus from the table, or the caret that says which row goes is lost. Not
+         pointerdown: cancelling it stops iOS Safari from sending the click. -->
     <button
       v-for="action in actions"
       :key="action.id"
@@ -138,7 +139,6 @@ onBeforeUnmount(() => stopFollowing?.())
       :data-testid="`table-${action.id}`"
       class="min-h-9 shrink-0 rounded-md px-space-md whitespace-nowrap outline-none hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-primary pointer-coarse:min-h-11"
       :class="action.destructive ? 'text-error' : ''"
-      @pointerdown.prevent
       @mousedown.prevent
       @click="action.run()"
     >

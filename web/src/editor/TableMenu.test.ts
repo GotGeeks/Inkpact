@@ -134,10 +134,11 @@ describe('the table menu', () => {
 
   it('does not take the focus from the table when pressed', async () => {
     await openTable()
-    for (const type of ['pointerdown', 'mousedown']) {
-      const event = new Event(type, { bubbles: true, cancelable: true })
-      action('deleteRow').dispatchEvent(event)
-      expect(event.defaultPrevented, type).toBe(true)
-    }
+    const press = new Event('mousedown', { bubbles: true, cancelable: true })
+    action('deleteRow').dispatchEvent(press)
+    expect(press.defaultPrevented).toBe(true)
+    const touch = new Event('pointerdown', { bubbles: true, cancelable: true })
+    action('deleteRow').dispatchEvent(touch)
+    expect(touch.defaultPrevented).toBe(false)
   })
 })
