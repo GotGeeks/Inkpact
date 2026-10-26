@@ -201,6 +201,13 @@ internal sealed class SidecarSession : IDisposable
         }
     }
 
+    /// <summary>
+    /// Waits until the last of the process's error output has been read. The process can be gone before its final lines
+    /// are, and a crash is logged with them.
+    /// </summary>
+    public async Task ErrorsReadAsync() =>
+        await _errors.WaitAsync(TimeSpan.FromSeconds(5), _time).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+
     /// <summary>Waits for the reading loops to end (they do once the process is gone), then fails every call still waiting.</summary>
     public async Task EndAsync()
     {
