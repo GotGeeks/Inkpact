@@ -19,6 +19,7 @@ namespace Inkpact.Api.Tests.Testing;
 /// <param name="perAddressPerMinute">Login attempts one address may make in a minute; high, so tests that sign in a lot are not throttled.</param>
 /// <param name="failuresBeforeLock">Wrong passwords before an email is locked; null leaves the default (5).</param>
 /// <param name="time">The clock the app uses; null is the real one.</param>
+/// <param name="settings">Further configuration, such as the sync hub's limits.</param>
 public class InkpactFactory(
     string connectionString,
     bool backupOnMigrate = false,
@@ -30,7 +31,8 @@ public class InkpactFactory(
     string? remoteIp = null,
     int perAddressPerMinute = 1000,
     int? failuresBeforeLock = null,
-    TimeProvider? time = null) : WebApplicationFactory<Program>
+    TimeProvider? time = null,
+    IReadOnlyDictionary<string, string>? settings = null) : WebApplicationFactory<Program>
 {
     public const string SetupCode = "TESTCODE";
 
@@ -52,6 +54,11 @@ public class InkpactFactory(
         if (failuresBeforeLock is not null)
         {
             builder.UseSetting("Auth:Throttle:FailuresBeforeLock", failuresBeforeLock.Value.ToString());
+        }
+
+        foreach (var (key, value) in settings ?? new Dictionary<string, string>())
+        {
+            builder.UseSetting(key, value);
         }
 
         if (time is not null)

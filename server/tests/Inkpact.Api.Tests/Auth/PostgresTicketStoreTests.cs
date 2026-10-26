@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Inkpact.Api.Auth;
+using Inkpact.Api.Sync;
 using Inkpact.Api.Tests.Testing;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
@@ -15,7 +16,9 @@ public class PostgresTicketStoreTests(PostgresFixture postgres) : DatabaseTestBa
 
     private readonly MutableTimeProvider _time = new(Start);
 
-    private PostgresTicketStore CreateStore() => new(new ContextFactory(ConnectionString), _time);
+    private readonly SessionEvents _events = new();
+
+    private PostgresTicketStore CreateStore() => new(new ContextFactory(ConnectionString), _time, _events);
 
     private async Task<Guid> AddUserAsync(string email = "jos@example.com")
     {
@@ -208,6 +211,69 @@ public class PostgresTicketStoreTests(PostgresFixture postgres) : DatabaseTestBa
         }
 
         (await store.RetrieveAsync(key)).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Removing_a_session_tells_its_listeners_and_no_others()
+    {
+        var userId = await AddUserAsync();
+        var store = CreateStore();
+        var key = await store.StoreAsync(CreateTicket(userId));
+        var other = await store.StoreAsync(CreateTicket(userId));
+        var ended = new List<string>();
+        using var first = _events.Listen(key, userId, () => ended.Add(key));
+        using var second = _events.Listen(other, userId, () => ended.Add(other));
+
+        await store.RemoveAsync(key);
+
+        ended.ShouldBe([key]);
+    }
+
+    [Fact]
+    public async Task Removing_all_sessions_of_a_user_tells_every_listener_of_that_user()
+    {
+        var jos = await AddUserAsync();
+        var ann = await AddUserAsync("ann@example.com");
+        var store = CreateStore();
+        var ended = new List<string>();
+        using var a = _events.Listen("a", jos, () => ended.Add("a"));
+        using var b = _events.Listen("b", jos, () => ended.Add("b"));
+        using var c = _events.Listen("c", ann, () => ended.Add("c"));
+
+        await store.RemoveAllForUserAsync(jos);
+
+        ended.Order().ShouldBe(["a", "b"]);
+    }
+
+    [Fact]
+    public async Task A_listener_that_stopped_listening_is_not_told()
+    {
+        var userId = await AddUserAsync();
+        var store = CreateStore();
+        var key = await store.StoreAsync(CreateTicket(userId));
+        var told = false;
+        _events.Listen(key, userId, () => told = true).Dispose();
+
+        await store.RemoveAsync(key);
+
+        told.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task A_session_is_active_until_it_expires_or_is_removed()
+    {
+        var userId = await AddUserAsync();
+        var store = CreateStore();
+        var key = await store.StoreAsync(CreateTicket(userId, TimeSpan.FromHours(1)));
+        var removed = await store.StoreAsync(CreateTicket(userId));
+
+        (await store.IsActiveAsync(key)).ShouldBeTrue();
+        await store.RemoveAsync(removed);
+        (await store.IsActiveAsync(removed)).ShouldBeFalse();
+        (await store.IsActiveAsync("never-existed")).ShouldBeFalse();
+
+        _time.Advance(TimeSpan.FromHours(1));
+        (await store.IsActiveAsync(key)).ShouldBeFalse();
     }
 
     private sealed class ContextFactory(string connectionString) : IDbContextFactory<InkpactDbContext>

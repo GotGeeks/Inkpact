@@ -19,6 +19,8 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
 
     public DbSet<LoginThrottle> LoginThrottles => Set<LoginThrottle>();
 
+    public DbSet<PageUpdate> PageUpdates => Set<PageUpdate>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(user =>
@@ -102,6 +104,18 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             throttle.ToTable("login_throttles");
             throttle.HasKey(t => t.Key);
             throttle.Property(t => t.Key).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<PageUpdate>(update =>
+        {
+            update.ToTable("page_updates");
+            update.HasKey(u => u.Seq);
+            update.Property(u => u.Seq).UseIdentityAlwaysColumn();
+            update.Property(u => u.Data).IsRequired();
+            update.HasOne<Page>().WithMany().HasForeignKey(u => u.PageId).OnDelete(DeleteBehavior.Cascade);
+            update.HasOne<User>().WithMany().HasForeignKey(u => u.UserId).OnDelete(DeleteBehavior.SetNull);
+            // A page is loaded as its updates in order.
+            update.HasIndex(u => new { u.PageId, u.Seq });
         });
 
         modelBuilder.UseSnakeCaseNames();

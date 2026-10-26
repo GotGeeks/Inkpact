@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
+using Inkpact.Api.Sync;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
 using Microsoft.AspNetCore.Authentication;
@@ -14,11 +15,17 @@ namespace Inkpact.Api.Auth;
 /// Keeps the signed-in principal in Postgres instead of in the cookie. The cookie then holds only a session id,
 /// so logging out everywhere, revoking one session and removing a user all take effect on the next request.
 /// </summary>
-public sealed class PostgresTicketStore(IDbContextFactory<InkpactDbContext> dbFactory, TimeProvider time) : ITicketStore
+public sealed class PostgresTicketStore(IDbContextFactory<InkpactDbContext> dbFactory, TimeProvider time, SessionEvents sessionEvents) : ITicketStore
 {
     /// <summary>Sessions are touched at most this often, so reading a page does not write a row.</summary>
     /// <summary>Key in the ticket's properties for the browser's user agent, set at sign-in and kept with the session.</summary>
     public const string UserAgentItem = "ua";
+
+    /// <summary>
+    /// Key in the properties of a retrieved ticket for the session it came from, so that a request can tell which session
+    /// it belongs to (the sync hub closes a session's sockets when it ends).
+    /// </summary>
+    public const string SessionKeyItem = "session";
 
     internal static readonly TimeSpan LastSeenResolution = TimeSpan.FromMinutes(1);
 
@@ -68,20 +75,37 @@ public sealed class PostgresTicketStore(IDbContextFactory<InkpactDbContext> dbFa
             await db.Sessions.Where(s => s.Id == key).ExecuteUpdateAsync(set => set.SetProperty(s => s.LastSeenAt, now));
         }
 
-        return TicketSerializer.Default.Deserialize(session.Ticket);
+        var ticket = TicketSerializer.Default.Deserialize(session.Ticket);
+        if (ticket is not null)
+        {
+            ticket.Properties.Items[SessionKeyItem] = key;
+        }
+
+        return ticket;
     }
 
     public async Task RemoveAsync(string key)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
         await db.Sessions.Where(s => s.Id == key).ExecuteDeleteAsync();
+        sessionEvents.SessionEnded(key);
+    }
+
+    /// <summary>Whether the session still exists and has not expired. Unlike <see cref="RetrieveAsync"/> it changes nothing.</summary>
+    public async Task<bool> IsActiveAsync(string key, CancellationToken cancellationToken = default)
+    {
+        var now = time.GetUtcNow();
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Sessions.AnyAsync(s => s.Id == key && s.ExpiresAt > now, cancellationToken);
     }
 
     /// <summary>Signs a user out of every browser. Returns how many sessions ended.</summary>
     public async Task<int> RemoveAllForUserAsync(Guid userId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
-        return await db.Sessions.Where(s => s.UserId == userId).ExecuteDeleteAsync();
+        var removed = await db.Sessions.Where(s => s.UserId == userId).ExecuteDeleteAsync();
+        sessionEvents.AllSessionsEnded(userId);
+        return removed;
     }
 
     public async Task<int> DeleteExpiredAsync()
