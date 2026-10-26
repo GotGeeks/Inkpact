@@ -6,7 +6,10 @@ using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 
 namespace Inkpact.Api.Tests.Testing;
 
-/// <summary>What a client receives: a frame, or the end of the connection.</summary>
+/// <summary>
+/// What a client receives: a frame, or the end of the connection. A Sync frame has the server's state vector (empty in
+/// log mode) and its updates.
+/// </summary>
 public sealed record Received(
     MessageType? Type,
     Guid PageId,
@@ -14,7 +17,8 @@ public sealed record Received(
     IReadOnlyList<byte[]> Updates,
     string? Code,
     WebSocketCloseStatus? CloseStatus,
-    string? CloseReason)
+    string? CloseReason,
+    byte[]? StateVector = null)
 {
     public bool IsClose => Type is null;
 
@@ -102,13 +106,16 @@ public sealed class SyncTestClient(WebSocket socket) : IAsyncDisposable
         SendAsync(Frame.Encode(MessageType.Awareness, pageId, AwarenessEntry.Encode(entries)));
 
     /// <summary>Subscribes and returns the updates of the sync answer.</summary>
-    public async Task<IReadOnlyList<byte[]>> JoinAsync(Guid pageId)
+    public async Task<IReadOnlyList<byte[]>> JoinAsync(Guid pageId) => (await SyncAsync(pageId)).Updates;
+
+    /// <summary>Subscribes with the given state vector (none: the client has nothing) and returns the whole sync answer.</summary>
+    public async Task<Received> SyncAsync(Guid pageId, byte[]? stateVector = null)
     {
-        await SubscribeAsync(pageId);
+        await SubscribeAsync(pageId, stateVector);
         var sync = await ReceiveAsync();
         sync.Type.ShouldBe(MessageType.Sync, sync.ToString());
         sync.PageId.ShouldBe(pageId);
-        return sync.Updates;
+        return sync;
     }
 
     public async Task<Received> ReceiveAsync(TimeSpan? timeout = null)
@@ -195,6 +202,7 @@ public sealed class SyncTestClient(WebSocket socket) : IAsyncDisposable
         switch (type)
         {
             case MessageType.Sync:
+                var stateVector = reader.ReadVarUint8Array().ToArray();
                 var count = reader.ReadVarUint();
                 var updates = new List<byte[]>();
                 for (ulong i = 0; i < count; i++)
@@ -202,7 +210,7 @@ public sealed class SyncTestClient(WebSocket socket) : IAsyncDisposable
                     updates.Add(reader.ReadVarUint8Array().ToArray());
                 }
 
-                return new Received(type, pageId, [], updates, null, null, null);
+                return new Received(type, pageId, [], updates, null, null, null, stateVector);
             case MessageType.Error:
                 return new Received(type, pageId, [], [], reader.ReadVarString(), null, null);
             default:

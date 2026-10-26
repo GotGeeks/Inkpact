@@ -2,7 +2,7 @@ namespace Inkpact.Data.Entities;
 
 /// <summary>
 /// One Yjs update of a page's content, appended by the sync hub as it arrived. The bytes are opaque to the server;
-/// only compaction (run 1.10) decodes them, through the Yjs sidecar.
+/// only the Yjs sidecar decodes them: for the diff a subscriber gets, and for compaction (run 1.10b).
 /// </summary>
 public class PageUpdate
 {

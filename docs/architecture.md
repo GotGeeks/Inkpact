@@ -74,7 +74,7 @@ Each page is one Yjs document; the server stores its update log in Postgres and 
 **Sync flow**
 
 1. The client opens one WebSocket per session and subscribes to each open page over it; every message carries its page id, and on subscribe the client sends that page's state vector.
-2. The server checks membership, loads snapshot plus pending updates, and replies with the missing diff. Until the Yjs sidecar arrives with compaction (run 1.10) it replies with the stored updates and the client works out what the server lacks; the subscribe already carries the state vector, so the protocol does not change.
+2. The server checks membership, loads the page's stored updates, and asks the Yjs sidecar for the diff the client is missing. It replies with that one diff and the server's own state vector, which the client needs to send the server what it lacks. When the sidecar cannot answer (not started yet, restarting, no Node, or an update it cannot decode) it replies with the stored updates in order and an empty state vector, and the client works out what the server lacks, so syncing never depends on the sidecar. The reply is `[type][pageId][state vector][count][updates]`.
 3. Each local edit is sent as a small Yjs update; the server appends it to `page_updates` and broadcasts it to other connected clients.
 4. Awareness messages (cursors, who is viewing) are relayed but never stored.
 5. A background job merges updates into the snapshot once a threshold is hit (for example 500 updates or 10 minutes idle), writes a version point if due, and deletes the merged rows.
@@ -82,7 +82,7 @@ Each page is one Yjs document; the server stores its update log in Postgres and 
 
 **Offline (desktop phase):** the client keeps its Yjs state in IndexedDB (web) or SQLite (desktop) and replays on reconnect; CRDT merge makes this conflict-free by design.
 
-**Server CRDT handling:** keep the server mostly agnostic — store and relay opaque update blobs, and only decode them for compaction, diffs and text extraction. A small Node sidecar running Yjs does that work; YDotNet was evaluated in spike 0.4 and diverges from Yjs on out-of-order updates (see `docs/spike-findings.md`). Compaction applies updates one at a time, never in one transaction, and verifies by comparing Yjs snapshot fingerprints.
+**Server CRDT handling:** keep the server mostly agnostic — store and relay opaque update blobs, and only decode them for compaction, diffs and text extraction. A small Node sidecar running Yjs does that work; YDotNet was evaluated in spike 0.4 and diverges from Yjs on out-of-order updates (see `docs/spike-findings.md`). Compaction applies updates one at a time, never in one transaction, and verifies by comparing Yjs snapshot fingerprints. The sidecar is a child process that the server supervises: it starts in the background (the app never waits for it), is restarted with a backoff when it dies or hangs, and speaks length-prefixed binary frames over stdin and stdout. It has no network port and starts with an empty environment (the server's holds the connection string), a V8 heap limit and Node's permission model, so it can read only its own folder and cannot write files or start processes. Appending an update never needs it.
 
 ## Working in runs with Claude Code
 
@@ -168,7 +168,8 @@ The smallest version you can use daily instead of Joplin. Build login, tree, edi
 | 1.07 | Tree API: create, rename, move, nest, delete to trash and restore, following the conflict rules; fractional indexing; page version numbers; FsCheck property tests for move and delete sequences | O·high → S·high |
 | 1.08 | Tree UI: sidebar with nesting, drag and drop, rename inline, trash view, keyboard navigation, mobile drawer | S·med |
 | 1.09 | Production sync hub from the spike: cookie auth, Origin check, message size and rate limits, permission check on subscribe, persistence and broadcast; spike scenarios become integration tests | O·high → S·high |
-| 1.10 | Compaction worker with every compaction guarantee: transaction, watermark, advisory lock, idempotence, verification, archive table; plain-text extract for search; property tests with injected crashes; the Yjs sidecar, which also answers sync step 1 with a diff | O·high → S·high |
+| 1.10a | The Yjs sidecar: a supervised Node child process with binary framing and the codec contract tests; the sync hub answers sync step 1 with a diff and the server's state vector, and falls back to the stored log when the sidecar is down | O·high → S·high |
+| 1.10b | Compaction worker with every compaction guarantee: transaction, watermark, advisory lock, idempotence, verification, archive table and its 30-day purge; plain-text extract for search; property tests with injected crashes | O·high → S·high |
 | 1.11 | Editor: title field, headings, lists, checklists, code blocks, tables, links; connected to the sync hub through the TypeScript sync client (reconnect, ping, awareness), with the browser sync scenarios from the spike as Playwright tests; DOMPurify on paste | S·med |
 | 1.12 | Editor polish: Notion-style block handles, slash menu, editor lazy-loaded, mobile fixes from the spike findings | S·med |
 | 1.13 | Docker image (non-root, read-only root filesystem), compose file, `edge` image to GHCR on merge; running on Unraid behind Traefik on a test subdomain | S·med |
@@ -352,7 +353,7 @@ The whole repository is licensed AGPL-3.0, so anyone running a modified version,
 
 **Repository layout (monorepo)**
 
-- `server/` — ASP.NET Core API, WebSocket sync hub, EF Core with Npgsql, background compaction worker
+- `server/` — ASP.NET Core API, WebSocket sync hub, EF Core with Npgsql, background compaction worker; `server/sidecar/` is the Node process running Yjs, a pnpm workspace package that Node runs as TypeScript, without a build step
 - `web/` — TypeScript client (Vue 3 + Vite + Pinia), TipTap + Yjs editor, shared by web and desktop
 - `desktop/` — Electron shell around `web/` (phase 3)
 - `deploy/` — `docker-compose.yml` (app, Postgres, optional Redis), Unraid template XML
@@ -384,8 +385,8 @@ Nothing reaches users unless every check is green, and a release is a single mer
 
 **Every pull request**
 
-- Server: dotnet format check, build, xUnit unit tests, Testcontainers integration tests, migration upgrade test
-- Client: ESLint (including the vue-i18n rules), Prettier, vue-tsc type check, Vitest
+- Server: dotnet format check, build, xUnit unit tests, Testcontainers integration tests, migration upgrade test; the tests start the real Yjs sidecar, so the job has Node and the workspace dependencies
+- Client: ESLint (including the vue-i18n rules), Prettier, vue-tsc type check, Vitest; the same checks for the Yjs sidecar package
 - End-to-end: Playwright on desktop and phone viewports (and WebKit) against the real server and the built bundle (the container from 1.13); any CSP violation fails the run
 - Security: CodeQL for C# and TypeScript, GitHub dependency review, `pnpm audit`, the vulnerable NuGet package check, a Trivy image scan, and a licence check of all dependencies
 - Reports posted on the PR: coverage, and bundle size compared with main, with a warning on regressions
@@ -440,6 +441,7 @@ These are in place in phase 1A, because each is painful to add once code and dat
 - **WebSocket hardening:** authenticated by the same session cookie, Origin header checked against the app's own (a missing one is refused), per-connection message size and rate limits, a cap on sockets per user and pages per socket, bounded send queues, and the role checked on every subscribe (viewers read, editors write). Logout and logout everywhere close the session's sockets at once; a periodic check catches sessions that ended otherwise
 - **Sessions:** standard ASP.NET cookie authentication with a Postgres-backed session store (ITicketStore): the cookie holds only a session id, so logout everywhere, revoking one session and removing a user take effect on the next request, without a custom session system. 30 days, sliding. Cookies are `HttpOnly` and `SameSite=Lax`. Whenever the browser is on HTTPS (also behind Traefik, through `X-Forwarded-Proto` from a trusted proxy) the cookie is `Secure` and named `__Host-inkpact`; on plain HTTP, which many self-hosters use on a LAN address, it is named `inkpact` without `Secure`, because a browser refuses a `__Host-` cookie there. `Auth:CookieSecure` can force the flag on (`true`) or off (`false`). State-changing API calls must also be `application/json`, which a cross-site form cannot send
 - **CSRF:** every state-changing API call (POST, PUT, PATCH, DELETE under `/api`, login and setup included) carries an ASP.NET Antiforgery token in the `X-CSRF-Token` header. `GET /api/auth/state` hands it out, tied to whoever is signed in at that moment, so the client asks again after every login and logout and repeats a call once when the server finds its token out of date. Its cookie (`inkpact-csrf`, `HttpOnly`, `SameSite=Strict`) has no `__Host-` prefix, because Antiforgery uses one fixed cookie name; the token's tie to the user and the JSON-only rule make that harmless
+- **Yjs sidecar:** the only code that decodes Yjs updates, which are bytes a user sent. It has no network port, an empty environment, `--disallow-code-generation-from-strings`, a heap limit, a timeout on every call (a stuck request kills the process) and Node's permission model: read access to its own folder only, no writes, no child processes. A Yjs bug reached with crafted bytes should therefore not be able to read the server's configuration, or its environment through `/proc`
 - **Passwords:** Argon2id (libsodium; 46 MiB, one iteration, as the OWASP cheat sheet gives first) as an encoded string that is upgraded at login when the parameters change; 12 to 128 characters and no composition rules; an unknown email costs the same time as a wrong password and gets the same answer
 - **Login throttling:** one address may make 10 login or setup attempts a minute (429, `Retry-After`). Per email address, five wrong passwords lock further logins for a minute, doubling with every further failure up to 15 minutes, and a success or a day without failures starts the count again. An address without an account is counted and locked exactly like one with an account, so the lockout does not show who is registered; its key is a hash, so typed addresses are not kept. The accepted cost: anyone can keep a known address from *new* logins for a while (sessions that exist keep working)
 - **ASP.NET Data Protection keys:** persisted to the data volume, so restarts don't log everyone out. They are not encrypted by default: under the trusted-administrator model anyone who can read the volume can read every note, so a certificate kept next to the keys would add nothing. `DataProtection:CertificatePath` encrypts them for installs that keep the certificate elsewhere

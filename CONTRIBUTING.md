@@ -15,6 +15,8 @@ dotnet tool restore   # installs dotnet-ef, for migrations
 dotnet build server
 ```
 
+Run `pnpm install` before `dotnet test`: the server tests start the real Yjs sidecar (`server/sidecar`), a Node process that needs its dependencies.
+
 The .NET SDK is pinned to an exact version in `global.json`, so every machine and CI build the same way (and so a broken new release cannot stop the build). Dependabot opens a pull request when a newer SDK is out; CI checks that the build works with it, then you merge it.
 
 Use pnpm only, never npm or yarn. Ask in the issue before adding a dependency, and say why it is needed.
@@ -25,6 +27,9 @@ Use pnpm only, never npm or yarn. Ask in the issue before adding a dependency, a
 pnpm --filter web lint
 pnpm --filter web typecheck
 pnpm --filter web test
+pnpm --filter sidecar lint
+pnpm --filter sidecar typecheck
+pnpm --filter sidecar test
 dotnet format server --verify-no-changes
 dotnet test server
 ```

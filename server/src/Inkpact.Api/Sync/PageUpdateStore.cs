@@ -20,7 +20,7 @@ public sealed class PageUpdateStore(IDbContextFactory<InkpactDbContext> dbFactor
 
     /// <summary>
     /// Everything a client merges to get the page, oldest first. Read in one repeatable-read transaction: once
-    /// compaction exists (run 1.10) this also reads the snapshot, and reading the two separately can miss the updates
+    /// compaction exists (run 1.10b) this also reads the snapshot, and reading the two separately can miss the updates
     /// a compaction moves out of the log between the reads.
     /// </summary>
     public async Task<IReadOnlyList<byte[]>> LoadAsync(Guid pageId, CancellationToken cancellationToken)

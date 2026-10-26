@@ -11,7 +11,11 @@ public enum MessageType : byte
     /// <summary>Both ways: one Yjs update, opaque to the server.</summary>
     Update = 2,
 
-    /// <summary>Server: the answer to a subscribe, the stored updates of the page in order.</summary>
+    /// <summary>
+    /// Server: the answer to a subscribe. In diff mode the server's Yjs state vector and one update, the diff the client
+    /// is missing. In log mode (the Yjs sidecar is unavailable) an empty state vector and the stored updates in order,
+    /// and the client works out what the server lacks.
+    /// </summary>
     Sync = 3,
 
     /// <summary>Both ways: a y-protocols awareness update (who is there, cursors). Relayed, never stored.</summary>
@@ -82,9 +86,14 @@ public sealed record Frame(MessageType Type, Guid PageId, ReadOnlyMemory<byte> P
         return writer.ToArray();
     }
 
-    public static byte[] EncodeSync(Guid pageId, IReadOnlyList<byte[]> updates)
+    /// <summary>
+    /// <c>[type][pageId][varUint8Array stateVector][varuint count][count × varUint8Array update]</c>. The state vector is
+    /// what lets a client that got only a diff send the server what it is missing; it is empty in log mode.
+    /// </summary>
+    public static byte[] EncodeSync(Guid pageId, ReadOnlySpan<byte> stateVector, IReadOnlyList<byte[]> updates)
     {
         var writer = Start(MessageType.Sync, pageId);
+        writer.WriteVarUint8Array(stateVector);
         writer.WriteVarUint((ulong)updates.Count);
         foreach (var update in updates)
         {

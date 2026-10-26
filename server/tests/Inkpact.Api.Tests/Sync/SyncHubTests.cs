@@ -14,7 +14,8 @@ namespace Inkpact.Api.Tests.Sync;
 
 /// <summary>
 /// The sync hub through real sockets on the test server, against Postgres. The updates are opaque bytes here, as they
-/// are to the hub; what Yjs makes of them is tested with the editor (run 1.11).
+/// are to the hub, so the Yjs sidecar is off and every subscribe is answered with the stored log (log mode); the diff
+/// is tested with real updates in SyncHubDiffTests, and what Yjs makes of them in the browser with the editor (run 1.11).
 /// </summary>
 [Collection(PostgresCollection.Name)]
 public class SyncHubTests(PostgresFixture postgres) : IAsyncLifetime

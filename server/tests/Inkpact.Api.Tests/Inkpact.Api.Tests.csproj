@@ -24,6 +24,8 @@
 
   <ItemGroup>
     <None Include="Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\yjs\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\sidecars\*.mjs" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

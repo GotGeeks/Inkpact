@@ -1,0 +1,9 @@
+{
+  "description": "Minimal ordered update list (from tiptap-small, shuffled) where yrs and Yjs give different text",
+  "updates": [
+    "AAGlhuviBAFCAw==",
+    "AS2lhuviBAAHAQdkZWZhdWx0AwdoZWFkaW5nBwClhuviBAAGBAClhuviBAEWQm9vZHNjaGFwcGVuICYgcGxhbm5lbigApYbr4gQABWxldmVsAX0Bh6WG6\u002BIEAAMJcGFyYWdyYXBoBwClhuviBBkGBAClhuviBBoERWVuIIalhuviBB4EYm9sZAJ7fYSlhuviBB8LdmV0Z2VkcnVrdGWGpYbr4gQqBGJvbGQEbnVsbISlhuviBCsEIGVuIIalhuviBC8GaXRhbGljAnt9hKWG6\u002BIEMAdzY2h1aW5lhqWG6\u002BIENwZpdGFsaWMEbnVsbISlhuviBDgYIHppbiBtZXQgw6ksIMO8IGVuIPCfmoAuh6WG6\u002BIEGQMKYnVsbGV0TGlzdAcApYbr4gRNAwhsaXN0SXRlbQcApYbr4gROAwlwYXJhZ3JhcGgHAKWG6\u002BIETwYEAKWG6\u002BIEUARtZWxrh6WG6\u002BIETgMIbGlzdEl0ZW0HAKWG6\u002BIEVQMJcGFyYWdyYXBoBwClhuviBFYGBAClhuviBFcFYnJvb2SHpYbr4gRWAwtvcmRlcmVkTGlzdAcApYbr4gRdAwhsaXN0SXRlbQcApYbr4gReAwlwYXJhZ3JhcGgHAKWG6\u002BIEXwYEAKWG6\u002BIEYAh2b2xrb3JlbigApYbr4gRdBXN0YXJ0AX0Bh6WG6\u002BIETQMJY29kZUJsb2NrBwClhuviBGoGBAClhuviBGsaY29uc3QgeCA9IDEKY29uc29sZS5sb2coeCkoAKWG6\u002BIEaghsYW5ndWFnZQF3AnRzh6WG6\u002BIEagMKYmxvY2txdW90ZQcApYbr4gSHAQMJcGFyYWdyYXBoBwClhuviBIgBBgQApYbr4gSJAQtDaXRhYXQgbWV0IIalhuviBJQBBGNvZGUCe32EpYbr4gSVAQRjb2RlhqWG6\u002BIEmQEEY29kZQRudWxsh6WG6\u002BIEhwEDDmhvcml6b250YWxSdWxlh6WG6\u002BIEmwEDCXBhcmFncmFwaAcApYbr4gScAQYEAKWG6\u002BIEnQEPTGFhdHN0ZSBhbGluZWEuAA=="
+  ],
+  "yjsText": "Boodschappen \u0026 plannen\nEen vetgedrukte en schuine zin met \u00FC en \uD83D\uDE80.\nmelk\nbrood\nvolkoren\nconst x = 1\nconsole.log(x)\nCitaat met code\nLaatste alinea.",
+  "yrsText": "Boodschappen \u0026 plannen\nEen vetgedrukte en schuine zin met \u00E9, \u00FC en \uD83D\uDE80.\nmelk\nbrood\nvolkoren\nconst x = 1\nconsole.log(x)\nCitaat met code\nLaatste alinea."
+}

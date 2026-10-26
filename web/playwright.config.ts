@@ -26,6 +26,8 @@ const keysDirectory = join(tmpdir(), `inkpact-e2e-keys-${process.env.E2E_RUN_ID}
 
 const repoRoot = resolve(import.meta.dirname, '..')
 const serverOutput = resolve(repoRoot, 'server/src/Inkpact.Api/bin/e2e')
+// The server's content root is its output folder, which has no sidecar next to it as a published app has.
+const sidecarScript = resolve(repoRoot, 'server/sidecar/src/main.ts')
 
 // The same server under a name that is not localhost. Browsers treat localhost as a secure origin,
 // so a policy that only breaks plain HTTP on a LAN address (upgrade-insecure-requests blanks every
@@ -108,6 +110,7 @@ export default defineConfig({
       // The lockout per email stays at its real value: one spec locks an address on purpose.
       Auth__Throttle__PerAddressPerMinute: '600',
       DataProtection__KeysDirectory: keysDirectory,
+      Sidecar__ScriptPath: sidecarScript,
     },
   },
 })

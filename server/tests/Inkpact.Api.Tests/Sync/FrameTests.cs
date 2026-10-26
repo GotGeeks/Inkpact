@@ -53,17 +53,29 @@ public class FrameTests
     }
 
     [Fact]
-    public void A_sync_answer_holds_the_count_and_each_update()
+    public void A_sync_answer_holds_the_state_vector_the_count_and_each_update()
     {
-        var bytes = Frame.EncodeSync(PageId, [[1], [2, 3]]);
+        var bytes = Frame.EncodeSync(PageId, [9, 8, 7], [[1], [2, 3]]);
 
         var reader = new Lib0Reader(bytes);
         reader.ReadVarUint().ShouldBe((ulong)MessageType.Sync);
         reader.ReadVarString().ShouldBe(PageId.ToString("D"));
+        reader.ReadVarUint8Array().ToArray().ShouldBe([9, 8, 7]);
         reader.ReadVarUint().ShouldBe(2UL);
         reader.ReadVarUint8Array().ToArray().ShouldBe([1]);
         reader.ReadVarUint8Array().ToArray().ShouldBe([2, 3]);
         reader.HasMore.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void A_sync_answer_in_log_mode_has_an_empty_state_vector()
+    {
+        var reader = new Lib0Reader(Frame.EncodeSync(PageId, [], [[1]]));
+
+        reader.ReadVarUint().ShouldBe((ulong)MessageType.Sync);
+        reader.ReadVarString().ShouldBe(PageId.ToString("D"));
+        reader.ReadVarUint8Array().Length.ShouldBe(0);
+        reader.ReadVarUint().ShouldBe(1UL);
     }
 
     [Fact]
