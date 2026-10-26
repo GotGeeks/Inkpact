@@ -32,9 +32,12 @@ pnpm --filter sidecar typecheck
 pnpm --filter sidecar test
 dotnet format server --verify-no-changes
 dotnet test server
+pnpm --filter web e2e   # needs Postgres: docker compose -f deploy/docker-compose.dev.yml up -d --wait
 ```
 
-CI runs the same checks. Keep a pull request to one testable slice, with its tests and its translations.
+`pnpm check` runs all of it, and `pnpm check:fast` the quick part (no server tests, no end-to-end). **Run `pnpm check` before every push**: a pull request's CI only runs the quick checks (lint, types, unit tests, format and build, commit messages), and the server tests and the end-to-end suite run on your machine, then again on main. A red main is fixed or reverted at once.
+
+ Keep a pull request to one testable slice, with its tests and its translations.
 
 ## Rules that are not negotiable
 

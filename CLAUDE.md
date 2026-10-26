@@ -48,7 +48,7 @@ docker compose -f deploy/docker-compose.dev.yml up -d --wait
 docker compose -f deploy/docker-compose.yml up
 ```
 
-Run the relevant tests, lint and typecheck before saying a task is done.
+Run the relevant tests, lint and typecheck before saying a task is done, and **always run `pnpm check` (Postgres up) before pushing**: a PR's CI only runs the quick checks, so the server tests and Playwright run locally first and then on main. `pnpm check:fast` is the quick part. Say so if a part could not be run.
 
 ## Non-negotiables
 
