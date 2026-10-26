@@ -69,6 +69,9 @@ public class InkpactFactory(
         builder.UseSetting("Sidecar:Enabled", sidecar.ToString());
         builder.UseSetting("Sidecar:ScriptPath", SidecarFiles.ScriptPath);
 
+        // Tests that want the worker turn it on through the settings; the others call the compactor themselves.
+        builder.UseSetting("Compaction:Enabled", "False");
+
         foreach (var (key, value) in settings ?? new Dictionary<string, string>())
         {
             builder.UseSetting(key, value);

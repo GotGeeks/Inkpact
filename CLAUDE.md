@@ -65,7 +65,7 @@ These hold for every change. Never weaken one to make something pass; stop and a
 ## Backend conventions
 
 - .NET 10, minimal APIs, nullable reference types on, warnings as errors.
-- EF Core with Npgsql. Migrations are the only way to change the schema. Raw SQL only for recursive tree queries.
+- EF Core with Npgsql. Migrations are the only way to change the schema. Raw SQL only for recursive tree queries and for the compaction's advisory lock and its `for update` read of the snapshot row.
 - Every endpoint declares an authorisation policy; the single permission service resolves roles (rules in architecture → "Permission resolution").
 - Tests: xUnit, NSubstitute, Shouldly (not FluentAssertions), Testcontainers with real Postgres. No in-memory database provider.
 - The sync hub treats Yjs updates as opaque blobs. Decode them only for compaction, diffs and text extraction, in the Yjs Node sidecar (YDotNet was rejected in the spike, see `docs/spike-findings.md`).

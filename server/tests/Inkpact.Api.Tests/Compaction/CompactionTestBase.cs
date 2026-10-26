@@ -6,6 +6,8 @@ using Inkpact.Api.Tests.Testing;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Inkpact.Api.Tests.Compaction;
 
@@ -50,6 +52,11 @@ public abstract class CompactionTestBase(PostgresFixture postgres, YjsSidecarFix
     protected Compactor CreateCompactor(IYjsCodec? codec = null, ICompactionHooks? hooks = null) =>
         new(Factory, codec ?? Codec, hooks ?? Hooks, Options, Clock, CompactorLog);
 
+    protected CompactionWorker CreateWorker(IYjsCodec? codec = null, ILogger<CompactionWorker>? logger = null) =>
+        new(Factory, CreateCompactor(codec), CreatePurge(), Options, Clock, logger ?? NullLogger<CompactionWorker>.Instance);
+
+    protected ArchivePurge CreatePurge() => new(Factory, Options, Clock, NullLogger<ArchivePurge>.Instance);
+
     private int _pages;
 
     protected async Task<Guid> AddPageAsync()
@@ -77,10 +84,10 @@ public abstract class CompactionTestBase(PostgresFixture postgres, YjsSidecarFix
     }
 
     /// <summary>Appends many updates in one go, in order. Fast, for the setup of a test that does not test the append.</summary>
-    protected async Task AppendBulkAsync(Guid pageId, IEnumerable<byte[]> updates)
+    protected async Task AppendBulkAsync(Guid pageId, IEnumerable<byte[]> updates, DateTimeOffset? createdAt = null)
     {
         await using var db = CreateContext();
-        db.PageUpdates.AddRange(updates.Select(data => new PageUpdate { PageId = pageId, UserId = UserId, Data = data, CreatedAt = Start }));
+        db.PageUpdates.AddRange(updates.Select(data => new PageUpdate { PageId = pageId, UserId = UserId, Data = data, CreatedAt = createdAt ?? Start }));
         await db.SaveChangesAsync();
     }
 

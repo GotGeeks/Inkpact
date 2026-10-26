@@ -34,4 +34,7 @@ public sealed class CompactionOptions
 
     /// <summary>How often the worker purges the archive.</summary>
     public TimeSpan PurgeInterval { get; set; } = TimeSpan.FromHours(1);
+
+    /// <summary>The most archived updates one purge transaction deletes, so a long backlog never holds one for long.</summary>
+    public int PurgeBatchSize { get; set; } = 10_000;
 }

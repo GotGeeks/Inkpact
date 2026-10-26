@@ -11,6 +11,8 @@ public static class CompactionExtensions
         services.AddSingleton(options);
         services.TryAddSingleton<ICompactionHooks, NoCompactionHooks>();
         services.AddSingleton<Compactor>();
+        services.AddSingleton<ArchivePurge>();
+        services.AddHostedService<CompactionWorker>();
         return services;
     }
 }
