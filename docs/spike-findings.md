@@ -39,7 +39,7 @@ Written in run 0.7. Sources: `docs/runs/0.1.md` to `0.6.md`. The spike code was 
 
 **Consequences for 1A:**
 
-1. The server can answer sync step 1 with a diff (8 ms for 10,000 updates), as the architecture describes. The 0.2 choice of letting the client compute the diff was a workaround for not decoding on the server; undo it in 1.09. Keep the client-side fallback only if the sidecar is down.
+1. The server can answer sync step 1 with a diff (8 ms for 10,000 updates), as the architecture describes. The 0.2 choice of letting the client compute the diff was a workaround for not decoding on the server; undo it in 1.10, together with the sidecar (moved there in run 1.09, which kept the hub free of decoding). Keep the client-side fallback only if the sidecar is down.
 2. Compaction merges updates **one at a time**, never in one `Y.transact` (see the next section). Run 0.4 found the opposite for yrs; that does not matter once yrs is out.
 3. Compaction should load a doc and encode its state. `Y.mergeUpdates` took 632 ms for 9,926 updates and gave 138 KB against 104 KB, because it cannot drop deleted content.
 4. Verification compares Yjs snapshot fingerprints (state vector plus delete set), never text.
@@ -77,7 +77,7 @@ Tested on one phone: Chrome and Firefox, Gboard and SwiftKey (Firefox with Gboar
 
 | Run | Take from the spike |
 | --- | --- |
-| 1.09 (sync hub) | Frame format and per-page lock with store-before-broadcast. Ping and pong with a rate limit, server keep-alive, bounded send queues, evict idle pages, auth, Origin and permission check on subscribe. Answer sync step 1 with a diff from the sidecar. |
+| 1.09 (sync hub) | Frame format and per-page lock with store-before-broadcast. Ping and pong with a rate limit, server keep-alive, bounded send queues, evict idle pages, auth, Origin and permission check on subscribe. (Answering sync step 1 with a diff moved to 1.10, with the sidecar.) |
 | 1.10 (compaction) | Sidecar as the only decoder, supervised, with binary framing. One-at-a-time merge, fingerprint verification, repeatable-read load. Sample the full-history verification, idle-time trigger, 30-day archive purge, FsCheck property tests (new dependency, ask first), a multi-page worker design. Image based on Debian. |
 | 1.11, 1.12 (editor) | Create the first paragraph once at page creation: two clients typing into an empty page each make their own, giving two paragraphs (nothing lost). Undo and redo buttons for mobile. Lazy-load the editor route (spike bundle 507 kB, 160 kB gzipped). Hidden tabs throttle timers, so a socket may drop and reconnect now and then; harmless. |
 | Phase 1B | Persisting Yjs state in IndexedDB: a reload while offline still loses unsent edits today. |

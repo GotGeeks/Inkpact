@@ -61,7 +61,7 @@ These hold for every change. Never weaken one to make something pass; stop and a
 - EF Core with Npgsql. Migrations are the only way to change the schema. Raw SQL only for recursive tree queries.
 - Every endpoint declares an authorisation policy; the single permission service resolves roles (rules in architecture → "Permission resolution").
 - Tests: xUnit, NSubstitute, Shouldly (not FluentAssertions), Testcontainers with real Postgres. No in-memory database provider.
-- The sync hub treats Yjs updates as opaque blobs. Decode them (YDotNet) only for compaction and text extraction.
+- The sync hub treats Yjs updates as opaque blobs. Decode them only for compaction, diffs and text extraction, in the Yjs Node sidecar (YDotNet was rejected in the spike, see `docs/spike-findings.md`).
 - One multiplexed WebSocket per client session; every message carries its page id.
 
 ## Frontend conventions

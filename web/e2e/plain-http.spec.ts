@@ -1,5 +1,6 @@
 import { expect, test } from './fixtures'
 import { expectHome, signInThroughTheForm } from './helpers'
+import { openSyncSocket } from './syncSocket'
 
 // A browser treats localhost as a secure origin. On a plain-HTTP LAN address, which is how many self-hosters
 // run Inkpact, a policy such as upgrade-insecure-requests would turn every request into an https one that
@@ -35,4 +36,7 @@ test('signing in works over plain http on a non-localhost name', async ({
   await page.reload()
   await expectHome(page)
   expect(failed.filter((url) => url.startsWith('https:'))).toEqual([])
+
+  // The sync socket is ws:, not wss:, and still allowed by connect-src 'self'.
+  expect(await openSyncSocket(page, 'sync')).toMatchObject({ open: true, closed: null })
 })
