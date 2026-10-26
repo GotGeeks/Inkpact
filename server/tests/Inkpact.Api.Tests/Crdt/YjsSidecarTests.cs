@@ -167,12 +167,13 @@ public sealed class YjsSidecarTests : IAsyncLifetime
     public async Task A_call_over_its_timeout_kills_the_process_and_it_is_restarted()
     {
         var logger = new CapturingLogger<YjsSidecar>();
-        var sidecar = await StartRealAsync(options => options.DiffTimeout = TimeSpan.FromMilliseconds(1), logger);
+        var sidecar = await StartRealAsync(options => options.DiffTimeout = TimeSpan.FromMilliseconds(30), logger);
         var before = sidecar.ProcessId!.Value;
         var fixture = YjsFixture.Load("tiptap-10k");
 
+        // Far more work than 30 ms. (A timeout that ran out before anything was written would kill nothing.)
         await Should.ThrowAsync<YjsUnavailableException>(
-            sidecar.DiffAsync(fixture.PartialStateVectorBytes, fixture.UpdateBytes, default));
+            sidecar.DiffAsync(ReadOnlyMemory<byte>.Empty, [BigUpdate(20 * 1024 * 1024)], default));
 
         await sidecar.WaitUntilReadyAsync(new CancellationTokenSource(YjsSidecars.StartTimeout).Token);
         sidecar.ProcessId.ShouldNotBe(before);

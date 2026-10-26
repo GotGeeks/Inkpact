@@ -29,17 +29,20 @@ public sealed class YjsSidecar(SidecarOptions options, string contentRoot, TimeP
     private int _starts;
 
     /// <summary>The process serving right now, for tests that kill it.</summary>
-    internal int? ProcessId => _ready?.ProcessId;
+    internal int? ProcessId => Ready?.ProcessId;
+
+    /// <summary>The session that can take calls, if there is one. A process that was killed or has exited is not one.</summary>
+    private SidecarSession? Ready => _ready is { IsUsable: true } session ? session : null;
 
     /// <summary>How many processes were started, successfully or not.</summary>
     internal int Starts => Volatile.Read(ref _starts);
 
-    internal void KillForTest() => _ready?.Kill("a test killed it");
+    internal void KillForTest() => Ready?.Kill("a test killed it");
 
     /// <summary>Completes once a process has answered its start-up check.</summary>
     internal async Task WaitUntilReadyAsync(CancellationToken cancellationToken)
     {
-        while (_ready is null)
+        while (Ready is null)
         {
             await Task.Delay(20, cancellationToken);
         }
@@ -90,7 +93,7 @@ public sealed class YjsSidecar(SidecarOptions options, string contentRoot, TimeP
     private Task<byte[][]> CallAsync(
         SidecarOp op, IReadOnlyList<ReadOnlyMemory<byte>> parts, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        var session = _ready
+        var session = Ready
             ?? throw new YjsUnavailableException(options.Enabled ? "The Yjs sidecar is not running" : "The Yjs sidecar is disabled");
         return session.CallAsync(op, parts, timeout, cancellationToken);
     }

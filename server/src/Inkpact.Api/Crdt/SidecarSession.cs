@@ -68,6 +68,12 @@ internal sealed class SidecarSession : IDisposable
     /// <summary>Why this server killed the process, or null if it ended on its own.</summary>
     public string? KillReason => _killReason;
 
+    /// <summary>
+    /// Whether calls can be sent: false from the moment the process is killed or has exited, which is before the
+    /// supervisor has noticed and started another.
+    /// </summary>
+    public bool IsUsable => _killReason is null && !_ended && !Exited.IsCompleted;
+
     public int? ExitCode => _process.HasExited ? _process.ExitCode : null;
 
     public static SidecarSession Start(ProcessStartInfo info, TimeProvider time, ILogger logger)
