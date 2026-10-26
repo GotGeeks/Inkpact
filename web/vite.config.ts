@@ -18,6 +18,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // The first test to import a page pays for transforming it, and several files do that at once.
+    testTimeout: 20_000,
     exclude: ['e2e/**', 'node_modules/**'],
   },
 })

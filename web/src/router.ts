@@ -24,7 +24,16 @@ export function createAppRouter(history: RouterHistory = createWebHistory()): Ro
   const router = createRouter({
     history,
     routes: [
-      { path: '/', name: 'home', component: () => import('./pages/HomePage.vue') },
+      {
+        path: '/',
+        // The sidebar and the page area: everything that needs a signed-in person lives inside it.
+        component: () => import('./layout/AppShell.vue'),
+        children: [
+          { path: '', name: 'home', component: () => import('./pages/StartPage.vue') },
+          { path: 'p/:pageId', name: 'page', component: () => import('./pages/PageView.vue') },
+          { path: 'trash', name: 'trash', component: () => import('./pages/TrashView.vue') },
+        ],
+      },
       { path: '/login', name: 'login', component: () => import('./pages/LoginPage.vue') },
       { path: '/setup', name: 'setup', component: () => import('./pages/SetupPage.vue') },
       { path: '/:pathMatch(.*)*', redirect: { name: 'home' } },

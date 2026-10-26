@@ -53,6 +53,7 @@ test('the first visit asks for the administrator account, and creating it signs 
   await password.fill(ADMIN.password)
   await submit.click()
   await expectHome(page)
+  await expect(page).not.toHaveURL(/\/setup$/)
 
   mkdirSync(dirname(AUTH_STATE_FILE), { recursive: true })
   await page.context().storageState({ path: AUTH_STATE_FILE })

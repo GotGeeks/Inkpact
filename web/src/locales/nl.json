@@ -27,12 +27,6 @@
     "workspaceDefault": "Privé",
     "submit": "Account aanmaken"
   },
-  "home": {
-    "signedInAs": "Ingelogd als {name}",
-    "placeholder": "Je notities verschijnen hier.",
-    "logout": "Uitloggen",
-    "logoutEverywhere": "Overal uitloggen"
-  },
   "errors": {
     "invalid_credentials": "Het e-mailadres of wachtwoord klopt niet.",
     "setup_code_invalid": "Die installatiecode klopt niet. Zoek hem in het serverlogboek.",
@@ -51,6 +45,76 @@
     "too_many_requests": "Te veel pogingen vanaf dit apparaat. Probeer het opnieuw {when}.",
     "forbidden": "Dat mag je niet doen.",
     "not_found": "Dat is niet gevonden.",
-    "csrf_invalid": "De pagina was verouderd. Laad hem opnieuw en probeer het nog eens."
+    "csrf_invalid": "De pagina was verouderd. Laad hem opnieuw en probeer het nog eens.",
+    "title_invalid": "De titel mag hooguit 500 tekens hebben.",
+    "parent_invalid": "Die pagina kan niet als bovenliggende pagina dienen.",
+    "parent_in_trash": "Die pagina staat in de prullenbak.",
+    "position_invalid": "Die plek is niet meer geldig. De pagina’s zijn vernieuwd.",
+    "move_cycle": "Een pagina kan niet onder zichzelf worden verplaatst.",
+    "page_in_trash": "Die pagina staat in de prullenbak. Zet hem eerst terug.",
+    "restore_the_parent": "Zet eerst de pagina erboven terug."
+  },
+  "shell": {
+    "sidebar": "Navigatie",
+    "sidebarDescription": "Je pagina’s, de prullenbak en je account.",
+    "openMenu": "Open de paginalijst",
+    "loadFailed": "De pagina’s konden niet worden geladen.",
+    "retry": "Opnieuw proberen"
+  },
+  "tree": {
+    "label": "Pagina’s",
+    "newPage": "Nieuwe pagina",
+    "empty": "Er zijn nog geen pagina’s.",
+    "untitled": "Zonder titel",
+    "expand": "{title} uitklappen",
+    "collapse": "{title} inklappen",
+    "actions": "Acties voor {title}",
+    "rename": "Hernoemen",
+    "addSubpage": "Subpagina toevoegen",
+    "moveTo": "Verplaatsen naar…",
+    "moveToTrash": "Naar de prullenbak",
+    "renameLabel": "Titel van de pagina",
+    "moveDialog": {
+      "title": "“{title}” verplaatsen naar",
+      "description": "Kies de pagina waaronder hij moet komen. Hij wordt daar de laatste pagina.",
+      "topLevel": "Bovenste niveau",
+      "cancel": "Annuleren"
+    }
+  },
+  "trash": {
+    "navLabel": "Prullenbak",
+    "link": "Prullenbak",
+    "title": "Prullenbak",
+    "intro": "Pagina’s die je naar de prullenbak hebt verplaatst. Een pagina terugzetten haalt alles eronder terug.",
+    "empty": "De prullenbak is leeg.",
+    "deleted": "Naar de prullenbak verplaatst op {when}",
+    "restore": "Terugzetten",
+    "restoreNamed": "{title} terugzetten"
+  },
+  "page": {
+    "notFound": "Deze pagina is niet gevonden",
+    "backToStart": "Terug naar het begin",
+    "inTrash": "Deze pagina staat in de prullenbak.",
+    "inTrashThroughParent": "Een pagina erboven staat in de prullenbak.",
+    "placeholder": "De inhoud van de pagina verschijnt hier."
+  },
+  "start": {
+    "title": "Welkom",
+    "empty": "Je hebt nog geen pagina’s. Maak je eerste aan.",
+    "pick": "Kies een pagina in de zijbalk of maak een nieuwe."
+  },
+  "user": {
+    "menu": "Accountmenu",
+    "signedInAs": "Ingelogd als {email}",
+    "logout": "Uitloggen",
+    "logoutEverywhere": "Overal uitloggen"
+  },
+  "notices": {
+    "trashed": "“{title}” is naar de prullenbak verplaatst.",
+    "undo": "Ongedaan maken",
+    "undoAlt": "Het verplaatsen van “{title}” naar de prullenbak ongedaan maken",
+    "restored": "“{title}” is teruggezet.",
+    "restoredToTopLevel": "“{title}” is teruggezet op het bovenste niveau, omdat de pagina waar hij onder stond weg is.",
+    "dismiss": "Sluiten"
   }
 }

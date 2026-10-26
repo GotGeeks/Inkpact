@@ -1,6 +1,6 @@
 import { SIGNED_OUT } from './credentials'
 import { test } from './fixtures'
-import { expectHome, expectLoginPage, signInThroughTheForm } from './helpers'
+import { expectHome, expectLoginPage, signInThroughTheForm, signOut } from './helpers'
 
 // Ending every session also ends the one the other projects share, so this runs last, in its own project.
 test.use({ storageState: SIGNED_OUT })
@@ -13,7 +13,7 @@ test('signing out everywhere ends the session in every browser', async ({ page, 
   await signInThroughTheForm(phonePage)
   await expectHome(phonePage)
 
-  await page.getByRole('button', { name: 'Sign out everywhere' }).click()
+  await signOut(page, true)
   await expectLoginPage(page)
 
   // The other browser has not done anything yet; its next request finds the session gone.
