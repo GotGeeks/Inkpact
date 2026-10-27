@@ -5,9 +5,13 @@ import type { Editor } from '@tiptap/core'
 import type { EditorView } from '@tiptap/pm/view'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ApiError } from '../api'
 import { useKeyboardInset } from '../composables/useKeyboardInset'
 import { useMediaQuery } from '../composables/useMediaQuery'
+import { useNotificationsStore } from '../stores/notifications'
 import { useSyncStore } from '../stores/sync'
+import { uploadAttachment } from './attachmentApi'
+import { formatFileSize } from './attachmentNodes'
 import { editorClasses } from './editorClasses'
 import { createExtensions } from './extensions'
 import { applyFirstParagraph } from './firstParagraph'
@@ -22,6 +26,7 @@ const props = defineProps<{ pageId: string; readOnly: boolean }>()
 
 const { t, locale } = useI18n()
 const sync = useSyncStore()
+const notifications = useNotificationsStore()
 
 // The sync client makes the document, so that it can keep it alive while changes are still on their way after the
 // person left. The first paragraph is applied once, before the subscribe.
@@ -121,6 +126,9 @@ function keepCaretAboveToolbar(view: EditorView): boolean {
   return true
 }
 
+/** Files on their way to the server; they go into the page once they are there. */
+const uploading = ref(0)
+
 function attributes() {
   return {
     role: 'textbox',
@@ -143,6 +151,19 @@ const editor = useEditor({
       onHover: (pos) => {
         if (pos >= 0) hoveredBlock = pos
       },
+    },
+    files: {
+      formatSize: (bytes) => formatFileSize(bytes, locale.value),
+      downloadLabel: (fileName, size) => t('editor.attachment.download', { name: fileName, size }),
+    },
+    upload: {
+      upload: (file) => uploadAttachment(props.pageId, file),
+      onError: (error) =>
+        notifications.post({
+          type: 'error',
+          code: error instanceof ApiError ? error.code : 'unknown',
+        }),
+      onBusyChange: (count) => (uploading.value = count),
     },
   }),
   editable: editable.value,
@@ -208,6 +229,14 @@ defineExpose({ focus: () => editor.value?.commands.focus('start') })
       :hovered="() => hoveredBlock"
     />
     <p aria-live="polite" aria-atomic="true" class="sr-only">{{ announcement }}</p>
+    <p
+      v-if="uploading > 0"
+      role="status"
+      data-testid="attachment-uploading"
+      class="text-body-sm text-on-surface-variant"
+    >
+      {{ t('editor.attachment.uploading', { count: uploading }, uploading) }}
+    </p>
     <SlashMenu :state="slashState" :reserve-bottom="showToolbar ? TOOLBAR_HEIGHT : 0" />
     <TableMenu
       v-if="editor && inTable"

@@ -25,6 +25,8 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
 
     public DbSet<ArchivedPageUpdate> ArchivedPageUpdates => Set<ArchivedPageUpdate>();
 
+    public DbSet<Attachment> Attachments => Set<Attachment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(user =>
@@ -144,6 +146,20 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             // The full-history check reads one page's archive in order; the purge finds the old rows.
             archived.HasIndex(a => new { a.PageId, a.Seq });
             archived.HasIndex(a => a.ArchivedAt);
+        });
+
+        modelBuilder.Entity<Attachment>(attachment =>
+        {
+            attachment.ToTable("attachments");
+            attachment.Property(a => a.FileName).HasMaxLength(255).IsRequired();
+            attachment.Property(a => a.ContentType).HasMaxLength(127).IsRequired();
+            attachment.Property(a => a.Sha256).HasMaxLength(64).IsRequired();
+            // The stored file stays when its rows go; the cleanup of unreferenced files deals with it.
+            attachment.HasOne<Page>().WithMany().HasForeignKey(a => a.PageId).OnDelete(DeleteBehavior.Cascade);
+            attachment.HasOne<User>().WithMany().HasForeignKey(a => a.CreatedBy).OnDelete(DeleteBehavior.SetNull);
+            attachment.HasIndex(a => a.PageId);
+            // Which rows share a stored file, for the cleanup and the export.
+            attachment.HasIndex(a => a.Sha256);
         });
 
         modelBuilder.UseSnakeCaseNames();

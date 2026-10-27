@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, api, setCsrfToken } from './api'
+import { ApiError, api, setCsrfToken, uploadFile } from './api'
 import { jsonResponse, stubApi } from './testing/helpers'
 
 beforeEach(() => setCsrfToken(null))
@@ -175,6 +175,57 @@ describe('api and the CSRF token', () => {
     sequence(refused(), jsonResponse(500, { code: 'server_error' }), refused())
 
     expect(await api('POST', '/api/x', {}).catch((e) => e)).toMatchObject({ code: 'csrf_invalid' })
+  })
+})
+
+describe('uploadFile', () => {
+  function sequence(...answers: Response[]) {
+    const fetchMock = vi.fn()
+    for (const answer of answers) fetchMock.mockResolvedValueOnce(answer)
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  it('sends the file itself as raw bytes, with the token, and returns the answer', async () => {
+    const fetchMock = sequence(jsonResponse(201, { id: 'a' }))
+    setCsrfToken('token-1')
+    const file = new File(['hello'], 'hello.txt', { type: 'text/plain' })
+
+    expect(await uploadFile('/api/pages/p/attachments?name=hello.txt', file)).toEqual({ id: 'a' })
+
+    const [path, init] = fetchMock.mock.calls[0]!
+    expect(path).toBe('/api/pages/p/attachments?name=hello.txt')
+    expect(init.method).toBe('POST')
+    expect(init.body).toBe(file)
+    // Not the file's own type: the server works the type out, and takes nothing but raw bytes.
+    expect(init.headers).toEqual({
+      'Content-Type': 'application/octet-stream',
+      'X-CSRF-Token': 'token-1',
+    })
+  })
+
+  it('sends the same file again after fetching a new token', async () => {
+    const fetchMock = sequence(
+      jsonResponse(400, { code: 'csrf_invalid' }),
+      jsonResponse(200, { csrfToken: 'token-2' }),
+      jsonResponse(201, { id: 'a' }),
+    )
+    setCsrfToken('token-1')
+    const file = new Blob(['x'])
+
+    await uploadFile('/api/up', file)
+
+    expect(fetchMock.mock.calls[2]![1].body).toBe(file)
+    expect(fetchMock.mock.calls[2]![1].headers['X-CSRF-Token']).toBe('token-2')
+  })
+
+  it('turns a refusal into its code', async () => {
+    sequence(jsonResponse(413, { code: 'attachment_too_large' }))
+
+    expect(await uploadFile('/api/up', new Blob(['x'])).catch((e) => e)).toMatchObject({
+      status: 413,
+      code: 'attachment_too_large',
+    })
   })
 })
 

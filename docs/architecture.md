@@ -65,7 +65,7 @@ Each page is one Yjs document; the server stores its update log in Postgres and 
 | `page_updates` | Page id, sequence, Yjs update (`bytea`), user, timestamp | Appended live; folded into the snapshot by a compaction job |
 | `page_updates_archive` | The same columns as `page_updates`, with the sequence number the row had, and when it was archived | Where merged updates go in phase 1A; purged after 30 days |
 | `page_versions` | Page id, snapshot, created at, created by | Full snapshots, chosen for simplicity over storage; thinned by a configurable retention: everything for 24 hours, then daily for 30 days, then weekly for a year; history can be capped or turned off per workspace if storage becomes a problem |
-| `attachments` | Id, page, file name, MIME type, size, storage key | Files on disk or S3-compatible storage, not in Postgres |
+| `attachments` | Id, page, file name, MIME type, size, SHA-256 (the storage key), created at, created by | Files on disk or S3-compatible storage, not in Postgres; one row per upload, one stored file per content |
 | `pages (search)` | Columns on the page row, no separate table: plain-text extract, `tsvector` | Postgres full-text search: titles weighted above tags above content, the simple configuration with unaccent so English and Dutch notes both match, prefix matching for search-as-you-type. Other backends (such as vector search for related notes) can be added later without changing page storage |
 
 **A page's first paragraph is made once.** Two clients typing into a brand-new empty page would each create their own first paragraph, and the page would end up with two. So every client applies the same fixed Yjs update to a new document before it subscribes: one empty paragraph with an empty text inside, made by a constant client id. Yjs treats every copy as the same item, so a second one changes nothing, and a paragraph the person deleted does not come back. Pages that never had it get it when first opened; the Joplin import must start its pages from it too.
@@ -164,7 +164,7 @@ The smallest version you can use daily instead of Joplin. Build login, tree, edi
 | 1.05 | Local account and login: Argon2id, cookie authentication with the Postgres `ITicketStore`, `__Host-` cookie, logout everywhere, Data Protection keys on the data volume, login page in both languages | O·high → S·high |
 | 1.06 | CSRF tokens, login rate limiting with lockout backoff, security audit log table, deny-by-default permission service with the test that fails for any endpoint without a policy | O·high → S·high |
 
-**Core of the app — trial starts after 1.14**
+**Core of the app — trial starts after 1.16**
 
 | Run | Delivers | Model |
 | --- | --- | --- |
@@ -322,7 +322,8 @@ A page's content is always its snapshot plus the updates after it, and compactio
 - Stored by SHA-256 hash, so a file uploaded twice is stored once
 - Behind one storage interface: a local volume in phase 1A, S3-compatible storage later without changing callers
 - Configurable size limit per file, 50 MB by default. Pages over 5 MB of text stay normal, editable pages but show a warning that they may be slow. Only above a configurable safety ceiling (50 MB by default, protecting the server) is an imported note stored as an attachment instead, and flagged in the import report
-- A daily job finds files that no page refers to and deletes them after a 30-day grace period
+- A daily job finds files that no page refers to and deletes them after a 30-day grace period. Not in 1.14: it needs the ids each page's content holds, which compaction will extract next to the plain text, so it gets a run of its own after the trial starts
+- An attachment belongs to the page it was uploaded to: whoever may read that page may read the file, wherever its id is shown. Copying it into another page copies only the id, so there it shows only to people who can read the first page, and it breaks when that page is deleted for good. Neither can happen in phase 1A (one person, and pages only go to the trash). Before pages are deleted for good (trash retention) or shared (run 2.2), a paste into another page must give the copy a row of its own on that page, pointing at the same stored file
 - Per-user quotas and storage reports arrive with multi-user in phase 2
 
 ### Joplin import mapping

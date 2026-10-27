@@ -43,6 +43,15 @@ public class PermissionServiceTests(PostgresFixture postgres) : DatabaseTestBase
         return page;
     }
 
+    private async Task<Attachment> AddAttachmentAsync(Page page)
+    {
+        await using var db = CreateContext();
+        var attachment = new Attachment { PageId = page.Id, FileName = "a.png", ContentType = "image/png", Size = 1, Sha256 = new string('a', 64), CreatedAt = Now };
+        db.Attachments.Add(attachment);
+        await db.SaveChangesAsync();
+        return attachment;
+    }
+
     private PermissionService CreateService(InkpactDbContext db) => new(db);
 
     [Fact]
@@ -133,16 +142,83 @@ public class PermissionServiceTests(PostgresFixture postgres) : DatabaseTestBase
     }
 
     [Fact]
+    public async Task An_attachment_has_the_role_of_its_page()
+    {
+        var owner = await AddUserAsync("owner@example.com");
+        var editor = await AddUserAsync("editor@example.com");
+        var viewer = await AddUserAsync("viewer@example.com");
+        var stranger = await AddUserAsync("stranger@example.com");
+        var workspace = await AddWorkspaceAsync(owner, (editor, WorkspaceRole.Editor), (viewer, WorkspaceRole.Viewer));
+        var attachment = await AddAttachmentAsync(await AddPageAsync(workspace));
+        await using var db = CreateContext();
+        var permissions = CreateService(db);
+
+        (await permissions.GetAttachmentRoleAsync(owner.Id, attachment.Id)).ShouldBe(WorkspaceRole.Owner);
+        (await permissions.GetAttachmentRoleAsync(editor.Id, attachment.Id)).ShouldBe(WorkspaceRole.Editor);
+        (await permissions.GetAttachmentRoleAsync(viewer.Id, attachment.Id)).ShouldBe(WorkspaceRole.Viewer);
+        (await permissions.GetAttachmentRoleAsync(stranger.Id, attachment.Id)).ShouldBe(WorkspaceRole.None);
+    }
+
+    [Fact]
+    public async Task An_attachment_follows_its_page_into_another_workspace()
+    {
+        // Moving pages between workspaces arrives with phase 2; the role must follow the page, not the upload.
+        var jos = await AddUserAsync("jos@example.com");
+        var anna = await AddUserAsync("anna@example.com");
+        var mine = await AddWorkspaceAsync(jos);
+        var hers = await AddWorkspaceAsync(anna);
+        var page = await AddPageAsync(mine);
+        var attachment = await AddAttachmentAsync(page);
+        await using (var db = CreateContext())
+        {
+            await db.Pages.Where(p => p.Id == page.Id).ExecuteUpdateAsync(set => set.SetProperty(p => p.WorkspaceId, hers.Id));
+        }
+
+        await using var next = CreateContext();
+        (await CreateService(next).GetAttachmentRoleAsync(jos.Id, attachment.Id)).ShouldBe(WorkspaceRole.None);
+        (await CreateService(next).GetAttachmentRoleAsync(anna.Id, attachment.Id)).ShouldBe(WorkspaceRole.Owner);
+    }
+
+    [Fact]
+    public async Task An_attachment_that_does_not_exist_gives_no_role()
+    {
+        var owner = await AddUserAsync("owner@example.com");
+        await using var db = CreateContext();
+
+        (await CreateService(db).GetAttachmentRoleAsync(owner.Id, Guid.NewGuid())).ShouldBe(WorkspaceRole.None);
+    }
+
+    [Fact]
+    public async Task An_attachment_goes_with_its_page_and_outlives_its_uploader()
+    {
+        var owner = await AddUserAsync("owner@example.com");
+        var uploader = await AddUserAsync("uploader@example.com");
+        var page = await AddPageAsync(await AddWorkspaceAsync(owner, (uploader, WorkspaceRole.Editor)));
+        await using var db = CreateContext();
+        var attachment = new Attachment { PageId = page.Id, FileName = "a.png", ContentType = "image/png", Size = 1, Sha256 = new string('b', 64), CreatedAt = Now, CreatedBy = uploader.Id };
+        db.Attachments.Add(attachment);
+        await db.SaveChangesAsync();
+
+        await db.Users.Where(u => u.Id == uploader.Id).ExecuteDeleteAsync();
+        (await db.Attachments.AsNoTracking().SingleAsync()).CreatedBy.ShouldBeNull();
+
+        await db.Pages.Where(p => p.Id == page.Id).ExecuteDeleteAsync();
+        (await db.Attachments.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
     public async Task Answers_are_remembered_for_the_rest_of_the_request()
     {
         var owner = await AddUserAsync("owner@example.com");
         var member = await AddUserAsync("member@example.com");
         var workspace = await AddWorkspaceAsync(owner, (member, WorkspaceRole.Editor));
         var page = await AddPageAsync(workspace);
+        var attachment = await AddAttachmentAsync(page);
         await using var db = CreateContext();
         var permissions = CreateService(db);
         (await permissions.GetWorkspaceRoleAsync(member.Id, workspace.Id)).ShouldBe(WorkspaceRole.Editor);
         (await permissions.GetPageRoleAsync(member.Id, page.Id)).ShouldBe(WorkspaceRole.Editor);
+        (await permissions.GetAttachmentRoleAsync(member.Id, attachment.Id)).ShouldBe(WorkspaceRole.Editor);
 
         await using (var other = CreateContext())
         {
@@ -152,11 +228,13 @@ public class PermissionServiceTests(PostgresFixture postgres) : DatabaseTestBase
         // Same request, same answer: one query is enough however often the endpoint asks.
         (await permissions.GetWorkspaceRoleAsync(member.Id, workspace.Id)).ShouldBe(WorkspaceRole.Editor);
         (await permissions.GetPageRoleAsync(member.Id, page.Id)).ShouldBe(WorkspaceRole.Editor);
+        (await permissions.GetAttachmentRoleAsync(member.Id, attachment.Id)).ShouldBe(WorkspaceRole.Editor);
 
         // The next request starts fresh and sees that the access is gone.
         await using var nextRequest = CreateContext();
         (await CreateService(nextRequest).GetWorkspaceRoleAsync(member.Id, workspace.Id)).ShouldBe(WorkspaceRole.None);
         (await CreateService(nextRequest).GetPageRoleAsync(member.Id, page.Id)).ShouldBe(WorkspaceRole.None);
+        (await CreateService(nextRequest).GetAttachmentRoleAsync(member.Id, attachment.Id)).ShouldBe(WorkspaceRole.None);
     }
 
     [Fact]

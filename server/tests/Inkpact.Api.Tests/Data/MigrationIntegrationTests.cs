@@ -86,7 +86,7 @@ public class MigrationIntegrationTests(PostgresFixture postgres)
             list.Add(reader.GetString(1));
         }
 
-        columns.Keys.Where(t => t != "__EFMigrationsHistory").Order().ShouldBe(["audit_events", "login_throttles", "page_snapshots", "page_updates", "page_updates_archive", "pages", "sessions", "users", "workspace_members", "workspaces"]);
+        columns.Keys.Where(t => t != "__EFMigrationsHistory").Order().ShouldBe(["attachments", "audit_events", "login_throttles", "page_snapshots", "page_updates", "page_updates_archive", "pages", "sessions", "users", "workspace_members", "workspaces"]);
         columns["users"].ShouldBe(["id", "email", "normalized_email", "display_name", "password_hash", "oidc_subject", "created_at", "is_admin"]);
         columns["workspaces"].ShouldBe(["id", "name", "owner_id", "created_at", "tree_version"]);
         columns["workspace_members"].ShouldBe(["workspace_id", "user_id", "role", "created_at"]);
@@ -95,6 +95,7 @@ public class MigrationIntegrationTests(PostgresFixture postgres)
         columns["sessions"].ShouldBe(["id", "user_id", "ticket", "created_at", "last_seen_at", "expires_at", "user_agent"]);
         columns["page_updates"].ShouldBe(["seq", "page_id", "data", "user_id", "created_at"]);
         columns["page_updates_archive"].ShouldBe(["seq", "page_id", "data", "user_id", "created_at", "archived_at"]);
+        columns["attachments"].ShouldBe(["id", "page_id", "file_name", "content_type", "size", "sha256", "created_at", "created_by"]);
         columns["page_snapshots"].ShouldBe(["page_id", "state", "state_vector", "watermark", "version", "update_count", "history_complete", "updated_at"]);
         columns["pages"].ShouldBe(
         [

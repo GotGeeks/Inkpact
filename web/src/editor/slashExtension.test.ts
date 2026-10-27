@@ -32,7 +32,7 @@ describe('the slash menu', () => {
     await typed(editor, '/')
     expect(state.open).toBe(true)
     expect(state.query).toBe('')
-    expect(state.items).toHaveLength(11)
+    expect(state.items).toHaveLength(13)
   })
 
   it('opens after a space', async () => {

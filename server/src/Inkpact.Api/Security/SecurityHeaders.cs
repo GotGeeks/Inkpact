@@ -16,6 +16,13 @@ public static class SecurityHeaders
         + "connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; "
         + "form-action 'self'; frame-ancestors 'none'";
 
+    /// <summary>
+    /// For a file someone uploaded, opened on its own: a sandboxed document that may load nothing and run nothing,
+    /// whatever the file turns out to be. The inline style is what the browser's own image viewer uses.
+    /// </summary>
+    public const string UserFileContentSecurityPolicy =
+        "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none'; sandbox";
+
     public const string PermissionsPolicy =
         "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), "
         + "magnetometer=(), gyroscope=(), accelerometer=(), browsing-topics=()";
@@ -26,7 +33,7 @@ public static class SecurityHeaders
             context.Response.OnStarting(() =>
             {
                 var headers = context.Response.Headers;
-                headers["Content-Security-Policy"] = ContentSecurityPolicy;
+                headers["Content-Security-Policy"] = context.ServesUserFile() ? UserFileContentSecurityPolicy : ContentSecurityPolicy;
                 headers["X-Content-Type-Options"] = "nosniff";
                 headers["Referrer-Policy"] = "no-referrer";
                 headers["Permissions-Policy"] = PermissionsPolicy;

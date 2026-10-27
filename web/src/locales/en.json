@@ -53,7 +53,10 @@
     "position_invalid": "That place is no longer valid. The pages have been refreshed.",
     "move_cycle": "A page cannot be moved below itself.",
     "page_in_trash": "That page is in the trash. Restore it first.",
-    "restore_the_parent": "Restore the page above it first."
+    "restore_the_parent": "Restore the page above it first.",
+    "attachment_too_large": "That file is too large to add.",
+    "attachment_empty": "That file is empty.",
+    "attachment_not_added": "Some files could not be added: the page closed, became read-only, or the place for them was deleted."
   },
   "shell": {
     "sidebar": "Navigation",
@@ -161,6 +164,16 @@
         "label": "Divider",
         "description": "A horizontal line",
         "keywords": "line rule separator hr"
+      },
+      "image": {
+        "label": "Image",
+        "description": "A picture from your device",
+        "keywords": "picture photo img upload"
+      },
+      "file": {
+        "label": "File",
+        "description": "Attach a file from your device",
+        "keywords": "attachment upload pdf document"
       }
     },
     "slash": {
@@ -179,7 +192,8 @@
       "bold": "Bold",
       "italic": "Italic",
       "code": "Code",
-      "insert": "Insert a block"
+      "insert": "Insert a block",
+      "image": "Add an image"
     },
     "handle": {
       "label": "Block options",
@@ -200,7 +214,11 @@
       "deleteTable": "Delete table"
     },
     "movedUp": "Block moved up",
-    "movedDown": "Block moved down"
+    "movedDown": "Block moved down",
+    "attachment": {
+      "uploading": "Adding {count} file… | Adding {count} files…",
+      "download": "Download {name}, {size}"
+    }
   },
   "title": {
     "label": "Title"

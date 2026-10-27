@@ -89,7 +89,7 @@ test('the slash menu works with the mouse, filters, and closes with Escape and a
 
   await page.keyboard.type('/')
   await expect(slashMenu(page)).toBeVisible()
-  await expect(page.getByRole('option')).toHaveCount(11)
+  await expect(page.getByRole('option')).toHaveCount(13)
   await page.getByRole('option', { name: /^Heading 2/ }).click()
   await expect(body.locator('h2')).toHaveCount(1)
   // The focus stayed in the editor: typing goes into the heading.

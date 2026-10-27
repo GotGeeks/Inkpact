@@ -85,6 +85,16 @@ public class SecurityHeadersTests(PostgresFixture postgres) : IAsyncLifetime
     }
 
     [Fact]
+    public void The_policy_for_uploaded_files_lets_them_load_and_run_nothing()
+    {
+        // Pinned in full like the app's own. An uploaded file opened on its own is a sandboxed document.
+        SecurityHeaders.UserFileContentSecurityPolicy.ShouldBe(
+            "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none'; sandbox");
+        SecurityHeaders.UserFileContentSecurityPolicy.ShouldNotContain("script-src");
+        SecurityHeaders.UserFileContentSecurityPolicy.ShouldNotContain("allow-");
+    }
+
+    [Fact]
     public async Task An_unhandled_exception_still_gets_the_headers()
     {
         // The same order as Program.cs: headers first, then the exception handler, then the failing endpoint.

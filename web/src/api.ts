@@ -25,8 +25,12 @@ export function setCsrfToken(token: string | null | undefined) {
 type Method = 'GET' | 'POST' | 'PATCH'
 
 async function send(method: Method, path: string, body: unknown): Promise<Response> {
+  // A file is sent as it is, for the one endpoint that takes one (an attachment upload); everything else is JSON.
+  const file = body instanceof Blob ? body : undefined
   const headers: Record<string, string> =
-    method === 'GET' ? { Accept: 'application/json' } : { 'Content-Type': 'application/json' }
+    method === 'GET'
+      ? { Accept: 'application/json' }
+      : { 'Content-Type': file ? 'application/octet-stream' : 'application/json' }
   if (method !== 'GET' && csrfToken) headers[csrfHeader] = csrfToken
 
   try {
@@ -34,7 +38,7 @@ async function send(method: Method, path: string, body: unknown): Promise<Respon
       method,
       credentials: 'same-origin',
       headers,
-      body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
+      body: method === 'GET' ? undefined : (file ?? JSON.stringify(body ?? {})),
     })
   } catch {
     throw new ApiError(0, 'network_error')
@@ -83,4 +87,9 @@ export async function api<T = void>(method: Method, path: string, body?: unknown
   }
 
   throw await toError(response)
+}
+
+/** Posts a file as the raw body, with the CSRF token and its one retry, like {@link api}. Answers with JSON. */
+export function uploadFile<T>(path: string, file: Blob): Promise<T> {
+  return api<T>('POST', path, file)
 }

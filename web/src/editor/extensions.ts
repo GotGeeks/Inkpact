@@ -6,6 +6,8 @@ import { Placeholder } from '@tiptap/extensions'
 import { mergeAttributes, type Extensions } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import type * as Y from 'yjs'
+import { AttachmentFile, AttachmentImage, type AttachmentFileOptions } from './attachmentNodes'
+import { AttachmentUpload, type AttachmentUploadOptions } from './attachmentUpload'
 import { FIELD } from './firstParagraph'
 import { createMoveBlockExtension } from './blockActions'
 import type { Translate } from './blockCommands'
@@ -33,6 +35,10 @@ export interface EditorExtensionsOptions {
   onBlockMoved?: (direction: -1 | 1) => void
   /** The handle next to a block: the element it moves along the page, and which block the mouse is over. */
   dragHandle?: { element: HTMLElement; onHover: (pos: number) => void }
+  /** How a file in the text reads. */
+  files?: AttachmentFileOptions
+  /** Adding files from the picker, a paste or a drop; without it (a read-only page, most tests) there is no way in. */
+  upload?: AttachmentUploadOptions
 }
 
 export function createExtensions({
@@ -42,6 +48,8 @@ export function createExtensions({
   slash,
   onBlockMoved = () => {},
   dragHandle,
+  files,
+  upload,
 }: EditorExtensionsOptions): Extensions {
   return [
     StarterKit.configure({
@@ -69,6 +77,10 @@ export function createExtensions({
     TableRow,
     TableHeader,
     TableCell,
+    // In every editor, so every client's schema knows them; only adding files needs `upload`.
+    AttachmentImage,
+    files ? AttachmentFile.configure(files) : AttachmentFile,
+    ...(upload ? [AttachmentUpload.configure(upload)] : []),
     Placeholder.configure({ placeholder }),
     createMoveBlockExtension({ onMoved: onBlockMoved }),
     ...(dragHandle

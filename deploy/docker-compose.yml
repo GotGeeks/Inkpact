@@ -14,10 +14,13 @@ services:
       Auth__SetupCode: ${AUTH_SETUP_CODE:?Set AUTH_SETUP_CODE in .env}
       # Behind a reverse proxy outside the private ranges (10/8, 172.16/12, 192.168/16), list its address here.
       # Network__TrustedProxies__0: 203.0.113.10
+      # The largest file that can be added to a page, in bytes (default 50 MB).
+      # Attachments__MaxFileSize: 52428800
     ports:
       - '${INKPACT_PORT:-8080}:8080'
     volumes:
-      # Data Protection keys (signing in survives a restart) and the database backup written before a migration.
+      # Attachments, Data Protection keys (signing in survives a restart) and the database backup written before a
+      # migration.
       - inkpact-data:/data
     # Hardening: nothing is written outside /data and /tmp, no extra privileges.
     read_only: true

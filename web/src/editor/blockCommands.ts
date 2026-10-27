@@ -17,6 +17,8 @@ export interface BlockCommand {
   keywords: (t: Translate) => string
   /** Makes the block at the caret, after removing `range` (what was typed to find it) when there is one. */
   run: (editor: Editor, range?: Range) => void
+  /** Adds something new rather than changing the block, so it is not offered under "Turn into". */
+  insertOnly?: boolean
 }
 
 /** The chain every command starts with: focused, and the typed `/query` gone. */
@@ -130,7 +132,34 @@ export const blockCommands: readonly BlockCommand[] = [
     keywords: (t) => t('editor.blocks.divider.keywords'),
     run: (editor, range) => void begin(editor, range).setHorizontalRule().run(),
   },
+  {
+    id: 'image',
+    category: 'blocks',
+    icon: 'image',
+    label: (t) => t('editor.blocks.image.label'),
+    description: (t) => t('editor.blocks.image.description'),
+    keywords: (t) => t('editor.blocks.image.keywords'),
+    run: (editor, range) => pickFiles(editor, range, 'image'),
+    insertOnly: true,
+  },
+  {
+    id: 'file',
+    category: 'blocks',
+    icon: 'file',
+    label: (t) => t('editor.blocks.file.label'),
+    description: (t) => t('editor.blocks.file.description'),
+    keywords: (t) => t('editor.blocks.file.keywords'),
+    run: (editor, range) => pickFiles(editor, range, 'file'),
+    insertOnly: true,
+  },
 ]
+
+/** Opens the file picker; the file goes in once it is uploaded. Nothing happens in an editor that cannot upload. */
+function pickFiles(editor: Editor, range: Range | undefined, kind: 'image' | 'file') {
+  begin(editor, range).run()
+  const commands: Partial<Editor['commands']> = editor.commands
+  commands.pickFiles?.(kind)
+}
 
 /** Compares without case and accents: "kop" finds "Kop", "tekst" finds "Téxt". */
 const collator = new Intl.Collator(undefined, { sensitivity: 'base' })

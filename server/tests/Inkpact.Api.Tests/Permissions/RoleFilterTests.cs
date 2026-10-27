@@ -27,6 +27,7 @@ public sealed class RoleFilterTests : IAsyncLifetime
     private static readonly Guid User = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid Workspace = Guid.Parse("22222222-2222-2222-2222-222222222222");
     private static readonly Guid Page = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    private static readonly Guid Attachment = Guid.Parse("44444444-4444-4444-4444-444444444444");
 
     private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private IHost _host = null!;
@@ -56,6 +57,7 @@ public sealed class RoleFilterTests : IAsyncLifetime
                         endpoints.MapGet("/w/{workspaceId}/editor", (string workspaceId) => "ok").RequireWorkspaceRole(WorkspaceRole.Editor);
                         endpoints.MapGet("/w/{workspaceId}/owner", (string workspaceId) => "ok").RequireWorkspaceRole(WorkspaceRole.Owner);
                         endpoints.MapGet("/p/{pageId}/editor", (string pageId) => "ok").RequirePageRole(WorkspaceRole.Editor);
+                        endpoints.MapGet("/a/{attachmentId}/viewer", (string attachmentId) => "ok").RequireAttachmentRole(WorkspaceRole.Viewer);
                         endpoints.MapGet("/admin", () => "ok").RequireAuthorization(Policies.Admin);
                         endpoints.MapGet("/me", () => "ok").RequireAuthorization(Policies.SignedIn);
                     });
@@ -86,6 +88,7 @@ public sealed class RoleFilterTests : IAsyncLifetime
     {
         _permissions.GetWorkspaceRoleAsync(User, Workspace, Arg.Any<CancellationToken>()).Returns(role);
         _permissions.GetPageRoleAsync(User, Page, Arg.Any<CancellationToken>()).Returns(role);
+        _permissions.GetAttachmentRoleAsync(User, Attachment, Arg.Any<CancellationToken>()).Returns(role);
     }
 
     [Theory]
@@ -124,6 +127,18 @@ public sealed class RoleFilterTests : IAsyncLifetime
         GiveRole(role);
 
         (await GetAsync($"/p/{Page}/editor")).StatusCode.ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData(WorkspaceRole.Viewer, HttpStatusCode.OK)]
+    [InlineData(WorkspaceRole.Editor, HttpStatusCode.OK)]
+    [InlineData(WorkspaceRole.None, HttpStatusCode.NotFound)]
+    public async Task An_attachment_endpoint_uses_the_role_on_the_attachment(WorkspaceRole role, HttpStatusCode expected)
+    {
+        GiveRole(role);
+
+        (await GetAsync($"/a/{Attachment}/viewer")).StatusCode.ShouldBe(expected);
+        await _permissions.DidNotReceiveWithAnyArgs().GetPageRoleAsync(default, default, default);
     }
 
     [Theory]

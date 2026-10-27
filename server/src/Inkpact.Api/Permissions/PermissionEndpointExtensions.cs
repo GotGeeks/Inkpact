@@ -11,6 +11,7 @@ public enum RoleScope
 {
     Workspace,
     Page,
+    Attachment,
 }
 
 public static class PermissionEndpointExtensions
@@ -22,6 +23,10 @@ public static class PermissionEndpointExtensions
     /// <summary>Signed in, and at least this role on the page whose id is in the route.</summary>
     public static RouteHandlerBuilder RequirePageRole(this RouteHandlerBuilder builder, WorkspaceRole minimum, string routeParameter = "pageId") =>
         builder.RequireRole(new RoleRequirement(RoleScope.Page, minimum, routeParameter));
+
+    /// <summary>Signed in, and at least this role on the page the attachment whose id is in the route belongs to.</summary>
+    public static RouteHandlerBuilder RequireAttachmentRole(this RouteHandlerBuilder builder, WorkspaceRole minimum, string routeParameter = "attachmentId") =>
+        builder.RequireRole(new RoleRequirement(RoleScope.Attachment, minimum, routeParameter));
 
     private static RouteHandlerBuilder RequireRole(this RouteHandlerBuilder builder, RoleRequirement requirement) =>
         builder
@@ -38,9 +43,13 @@ public static class PermissionEndpointExtensions
                 }
 
                 var permissions = http.RequestServices.GetRequiredService<IPermissionService>();
-                var role = requirement.Scope == RoleScope.Workspace
-                    ? await permissions.GetWorkspaceRoleAsync(userId, id, http.RequestAborted)
-                    : await permissions.GetPageRoleAsync(userId, id, http.RequestAborted);
+                var role = requirement.Scope switch
+                {
+                    RoleScope.Workspace => await permissions.GetWorkspaceRoleAsync(userId, id, http.RequestAborted),
+                    RoleScope.Page => await permissions.GetPageRoleAsync(userId, id, http.RequestAborted),
+                    RoleScope.Attachment => await permissions.GetAttachmentRoleAsync(userId, id, http.RequestAborted),
+                    _ => WorkspaceRole.None,
+                };
 
                 // No access at all: 404, so the existence of other people's data does not leak.
                 // Some access, but not enough: 403.

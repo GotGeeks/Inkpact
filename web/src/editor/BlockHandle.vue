@@ -52,6 +52,8 @@ function run(action: (block: BlockRange) => void) {
   props.editor.commands.focus()
 }
 
+const turnIntoCommands = blockCommands.filter((command) => !command.insertOnly)
+
 function turnInto(command: BlockCommand) {
   run((block) => {
     selectBlock(props.editor, block)
@@ -104,7 +106,7 @@ const panel =
             <DropdownMenuPortal>
               <DropdownMenuSubContent :class="panel" :side-offset="4">
                 <DropdownMenuItem
-                  v-for="command in blockCommands"
+                  v-for="command in turnIntoCommands"
                   :key="command.id"
                   :class="[item, 'gap-space-md']"
                   @select="turnInto(command)"
