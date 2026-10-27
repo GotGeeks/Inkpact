@@ -18,6 +18,11 @@ updates:
   # The base images in the Dockerfile are pinned by tag and digest; this moves them.
   - package-ecosystem: docker
     directory: /
+    # Node stays on 24, the version in `engines`, CI and the sidecar. The images from 25 on no longer ship Corepack,
+    # which the Dockerfile uses for pnpm. Patch and minor updates still come; a new major is a deliberate change.
+    ignore:
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
     schedule:
       interval: weekly
       day: monday
