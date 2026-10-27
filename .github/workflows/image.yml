@@ -1,8 +1,8 @@
 name: Image
 
 # The container image: built, checked and scanned for a change that can affect it, and published as `edge` to GHCR on
-# every merge to main. A pull request builds and scans only; the Playwright run against the container, like the slow
-# suites in ci.yml, runs on main and on request. Release tags, signing and attestations come with the release pipeline.
+# every merge to main. A pull request builds and scans only. No Playwright here: it is too slow on GitHub, so the suite
+# against the container is run locally (see CONTRIBUTING). Release tags, signing and attestations come with the release pipeline.
 on:
   pull_request:
     paths:
@@ -65,59 +65,6 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
           trivyignores: .trivyignore
-
-      # The whole Playwright suite against the container, started from the compose file users run (plus the
-      # override that raises the sign-in limit), so the packaged app is the one the tests exercise.
-      - uses: ./.github/actions/setup-web
-        if: github.event_name != 'pull_request'
-
-      - name: Cache the Playwright browsers
-        if: github.event_name != 'pull_request'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
-      - name: Install the browsers
-        if: github.event_name != 'pull_request'
-        timeout-minutes: 5
-        run: pnpm --filter web e2e:install
-
-      - name: Start the container
-        if: github.event_name != 'pull_request'
-        working-directory: deploy
-        env:
-          INKPACT_IMAGE: ${{ env.LOCAL_IMAGE }}
-          INKPACT_PORT: '8080'
-          POSTGRES_PASSWORD: ci
-          AUTH_SETUP_CODE: E2ESETUP
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --wait
-
-      - name: End-to-end tests against the container
-        if: github.event_name != 'pull_request'
-        working-directory: web
-        env:
-          E2E_BASE_URL: http://127.0.0.1:8080
-        run: pnpm exec playwright test
-
-      - name: Container logs
-        if: failure() && github.event_name != 'pull_request'
-        working-directory: deploy
-        env:
-          INKPACT_IMAGE: ${{ env.LOCAL_IMAGE }}
-          POSTGRES_PASSWORD: ci
-          AUTH_SETUP_CODE: E2ESETUP
-        run: docker compose logs --no-color
-
-      - name: Upload the report
-        if: failure() && github.event_name != 'pull_request'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: playwright-report-image
-          path: |
-            web/playwright-report
-            web/test-results
-          retention-days: 7
 
   publish:
     name: publish
