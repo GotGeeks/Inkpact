@@ -10,6 +10,7 @@ using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Npgsql;
 using Xunit.Abstractions;
 
 namespace Inkpact.Api.Tests.Import;
@@ -42,6 +43,9 @@ public sealed class ImportRunnerTests(PostgresFixture postgres, ITestOutputHelpe
         {
             await YjsSidecars.StopAsync(_sidecar);
         }
+
+        // The pool of this test's database would otherwise stay open on the shared server.
+        NpgsqlConnection.ClearAllPools();
     }
 
     /// <summary>Starts the app on its own database, with the real sidecar (or a codec that wraps it), and a signed-in owner.</summary>
@@ -54,7 +58,7 @@ public sealed class ImportRunnerTests(PostgresFixture postgres, ITestOutputHelpe
             codec = wrapCodec(_sidecar);
         }
 
-        _factory = new InkpactFactory(await postgres.CreateDatabaseAsync(), sidecar: codec is null, codec: codec, settings: settings);
+        _factory = new InkpactFactory(await postgres.CreateDatabaseAsync(pooled: true), sidecar: codec is null, codec: codec, settings: settings);
         await _factory.SignedInClientAsync();
         if (codec is null)
         {
@@ -510,6 +514,7 @@ public sealed class ImportRunnerTests(PostgresFixture postgres, ITestOutputHelpe
 
         output.WriteLine($"1,000 notes and 20 notebooks: {clock.Elapsed.TotalSeconds:0.0} s");
         import.State.ShouldBe(ImportStates.Completed);
+        CountsOf(import).Failed.ShouldBe(0, import.Report);
         CountsOf(import).Notes.ShouldBe(1000);
         clock.Elapsed.ShouldBeLessThan(TimeSpan.FromMinutes(3));
         (await UseDbAsync(db => db.PageUpdates.CountAsync())).ShouldBe(1000);

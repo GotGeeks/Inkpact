@@ -13,6 +13,7 @@ using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Npgsql;
 
 namespace Inkpact.Api.Tests.Import;
 
@@ -26,11 +27,17 @@ public sealed class ImportEndpointTests(PostgresFixture postgres) : IAsyncLifeti
 
     public Task InitializeAsync() => StartAsync();
 
-    public async Task DisposeAsync() => await _factory.DisposeAsync();
+    public async Task DisposeAsync()
+    {
+        await _factory.DisposeAsync();
+
+        // The pool of this test's database would otherwise stay open on the shared server.
+        NpgsqlConnection.ClearAllPools();
+    }
 
     private async Task StartAsync(Dictionary<string, string>? settings = null)
     {
-        _factory = new InkpactFactory(await postgres.CreateDatabaseAsync(), sidecar: true, settings: settings);
+        _factory = new InkpactFactory(await postgres.CreateDatabaseAsync(pooled: true), sidecar: true, settings: settings);
         _owner = await _factory.SignedInClientAsync();
         await _factory.Services.GetRequiredService<YjsSidecar>().WaitUntilReadyAsync(new CancellationTokenSource(YjsSidecars.StartTimeout).Token);
         (_workspaceId, _ownerId) = await UseDbAsync(async db => (await db.Workspaces.Select(w => w.Id).SingleAsync(), await db.Users.Select(u => u.Id).SingleAsync()));
