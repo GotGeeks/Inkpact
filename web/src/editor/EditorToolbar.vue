@@ -96,6 +96,12 @@ const buttons = computed<ToolbarButton[]>(() => {
       pressed: editor.isActive('code'),
       run: () => void chain().toggleCode().run(),
     },
+    {
+      id: 'image',
+      icon: 'image',
+      label: t('editor.toolbar.image'),
+      run: () => command('image').run(editor),
+    },
     { id: 'insert', icon: 'slash', label: t('editor.toolbar.insert'), run: openSlashMenu },
   ]
 })

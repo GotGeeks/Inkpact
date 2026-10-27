@@ -1,4 +1,5 @@
 import createDOMPurify from 'dompurify'
+import { isAttachmentId } from './attachmentNodes'
 import { isAllowedLink } from './links'
 
 /**
@@ -42,6 +43,8 @@ const ALLOWED_TAGS = [
   // Task items: the editor writes a label with a checkbox.
   'label',
   'input',
+  // Attachments, when copied from one page to another: only by their id (see the hook below).
+  'img',
 ]
 
 const ALLOWED_ATTR = [
@@ -55,6 +58,11 @@ const ALLOWED_ATTR = [
   'checked',
   // Only for the marks: ProseMirror reads it while parsing and drops it. See the hook below.
   'style',
+  // An attachment is its id; its name and size travel with a file, a description with an image.
+  'data-attachment-id',
+  'data-file-name',
+  'data-size',
+  'alt',
 ]
 
 /** Elements whose `style` says something the marks need (Google Docs wraps a whole paste in `<b style="font-weight:normal">`). */
@@ -74,6 +82,15 @@ function instance() {
     // attributes like `start` and `colspan`, because it applies the same rule to them.)
     if (node.tagName === 'A' && !isAllowedLink(node.getAttribute('href')))
       node.removeAttribute('href')
+    // An image is only ever one of the app's attachments: one from another site is not ours to load (and the policy
+    // would block it). There is no `src` on the list; the editor makes the address from the id.
+    if (node.tagName === 'IMG' && !isAttachmentId(node.getAttribute('data-attachment-id')))
+      node.remove()
+    if (
+      node.hasAttribute('data-attachment-id') &&
+      !isAttachmentId(node.getAttribute('data-attachment-id'))
+    )
+      node.removeAttribute('data-attachment-id')
   })
   purifier = purify
   return purify

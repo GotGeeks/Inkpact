@@ -26,6 +26,7 @@ const database =
   process.env.E2E_DATABASE ??
   `Host=127.0.0.1;Port=5432;Database=inkpact_e2e_${process.env.E2E_RUN_ID};Username=postgres;Password=postgres`
 const keysDirectory = join(tmpdir(), `inkpact-e2e-keys-${process.env.E2E_RUN_ID}`)
+const attachmentsDirectory = join(tmpdir(), `inkpact-e2e-attachments-${process.env.E2E_RUN_ID}`)
 
 const repoRoot = resolve(import.meta.dirname, '..')
 const serverOutput = resolve(repoRoot, 'server/src/Inkpact.Api/bin/e2e')
@@ -119,6 +120,7 @@ export default defineConfig({
           // The lockout per email stays at its real value: one spec locks an address on purpose.
           Auth__Throttle__PerAddressPerMinute: '600',
           DataProtection__KeysDirectory: keysDirectory,
+          Attachments__Directory: attachmentsDirectory,
           Sidecar__ScriptPath: sidecarScript,
         },
       },

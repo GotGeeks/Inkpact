@@ -62,6 +62,12 @@ export function useErrorMessage() {
         return t('errors.restore_the_parent')
       case 'too_many_pages':
         return t('errors.too_many_pages')
+      case 'attachment_too_large':
+        return t('errors.attachment_too_large')
+      case 'attachment_empty':
+        return t('errors.attachment_empty')
+      case 'attachment_not_added':
+        return t('errors.attachment_not_added')
       case 'csrf_invalid':
         return t('errors.csrf_invalid')
       case 'network_error':

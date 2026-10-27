@@ -52,7 +52,7 @@ describe('SlashMenu', () => {
     expect(menu()).not.toBeNull()
     const listbox = document.querySelector('[role="listbox"]')!
     expect(listbox.getAttribute('aria-label')).toBe('Insert a block')
-    expect(options()).toHaveLength(11)
+    expect(options()).toHaveLength(13)
     expect(options()[0]!.textContent).toContain('Text')
     expect(options()[0]!.getAttribute('aria-selected')).toBe('true')
     expect(options()[1]!.getAttribute('aria-selected')).toBe('false')

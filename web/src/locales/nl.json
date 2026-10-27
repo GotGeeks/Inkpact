@@ -53,7 +53,10 @@
     "position_invalid": "Die plek is niet meer geldig. De pagina’s zijn vernieuwd.",
     "move_cycle": "Een pagina kan niet onder zichzelf worden verplaatst.",
     "page_in_trash": "Die pagina staat in de prullenbak. Zet hem eerst terug.",
-    "restore_the_parent": "Zet eerst de pagina erboven terug."
+    "restore_the_parent": "Zet eerst de pagina erboven terug.",
+    "attachment_too_large": "Dat bestand is te groot om toe te voegen.",
+    "attachment_empty": "Dat bestand is leeg.",
+    "attachment_not_added": "Sommige bestanden zijn niet toegevoegd: de pagina is gesloten, alleen-lezen geworden, of de plek ervoor is verwijderd."
   },
   "shell": {
     "sidebar": "Navigatie",
@@ -161,6 +164,16 @@
         "label": "Scheidingslijn",
         "description": "Een horizontale lijn",
         "keywords": "lijn streep scheiding"
+      },
+      "image": {
+        "label": "Afbeelding",
+        "description": "Een afbeelding van je apparaat",
+        "keywords": "plaatje foto img uploaden"
+      },
+      "file": {
+        "label": "Bestand",
+        "description": "Een bestand van je apparaat toevoegen",
+        "keywords": "bijlage uploaden pdf document"
       }
     },
     "slash": {
@@ -179,7 +192,8 @@
       "bold": "Vet",
       "italic": "Cursief",
       "code": "Code",
-      "insert": "Een blok invoegen"
+      "insert": "Een blok invoegen",
+      "image": "Afbeelding toevoegen"
     },
     "handle": {
       "label": "Blokopties",
@@ -200,7 +214,11 @@
       "deleteTable": "Tabel verwijderen"
     },
     "movedUp": "Blok omhoog verplaatst",
-    "movedDown": "Blok omlaag verplaatst"
+    "movedDown": "Blok omlaag verplaatst",
+    "attachment": {
+      "uploading": "{count} bestand toevoegen… | {count} bestanden toevoegen…",
+      "download": "{name} downloaden, {size}"
+    }
   },
   "title": {
     "label": "Titel"

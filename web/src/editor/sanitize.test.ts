@@ -45,6 +45,57 @@ describe('sanitizePastedHtml', () => {
     expect(result.textContent).toContain('a')
   })
 
+  describe('attachments', () => {
+    const id = '01a17c5f-59ca-7a6b-ab64-550260ea03b6'
+    const clean = (html: string) => {
+      const result = document.createElement('div')
+      result.innerHTML = sanitizePastedHtml(html)
+      return result
+    }
+
+    it('keeps an image of the app by its id, and never its address', () => {
+      const image = clean(
+        `<img data-attachment-id="${id}" src="https://evil.example/x.png" alt="A cat">`,
+      ).querySelector('img')!
+
+      expect(image.getAttribute('data-attachment-id')).toBe(id)
+      expect(image.getAttribute('alt')).toBe('A cat')
+      expect(image.hasAttribute('src')).toBe(false)
+    })
+
+    it.each([
+      '<img src="/api/attachments/01a17c5f-59ca-7a6b-ab64-550260ea03b6">',
+      '<img data-attachment-id="../../api/auth/logout" src="x">',
+      '<img data-attachment-id="" src="x">',
+    ])('removes an image that is not one of the app: %s', (html) => {
+      expect(clean(html).querySelector('img')).toBeNull()
+    })
+
+    it('keeps a file by its id, name and size, without an address', () => {
+      const link = clean(
+        `<a data-attachment-id="${id}" data-file-name="manual.pdf" data-size="12" href="/api/attachments/${id}">manual.pdf</a>`,
+      ).querySelector('a')!
+
+      expect(link.getAttribute('data-attachment-id')).toBe(id)
+      expect(link.getAttribute('data-file-name')).toBe('manual.pdf')
+      expect(link.getAttribute('data-size')).toBe('12')
+      expect(link.hasAttribute('href')).toBe(false)
+    })
+
+    it('drops an id that is not one from a link', () => {
+      const link = clean(
+        '<a data-attachment-id="javascript:x" href="https://example.com">a</a>',
+      ).querySelector('a')!
+
+      expect(link.hasAttribute('data-attachment-id')).toBe(false)
+      expect(link.getAttribute('href')).toBe('https://example.com')
+    })
+
+    it('keeps no other data attribute', () => {
+      expect(clean('<p data-secret="x" data-pm-slice="1 1 []">a</p>').innerHTML).toBe('<p>a</p>')
+    })
+  })
+
   it.each([
     '<p onclick="x()">a</p>',
     '<a href="https://example.com" onmouseover="x()">a</a>',

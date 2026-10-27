@@ -1,10 +1,13 @@
 import type { JSONContent } from '@tiptap/core'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createAppI18n } from '../i18n'
 import { destroyEditors, makeEditor, typeText } from '../testing/editor'
 import { blockCommands, filterCommands } from './blockCommands'
 
-afterEach(destroyEditors)
+afterEach(() => {
+  destroyEditors()
+  vi.restoreAllMocks()
+})
 
 const english = createAppI18n('en').global.t as (key: string) => string
 const dutch = createAppI18n('nl').global.t as (key: string) => string
@@ -83,6 +86,44 @@ describe('block commands', () => {
     ])
   })
 
+  it.each([
+    ['image', 'image/png,image/jpeg,image/gif,image/webp'],
+    ['file', ''],
+  ])('%s removes what was typed and opens the file picker', (id, accept) => {
+    const editor = makeEditor({
+      upload: { upload: async () => Promise.reject(), onError: () => {}, onBusyChange: () => {} },
+    })
+    const pickers: HTMLInputElement[] = []
+    vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (
+      this: HTMLInputElement,
+    ) {
+      pickers.push(this)
+    })
+    editor.commands.focus()
+    typeText(editor, '/ima')
+
+    command(id).run(editor, { from: 1, to: 5 })
+
+    expect(editor.getJSON().content).toEqual([{ type: 'paragraph' }])
+    expect(pickers.map((picker) => picker.accept)).toEqual([accept])
+  })
+
+  it('does nothing for an image in an editor that cannot upload', () => {
+    const editor = makeEditor()
+    const click = vi.spyOn(HTMLInputElement.prototype, 'click')
+    editor.commands.focus()
+
+    expect(() => command('image').run(editor)).not.toThrow()
+    expect(click).not.toHaveBeenCalled()
+  })
+
+  it('offers only the blocks that change a block under "Turn into"', () => {
+    expect(blockCommands.filter((block) => block.insertOnly).map((block) => block.id)).toEqual([
+      'image',
+      'file',
+    ])
+  })
+
   it('has an id, a label, a description and search words, in both languages, for each block', () => {
     for (const t of [english, dutch]) {
       for (const block of blockCommands) {
@@ -126,6 +167,13 @@ describe('filterCommands', () => {
     expect(ids('lijst', dutch)).toEqual(['bulletList', 'numberedList'])
     expect(ids('taken', dutch)).toEqual(['checklist'])
     expect(ids('heading', dutch)).toEqual([])
+  })
+
+  it('finds images and files in both languages', () => {
+    expect(ids('photo')).toEqual(['image'])
+    expect(ids('pdf')).toEqual(['file'])
+    expect(ids('foto', dutch)).toEqual(['image'])
+    expect(ids('bijlage', dutch)).toEqual(['file'])
   })
 
   it('finds nothing for a word nobody knows', () => {
