@@ -37,7 +37,7 @@ pnpm --filter web e2e   # needs Postgres: docker compose -f deploy/docker-compos
 
 `pnpm check` runs all of it, and `pnpm check:fast` the quick part (no server tests, no end-to-end). **Run `pnpm check` before every push**: a pull request's CI only runs the quick checks (lint, types, unit tests, format and build, commit messages), and the server tests and the end-to-end suite run on your machine, then again on main. A red main is fixed or reverted at once.
 
- Changing the `Dockerfile`, `deploy/` or the image workflow? Build it (`docker build -t inkpact .`) and run the Playwright suite against it: `docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.e2e.yml up -d --wait` with `INKPACT_IMAGE=inkpact`, `POSTGRES_PASSWORD` and `AUTH_SETUP_CODE=E2ESETUP` set, then `E2E_BASE_URL=http://127.0.0.1:8080 pnpm --filter web exec playwright test`. CI does this on main.
+ Changing the `Dockerfile`, `deploy/` or the image workflow? Build it (`docker build -t inkpact .`) and run the Playwright suite against it: `docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.e2e.yml up -d --wait` with `INKPACT_IMAGE=inkpact`, `POSTGRES_PASSWORD` and `AUTH_SETUP_CODE=E2ESETUP` set, then `E2E_BASE_URL=http://127.0.0.1:8080 pnpm --filter web exec playwright test`. CI does not: it is too slow there.
 
  Keep a pull request to one testable slice, with its tests and its translations.
 
