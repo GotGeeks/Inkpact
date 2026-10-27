@@ -55,6 +55,9 @@ public class InkpactFactory(
     /// <summary>Where this app keeps its attachments; its own folder, removed with the factory.</summary>
     public string AttachmentsDirectory { get; } = Path.Combine(Path.GetTempPath(), $"inkpact-attachments-{Guid.NewGuid():N}");
 
+    /// <summary>Where this app keeps uploaded exports for the import job; its own folder, removed with the factory.</summary>
+    public string ImportsDirectory { get; } = Path.Combine(Path.GetTempPath(), $"inkpact-imports-{Guid.NewGuid():N}");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(environment);
@@ -62,6 +65,7 @@ public class InkpactFactory(
         builder.UseSetting("Database:BackupOnMigrate", backupOnMigrate.ToString());
         builder.UseSetting("DataProtection:KeysDirectory", _keysDirectory);
         builder.UseSetting("Attachments:Directory", AttachmentsDirectory);
+        builder.UseSetting("Import:Directory", ImportsDirectory);
         builder.UseSetting("Auth:SetupCode", SetupCode);
         builder.UseSetting("Auth:Throttle:PerAddressPerMinute", perAddressPerMinute.ToString());
         if (failuresBeforeLock is not null)
@@ -126,6 +130,11 @@ public class InkpactFactory(
         if (disposing && _ownsKeysDirectory && Directory.Exists(_keysDirectory))
         {
             Directory.Delete(_keysDirectory, recursive: true);
+        }
+
+        if (disposing && Directory.Exists(ImportsDirectory))
+        {
+            Directory.Delete(ImportsDirectory, recursive: true);
         }
 
         if (disposing && Directory.Exists(AttachmentsDirectory))

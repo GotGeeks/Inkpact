@@ -85,6 +85,16 @@ namespace Inkpact.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("external_id");
+
+                    b.Property<string>("ExternalSourceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("external_source_type");
+
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -116,6 +126,11 @@ namespace Inkpact.Data.Migrations
 
                     b.HasIndex("Sha256")
                         .HasDatabaseName("ix_attachments_sha256");
+
+                    b.HasIndex("PageId", "ExternalSourceType", "ExternalId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_attachments_page_id_external_source_type_external_id")
+                        .HasFilter("external_id IS NOT NULL");
 
                     b.ToTable("attachments", (string)null);
                 });
@@ -168,6 +183,157 @@ namespace Inkpact.Data.Migrations
                         .HasDatabaseName("ix_audit_events_user_id_occurred_at");
 
                     b.ToTable("audit_events", (string)null);
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.ImportItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("content_hash");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("external_id");
+
+                    b.Property<Guid>("ImportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("import_id");
+
+                    b.Property<DateTimeOffset>("ImportedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("imported_at");
+
+                    b.Property<Guid>("InkpactId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("inkpact_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("source_type");
+
+                    b.Property<byte[]>("StateVector")
+                        .HasColumnType("bytea")
+                        .HasColumnName("state_vector");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_import_items");
+
+                    b.HasIndex("ImportId")
+                        .HasDatabaseName("ix_import_items_import_id");
+
+                    b.HasIndex("InkpactId")
+                        .HasDatabaseName("ix_import_items_inkpact_id");
+
+                    b.HasIndex("WorkspaceId", "SourceType", "ExternalId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_import_items_workspace_id_source_type_external_id");
+
+                    b.ToTable("import_items", (string)null);
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.ImportRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Counts")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("counts");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("error_code");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("file_name");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint")
+                        .HasColumnName("file_size");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<int>("ProcessedItems")
+                        .HasColumnType("integer")
+                        .HasColumnName("processed_items");
+
+                    b.Property<string>("Report")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("report");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("source_type");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("state");
+
+                    b.Property<int>("TotalItems")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_items");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_imports");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_imports_user_id");
+
+                    b.HasIndex("WorkspaceId", "CreatedAt")
+                        .HasDatabaseName("ix_imports_workspace_id_created_at");
+
+                    b.ToTable("imports", (string)null);
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.LoginThrottle", b =>
@@ -333,6 +499,25 @@ namespace Inkpact.Data.Migrations
                     b.ToTable("page_snapshots", (string)null);
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.PageTag", b =>
+                {
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("page_id");
+
+                    b.Property<Guid>("TagId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tag_id");
+
+                    b.HasKey("PageId", "TagId")
+                        .HasName("pk_page_tags");
+
+                    b.HasIndex("TagId")
+                        .HasDatabaseName("ix_page_tags_tag_id");
+
+                    b.ToTable("page_tags", (string)null);
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.PageUpdate", b =>
                 {
                     b.Property<long>("Seq")
@@ -369,6 +554,49 @@ namespace Inkpact.Data.Migrations
                         .HasDatabaseName("ix_page_updates_page_id_seq");
 
                     b.ToTable("page_updates", (string)null);
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.Reminder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("delivered_at");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("page_id");
+
+                    b.Property<DateTimeOffset>("RemindAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("remind_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_reminders");
+
+                    b.HasIndex("PageId")
+                        .HasDatabaseName("ix_reminders_page_id");
+
+                    b.HasIndex("RemindAt")
+                        .HasDatabaseName("ix_reminders_remind_at")
+                        .HasFilter("delivered_at IS NULL");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_reminders_user_id");
+
+                    b.ToTable("reminders", (string)null);
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.Session", b =>
@@ -414,6 +642,58 @@ namespace Inkpact.Data.Migrations
                         .HasDatabaseName("ix_sessions_user_id");
 
                     b.ToTable("sessions", (string)null);
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.Tag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("external_id");
+
+                    b.Property<string>("ExternalSourceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("external_source_type");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("normalized_name");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tags");
+
+                    b.HasIndex("WorkspaceId", "NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tags_workspace_id_normalized_name");
+
+                    b.HasIndex("WorkspaceId", "ExternalSourceType", "ExternalId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tags_workspace_id_external_source_type_external_id")
+                        .HasFilter("external_id IS NOT NULL");
+
+                    b.ToTable("tags", (string)null);
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.User", b =>
@@ -577,6 +857,39 @@ namespace Inkpact.Data.Migrations
                         .HasConstraintName("fk_audit_events_user_id");
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.ImportItem", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.ImportRun", null)
+                        .WithMany()
+                        .HasForeignKey("ImportId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_import_items_import_id");
+
+                    b.HasOne("Inkpact.Data.Entities.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_import_items_workspace_id");
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.ImportRun", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_imports_user_id");
+
+                    b.HasOne("Inkpact.Data.Entities.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_imports_workspace_id");
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.Page", b =>
                 {
                     b.HasOne("Inkpact.Data.Entities.Page", "Parent")
@@ -607,6 +920,23 @@ namespace Inkpact.Data.Migrations
                         .HasConstraintName("fk_page_snapshots_page_id");
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.PageTag", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.Page", null)
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_page_tags_page_id");
+
+                    b.HasOne("Inkpact.Data.Entities.Tag", null)
+                        .WithMany()
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_page_tags_tag_id");
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.PageUpdate", b =>
                 {
                     b.HasOne("Inkpact.Data.Entities.Page", null)
@@ -623,6 +953,23 @@ namespace Inkpact.Data.Migrations
                         .HasConstraintName("fk_page_updates_user_id");
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.Reminder", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.Page", null)
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_reminders_page_id");
+
+                    b.HasOne("Inkpact.Data.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_reminders_user_id");
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.Session", b =>
                 {
                     b.HasOne("Inkpact.Data.Entities.User", "User")
@@ -633,6 +980,16 @@ namespace Inkpact.Data.Migrations
                         .HasConstraintName("fk_sessions_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.Tag", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tags_workspace_id");
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.Workspace", b =>

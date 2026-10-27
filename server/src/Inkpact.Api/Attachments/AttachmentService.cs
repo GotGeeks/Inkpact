@@ -23,7 +23,14 @@ public sealed class AttachmentService(
     /// Stores the content and adds it to the page under the given name. Null when the file is empty. Throws
     /// <see cref="FileTooLargeException"/> when it is over the limit. The caller has checked the role on the page.
     /// </summary>
-    public async Task<AttachmentDto?> AddAsync(Guid pageId, Guid? userId, string? fileName, Stream content, CancellationToken cancellationToken = default)
+    public async Task<AttachmentDto?> AddAsync(
+        Guid pageId,
+        Guid? userId,
+        string? fileName,
+        Stream content,
+        CancellationToken cancellationToken = default,
+        string? externalSourceType = null,
+        string? externalId = null)
     {
         var stored = await store.PutAsync(content, options.MaxFileSize, cancellationToken);
         if (stored.Size == 0)
@@ -41,6 +48,8 @@ public sealed class AttachmentService(
             Sha256 = stored.Sha256,
             CreatedAt = time.GetUtcNow(),
             CreatedBy = userId,
+            ExternalSourceType = externalId is null ? null : externalSourceType,
+            ExternalId = externalId,
         };
         db.Attachments.Add(attachment);
         await db.SaveChangesAsync(cancellationToken);

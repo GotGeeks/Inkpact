@@ -26,4 +26,10 @@ public class Attachment
 
     /// <summary>Who uploaded it. Kept when the user is removed, without the link.</summary>
     public Guid? CreatedBy { get; set; }
+
+    /// <summary>Where an imported file came from, for example "joplin". Null for an upload.</summary>
+    public string? ExternalSourceType { get; set; }
+
+    /// <summary>The file's id in the other app. A file used by several pages has a row on each, with the same id.</summary>
+    public string? ExternalId { get; set; }
 }

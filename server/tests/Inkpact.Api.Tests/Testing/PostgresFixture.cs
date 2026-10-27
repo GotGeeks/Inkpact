@@ -18,7 +18,8 @@ public sealed class PostgresFixture : IAsyncLifetime
     public async Task DisposeAsync() => await _container.DisposeAsync();
 
     /// <summary>Creates an empty database with a random name and returns its connection string.</summary>
-    public async Task<string> CreateDatabaseAsync()
+    /// <param name="pooled">Connections are not pooled by default, so a test never leaves connections open on the shared server. A test that makes thousands of short calls (an import) asks for a pool: without one every call is a new connection, and the machine runs out of ports.</param>
+    public async Task<string> CreateDatabaseAsync(bool pooled = false)
     {
         var name = $"test_{Guid.NewGuid():N}";
         await using (var admin = new NpgsqlConnection(_container.GetConnectionString()))
@@ -28,7 +29,7 @@ public sealed class PostgresFixture : IAsyncLifetime
             await command.ExecuteNonQueryAsync();
         }
 
-        return new NpgsqlConnectionStringBuilder(_container.GetConnectionString()) { Database = name, Pooling = false }
+        return new NpgsqlConnectionStringBuilder(_container.GetConnectionString()) { Database = name, Pooling = pooled, MaxPoolSize = 30 }
             .ConnectionString;
     }
 }
