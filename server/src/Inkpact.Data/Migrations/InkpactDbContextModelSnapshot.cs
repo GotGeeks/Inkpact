@@ -64,6 +64,62 @@ namespace Inkpact.Data.Migrations
                     b.ToTable("page_updates_archive", (string)null);
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.Attachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(127)
+                        .HasColumnType("character varying(127)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("file_name");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("page_id");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("sha256");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size");
+
+                    b.HasKey("Id")
+                        .HasName("pk_attachments");
+
+                    b.HasIndex("CreatedBy")
+                        .HasDatabaseName("ix_attachments_created_by");
+
+                    b.HasIndex("PageId")
+                        .HasDatabaseName("ix_attachments_page_id");
+
+                    b.HasIndex("Sha256")
+                        .HasDatabaseName("ix_attachments_sha256");
+
+                    b.ToTable("attachments", (string)null);
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.AuditEvent", b =>
                 {
                     b.Property<long>("Id")
@@ -494,6 +550,22 @@ namespace Inkpact.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_page_updates_archive_user_id");
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.Attachment", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attachments_created_by");
+
+                    b.HasOne("Inkpact.Data.Entities.Page", null)
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_attachments_page_id");
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.AuditEvent", b =>

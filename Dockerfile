@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 # Inkpact: the server, the web bundle and the Yjs sidecar in one image. Runs as a non-root user and works with a
-# read-only root filesystem: only /data (Data Protection keys, pre-migration backups) and /tmp need to be writable.
+# read-only root filesystem: only /data (Data Protection keys, pre-migration backups, attachments) and /tmp need to
+# be writable.
 #   docker build -t inkpact .
 # Tags are pinned with their digest; Dependabot's docker ecosystem moves them.
 
@@ -65,13 +66,14 @@ COPY --from=sidecar /out ./sidecar
 COPY --from=web /src/web/dist ./wwwroot
 RUN install -d -o app -g app /data
 
-# Kestrel listens on 8080 (the base image sets ASPNETCORE_HTTP_PORTS; a non-root user cannot bind 80). Keys and
-# backups go on the /data volume.
+# Kestrel listens on 8080 (the base image sets ASPNETCORE_HTTP_PORTS; a non-root user cannot bind 80). Keys,
+# backups and attachments go on the /data volume.
 ENV ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production \
     DOTNET_EnableDiagnostics=0 \
     DataProtection__KeysDirectory=/data/keys \
-    Database__BackupDirectory=/data/backups
+    Database__BackupDirectory=/data/backups \
+    Attachments__Directory=/data/attachments
 VOLUME /data
 EXPOSE 8080
 USER app

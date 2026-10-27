@@ -23,6 +23,12 @@ public interface IPermissionService
     /// </summary>
     Task<WorkspaceRole> GetPageRoleAsync(Guid userId, Guid pageId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The user's role on the page the attachment was added to, or <see cref="WorkspaceRole.None"/> when there is no
+    /// such attachment. Whoever may read the page may read its files, wherever the file is shown.
+    /// </summary>
+    Task<WorkspaceRole> GetAttachmentRoleAsync(Guid userId, Guid attachmentId, CancellationToken cancellationToken = default);
+
     Task<bool> IsAdminAsync(Guid userId, CancellationToken cancellationToken = default);
 }
 
@@ -30,6 +36,7 @@ public sealed class PermissionService(InkpactDbContext db) : IPermissionService
 {
     private readonly Dictionary<(Guid User, Guid Workspace), WorkspaceRole> _workspaceRoles = [];
     private readonly Dictionary<Guid, Guid?> _pageWorkspaces = [];
+    private readonly Dictionary<Guid, Guid?> _attachmentPages = [];
     private readonly Dictionary<Guid, bool> _admins = [];
 
     public async Task<WorkspaceRole> GetWorkspaceRoleAsync(Guid userId, Guid workspaceId, CancellationToken cancellationToken = default)
@@ -58,6 +65,20 @@ public sealed class PermissionService(InkpactDbContext db) : IPermissionService
         }
 
         return workspaceId is { } id ? await GetWorkspaceRoleAsync(userId, id, cancellationToken) : WorkspaceRole.None;
+    }
+
+    public async Task<WorkspaceRole> GetAttachmentRoleAsync(Guid userId, Guid attachmentId, CancellationToken cancellationToken = default)
+    {
+        if (!_attachmentPages.TryGetValue(attachmentId, out var pageId))
+        {
+            pageId = await db.Attachments.AsNoTracking()
+                .Where(a => a.Id == attachmentId)
+                .Select(a => (Guid?)a.PageId)
+                .SingleOrDefaultAsync(cancellationToken);
+            _attachmentPages[attachmentId] = pageId;
+        }
+
+        return pageId is { } id ? await GetPageRoleAsync(userId, id, cancellationToken) : WorkspaceRole.None;
     }
 
     public async Task<bool> IsAdminAsync(Guid userId, CancellationToken cancellationToken = default)
