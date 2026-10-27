@@ -16,6 +16,8 @@ COPY server/sidecar/package.json server/sidecar/
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --filter web...
 COPY web web
+# The build type-checks the tests too, and the import's contract test uses the sidecar's builder.
+COPY server/sidecar/src server/sidecar/src
 RUN pnpm --filter web build
 
 # The sidecar with its production dependencies. `pnpm deploy` puts the store inside the folder, so the sidecar's
