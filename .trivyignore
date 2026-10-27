@@ -1,0 +1,2 @@
+# Findings Trivy must not fail the image scan for. One per line, and a comment above it says why it is safe and when
+# to look again. Empty on purpose: fix the finding (a newer base image) before adding to this file.

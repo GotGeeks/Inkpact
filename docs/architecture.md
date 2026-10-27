@@ -361,7 +361,7 @@ The whole repository is licensed AGPL-3.0, so anyone running a modified version,
 - `server/` — ASP.NET Core API, WebSocket sync hub, EF Core with Npgsql, background compaction worker; `server/sidecar/` is the Node process running Yjs, a pnpm workspace package that Node runs as TypeScript, without a build step
 - `web/` — TypeScript client (Vue 3 + Vite + Pinia), TipTap + Yjs editor, shared by web and desktop
 - `desktop/` — Electron shell around `web/` (phase 3)
-- `deploy/` — `docker-compose.yml` (app, Postgres, optional Redis), Unraid template XML
+- `deploy/` — `docker-compose.yml` (app, Postgres; Redis joins when something needs it), Unraid template XML
 - `docs/` — architecture notes, sync protocol, self-hosting guide, run cards in `docs/runs/`
 - `CLAUDE.md` — build and test commands, conventions and the run rules, kept short so every run loads it cheaply
 

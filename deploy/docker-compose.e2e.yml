@@ -1,0 +1,9 @@
+# Added on top of docker-compose.yml when the Playwright suite runs against the container (CI, or locally):
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --wait
+#   E2E_BASE_URL=http://127.0.0.1:8080 pnpm --filter web exec playwright test
+# with AUTH_SETUP_CODE=E2ESETUP, the code e2e/credentials.ts uses. Not for real installs.
+services:
+  app:
+    environment:
+      # The suite signs in about forty times from one address; the real limit (10 a minute) would stop it.
+      Auth__Throttle__PerAddressPerMinute: '600'

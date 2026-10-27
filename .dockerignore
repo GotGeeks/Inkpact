@@ -1,0 +1,20 @@
+# Keep the build context to what the image is built from.
+**/node_modules
+**/bin
+**/obj
+.git
+.github
+.vs
+.vscode
+spike
+docs
+deploy
+desktop
+web/dist
+web/playwright-report
+web/test-results
+server/tests
+server/src/Inkpact.Api/data
+*.md
+!LICENSE
+.env
