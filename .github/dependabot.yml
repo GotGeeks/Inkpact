@@ -14,3 +14,14 @@ updates:
       prefix: ci
     labels:
       - dependencies
+
+  # The base images in the Dockerfile are pinned by tag and digest; this moves them.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencies

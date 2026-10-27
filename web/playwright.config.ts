@@ -13,7 +13,10 @@ import { ADMIN, AUTH_STATE_FILE } from './e2e/credentials'
  *   docker compose -f deploy/docker-compose.dev.yml up -d --wait
  */
 const port = 5090
-const baseURL = `http://127.0.0.1:${port}`
+// E2E_BASE_URL points the suite at a server that is already running, such as the container image (CI starts it
+// with the setup code from e2e/credentials.ts). Nothing is built or started then.
+const externalURL = process.env.E2E_BASE_URL
+const baseURL = externalURL ?? `http://127.0.0.1:${port}`
 
 // Every run starts from an empty installation: the setup project creates the administrator. The name is made
 // once, in the process that starts the run, and the workers inherit it. Old databases are left behind in the
@@ -73,8 +76,12 @@ export default defineConfig({
       testMatch: /plain-http\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
-        baseURL: `http://${plainHttpHost}:${port}`,
-        launchOptions: { args: [`--host-resolver-rules=MAP ${plainHttpHost} 127.0.0.1`] },
+        baseURL: `http://${plainHttpHost}:${externalURL ? new URL(externalURL).port : port}`,
+        launchOptions: {
+          args: [
+            `--host-resolver-rules=MAP ${plainHttpHost} ${externalURL ? new URL(externalURL).hostname : '127.0.0.1'}`,
+          ],
+        },
       },
       dependencies: ['setup'],
     },
@@ -86,31 +93,33 @@ export default defineConfig({
       dependencies: ['desktop', 'phone', 'iphone', 'plain-http'],
     },
   ],
-  webServer: {
-    // Build the bundle and the server (to its own folder, so a running dev server is not locked), then run it.
-    command: [
-      'pnpm build',
-      `dotnet build ../server/src/Inkpact.Api --configuration Release --output "${serverOutput}" --verbosity quiet`,
-      `dotnet "${resolve(serverOutput, 'Inkpact.Api.dll')}"`,
-    ].join(' && '),
-    url: `${baseURL}/api/health`,
-    timeout: 240_000,
-    reuseExistingServer: !process.env.CI,
-    stdout: 'pipe',
-    stderr: 'pipe',
-    env: {
-      ASPNETCORE_ENVIRONMENT: 'Production',
-      ASPNETCORE_URLS: baseURL,
-      ASPNETCORE_CONTENTROOT: serverOutput,
-      ASPNETCORE_WEBROOT: resolve(import.meta.dirname, 'dist'),
-      ConnectionStrings__Inkpact: database,
-      Database__BackupOnMigrate: 'false',
-      Auth__SetupCode: ADMIN.setupCode,
-      // The suite signs in about forty times from one address; the real limit (10 a minute) would stop it.
-      // The lockout per email stays at its real value: one spec locks an address on purpose.
-      Auth__Throttle__PerAddressPerMinute: '600',
-      DataProtection__KeysDirectory: keysDirectory,
-      Sidecar__ScriptPath: sidecarScript,
-    },
-  },
+  webServer: externalURL
+    ? undefined
+    : {
+        // Build the bundle and the server (to its own folder, so a running dev server is not locked), then run it.
+        command: [
+          'pnpm build',
+          `dotnet build ../server/src/Inkpact.Api --configuration Release --output "${serverOutput}" --verbosity quiet`,
+          `dotnet "${resolve(serverOutput, 'Inkpact.Api.dll')}"`,
+        ].join(' && '),
+        url: `${baseURL}/api/health`,
+        timeout: 240_000,
+        reuseExistingServer: !process.env.CI,
+        stdout: 'pipe',
+        stderr: 'pipe',
+        env: {
+          ASPNETCORE_ENVIRONMENT: 'Production',
+          ASPNETCORE_URLS: baseURL,
+          ASPNETCORE_CONTENTROOT: serverOutput,
+          ASPNETCORE_WEBROOT: resolve(import.meta.dirname, 'dist'),
+          ConnectionStrings__Inkpact: database,
+          Database__BackupOnMigrate: 'false',
+          Auth__SetupCode: ADMIN.setupCode,
+          // The suite signs in about forty times from one address; the real limit (10 a minute) would stop it.
+          // The lockout per email stays at its real value: one spec locks an address on purpose.
+          Auth__Throttle__PerAddressPerMinute: '600',
+          DataProtection__KeysDirectory: keysDirectory,
+          Sidecar__ScriptPath: sidecarScript,
+        },
+      },
 })

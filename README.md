@@ -2,6 +2,15 @@
 
 Self-hosted, multi-user notes app with real-time collaborative editing. AGPL-3.0, no paid features. Work in progress: see `docs/architecture.md` for the plan.
 
+## Run it with Docker
+
+```bash
+cp deploy/.env.example deploy/.env   # set POSTGRES_PASSWORD and AUTH_SETUP_CODE
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
+```
+
+Then open `http://localhost:8080`. The full guide (backups, updating, Traefik, Unraid) is in `docs/self-hosting.md`.
+
 ## First start
 
 1. Start Inkpact with a PostgreSQL database (the connection string is `ConnectionStrings__Inkpact`).

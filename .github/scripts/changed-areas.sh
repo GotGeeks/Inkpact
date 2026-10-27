@@ -17,6 +17,8 @@ else
   while IFS= read -r file; do
     case "$file" in
       docs/* | *.md) ;;                       # Documentation changes nothing that is tested.
+      # The image is built, checked and scanned by its own workflow (image.yml), not by these jobs.
+      Dockerfile | .dockerignore | .trivyignore | deploy/* | .github/workflows/image.yml) ;;
       web/*) web=true e2e=true ;;
       server/sidecar/*) server=true web=true e2e=true ;; # The web job also checks the sidecar.
       server/*) server=true e2e=true ;;

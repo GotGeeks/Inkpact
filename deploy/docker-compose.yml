@@ -1,0 +1,48 @@
+# Inkpact and its Postgres. Copy this file and .env.example (as .env) to a folder, set the values, then:
+#   docker compose up -d
+# Open http://<host>:8080 and create the administrator with the setup code from .env.
+services:
+  app:
+    image: ${INKPACT_IMAGE:-ghcr.io/gotgeeks/inkpact:edge}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Inkpact: Host=postgres;Database=inkpact;Username=inkpact;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      # The code that lets the first visitor create the administrator. Remove it from .env once you have signed in.
+      Auth__SetupCode: ${AUTH_SETUP_CODE:?Set AUTH_SETUP_CODE in .env}
+      # Behind a reverse proxy outside the private ranges (10/8, 172.16/12, 192.168/16), list its address here.
+      # Network__TrustedProxies__0: 203.0.113.10
+    ports:
+      - '${INKPACT_PORT:-8080}:8080'
+    volumes:
+      # Data Protection keys (signing in survives a restart) and the database backup written before a migration.
+      - inkpact-data:/data
+    # Hardening: nothing is written outside /data and /tmp, no extra privileges.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: inkpact
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: inkpact
+    volumes:
+      - inkpact-db:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U inkpact -d inkpact']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  inkpact-data:
+  inkpact-db:

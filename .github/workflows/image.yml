@@ -1,0 +1,162 @@
+name: Image
+
+# The container image: built, checked and scanned for a change that can affect it, and published as `edge` to GHCR on
+# every merge to main. A pull request builds and scans only; the Playwright run against the container, like the slow
+# suites in ci.yml, runs on main and on request. Release tags, signing and attestations come with the release pipeline.
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - deploy/**
+      - .github/workflows/image.yml
+      - .trivyignore
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  LOCAL_IMAGE: inkpact:ci
+
+jobs:
+  check:
+    name: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # amd64 only: loaded into the runner's Docker to be inspected, scanned and started.
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: ${{ env.LOCAL_IMAGE }}
+          cache-from: type=gha,scope=amd64
+          cache-to: type=gha,scope=amd64,mode=max
+
+      # The properties the compose file and the sidecar rely on, checked on the image itself.
+      - name: Inspect
+        run: |
+          set -euo pipefail
+          test "$(docker run --rm --entrypoint id "$LOCAL_IMAGE" -u)" != 0
+          docker run --rm --entrypoint node "$LOCAL_IMAGE" --version | grep -E '^v24\.'
+          docker run --rm --entrypoint pg_dump "$LOCAL_IMAGE" --version | grep -E ' 1[89]\.| [2-9][0-9]\.'
+          docker run --rm --entrypoint test "$LOCAL_IMAGE" -d /app/sidecar/node_modules/yjs
+          docker run --rm --entrypoint test "$LOCAL_IMAGE" -f /app/wwwroot/index.html
+          # A read-only root filesystem refuses a write anywhere but the mounted /data and /tmp.
+          ! docker run --rm --read-only --entrypoint touch "$LOCAL_IMAGE" /app/x
+
+      - name: Scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.LOCAL_IMAGE }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          trivyignores: .trivyignore
+
+      # The whole Playwright suite against the container, started from the compose file users run (plus the
+      # override that raises the sign-in limit), so the packaged app is the one the tests exercise.
+      - uses: ./.github/actions/setup-web
+        if: github.event_name != 'pull_request'
+
+      - name: Cache the Playwright browsers
+        if: github.event_name != 'pull_request'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install the browsers
+        if: github.event_name != 'pull_request'
+        timeout-minutes: 5
+        run: pnpm --filter web e2e:install
+
+      - name: Start the container
+        if: github.event_name != 'pull_request'
+        working-directory: deploy
+        env:
+          INKPACT_IMAGE: ${{ env.LOCAL_IMAGE }}
+          INKPACT_PORT: '8080'
+          POSTGRES_PASSWORD: ci
+          AUTH_SETUP_CODE: E2ESETUP
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --wait
+
+      - name: End-to-end tests against the container
+        if: github.event_name != 'pull_request'
+        working-directory: web
+        env:
+          E2E_BASE_URL: http://127.0.0.1:8080
+        run: pnpm exec playwright test
+
+      - name: Container logs
+        if: failure() && github.event_name != 'pull_request'
+        working-directory: deploy
+        env:
+          INKPACT_IMAGE: ${{ env.LOCAL_IMAGE }}
+          POSTGRES_PASSWORD: ci
+          AUTH_SETUP_CODE: E2ESETUP
+        run: docker compose logs --no-color
+
+      - name: Upload the report
+        if: failure() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-image
+          path: |
+            web/playwright-report
+            web/test-results
+          retention-days: 7
+
+  publish:
+    name: publish
+    needs: check
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Lowercases the repository name, which a registry requires.
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=edge
+            type=sha,prefix=sha-
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: |
+            type=gha,scope=amd64
+            type=gha,scope=arm64
+          cache-to: type=gha,scope=arm64,mode=max
