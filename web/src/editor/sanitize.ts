@@ -1,69 +1,20 @@
 import createDOMPurify from 'dompurify'
+import allowList from './allowList.json'
 import { isAttachmentId } from './attachmentNodes'
 import { isAllowedLink } from './links'
 
 /**
  * What pasted HTML may contain: exactly what the editor's schema can hold, and nothing more. ProseMirror already drops
- * what the schema does not know when it parses; this is the second wall, and the list the server-side check of the
- * import (run 1.15) has to match.
+ * what the schema does not know when it parses; this is the second wall. The lists live in `allowList.json`, because
+ * the server's import (run 1.15) sanitises with the same ones, and a test there compares the two.
+ *
+ * Notes on single entries: `label` and `input` are the editor's task items (a label with a checkbox); `img` is an
+ * attachment copied from one page to another, by its id only (see the hook below); `style` is only for the marks
+ * (ProseMirror reads it while parsing and drops it); an attachment is its id, its name and size travel with a file, and
+ * a description with an image.
  */
-const ALLOWED_TAGS = [
-  'p',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
-  'ul',
-  'ol',
-  'li',
-  'blockquote',
-  'pre',
-  'code',
-  'strong',
-  'b',
-  'em',
-  'i',
-  'u',
-  's',
-  'del',
-  'strike',
-  'a',
-  'br',
-  'hr',
-  'table',
-  'thead',
-  'tbody',
-  'tr',
-  'th',
-  'td',
-  'span',
-  'div',
-  // Task items: the editor writes a label with a checkbox.
-  'label',
-  'input',
-  // Attachments, when copied from one page to another: only by their id (see the hook below).
-  'img',
-]
-
-const ALLOWED_ATTR = [
-  'href',
-  'colspan',
-  'rowspan',
-  'start',
-  'data-type',
-  'data-checked',
-  'type',
-  'checked',
-  // Only for the marks: ProseMirror reads it while parsing and drops it. See the hook below.
-  'style',
-  // An attachment is its id; its name and size travel with a file, a description with an image.
-  'data-attachment-id',
-  'data-file-name',
-  'data-size',
-  'alt',
-]
+const ALLOWED_TAGS: string[] = allowList.tags
+const ALLOWED_ATTR: string[] = allowList.attributes
 
 /** Elements whose `style` says something the marks need (Google Docs wraps a whole paste in `<b style="font-weight:normal">`). */
 const STYLE_FOR_MARKS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'S', 'DEL', 'STRIKE', 'SPAN'])

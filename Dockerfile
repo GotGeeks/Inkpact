@@ -16,6 +16,8 @@ COPY server/sidecar/package.json server/sidecar/
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --filter web...
 COPY web web
+# The build type-checks the tests too, and the import's contract test uses the sidecar's builder.
+COPY server/sidecar/src server/sidecar/src
 RUN pnpm --filter web build
 
 # The sidecar with its production dependencies. `pnpm deploy` puts the store inside the folder, so the sidecar's
@@ -39,6 +41,8 @@ COPY server/src/Inkpact.Api/Inkpact.Api.csproj server/src/Inkpact.Api/
 COPY server/src/Inkpact.Data/Inkpact.Data.csproj server/src/Inkpact.Data/
 RUN dotnet restore server/src/Inkpact.Api/Inkpact.Api.csproj
 COPY server/src server/src
+# The import's allow-list is the client's, built into the server.
+COPY web/src/editor/allowList.json web/src/editor/
 RUN dotnet publish server/src/Inkpact.Api/Inkpact.Api.csproj -c Release -o /out --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:de0ee358cdd672f7017a003bed21e9ac9ed48a27c922a59b18175b6e82fa7fee AS final

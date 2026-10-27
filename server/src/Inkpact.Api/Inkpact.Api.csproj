@@ -5,11 +5,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AngleSharp" />
     <PackageReference Include="Geralt" />
+    <PackageReference Include="Markdig" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Inkpact.Api.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The tags imported HTML may keep: the same file the client's paste sanitiser reads. -->
+    <EmbeddedResource Include="..\..\..\web\src\editor\allowList.json" LogicalName="Inkpact.Api.Import.allowList.json" Link="Import\allowList.json" />
   </ItemGroup>
 
 </Project>

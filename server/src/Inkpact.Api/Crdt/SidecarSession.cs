@@ -14,6 +14,7 @@ internal enum SidecarOp : byte
     Diff = 1,
     Compact = 2,
     Fingerprint = 3,
+    Build = 4,
 }
 
 /// <summary>

@@ -294,6 +294,9 @@ importers:
       prettier:
         specifier: ^3.9.10
         version: 3.9.10
+      sidecar:
+        specifier: workspace:*
+        version: link:../server/sidecar
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
