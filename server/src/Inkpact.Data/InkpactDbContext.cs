@@ -27,6 +27,16 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
 
     public DbSet<Attachment> Attachments => Set<Attachment>();
 
+    public DbSet<Tag> Tags => Set<Tag>();
+
+    public DbSet<PageTag> PageTags => Set<PageTag>();
+
+    public DbSet<Reminder> Reminders => Set<Reminder>();
+
+    public DbSet<ImportRun> Imports => Set<ImportRun>();
+
+    public DbSet<ImportItem> ImportItems => Set<ImportItem>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(user =>
@@ -160,6 +170,79 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             attachment.HasIndex(a => a.PageId);
             // Which rows share a stored file, for the cleanup and the export.
             attachment.HasIndex(a => a.Sha256);
+            attachment.Property(a => a.ExternalSourceType).HasMaxLength(50);
+            attachment.Property(a => a.ExternalId).HasMaxLength(200);
+            // An imported file is on a page once; a page that uses it again finds this row instead of adding another.
+            attachment.HasIndex(a => new { a.PageId, a.ExternalSourceType, a.ExternalId })
+                .IsUnique()
+                .HasFilter("external_id IS NOT NULL");
+        });
+
+        modelBuilder.Entity<Tag>(tag =>
+        {
+            tag.ToTable("tags");
+            tag.Property(t => t.Name).HasMaxLength(200).IsRequired();
+            tag.Property(t => t.NormalizedName).HasMaxLength(200).IsRequired();
+            tag.Property(t => t.ExternalSourceType).HasMaxLength(50);
+            tag.Property(t => t.ExternalId).HasMaxLength(200);
+            tag.HasOne<Workspace>().WithMany().HasForeignKey(t => t.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+            tag.HasIndex(t => new { t.WorkspaceId, t.NormalizedName }).IsUnique();
+            tag.HasIndex(t => new { t.WorkspaceId, t.ExternalSourceType, t.ExternalId })
+                .IsUnique()
+                .HasFilter("external_id IS NOT NULL");
+        });
+
+        modelBuilder.Entity<PageTag>(pageTag =>
+        {
+            pageTag.ToTable("page_tags");
+            pageTag.HasKey(t => new { t.PageId, t.TagId });
+            pageTag.HasOne<Page>().WithMany().HasForeignKey(t => t.PageId).OnDelete(DeleteBehavior.Cascade);
+            pageTag.HasOne<Tag>().WithMany().HasForeignKey(t => t.TagId).OnDelete(DeleteBehavior.Cascade);
+            // The pages that have a tag.
+            pageTag.HasIndex(t => t.TagId);
+        });
+
+        modelBuilder.Entity<Reminder>(reminder =>
+        {
+            reminder.ToTable("reminders");
+            reminder.HasOne<Page>().WithMany().HasForeignKey(r => r.PageId).OnDelete(DeleteBehavior.Cascade);
+            reminder.HasOne<User>().WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
+            reminder.HasIndex(r => r.PageId);
+            // What the delivery job (phase 2) looks for: undelivered reminders by time.
+            reminder.HasIndex(r => r.RemindAt).HasFilter("delivered_at IS NULL");
+        });
+
+        modelBuilder.Entity<ImportRun>(import =>
+        {
+            import.ToTable("imports");
+            import.Property(i => i.SourceType).HasMaxLength(50).IsRequired();
+            import.Property(i => i.FileName).HasMaxLength(255).IsRequired();
+            import.Property(i => i.State).HasMaxLength(16).IsRequired();
+            import.Property(i => i.ErrorCode).HasMaxLength(64);
+            import.Property(i => i.Counts).HasColumnType("jsonb").IsRequired();
+            import.Property(i => i.Report).HasColumnType("jsonb").IsRequired();
+            import.HasOne<Workspace>().WithMany().HasForeignKey(i => i.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+            // A person's imports keep their report when they are removed, without the link.
+            import.HasOne<User>().WithMany().HasForeignKey(i => i.UserId).OnDelete(DeleteBehavior.SetNull);
+            import.HasIndex(i => new { i.WorkspaceId, i.CreatedAt });
+            import.HasIndex(i => i.UserId);
+        });
+
+        modelBuilder.Entity<ImportItem>(item =>
+        {
+            item.ToTable("import_items");
+            item.Property(i => i.SourceType).HasMaxLength(50).IsRequired();
+            item.Property(i => i.ExternalId).HasMaxLength(200).IsRequired();
+            item.Property(i => i.Kind).HasMaxLength(16).IsRequired();
+            item.Property(i => i.ContentHash).HasMaxLength(64).IsRequired();
+            item.HasOne<Workspace>().WithMany().HasForeignKey(i => i.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+            // What later imports compare against must outlive the report of the import that made it.
+            item.HasOne<ImportRun>().WithMany().HasForeignKey(i => i.ImportId).OnDelete(DeleteBehavior.Restrict);
+            // An item of the other app is imported once into a workspace: this is how it is found again, and the database
+            // refuses a second one.
+            item.HasIndex(i => new { i.WorkspaceId, i.SourceType, i.ExternalId }).IsUnique();
+            item.HasIndex(i => i.ImportId);
+            item.HasIndex(i => i.InkpactId);
         });
 
         modelBuilder.UseSnakeCaseNames();

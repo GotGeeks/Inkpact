@@ -333,7 +333,14 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
     // ---- helpers -----------------------------------------------------------------------------------------------------
 
     /// <summary>Raises the workspace's tree version. That locks its row until the transaction ends. False when there is no such workspace.</summary>
-    private async Task<bool> LockWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken) =>
+    private Task<bool> LockWorkspaceAsync(Guid workspaceId, CancellationToken cancellationToken) =>
+        LockWorkspaceAsync(db, workspaceId, cancellationToken);
+
+    /// <summary>
+    /// The same lock for the Joplin import, which adds pages in its own transactions: it takes the lock the tree operations
+    /// take, so its pages and a person's changes to the tree are applied one at a time.
+    /// </summary>
+    internal static async Task<bool> LockWorkspaceAsync(InkpactDbContext db, Guid workspaceId, CancellationToken cancellationToken) =>
         await db.Workspaces.Where(w => w.Id == workspaceId)
             .ExecuteUpdateAsync(set => set.SetProperty(w => w.TreeVersion, w => w.TreeVersion + 1), cancellationToken) == 1;
 

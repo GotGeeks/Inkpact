@@ -49,6 +49,35 @@ public static class NoteCodes
 
     /// <summary>An attribute or text that was longer than allowed and was cut. Detail: what.</summary>
     public const string Truncated = "truncated";
+
+    // What the import itself found, besides what the conversion did. Same shape, so the report lists them alike.
+
+    /// <summary>The item is encrypted in the export; it was skipped. Export from Joplin desktop with encryption off.</summary>
+    public const string Encrypted = "encrypted";
+
+    /// <summary>The item is larger than the importer reads (<see cref="JexArchive.MaxItemSize"/>); it was skipped.</summary>
+    public const string ItemTooLarge = "item_too_large";
+
+    /// <summary>A file the note uses is larger than an attachment may be; it is not in the note. Detail: its name.</summary>
+    public const string ResourceTooLarge = "resource_too_large";
+
+    /// <summary>A file the note uses is empty, so no attachment was made. Detail: its name.</summary>
+    public const string ResourceEmpty = "resource_empty";
+
+    /// <summary>The note's notebook is not in the export, or was not imported; the note is at the top level.</summary>
+    public const string NotebookMissing = "notebook_missing";
+
+    /// <summary>The notebook was its own ancestor in the export; it is at the top level.</summary>
+    public const string NotebookCycle = "notebook_cycle";
+
+    /// <summary>The notebook the item belongs to could not be imported, so the item was not either.</summary>
+    public const string ParentFailed = "parent_failed";
+
+    /// <summary>The page's content was refused by the Yjs builder: a fault in the conversion, not in the note.</summary>
+    public const string ConversionFailed = "conversion_failed";
+
+    /// <summary>Something else went wrong with this item (see the server's log).</summary>
+    public const string ItemFailed = "item_failed";
 }
 
 /// <summary>The notes of one conversion, with the same note counted instead of repeated.</summary>
@@ -58,6 +87,10 @@ public sealed class ConversionNotes
 
     public void Add(string code, string? detail = null) =>
         _counts[(code, detail)] = _counts.GetValueOrDefault((code, detail)) + 1;
+
+    /// <summary>Adds a note that was counted elsewhere, with its count.</summary>
+    public void Add(ConversionNote note) =>
+        _counts[(note.Code, note.Detail)] = _counts.GetValueOrDefault((note.Code, note.Detail)) + note.Count;
 
     public bool IsEmpty => _counts.Count == 0;
 

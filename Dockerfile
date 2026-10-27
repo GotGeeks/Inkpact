@@ -77,7 +77,7 @@ ENV ASPNETCORE_URLS=http://+:8080 \
     DOTNET_EnableDiagnostics=0 \
     DataProtection__KeysDirectory=/data/keys \
     Database__BackupDirectory=/data/backups \
-    Attachments__Directory=/data/attachments
+    Attachments__Directory=/data/attachments \n    Import__Directory=/data/imports
 VOLUME /data
 EXPOSE 8080
 USER app

@@ -16,13 +16,23 @@ The app container has a read-only root filesystem, no extra privileges and runs 
 ## What to back up
 
 - **`inkpact-db`** (the Postgres volume): all notes and accounts. Back it up with `pg_dump` while running, or stop the stack and copy the volume.
-- **`inkpact-data`** (`/data`): the files added to pages (`/data/attachments`), the keys that protect sign-in sessions (`/data/keys`; lose them and everyone signs in again) and the dumps written before each database migration (`/data/backups`).
+- **`inkpact-data`** (`/data`): the files added to pages (`/data/attachments`; `/data/imports` only holds an export while it is being imported and need not be backed up), the keys that protect sign-in sessions (`/data/keys`; lose them and everyone signs in again) and the dumps written before each database migration (`/data/backups`).
 
 Back up the database and `/data` together: a page refers to its files by id, and a file is only found again through the database.
 
 ## Attachments
 
 A file added to a page is stored once per content (by its SHA-256), however often it is added, under `/data/attachments`. One file may be 50 MB; set `Attachments__MaxFileSize` (in bytes) in the compose file's `environment` to change that. To keep attachments on another disk, mount a second volume at `/data/attachments`, writable by UID 1654. If you change the limit and run behind a proxy, check that the proxy allows request bodies of that size too.
+
+## Importing from Joplin
+
+In Joplin desktop, choose File → Export all → JEX (leave encryption off; an encrypted note cannot be imported, and the report lists it). Then use the import page of Inkpact and pick the file.
+
+- **Where the file waits:** the upload is written to `/data/imports` until the import has read it, and deleted when the import ends. Make room for it: it is as large as your export, resources included. A file left by a restart is removed at the next start.
+- **How large it may be:** 2 GB. Set `Import__MaxFileSize` (in bytes) in the compose file's `environment` to change it. Behind a reverse proxy, check that the proxy allows request bodies of that size and does not cut a slow upload short (nginx: `client_max_body_size` and `proxy_request_buffering off`).
+- **One at a time:** a workspace takes one import at a time, and the server runs imports one after the other.
+- **If the app stops during an import,** the import is marked as interrupted when it starts again. Upload the same file again: what was already imported is skipped, the rest is added.
+- **Importing the same file twice** adds nothing; the report says every item was already imported.
 
 ## Updating
 
