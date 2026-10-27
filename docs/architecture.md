@@ -334,15 +334,23 @@ The import must lose nothing Joplin users care about, and it must be repeatable.
 | --- | --- |
 | Notebook and nested notebooks | Page with child pages, same nesting |
 | Note (Markdown body) | Page, with the Markdown converted to editor content |
-| Internal link `:/noteId` | Link to the imported page |
-| Resource (image or file) | Attachment; image links become inline images |
+| Internal link `:/noteId` | Link to the imported page (run 1.16; until then the link's text stays and the report counts it) |
+| Resource (image or file) | Attachment; a picture of a type the editor shows inline (PNG, JPEG, GIF, WebP) becomes an inline image, anything else (SVG included) a file in the text |
 | Tags | Tags (stored in 1A, shown in the UI from 1B) |
 | To-do, completed state, due date | To-do fields on the page (UI in phase 2) |
-| Alarm | Reminder record (delivered from phase 2) |
+| Alarm | Reminder record for the importing user, from the to-do's due date (delivered from phase 2). Joplin keeps alarms on each device, so a JEX has none; `todo_due` is the alarm time |
 | Created and updated times | Kept as the page's timestamps |
 | Encrypted notes | Imported decrypted, from a JEX export made in the Joplin desktop app |
 
 Every import ends with a report: counts per type, plus a list of anything skipped or converted imperfectly, such as unsupported Markdown or broken links.
+
+**How a note's content is converted (run 1.15).** On the server, in three steps: Markdig parses the Markdown and AngleSharp parses HTML (HTML notes and HTML inside Markdown); a mapper builds the editor's own nodes (ProseMirror JSON, in the names of the editor's schema) and never copies markup through; the Yjs sidecar's `build` operation writes that JSON as the page's first update. Three rules keep the result safe and stable:
+
+- **One allow-list.** `web/src/editor/allowList.json` lists the tags and attributes the client's paste sanitiser keeps. The server is built with the same file, and its mapper understands exactly those tags; it copies no attribute from the HTML (it reads a few, such as an address or a span, to decide what to build). Anything outside the tags keeps its text and loses its element, and the report says so. Script, style, frames and objects go with their content. Links follow the client's rule (`http`, `https`, `mailto`, absolute only), attachments are only ever the export's own resources by id (an id written in a note's HTML means nothing), and the sidecar refuses any node, mark or attribute the editor does not have.
+- **Opening an imported page writes nothing.** The page starts from the fixed first-paragraph update (the sidecar applies it, deletes that paragraph and writes the content after it), ends with the empty paragraph the editor would add after a table, list or image, and has regular tables (every row as wide as the table). Otherwise each client that opened the page would add its own paragraph or repair the table, and two clients would disagree.
+- **Contracts are tested across the languages.** The same fixture file (`server/tests/Inkpact.Api.Tests/Fixtures/import/conversions.json`) is the expected output of the C# conversion tests and the input of a web test that loads each document through the sidecar into the real editor.
+
+Nesting deeper than the editor handles is flattened (the text stays), and markup or Markdown nested thousands of levels deep is kept as plain paragraphs, because the parsers' time grows with the square of the depth.
 
 ### Database migrations
 

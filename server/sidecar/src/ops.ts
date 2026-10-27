@@ -1,4 +1,5 @@
 import * as Y from 'yjs'
+import { buildDocument } from './build.ts'
 import { plainText } from './text.ts'
 import yjsPackage from 'yjs/package.json' with { type: 'json' }
 
@@ -9,6 +10,7 @@ export const OP_PING = 0
 export const OP_DIFF = 1
 export const OP_COMPACT = 2
 export const OP_FINGERPRINT = 3
+export const OP_BUILD = 4
 
 const utf8 = (value: string) => Buffer.from(value, 'utf8')
 
@@ -74,6 +76,13 @@ function fingerprintOf(updates: Uint8Array[]): Uint8Array[] {
   return [withReplay(updates, fingerprint)]
 }
 
+/** [the content as ProseMirror JSON, in UTF-8] -> [the page's first update, with that content in it] */
+function build([json, ...rest]: Uint8Array[]): Uint8Array[] {
+  if (json === undefined || rest.length > 0)
+    throw new Error('build needs the content, and only that')
+  return [buildDocument(JSON.parse(Buffer.from(json).toString('utf8')))]
+}
+
 /** Answers one request. Anything it throws becomes an error response; the sidecar keeps serving. */
 export function handle(op: number, parts: Uint8Array[]): Uint8Array[] {
   switch (op) {
@@ -85,6 +94,8 @@ export function handle(op: number, parts: Uint8Array[]): Uint8Array[] {
       return compact(parts)
     case OP_FINGERPRINT:
       return fingerprintOf(parts)
+    case OP_BUILD:
+      return build(parts)
     default:
       throw new Error(`Unknown operation ${op}`)
   }

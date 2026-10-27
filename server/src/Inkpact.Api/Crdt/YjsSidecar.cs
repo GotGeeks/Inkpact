@@ -76,6 +76,12 @@ public sealed class YjsSidecar(SidecarOptions options, string contentRoot, TimeP
         return answer is [var fingerprint] ? fingerprint : throw Unexpected(answer);
     }
 
+    public async Task<byte[]> BuildAsync(ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
+    {
+        var answer = await CallAsync(SidecarOp.Build, [content], options.RequestTimeout, cancellationToken);
+        return answer is [var update] ? update : throw Unexpected(answer);
+    }
+
     private static ReadOnlyMemory<byte>[] Parts(IReadOnlyList<byte[]> updates)
     {
         var parts = new ReadOnlyMemory<byte>[updates.Count];

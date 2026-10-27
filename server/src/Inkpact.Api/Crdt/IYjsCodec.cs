@@ -28,6 +28,14 @@ public interface IYjsCodec
 
     /// <summary>The fingerprint of replaying <paramref name="updates"/> in order: the state vector and the delete set.</summary>
     Task<byte[]> FingerprintAsync(IReadOnlyList<byte[]> updates, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The Yjs update of a new page whose content is <paramref name="content"/>, a ProseMirror document as JSON
+    /// (<c>{"type":"doc","content":[...]}</c>). It starts from the page's fixed first-paragraph update, so a client that applies
+    /// that update afterwards changes nothing. Content with a node, mark or attribute that the editor does not know is
+    /// rejected with <see cref="YjsRejectedException"/>.
+    /// </summary>
+    Task<byte[]> BuildAsync(ReadOnlyMemory<byte> content, CancellationToken cancellationToken);
 }
 
 /// <summary>
