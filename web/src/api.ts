@@ -45,6 +45,12 @@ async function send(method: Method, path: string, body: unknown): Promise<Respon
   }
 }
 
+/** Asks the server for the sign-in state again, for the token that belongs to it. */
+async function refreshCsrfToken() {
+  const state = await send('GET', '/api/auth/state', undefined)
+  if (state.ok) setCsrfToken(((await state.json()) as { csrfToken?: string }).csrfToken)
+}
+
 async function toError(response: Response): Promise<ApiError> {
   let code = response.status >= 500 ? 'server_error' : 'unknown'
   let field: string | undefined
@@ -77,8 +83,7 @@ export async function api<T = void>(method: Method, path: string, body?: unknown
     const error = await toError(response)
     if (error.code !== 'csrf_invalid') throw error
 
-    const state = await send('GET', '/api/auth/state', undefined)
-    if (state.ok) setCsrfToken(((await state.json()) as { csrfToken?: string }).csrfToken)
+    await refreshCsrfToken()
     response = await send(method, path, body)
   }
 
@@ -92,4 +97,85 @@ export async function api<T = void>(method: Method, path: string, body?: unknown
 /** Posts a file as the raw body, with the CSRF token and its one retry, like {@link api}. Answers with JSON. */
 export function uploadFile<T>(path: string, file: Blob): Promise<T> {
   return api<T>('POST', path, file)
+}
+
+/** One upload through XMLHttpRequest, answered as a Response so that errors are read the way {@link api} reads them. */
+function sendWithProgress(
+  path: string,
+  file: Blob,
+  onProgress: (sent: number, total: number) => void,
+  signal?: AbortSignal,
+): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('The upload was cancelled.', 'AbortError'))
+      return
+    }
+
+    const request = new XMLHttpRequest()
+    request.open('POST', path)
+    request.setRequestHeader('Content-Type', 'application/octet-stream')
+    if (csrfToken) request.setRequestHeader(csrfHeader, csrfToken)
+
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded, event.total)
+    }
+    // Removed again once the request has ended, so that a long-lived signal does not keep it alive.
+    const cancel = () => request.abort()
+    const settle = () => signal?.removeEventListener('abort', cancel)
+
+    request.onload = () => {
+      settle()
+      const headers = new Headers()
+      const type = request.getResponseHeader('Content-Type')
+      if (type) headers.set('Content-Type', type)
+      const retryAfter = request.getResponseHeader('Retry-After')
+      if (retryAfter) headers.set('Retry-After', retryAfter)
+      // A Response refuses a body with these statuses.
+      const empty = request.status === 204 || request.status === 205 || request.status === 304
+      resolve(
+        new Response(empty ? null : request.responseText, { status: request.status, headers }),
+      )
+    }
+    request.onerror = () => {
+      settle()
+      reject(new ApiError(0, 'network_error'))
+    }
+    request.onabort = () => {
+      settle()
+      reject(new DOMException('The upload was cancelled.', 'AbortError'))
+    }
+    signal?.addEventListener('abort', cancel, { once: true })
+
+    request.send(file)
+  })
+}
+
+/**
+ * Posts a file like {@link uploadFile}, and reports how much of it has been sent: `fetch` has no upload progress, so
+ * this one goes through XMLHttpRequest. Aborting the signal ends the upload with an AbortError, not an ApiError.
+ *
+ * The token is asked for first. A server that refuses a large body without reading it (an out-of-date token, say) is
+ * often seen by the browser as a reset connection rather than its answer, so the retry below only helps a small file.
+ */
+export async function uploadFileWithProgress<T>(
+  path: string,
+  file: Blob,
+  onProgress: (sent: number, total: number) => void,
+  signal?: AbortSignal,
+): Promise<T> {
+  // When even this fails the upload will too, and says why.
+  await refreshCsrfToken().catch(() => undefined)
+  let response = await sendWithProgress(path, file, onProgress, signal)
+
+  if (response.status === 400) {
+    const error = await toError(response)
+    if (error.code !== 'csrf_invalid') throw error
+
+    await refreshCsrfToken()
+    response = await sendWithProgress(path, file, onProgress, signal)
+  }
+
+  if (response.ok) return (await response.json()) as T
+  throw await toError(response)
 }

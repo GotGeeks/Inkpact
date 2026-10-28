@@ -32,6 +32,12 @@ export function createAppRouter(history: RouterHistory = createWebHistory()): Ro
           { path: '', name: 'home', component: () => import('./pages/StartPage.vue') },
           { path: 'p/:pageId', name: 'page', component: () => import('./pages/PageView.vue') },
           { path: 'trash', name: 'trash', component: () => import('./pages/TrashView.vue') },
+          {
+            // The import's id is in the address, so that a reload shows the same import again.
+            path: 'import/joplin/:importId?',
+            name: 'import',
+            component: () => import('./pages/ImportPage.vue'),
+          },
         ],
       },
       { path: '/login', name: 'login', component: () => import('./pages/LoginPage.vue') },

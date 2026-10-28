@@ -35,7 +35,7 @@ export async function openSidebar(page: Page) {
   await expect(page.getByTestId('user-name')).toBeVisible()
 }
 
-async function openUserMenu(page: Page) {
+export async function openUserMenu(page: Page) {
   await openSidebar(page)
   // By its test id and not its name, which is different in Dutch.
   await page.getByTestId('user-name').click()

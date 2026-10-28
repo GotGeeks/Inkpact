@@ -30,6 +30,7 @@ defineProps<{
     | 'grip'
     | 'image'
     | 'file'
+    | 'upload'
 }>()
 
 const paths = {
@@ -60,6 +61,7 @@ const paths = {
   grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   image: 'M4 5h16v14H4zM4 16l5-5 4 4 2-2 5 5M15 9h.01',
   file: 'm20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7',
+  upload: 'M12 16V4M7 9l5-5 5 5M4 20h16',
 } as const
 </script>
 

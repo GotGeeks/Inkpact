@@ -68,6 +68,24 @@ export function useErrorMessage() {
         return t('errors.attachment_empty')
       case 'attachment_not_added':
         return t('errors.attachment_not_added')
+      case 'import_empty':
+        return t('errors.import_empty')
+      case 'import_invalid':
+        return t('errors.import_invalid')
+      case 'import_too_large':
+        return t('errors.import_too_large')
+      case 'import_in_progress':
+        return t('errors.import_in_progress')
+      case 'import_too_many_items':
+        return t('errors.import_too_many_items')
+      case 'sidecar_unavailable':
+        return t('errors.sidecar_unavailable')
+      case 'import_failed':
+        return t('errors.import_failed')
+      case 'interrupted':
+        return t('errors.interrupted')
+      case 'workspace_missing':
+        return t('errors.workspace_missing')
       case 'csrf_invalid':
         return t('errors.csrf_invalid')
       case 'network_error':

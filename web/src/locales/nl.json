@@ -56,7 +56,16 @@
     "restore_the_parent": "Zet eerst de pagina erboven terug.",
     "attachment_too_large": "Dat bestand is te groot om toe te voegen.",
     "attachment_empty": "Dat bestand is leeg.",
-    "attachment_not_added": "Sommige bestanden zijn niet toegevoegd: de pagina is gesloten, alleen-lezen geworden, of de plek ervoor is verwijderd."
+    "attachment_not_added": "Sommige bestanden zijn niet toegevoegd: de pagina is gesloten, alleen-lezen geworden, of de plek ervoor is verwijderd.",
+    "import_empty": "Dat bestand is leeg.",
+    "import_invalid": "Dat is geen Joplin-export. Kies in Joplin desktop Bestand, Alles exporteren, JEX.",
+    "import_too_large": "Dat bestand is te groot om te importeren.",
+    "import_in_progress": "In deze werkruimte loopt al een import. Wacht tot die klaar is.",
+    "import_too_many_items": "De export bevat meer items dan in één keer geïmporteerd kunnen worden.",
+    "sidecar_unavailable": "Het deel van de server dat de pagina’s opbouwt is niet bereikbaar. Probeer het zo opnieuw; wat al geïmporteerd is blijft bewaard.",
+    "import_failed": "De import is gestopt omdat er iets misging op de server.",
+    "interrupted": "De import is onderbroken, omdat de server opnieuw is gestart.",
+    "workspace_missing": "De werkruimte waarvoor deze import bedoeld was bestaat niet meer."
   },
   "shell": {
     "sidebar": "Navigatie",
@@ -233,6 +242,118 @@
     "title": "Welkom",
     "empty": "Je hebt nog geen pagina’s. Maak je eerste aan.",
     "pick": "Kies een pagina in de zijbalk of maak een nieuwe."
+  },
+  "import": {
+    "menu": "Importeren uit Joplin",
+    "title": "Importeren uit Joplin",
+    "intro": "Haal je notities over uit Joplin. Notitieboeken worden pagina’s met dezelfde indeling, en notities houden hun tekst, afbeeldingen, bestanden, tags, taken en datums.",
+    "viewerOnly": "Je kunt deze werkruimte alleen lezen, dus je kunt er niet in importeren.",
+    "export": {
+      "title": "Exporteer eerst je notities uit Joplin",
+      "step1": "Kies in Joplin desktop Bestand, Alles exporteren, en dan JEX - Joplin Export File.",
+      "step2": "Exporteer met ontsleutelde notities. Notities die in het bestand nog versleuteld zijn, worden overgeslagen.",
+      "step3": "Kies hieronder het .jex-bestand. Een grote export kan een paar minuten duren.",
+      "again": "Hetzelfde bestand nogmaals importeren voegt niets dubbel toe: wat er al is, blijft zoals het is."
+    },
+    "choose": {
+      "button": "Kies een .jex-bestand",
+      "label": "Joplin-exportbestand",
+      "limit": "Bestanden tot {size}."
+    },
+    "upload": {
+      "title": "{name} wordt geüpload",
+      "label": "Voortgang van het uploaden",
+      "progress": "{sent} van {total}",
+      "checking": "Het bestand wordt gecontroleerd…",
+      "leaveConfirm": "Het uploaden is nog niet klaar. Deze pagina verlaten en het stoppen?"
+    },
+    "cancel": "Annuleren",
+    "loading": "De import wordt geladen…",
+    "connectionLost": "De verbinding met de server is weg. Er wordt opnieuw geprobeerd…",
+    "showRunning": "Toon de import die loopt",
+    "running": {
+      "title": "{name} wordt geïmporteerd",
+      "label": "Voortgang van de import",
+      "queued": "Wachten tot de import begint…",
+      "progress": "{processed} van {total} items",
+      "leave": "Je kunt deze pagina verlaten. De import gaat door, en op dit adres zie je hoe het is gegaan."
+    },
+    "done": {
+      "title": "De import is klaar",
+      "titleWithNotes": "De import is klaar, met een paar dingen om te bekijken"
+    },
+    "failed": {
+      "title": "De import is gestopt",
+      "keep": "Wat vóór het stoppen is geïmporteerd blijft bewaard. Hetzelfde bestand opnieuw importeren gaat verder waar het is gestopt, en voegt niets dubbel toe."
+    },
+    "counts": {
+      "title": "Wat is geïmporteerd",
+      "notebooks": "Notitieboeken",
+      "notes": "Notities",
+      "todos": "Waarvan taken",
+      "tags": "Tags",
+      "images": "Afbeeldingen",
+      "files": "Bestanden"
+    },
+    "left": {
+      "alreadyImported": "{count} item was al eerder geïmporteerd en is met rust gelaten. | {count} items waren al eerder geïmporteerd en zijn met rust gelaten.",
+      "alreadyInTrash": "{count} eerder geïmporteerd item staat hier in de prullenbak en is daar gelaten. | {count} eerder geïmporteerde items staan hier in de prullenbak en zijn daar gelaten.",
+      "trashed": "{count} notitie zat in de prullenbak van Joplin en is niet geïmporteerd. | {count} notities zaten in de prullenbak van Joplin en zijn niet geïmporteerd.",
+      "skipped": "{count} item is overgeslagen. | {count} items zijn overgeslagen.",
+      "failed": "{count} item kon niet worden geïmporteerd. | {count} items konden niet worden geïmporteerd.",
+      "unlisted": "{count} regel meer staat niet hieronder. | {count} regels meer staan niet hieronder."
+    },
+    "report": {
+      "title": "Om te bekijken",
+      "empty": "Alles is overgekomen zoals het was.",
+      "intro": "{count} item is overgeslagen of niet precies overgekomen zoals het was. | {count} items zijn overgeslagen of niet precies overgekomen zoals ze waren.",
+      "showMore": "Toon nog {count}"
+    },
+    "status": {
+      "imperfect": "Geïmporteerd, met wijzigingen",
+      "conflict": "Joplin-conflict",
+      "skipped": "Overgeslagen",
+      "failed": "Mislukt"
+    },
+    "kind": {
+      "notebook": "Notitieboek",
+      "note": "Notitie",
+      "tag": "Tag"
+    },
+    "reasons": {
+      "repeated": "{message} ({count} keer)",
+      "unknown": "Iets is niet overgekomen zoals het was.",
+      "unsupported_element": "Het element “{detail}” wordt niet ondersteund. De tekst is bewaard.",
+      "removed_element": "Het element “{detail}” is verwijderd, met wat erin stond.",
+      "link_removed": "Een link is verwijderd omdat het adres ({detail}) niet is toegestaan. De tekst is bewaard.",
+      "link_removed_relative": "Een link met een relatief adres is verwijderd. De tekst is bewaard.",
+      "note_link_pending": "Een link naar een andere Joplin-notitie is gewone tekst geworden. Links tussen notities komen in een latere versie.",
+      "resource_missing": "Een afbeelding of bestand dat deze notitie gebruikt zit niet in de export. De tekst is bewaard.",
+      "resource_link_text_lost": "De tekst van een link naar een bestand is vervangen door de naam van het bestand.",
+      "external_image": "Een afbeelding van een andere site is een link naar het adres geworden.",
+      "image_not_kept": "Een afbeelding kon niet worden bewaard. De beschrijving is bewaard.",
+      "footnote": "Voetnoten worden niet ondersteund. De tekst is bewaard.",
+      "definition_list": "Definitielijsten worden niet ondersteund. De tekst is bewaard.",
+      "math": "Wiskundige formules worden niet ondersteund. De formule is als tekst bewaard.",
+      "highlight": "Markeren wordt niet ondersteund. De tekst is bewaard.",
+      "sub_superscript": "Subscript en superscript worden niet ondersteund. De tekst is bewaard.",
+      "mermaid": "Een Mermaid-diagram is als codeblok bewaard.",
+      "nesting_flattened": "Te diep genestelde inhoud is platgemaakt.",
+      "mark_dropped": "Opmaak die niet samengaat met een link is weggelaten. De link is bewaard.",
+      "truncated": "Iets was te lang en is afgekapt.",
+      "encrypted": "Het is versleuteld in de export en is daarom overgeslagen. Exporteer uit Joplin desktop met ontsleutelde notities.",
+      "item_too_large": "Het is te groot om te importeren en is overgeslagen.",
+      "resource_too_large": "Het bestand “{detail}” is te groot om bij te voegen en is weggelaten.",
+      "resource_empty": "Het bestand “{detail}” is leeg en is weggelaten.",
+      "notebook_missing": "Het notitieboek zit niet in de export, dus het staat op het hoogste niveau.",
+      "notebook_cycle": "Het notitieboek zat in zichzelf, dus het staat op het hoogste niveau.",
+      "notebook_in_trash": "Het notitieboek staat in de prullenbak. Zet het notitieboek terug en importeer opnieuw.",
+      "parent_failed": "Het notitieboek kon niet worden geïmporteerd, dus dit is ook niet geïmporteerd.",
+      "conversion_failed": "De inhoud kon niet worden omgezet. Dit is een fout in Inkpact, niet in je notitie.",
+      "item_failed": "Er ging iets mis bij het importeren. Het serverlog heeft de details."
+    },
+    "another": "Nog een bestand importeren",
+    "toPages": "Naar je pagina’s"
   },
   "user": {
     "menu": "Accountmenu",

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, api, setCsrfToken, uploadFile } from './api'
+import { ApiError, api, setCsrfToken, uploadFile, uploadFileWithProgress } from './api'
+import { FakeXhr, stubXhr } from './testing/fakeXhr'
 import { jsonResponse, stubApi } from './testing/helpers'
 
 beforeEach(() => setCsrfToken(null))
@@ -267,5 +268,144 @@ describe('api and waiting times', () => {
 
     expect((await api('POST', '/a', {}).catch((e) => e)).retryAfterSeconds).toBeUndefined()
     expect((await api('POST', '/b', {}).catch((e) => e)).retryAfterSeconds).toBeUndefined()
+  })
+})
+
+describe('uploadFileWithProgress', () => {
+  const file = new File(['hello'], 'export.jex')
+  let fetchMock: ReturnType<typeof vi.fn>
+
+  /** The sign-in state the upload asks for first, with this token in it; one answer per call, the last one repeated. */
+  function tokens(...values: string[]) {
+    fetchMock = vi.fn(async () =>
+      jsonResponse(200, { csrfToken: values.length > 1 ? values.shift() : values[0] }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+  }
+
+  function upload(
+    onProgress: (sent: number, total: number) => void = () => {},
+    signal?: AbortSignal,
+  ) {
+    return uploadFileWithProgress<{ id: string }>('/api/x', file, onProgress, signal)
+  }
+
+  /** The request with this number, once it has been sent: the token is asked for first. */
+  async function sent(index = 0) {
+    await vi.waitFor(() => expect(FakeXhr.sent.length).toBeGreaterThan(index))
+    return FakeXhr.sent[index]!
+  }
+
+  beforeEach(() => {
+    stubXhr()
+    tokens('fresh')
+  })
+
+  it('sends the file as raw bytes with a fresh token, reports progress, and returns the answer', async () => {
+    setCsrfToken('old')
+    const progress: [number, number][] = []
+
+    const result = upload((s, total) => progress.push([s, total]))
+    const request = await sent()
+    request.progress(2, 5)
+    request.progress(5, 5)
+    request.respond(202, { id: 'a' })
+
+    expect(await result).toEqual({ id: 'a' })
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/auth/state')
+    expect(request.method).toBe('POST')
+    expect(request.url).toBe('/api/x')
+    expect(request.body).toBe(file)
+    expect(request.headers).toEqual({
+      'Content-Type': 'application/octet-stream',
+      'X-CSRF-Token': 'fresh',
+    })
+    expect(progress).toEqual([
+      [2, 5],
+      [5, 5],
+    ])
+  })
+
+  it('still sends the file with the token it has when the state cannot be asked for', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    setCsrfToken('kept')
+
+    const result = upload()
+    const request = await sent()
+    request.respond(202, { id: 'a' })
+
+    expect(await result).toEqual({ id: 'a' })
+    expect(request.headers['X-CSRF-Token']).toBe('kept')
+  })
+
+  it('turns an error answer into an ApiError, with how long to wait', async () => {
+    const result = upload()
+    ;(await sent()).respond(429, { code: 'too_many_requests' }, { 'Retry-After': '30' })
+
+    expect(await result.catch((e) => e)).toMatchObject({
+      status: 429,
+      code: 'too_many_requests',
+      retryAfterSeconds: 30,
+    })
+  })
+
+  it('reports a failed connection as a network error', async () => {
+    const result = upload()
+    ;(await sent()).fail()
+
+    expect(await result.catch((e) => e)).toMatchObject({ status: 0, code: 'network_error' })
+  })
+
+  it('fetches a new token and sends the file again once when the token is out of date', async () => {
+    tokens('token-1', 'token-2')
+
+    const result = upload()
+    ;(await sent(0)).respond(400, { code: 'csrf_invalid' })
+    ;(await sent(1)).respond(202, { id: 'b' })
+
+    expect(await result).toEqual({ id: 'b' })
+    expect(FakeXhr.sent[0]!.headers['X-CSRF-Token']).toBe('token-1')
+    expect(FakeXhr.sent[1]!.headers['X-CSRF-Token']).toBe('token-2')
+  })
+
+  it('does not repeat the upload for any other 400', async () => {
+    const result = upload()
+    ;(await sent()).respond(400, { code: 'import_invalid' })
+
+    expect(await result.catch((e) => e)).toMatchObject({ code: 'import_invalid' })
+    expect(FakeXhr.sent).toHaveLength(1)
+  })
+
+  it('ends with an AbortError, not an ApiError, when the upload is cancelled', async () => {
+    const controller = new AbortController()
+    const result = upload(() => {}, controller.signal)
+    const request = await sent()
+
+    controller.abort()
+
+    const error = await result.catch((e) => e)
+    expect(error).toBeInstanceOf(DOMException)
+    expect(error.name).toBe('AbortError')
+    expect(request.aborted).toBe(true)
+  })
+
+  it('lets go of the signal once the upload has ended', async () => {
+    const controller = new AbortController()
+    const result = upload(() => {}, controller.signal)
+    const request = await sent()
+    request.respond(202, { id: 'a' })
+    await result
+
+    controller.abort()
+
+    expect(request.aborted).toBe(false)
+  })
+
+  it('does not send anything when it was cancelled already', async () => {
+    const controller = new AbortController()
+    controller.abort()
+
+    expect((await upload(() => {}, controller.signal).catch((e) => e)).name).toBe('AbortError')
+    expect(FakeXhr.sent).toHaveLength(0)
   })
 })

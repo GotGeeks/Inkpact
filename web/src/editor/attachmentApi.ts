@@ -1,24 +1,12 @@
-import { ApiError, api, uploadFile } from '../api'
+import { ApiError, uploadFile } from '../api'
+import { cachedLimit } from '../limits'
 import type { UploadedAttachment } from './attachmentUpload'
 
-let limit: Promise<number | null> | null = null
-
-/** The largest file the server takes, asked once. Unknown (null) when it could not be asked; then the server decides. */
-function maxFileSize(): Promise<number | null> {
-  limit ??= api<{ maxFileSize: number }>('GET', '/api/attachments/limits').then(
-    (limits) => limits.maxFileSize,
-    () => {
-      limit = null
-      return null
-    },
-  )
-  return limit
-}
+const limit = cachedLimit('/api/attachments/limits')
+const maxFileSize = limit.get
 
 /** For the tests: ask the server again. */
-export function forgetAttachmentLimit() {
-  limit = null
-}
+export const forgetAttachmentLimit = limit.forget
 
 /**
  * Uploads a file to a page. A file over the limit is refused here, before any of it is sent: the server refuses it
