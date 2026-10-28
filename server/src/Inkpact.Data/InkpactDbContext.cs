@@ -226,6 +226,10 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             import.HasOne<User>().WithMany().HasForeignKey(i => i.UserId).OnDelete(DeleteBehavior.SetNull);
             import.HasIndex(i => new { i.WorkspaceId, i.CreatedAt });
             import.HasIndex(i => i.UserId);
+            // One waiting or running import per workspace; the upload claims its place by inserting its row.
+            import.HasIndex(i => i.WorkspaceId)
+                .IsUnique()
+                .HasFilter("state IN ('queued', 'running')");
         });
 
         modelBuilder.Entity<ImportItem>(item =>

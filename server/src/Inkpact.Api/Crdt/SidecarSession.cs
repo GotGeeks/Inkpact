@@ -120,9 +120,11 @@ internal sealed class SidecarSession : IDisposable
             throw new YjsRejectedException($"The request is {size} bytes, over the {MaxFrameBytes} the sidecar accepts");
         }
 
-        using var timeoutSource = new CancellationTokenSource(timeout, _time);
         var frame = ArrayPool<byte>.Shared.Rent((int)size);
         Encode(frame, op, parts);
+        // Started once the frame is made: the timeout is for the sidecar, and copying a large request here, on a busy
+        // machine, could otherwise use it up before anything was sent.
+        using var timeoutSource = new CancellationTokenSource(timeout, _time);
         var pending = await SendAsync(frame, (int)size, timeoutSource.Token);
 
         // Only after a write that finished: a cancelled one may still have the buffer, so that one is left to the GC.
@@ -248,10 +250,14 @@ internal sealed class SidecarSession : IDisposable
 
     private async Task<Pending> SendAsync(byte[] frame, int size, CancellationToken timeout)
     {
-        // One frame at a time. Waiting here is no reason to kill anything: whoever holds the lock has its own timeout.
+        // One frame at a time. Waiting here is no reason to kill anything: whoever holds the lock has its own timeout. A free
+        // lock is taken whatever the clock says, so only waiting behind another request can make a call give up here.
         try
         {
-            await _writeLock.WaitAsync(timeout);
+            if (!_writeLock.Wait(0))
+            {
+                await _writeLock.WaitAsync(timeout);
+            }
         }
         catch (OperationCanceledException)
         {

@@ -70,6 +70,9 @@ public static class NoteCodes
     /// <summary>The notebook was its own ancestor in the export; it is at the top level.</summary>
     public const string NotebookCycle = "notebook_cycle";
 
+    /// <summary>The notebook the item belongs to was imported before and is in the trash here; restore it and import again.</summary>
+    public const string NotebookInTrash = "notebook_in_trash";
+
     /// <summary>The notebook the item belongs to could not be imported, so the item was not either.</summary>
     public const string ParentFailed = "parent_failed";
 

@@ -45,6 +45,9 @@ public sealed class ImportCounts
 
     public int AlreadyImported { get; set; }
 
+    /// <summary>Items an earlier import made that are in the trash here now; left there.</summary>
+    public int AlreadyInTrash { get; set; }
+
     public int Trashed { get; set; }
 
     public int Skipped { get; set; }

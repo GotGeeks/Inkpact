@@ -172,11 +172,11 @@ public sealed class YjsSidecarTests : IAsyncLifetime
         var fixture = YjsFixture.Load("tiptap-10k");
 
         // Far more work than 30 ms. (A timeout that ran out before anything was written would kill nothing.)
-        await Should.ThrowAsync<YjsUnavailableException>(
+        var thrown = await Should.ThrowAsync<YjsUnavailableException>(
             sidecar.DiffAsync(ReadOnlyMemory<byte>.Empty, [BigUpdate(20 * 1024 * 1024)], default));
 
         await sidecar.WaitUntilReadyAsync(new CancellationTokenSource(YjsSidecars.StartTimeout).Token);
-        sidecar.ProcessId.ShouldNotBe(before);
+        sidecar.ProcessId.ShouldNotBe(before, $"{thrown.Message} ({thrown.InnerException?.GetType().Name}: {thrown.InnerException?.Message})");
         IsRunning(before).ShouldBeFalse();
         logger.Entries.ShouldContain(e => e.Level == LogLevel.Warning && e.Message.Contains("Killing the Yjs sidecar"));
         // Other calls have their own, longer timeout.

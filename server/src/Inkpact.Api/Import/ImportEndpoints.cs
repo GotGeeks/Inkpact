@@ -8,6 +8,7 @@ using Inkpact.Data;
 using Inkpact.Data.Entities;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Inkpact.Api.Import;
 
@@ -54,11 +55,15 @@ public static class ImportEndpoints
         app.MapGet("/api/imports/limits", (ImportOptions options) => Results.Ok(new ImportLimits(options.MaxFileSize)))
             .RequireAuthorization(Policies.SignedIn);
         app.MapPost("/api/workspaces/{workspaceId}/imports/joplin", UploadJoplin).RequireWorkspaceRole(WorkspaceRole.Editor).AcceptsFileUpload();
-        app.MapGet("/api/imports/{importId}", GetImport).RequireAuthorization(Policies.SignedIn);
+        app.MapGet("/api/imports/{importId}", GetImport).RequireImportRole(WorkspaceRole.Viewer);
         return app;
     }
 
-    /// <summary>The raw JEX file is the body; its name is in the query, as it is for an attachment.</summary>
+    /// <summary>
+    /// The raw JEX file is the body; its name is in the query, as it is for an attachment. The import's row is made
+    /// first, as a claim: the database takes one waiting or running import per workspace, so of two uploads at the same
+    /// time one is refused before it has sent anything. The file is written next, and when that fails the claim goes again.
+    /// </summary>
     private static async Task<IResult> UploadJoplin(
         Guid workspaceId,
         string? name,
@@ -80,25 +85,103 @@ public static class ImportEndpoints
             return Error("import_empty", StatusCodes.Status400BadRequest);
         }
 
-        // One at a time per workspace: a second export while the first is running would only fill the disk.
-        if (await db.Imports.AnyAsync(
-            i => i.WorkspaceId == workspaceId && (i.State == ImportStates.Queued || i.State == ImportStates.Running), cancellationToken))
+        var importId = Guid.CreateVersion7();
+        queue.Claim(importId);
+        var enqueued = false;
+        try
         {
-            return Error("import_in_progress", StatusCodes.Status409Conflict);
+            await ReleaseLeftBehindAsync(db, queue, workspaceId, time, cancellationToken);
+
+            var import = new ImportRun
+            {
+                Id = importId,
+                WorkspaceId = workspaceId,
+                UserId = Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null,
+                SourceType = ImportRunner.SourceType,
+                FileName = AttachmentFiles.CleanFileName(name),
+                State = ImportStates.Queued,
+                CreatedAt = time.GetUtcNow(),
+            };
+            db.Imports.Add(import);
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            {
+                // One at a time per workspace: a second export while the first is running would only fill the disk.
+                return Error("import_in_progress", StatusCodes.Status409Conflict);
+            }
+
+            var refused = await ReceiveFileAsync(http, options, importId, cancellationToken);
+            if (refused is not null)
+            {
+                await db.Imports.Where(i => i.Id == importId).ExecuteDeleteAsync(CancellationToken.None);
+                return refused;
+            }
+
+            import.FileSize = new FileInfo(ImportFiles.PathOf(options, importId)).Length;
+            await db.SaveChangesAsync(CancellationToken.None);
+            queue.Enqueue(importId);
+            enqueued = true;
+            return Results.Json(new ImportAccepted(importId), statusCode: StatusCodes.Status202Accepted);
+        }
+        catch when (!enqueued)
+        {
+            // The connection dropped, or the disk is full: neither the claim nor the file is left behind.
+            DeleteQuietly(ImportFiles.PathOf(options, importId));
+            await db.Imports.Where(i => i.Id == importId).ExecuteDeleteAsync(CancellationToken.None);
+            throw;
+        }
+        finally
+        {
+            if (!enqueued)
+            {
+                queue.Release(importId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Marks the workspace's imports that say they wait or run but that no job here works on: what a job that ended
+    /// without a word (the database went away under it) left. Without this, such a row would block the workspace until
+    /// the app restarts.
+    /// </summary>
+    private static async Task ReleaseLeftBehindAsync(InkpactDbContext db, ImportQueue queue, Guid workspaceId, TimeProvider time, CancellationToken cancellationToken)
+    {
+        var open = await db.Imports.AsNoTracking()
+            .Where(i => i.WorkspaceId == workspaceId && (i.State == ImportStates.Queued || i.State == ImportStates.Running))
+            .Select(i => i.Id)
+            .ToListAsync(cancellationToken);
+        var leftBehind = open.Where(id => !queue.IsActive(id)).ToList();
+        if (leftBehind.Count == 0)
+        {
+            return;
         }
 
+        var now = time.GetUtcNow();
+        await db.Imports
+            .Where(i => leftBehind.Contains(i.Id) && (i.State == ImportStates.Queued || i.State == ImportStates.Running))
+            .ExecuteUpdateAsync(
+                set => set.SetProperty(i => i.State, ImportStates.Failed).SetProperty(i => i.ErrorCode, "interrupted").SetProperty(i => i.FinishedAt, now),
+                cancellationToken);
+    }
+
+    /// <summary>Writes the body to the import's file. Null when it is kept; otherwise the answer, and the file is gone.</summary>
+    private static async Task<IResult?> ReceiveFileAsync(HttpContext http, ImportOptions options, Guid importId, CancellationToken cancellationToken)
+    {
+        var max = options.MaxFileSize;
         // Kestrel's own limit is for JSON; here it is the setting, one byte over, so the count below says what is too large.
         if (http.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
         {
             limit.MaxRequestBodySize = max + 1;
         }
 
-        var importId = Guid.CreateVersion7();
         var path = ImportFiles.PathOf(options, importId);
         Directory.CreateDirectory(options.Directory);
-        long size;
         try
         {
+            long size;
             await using (var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true))
             {
                 size = await CopyAsync(http.Request.Body, file, max, cancellationToken);
@@ -115,6 +198,8 @@ public static class ImportEndpoints
                 File.Delete(path);
                 return Error("import_invalid", StatusCodes.Status400BadRequest);
             }
+
+            return null;
         }
         catch (FileTooLargeException)
         {
@@ -126,38 +211,12 @@ public static class ImportEndpoints
             DeleteQuietly(path);
             return TooLarge();
         }
-        catch
-        {
-            // The connection dropped, or the disk is full: nothing is left behind.
-            DeleteQuietly(path);
-            throw;
-        }
-
-        db.Imports.Add(new ImportRun
-        {
-            Id = importId,
-            WorkspaceId = workspaceId,
-            UserId = Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null,
-            SourceType = ImportRunner.SourceType,
-            FileName = AttachmentFiles.CleanFileName(name),
-            FileSize = size,
-            State = ImportStates.Queued,
-            CreatedAt = time.GetUtcNow(),
-        });
-        await db.SaveChangesAsync(cancellationToken);
-        queue.Enqueue(importId);
-        return Results.Json(new ImportAccepted(importId), statusCode: StatusCodes.Status202Accepted);
     }
 
-    private static async Task<IResult> GetImport(Guid importId, HttpContext http, InkpactDbContext db, CancellationToken cancellationToken)
+    /// <summary>For the person who started the import, while they have a role in its workspace (the endpoint's filter).</summary>
+    private static async Task<IResult> GetImport(Guid importId, InkpactDbContext db, CancellationToken cancellationToken)
     {
-        // Only the person who started it: for anyone else it is not there.
-        if (!Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-        {
-            return Error("not_found", StatusCodes.Status404NotFound);
-        }
-
-        var import = await db.Imports.AsNoTracking().SingleOrDefaultAsync(i => i.Id == importId && i.UserId == userId, cancellationToken);
+        var import = await db.Imports.AsNoTracking().SingleOrDefaultAsync(i => i.Id == importId, cancellationToken);
         if (import is null)
         {
             return Error("not_found", StatusCodes.Status404NotFound);

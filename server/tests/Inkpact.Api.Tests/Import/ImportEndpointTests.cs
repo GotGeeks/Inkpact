@@ -294,25 +294,68 @@ public sealed class ImportEndpointTests(PostgresFixture postgres) : IAsyncLifeti
         UploadedFiles().ShouldBeEmpty();
     }
 
+    private Task<Guid> AddImportRowAsync(string state) => UseDbAsync(async db =>
+    {
+        var run = new ImportRun { WorkspaceId = _workspaceId, UserId = _ownerId, SourceType = "joplin", FileName = "x.jex", State = state, CreatedAt = DateTimeOffset.UtcNow };
+        db.Imports.Add(run);
+        await db.SaveChangesAsync();
+        return run.Id;
+    });
+
     [Fact]
     public async Task A_second_export_waits_until_the_first_has_ended()
     {
-        var running = await UseDbAsync(async db =>
-        {
-            var run = new ImportRun { WorkspaceId = _workspaceId, UserId = _ownerId, SourceType = "joplin", FileName = "x.jex", State = ImportStates.Running, CreatedAt = DateTimeOffset.UtcNow };
-            db.Imports.Add(run);
-            await db.SaveChangesAsync();
-            return run.Id;
-        });
+        // An import this app is working on: its row, and its claim in the queue, as an upload makes them.
+        var running = await AddImportRowAsync(ImportStates.Running);
+        var queue = _factory.Services.GetRequiredService<ImportQueue>();
+        queue.Claim(running);
 
         var refused = await UploadAsync(_owner, Bytes(SmallExport()));
 
         refused.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         (await refused.ReadErrorAsync()).Code.ShouldBe("import_in_progress");
         UploadedFiles().ShouldBeEmpty();
+        (await UseDbAsync(db => db.Imports.CountAsync())).ShouldBe(1);
 
         await UseDbAsync(db => db.Imports.Where(i => i.Id == running).ExecuteUpdateAsync(set => set.SetProperty(i => i.State, ImportStates.Completed)));
+        queue.Release(running);
         (await UploadAsync(_owner, Bytes(SmallExport()))).StatusCode.ShouldBe(HttpStatusCode.Accepted);
+    }
+
+    [Fact]
+    public async Task An_import_left_behind_by_a_job_that_ended_without_a_word_does_not_block_the_workspace()
+    {
+        // A row that says it runs, but that no job of this app works on: the database went away as its job ended.
+        var leftBehind = await AddImportRowAsync(ImportStates.Running);
+
+        var accepted = await UploadAsync(_owner, Bytes(SmallExport()));
+
+        accepted.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        var old = await UseDbAsync(db => db.Imports.AsNoTracking().SingleAsync(i => i.Id == leftBehind));
+        (old.State, old.ErrorCode).ShouldBe((ImportStates.Failed, "interrupted"));
+        await WaitForEndAsync(_owner, (await accepted.Content.ReadFromJsonAsync<ImportAccepted>())!.Id);
+    }
+
+    [Fact]
+    public async Task The_database_takes_one_waiting_or_running_import_per_workspace()
+    {
+        await AddImportRowAsync(ImportStates.Queued);
+
+        await Should.ThrowAsync<DbUpdateException>(() => AddImportRowAsync(ImportStates.Running));
+        await AddImportRowAsync(ImportStates.Completed);
+        await AddImportRowAsync(ImportStates.Failed);
+    }
+
+    [Fact]
+    public async Task Someone_who_has_left_the_workspace_cannot_read_the_import_they_started()
+    {
+        var (editor, editorId) = await SignedInAsAsync(WorkspaceRole.Editor);
+        var accepted = await (await UploadAsync(editor, Bytes(SmallExport()))).Content.ReadFromJsonAsync<ImportAccepted>();
+        await WaitForEndAsync(editor, accepted!.Id);
+
+        await UseDbAsync(db => db.WorkspaceMembers.Where(m => m.UserId == editorId).ExecuteDeleteAsync());
+
+        (await editor.GetAsync($"/api/imports/{accepted.Id}")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -343,8 +386,12 @@ public sealed class ImportEndpointTests(PostgresFixture postgres) : IAsyncLifeti
         File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddHours(-1));
         var ids = await UseDbAsync(async db =>
         {
-            ImportRun Make(string state) => new() { WorkspaceId = _workspaceId, UserId = _ownerId, SourceType = "joplin", FileName = "x.jex", State = state, CreatedAt = DateTimeOffset.UtcNow };
-            var runs = new[] { Make(ImportStates.Queued), Make(ImportStates.Running), Make(ImportStates.Completed), Make(ImportStates.Failed) };
+            // A workspace has one waiting or running import at most, so the second open one is in another workspace.
+            var other = new Workspace { Name = "Other", OwnerId = _ownerId, CreatedAt = DateTimeOffset.UtcNow };
+            db.Workspaces.Add(other);
+            ImportRun Make(string state, Guid? workspace = null) =>
+                new() { WorkspaceId = workspace ?? _workspaceId, UserId = _ownerId, SourceType = "joplin", FileName = "x.jex", State = state, CreatedAt = DateTimeOffset.UtcNow };
+            var runs = new[] { Make(ImportStates.Queued), Make(ImportStates.Running, other.Id), Make(ImportStates.Completed), Make(ImportStates.Failed) };
             db.Imports.AddRange(runs);
             await db.SaveChangesAsync();
             return runs.Select(r => r.Id).ToArray();

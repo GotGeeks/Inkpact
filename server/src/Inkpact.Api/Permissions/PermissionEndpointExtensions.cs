@@ -12,6 +12,7 @@ public enum RoleScope
     Workspace,
     Page,
     Attachment,
+    Import,
 }
 
 public static class PermissionEndpointExtensions
@@ -27,6 +28,10 @@ public static class PermissionEndpointExtensions
     /// <summary>Signed in, and at least this role on the page the attachment whose id is in the route belongs to.</summary>
     public static RouteHandlerBuilder RequireAttachmentRole(this RouteHandlerBuilder builder, WorkspaceRole minimum, string routeParameter = "attachmentId") =>
         builder.RequireRole(new RoleRequirement(RoleScope.Attachment, minimum, routeParameter));
+
+    /// <summary>Signed in, the one who started the import whose id is in the route, and at least this role in its workspace.</summary>
+    public static RouteHandlerBuilder RequireImportRole(this RouteHandlerBuilder builder, WorkspaceRole minimum, string routeParameter = "importId") =>
+        builder.RequireRole(new RoleRequirement(RoleScope.Import, minimum, routeParameter));
 
     private static RouteHandlerBuilder RequireRole(this RouteHandlerBuilder builder, RoleRequirement requirement) =>
         builder
@@ -48,6 +53,7 @@ public static class PermissionEndpointExtensions
                     RoleScope.Workspace => await permissions.GetWorkspaceRoleAsync(userId, id, http.RequestAborted),
                     RoleScope.Page => await permissions.GetPageRoleAsync(userId, id, http.RequestAborted),
                     RoleScope.Attachment => await permissions.GetAttachmentRoleAsync(userId, id, http.RequestAborted),
+                    RoleScope.Import => await permissions.GetImportRoleAsync(userId, id, http.RequestAborted),
                     _ => WorkspaceRole.None,
                 };
 

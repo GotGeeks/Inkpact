@@ -29,6 +29,13 @@ public interface IPermissionService
     /// </summary>
     Task<WorkspaceRole> GetAttachmentRoleAsync(Guid userId, Guid attachmentId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The user's role on an import: their role in its workspace, when they started it, else
+    /// <see cref="WorkspaceRole.None"/>. Its report lists titles from the workspace, so someone who has left it does not
+    /// read it any more.
+    /// </summary>
+    Task<WorkspaceRole> GetImportRoleAsync(Guid userId, Guid importId, CancellationToken cancellationToken = default);
+
     Task<bool> IsAdminAsync(Guid userId, CancellationToken cancellationToken = default);
 }
 
@@ -79,6 +86,15 @@ public sealed class PermissionService(InkpactDbContext db) : IPermissionService
         }
 
         return pageId is { } id ? await GetPageRoleAsync(userId, id, cancellationToken) : WorkspaceRole.None;
+    }
+
+    public async Task<WorkspaceRole> GetImportRoleAsync(Guid userId, Guid importId, CancellationToken cancellationToken = default)
+    {
+        var workspaceId = await db.Imports.AsNoTracking()
+            .Where(i => i.Id == importId && i.UserId == userId)
+            .Select(i => (Guid?)i.WorkspaceId)
+            .SingleOrDefaultAsync(cancellationToken);
+        return workspaceId is { } id ? await GetWorkspaceRoleAsync(userId, id, cancellationToken) : WorkspaceRole.None;
     }
 
     public async Task<bool> IsAdminAsync(Guid userId, CancellationToken cancellationToken = default)

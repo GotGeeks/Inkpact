@@ -167,7 +167,8 @@ public sealed class ImportRunnerTests(PostgresFixture postgres, ITestOutputHelpe
 
         // The same nesting, notebooks before notes and each by title, at the end of the top level.
         var tree = await TreeAsync();
-        tree.Pages.Select(p => p.Title).ShouldBe(["personal", "clash (conflict)", "clip", "work", "projects", "plan", "old"]);
+        // A conflict note keeps the title Joplin gave it; the report is where it says what it is.
+        tree.Pages.Select(p => p.Title).ShouldBe(["personal", "clash", "clip", "work", "projects", "plan", "old"]);
         var plan = await PageOfAsync("plan");
         tree.Pages.Single(p => p.Id == plan.Id).ParentId.ShouldBe((await PageOfAsync("projects")).Id);
 
@@ -341,8 +342,11 @@ public sealed class ImportRunnerTests(PostgresFixture postgres, ITestOutputHelpe
 
     // ---- stopped, and started again ------------------------------------------------------------------------------------
 
-    /// <summary>A codec that lets the sidecar answer, except where the test says otherwise (by the number of the call to build).</summary>
-    private sealed class FaultyCodec(IYjsCodec inner, Func<int, Exception?> faultOnBuild) : IYjsCodec
+    /// <summary>
+    /// A codec that lets the sidecar answer, except where the test says otherwise (by the number of the call to build),
+    /// and that can do something of its own before a build: what a person does while the import runs.
+    /// </summary>
+    private sealed class FaultyCodec(IYjsCodec inner, Func<int, Exception?> faultOnBuild, Func<int, Task>? beforeBuild = null) : IYjsCodec
     {
         private int _builds;
 
@@ -355,14 +359,20 @@ public sealed class ImportRunnerTests(PostgresFixture postgres, ITestOutputHelpe
         public Task<byte[]> FingerprintAsync(IReadOnlyList<byte[]> updates, CancellationToken cancellationToken) =>
             inner.FingerprintAsync(updates, cancellationToken);
 
-        public Task<byte[]> BuildAsync(ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
+        public async Task<byte[]> BuildAsync(ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
         {
-            if (faultOnBuild(Interlocked.Increment(ref _builds)) is { } fault)
+            var call = Interlocked.Increment(ref _builds);
+            if (beforeBuild is not null)
+            {
+                await beforeBuild(call);
+            }
+
+            if (faultOnBuild(call) is { } fault)
             {
                 throw fault;
             }
 
-            return inner.BuildAsync(content, cancellationToken);
+            return await inner.BuildAsync(content, cancellationToken);
         }
     }
 
@@ -490,6 +500,120 @@ public sealed class ImportRunnerTests(PostgresFixture postgres, ITestOutputHelpe
         EntriesOf(import).Select(e => (e.Kind, e.Reasons.Single().Code)).Order().ShouldBe(
             new[] { ("notebook", NoteCodes.ItemFailed), ("note", NoteCodes.ParentFailed), ("note", NoteCodes.ParentFailed) }.Order());
         (await UseDbAsync(db => db.Pages.CountAsync())).ShouldBe(1);
+    }
+
+    // ---- a person at work while the import runs, and what they did before it ---------------------------------------------
+
+    [Fact]
+    public async Task A_page_a_person_adds_under_a_notebook_during_the_import_neither_waits_nor_stops_the_import()
+    {
+        await StartAsync(inner => new FaultyCodec(inner, _ => null, async call =>
+        {
+            if (call != 3)
+            {
+                return;
+            }
+
+            // While the third note is being built, a person adds a page under its notebook, as the API would. The import
+            // holds no lock while it builds, so this does not wait for it; and the notes after it go after this page.
+            await using var scope = _factory.Services.CreateAsyncScope();
+            var notebook = await scope.ServiceProvider.GetRequiredService<InkpactDbContext>().Pages.AsNoTracking().SingleAsync(p => p.ExternalId == JexBuilder.Id("f"));
+            var created = await scope.ServiceProvider.GetRequiredService<TreeService>()
+                .CreateAsync(_workspaceId, "Mine", new Position(notebook.Id, null, null))
+                .WaitAsync(TimeSpan.FromSeconds(10));
+            created.Succeeded.ShouldBeTrue();
+        }));
+
+        var import = await ImportAsync(TenNotes());
+
+        import.State.ShouldBe(ImportStates.Completed);
+        (CountsOf(import).Notes, CountsOf(import).Failed).ShouldBe((10, 0));
+        (await TreeAsync()).Pages.Skip(1).Select(p => p.Title).ShouldBe(
+            ["Note 00", "Note 01", "Mine", "Note 02", "Note 03", "Note 04", "Note 05", "Note 06", "Note 07", "Note 08", "Note 09"]);
+    }
+
+    [Fact]
+    public async Task Two_tags_of_the_export_that_are_one_tag_here_tag_the_note_once()
+    {
+        await StartAsync();
+        var jex = new JexBuilder().Folder("f").Note("n", "f").Tag("t1", title: "Work").Tag("t2", title: "work").NoteTag("n", "t1").NoteTag("n", "t2");
+
+        var import = await ImportAsync(jex);
+
+        (CountsOf(import).Notes, CountsOf(import).Failed).ShouldBe((1, 0));
+        (await UseDbAsync(db => db.Tags.CountAsync())).ShouldBe(1);
+        (await UseDbAsync(db => db.PageTags.CountAsync())).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task A_long_tag_name_is_cut_without_cutting_a_character_in_half()
+    {
+        await StartAsync();
+
+        var import = await ImportAsync(new JexBuilder().Folder("f").Note("n", "f").Tag("t", title: new string('a', 199) + "😀").NoteTag("n", "t"));
+
+        CountsOf(import).Failed.ShouldBe(0);
+        (await UseDbAsync(db => db.Tags.Select(t => t.Name).SingleAsync())).ShouldBe(new string('a', 199));
+        (await UseDbAsync(db => db.PageTags.CountAsync())).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task What_the_person_put_in_the_trash_stays_there_and_gets_nothing_new_under_it()
+    {
+        await StartAsync();
+        await ImportAsync(new JexBuilder().Folder("f").Folder("sub", "f").Note("a", "f"));
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            (await scope.ServiceProvider.GetRequiredService<TreeService>().TrashAsync((await PageOfAsync("f")).Id, null)).Succeeded.ShouldBeTrue();
+        }
+
+        var again = await ImportAsync(new JexBuilder()
+            .Folder("f").Folder("sub", "f").Note("a", "f")
+            .Note("b", "f").Folder("later", "f").Note("c", "later"));
+
+        // What is in the trash is counted as such; what would go under it is listed, and not made where nobody sees it.
+        var counts = CountsOf(again);
+        (counts.AlreadyInTrash, counts.AlreadyImported, counts.Skipped, counts.Failed, counts.Notes).ShouldBe((3, 0, 3, 0, 0));
+        EntriesOf(again).Select(e => (e.ExternalId, e.Reasons.Single().Code)).Order().ShouldBe(
+            new[] { "b", "later", "c" }.Select(n => (JexBuilder.Id(n), NoteCodes.NotebookInTrash)).Order());
+        (await UseDbAsync(db => db.Pages.CountAsync())).ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task An_item_whose_page_is_gone_altogether_is_imported_again()
+    {
+        await StartAsync();
+        var jex = new JexBuilder().Folder("f").Note("a", "f", body: "Hello");
+        await ImportAsync(jex);
+        await UseDbAsync(db => db.Pages.Where(p => p.ExternalId == JexBuilder.Id("a")).ExecuteDeleteAsync());
+
+        var again = await ImportAsync(jex);
+
+        (CountsOf(again).Notes, CountsOf(again).AlreadyImported).ShouldBe((1, 1));
+        (await TextOfAsync((await PageOfAsync("a")).Id)).ShouldContain("Hello");
+        (await UseDbAsync(db => db.ImportItems.CountAsync())).ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task An_import_given_up_on_is_marked_failed_and_its_file_removed()
+    {
+        await StartAsync();
+        var options = _factory.Services.GetRequiredService<ImportOptions>();
+        var id = await UseDbAsync(async db =>
+        {
+            var run = new ImportRun { WorkspaceId = _workspaceId, UserId = _userId, SourceType = "joplin", FileName = "x.jex", State = ImportStates.Running, CreatedAt = DateTimeOffset.UtcNow };
+            db.Imports.Add(run);
+            await db.SaveChangesAsync();
+            return run.Id;
+        });
+        Directory.CreateDirectory(options.Directory);
+        await File.WriteAllBytesAsync(ImportFiles.PathOf(options, id), [1, 2, 3]);
+
+        await _factory.Services.GetRequiredService<ImportRunner>().AbandonAsync(id);
+
+        var import = await GetImportAsync(id);
+        (import.State, import.ErrorCode).ShouldBe((ImportStates.Failed, "import_failed"));
+        File.Exists(ImportFiles.PathOf(options, id)).ShouldBeFalse();
     }
 
     // ---- size ----------------------------------------------------------------------------------------------------------
