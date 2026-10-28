@@ -322,6 +322,42 @@ public sealed class ImportEndpointTests(PostgresFixture postgres) : IAsyncLifeti
         (await UploadAsync(_owner, Bytes(SmallExport()))).StatusCode.ShouldBe(HttpStatusCode.Accepted);
     }
 
+    private async Task<OpenImport> GetOpenAsync(HttpClient client)
+    {
+        var response = await client.GetAsync($"/api/workspaces/{_workspaceId}/imports/open");
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        return (await response.Content.ReadFromJsonAsync<OpenImport>())!;
+    }
+
+    [Fact]
+    public async Task Whether_an_import_is_open_can_be_asked_before_an_upload_with_the_id_only_for_its_starter()
+    {
+        var (editor, _) = await SignedInAsAsync(WorkspaceRole.Editor);
+        (await GetOpenAsync(_owner)).ShouldBe(new OpenImport(false, null));
+
+        var running = await AddImportRowAsync(ImportStates.Running);
+        var queue = _factory.Services.GetRequiredService<ImportQueue>();
+        queue.Claim(running);
+
+        (await GetOpenAsync(_owner)).ShouldBe(new OpenImport(true, running));
+        (await GetOpenAsync(editor)).ShouldBe(new OpenImport(true, null));
+
+        queue.Release(running);
+        (await GetOpenAsync(_owner)).ShouldBe(new OpenImport(false, null), "a row no job works on does not block");
+    }
+
+    [Fact]
+    public async Task Only_an_editor_may_ask_whether_an_import_is_open()
+    {
+        var (viewer, _) = await SignedInAsAsync(WorkspaceRole.Viewer);
+        var (stranger, _) = await SignedInAsAsync(null);
+        var path = $"/api/workspaces/{_workspaceId}/imports/open";
+
+        (await viewer.GetAsync(path)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await stranger.GetAsync(path)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await _factory.CreateClient().GetAsync(path)).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
     [Fact]
     public async Task An_import_left_behind_by_a_job_that_ended_without_a_word_does_not_block_the_workspace()
     {

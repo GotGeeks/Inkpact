@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createAppI18n } from '../i18n'
 import { useAuthStore } from '../stores/auth'
+import { useTreeStore } from '../stores/tree'
 import { fakeTree } from '../testing/treeFixtures'
 import UserMenu from './UserMenu.vue'
 
@@ -17,21 +18,28 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-async function menu() {
-  const server = fakeTree()
+async function menu(role: 'owner' | 'editor' | 'viewer' = 'owner') {
+  const server = fakeTree({ role })
   const pinia = createPinia()
   setActivePinia(pinia)
   await useAuthStore().load()
+  await useTreeStore().init()
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
       { path: '/', name: 'home', component: { template: '<div />' } },
       { path: '/login', name: 'login', component: { template: '<div />' } },
+      { path: '/import/joplin/:importId?', name: 'import', component: { template: '<div />' } },
     ],
   })
   await router.push('/')
   const i18n = createAppI18n('en')
-  wrapper = mount(UserMenu, { global: { plugins: [pinia, router, i18n] }, attachTo: document.body })
+  const onNavigate = vi.fn()
+  wrapper = mount(UserMenu, {
+    props: { onNavigate },
+    global: { plugins: [pinia, router, i18n] },
+    attachTo: document.body,
+  })
 
   const trigger = wrapper.get('button[aria-label="Account menu"]')
   const button = trigger.element as HTMLElement
@@ -43,7 +51,7 @@ async function menu() {
     ...document.body.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]'),
   ]
   const item = (text: string) => items().find((el) => el.textContent?.trim().startsWith(text))!
-  return { server, router, i18n, trigger, items, item }
+  return { server, router, i18n, trigger, items, item, onNavigate }
 }
 
 describe('UserMenu', () => {
@@ -70,6 +78,22 @@ describe('UserMenu', () => {
     expect(i18n.global.locale.value).toBe('nl')
     expect(localStorage.getItem('inkpact.locale')).toBe('nl')
     expect(document.documentElement.lang).toBe('nl')
+  })
+
+  it('opens the Joplin import page, and tells the drawer to make way', async () => {
+    const { item, router, onNavigate } = await menu()
+
+    item('Import from Joplin').click()
+    await flushPromises()
+
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('import'))
+    expect(onNavigate).toHaveBeenCalledOnce()
+  })
+
+  it('does not offer the import to someone who can only read', async () => {
+    const { items } = await menu('viewer')
+
+    expect(items().map((el) => el.textContent?.trim())).not.toContain('Import from Joplin')
   })
 
   it('signs out and goes to the login page', async () => {

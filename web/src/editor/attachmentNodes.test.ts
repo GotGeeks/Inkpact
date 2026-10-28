@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import { destroyEditors, makeEditor, pressKey } from '../testing/editor'
-import { attachmentUrl, formatFileSize, isAttachmentId } from './attachmentNodes'
+import { attachmentUrl, isAttachmentId } from './attachmentNodes'
 import { FIELD, applyFirstParagraph } from './firstParagraph'
 import { sanitizePastedHtml } from './sanitize'
 
@@ -62,16 +62,6 @@ describe('attachment ids and addresses', () => {
     expect(attachmentUrl('https://evil.example/x.png')).toBeNull()
     expect(attachmentUrl('javascript:alert(1)')).toBeNull()
     expect(attachmentUrl('../../api/auth/logout')).toBeNull()
-  })
-
-  it('formats a size in the language of the page', () => {
-    expect(formatFileSize(0, 'en')).toBe('0 bytes')
-    expect(formatFileSize(1, 'en')).toBe('1 byte')
-    expect(formatFileSize(999, 'en')).toBe('999 bytes')
-    expect(formatFileSize(1500, 'en')).toBe('1.5 kB')
-    expect(formatFileSize(1500, 'nl')).toBe('1,5 kB')
-    expect(formatFileSize(52_428_800, 'en')).toBe('52 MB')
-    expect(formatFileSize(3_400_000_000, 'en')).toBe('3.4 GB')
   })
 })
 

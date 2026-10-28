@@ -17,10 +17,14 @@ import AppIcon from '../components/AppIcon.vue'
 import { applyLocale, locales, type Locale } from '../i18n'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
+import { useTreeStore } from '../stores/tree'
+
+const emit = defineEmits<{ navigate: [] }>()
 
 const { t, locale } = useI18n()
 const auth = useAuthStore()
 const settings = useSettingsStore()
+const tree = useTreeStore()
 const router = useRouter()
 
 // Static keys, so the unused-keys lint rule can see them.
@@ -32,6 +36,12 @@ function chooseLocale(next: unknown) {
   settings.setLocale(next as Locale)
   locale.value = next
   applyLocale(next as Locale)
+}
+
+async function openImport() {
+  // On a phone the menu sits in the drawer, which has to make way for the page.
+  emit('navigate')
+  await router.push({ name: 'import' })
 }
 
 async function leave(everywhere: boolean) {
@@ -88,6 +98,10 @@ const item =
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator class="my-space-xs h-px bg-border-subtle" />
+        <DropdownMenuItem v-if="tree.canEdit" :class="item" @select="openImport">{{
+          t('import.menu')
+        }}</DropdownMenuItem>
+        <DropdownMenuSeparator v-if="tree.canEdit" class="my-space-xs h-px bg-border-subtle" />
         <DropdownMenuItem :class="item" @select="leave(false)">{{
           t('user.logout')
         }}</DropdownMenuItem>

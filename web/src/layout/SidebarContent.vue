@@ -47,7 +47,7 @@ const tree = useTreeStore()
     </nav>
 
     <div class="border-t border-border-subtle px-space-xs pt-space-sm">
-      <UserMenu />
+      <UserMenu @navigate="emit('navigate')" />
     </div>
   </div>
 </template>

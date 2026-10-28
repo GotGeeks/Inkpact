@@ -31,6 +31,9 @@ public sealed record ImportAccepted(Guid Id);
 
 public sealed record ImportLimits(long MaxFileSize);
 
+/// <summary>Whether the workspace has an import waiting or running; its id only for the person who started it.</summary>
+public sealed record OpenImport(bool Open, Guid? Id);
+
 /// <summary>
 /// Importing a Joplin export. The upload needs the editor role in the workspace; the job runs in the background, and its
 /// progress and report can be read by the person who started it. The export is one large file, so the upload is
@@ -54,6 +57,7 @@ public static class ImportEndpoints
         // Like the attachment limit: asked first, so the client does not send a file the server will refuse.
         app.MapGet("/api/imports/limits", (ImportOptions options) => Results.Ok(new ImportLimits(options.MaxFileSize)))
             .RequireAuthorization(Policies.SignedIn);
+        app.MapGet("/api/workspaces/{workspaceId}/imports/open", GetOpenImport).RequireWorkspaceRole(WorkspaceRole.Editor);
         app.MapPost("/api/workspaces/{workspaceId}/imports/joplin", UploadJoplin).RequireWorkspaceRole(WorkspaceRole.Editor).AcceptsFileUpload();
         app.MapGet("/api/imports/{importId}", GetImport).RequireImportRole(WorkspaceRole.Viewer);
         return app;
@@ -140,6 +144,27 @@ public static class ImportEndpoints
                 queue.Release(importId);
             }
         }
+    }
+
+    /// <summary>
+    /// Asked before an upload. The upload refuses a second import before it reads the body, and a browser that is still
+    /// sending a large file then often sees a reset connection instead of that answer; asking first gives the reason. A
+    /// row that no job here works on does not count: the next upload releases it.
+    /// </summary>
+    private static async Task<IResult> GetOpenImport(Guid workspaceId, HttpContext http, InkpactDbContext db, ImportQueue queue, CancellationToken cancellationToken)
+    {
+        var open = await db.Imports.AsNoTracking()
+            .Where(i => i.WorkspaceId == workspaceId && (i.State == ImportStates.Queued || i.State == ImportStates.Running))
+            .Select(i => new { i.Id, i.UserId })
+            .ToListAsync(cancellationToken);
+        var active = open.FirstOrDefault(i => queue.IsActive(i.Id));
+        if (active is null)
+        {
+            return Results.Ok(new OpenImport(false, null));
+        }
+
+        var mine = Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) && active.UserId == userId;
+        return Results.Ok(new OpenImport(true, mine ? active.Id : null));
     }
 
     /// <summary>

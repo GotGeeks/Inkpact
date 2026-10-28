@@ -109,6 +109,27 @@ describe('navigation guard', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  it('knows the import page, with and without the id of an import', async () => {
+    stubApi([state(signedIn)])
+
+    const bare = await go('/import/joplin')
+    expect(bare.name).toBe('import')
+    expect(bare.params.importId).toBeUndefined()
+
+    const run = await go('/import/joplin/0198a2b4-7d3e-7c1a-9f00-5d6e7f8a9b0c')
+    expect(run.name).toBe('import')
+    expect(run.params.importId).toBe('0198a2b4-7d3e-7c1a-9f00-5d6e7f8a9b0c')
+  })
+
+  it('sends someone who is signed out to the login page and back to the import afterwards', async () => {
+    stubApi([state(signedOut)])
+
+    const route = await go('/import/joplin/abc')
+
+    expect(route.name).toBe('login')
+    expect(route.query.redirect).toBe('/import/joplin/abc')
+  })
+
   it('sends an unknown address to the home page', async () => {
     stubApi([state(signedIn)])
 

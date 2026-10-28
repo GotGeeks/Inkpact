@@ -56,7 +56,16 @@
     "restore_the_parent": "Restore the page above it first.",
     "attachment_too_large": "That file is too large to add.",
     "attachment_empty": "That file is empty.",
-    "attachment_not_added": "Some files could not be added: the page closed, became read-only, or the place for them was deleted."
+    "attachment_not_added": "Some files could not be added: the page closed, became read-only, or the place for them was deleted.",
+    "import_empty": "That file is empty.",
+    "import_invalid": "That is not a Joplin export. In Joplin desktop, choose File, Export all, JEX.",
+    "import_too_large": "That file is too large to import.",
+    "import_in_progress": "An import is already running in this workspace. Wait until it has finished.",
+    "import_too_many_items": "The export holds more items than can be imported at once.",
+    "sidecar_unavailable": "The part of the server that builds the pages is not available. Try again in a moment; what was imported is kept.",
+    "import_failed": "The import stopped because something went wrong on the server.",
+    "interrupted": "The import was interrupted, because the server restarted.",
+    "workspace_missing": "The workspace this import was for no longer exists."
   },
   "shell": {
     "sidebar": "Navigation",
@@ -233,6 +242,118 @@
     "title": "Welcome",
     "empty": "You have no pages yet. Create your first one.",
     "pick": "Pick a page in the sidebar, or create a new one."
+  },
+  "import": {
+    "menu": "Import from Joplin",
+    "title": "Import from Joplin",
+    "intro": "Bring your notes over from Joplin. Notebooks become pages with the same nesting, and notes keep their text, images, files, tags, to-dos and dates.",
+    "viewerOnly": "You can only read this workspace, so you cannot import into it.",
+    "export": {
+      "title": "First, export your notes from Joplin",
+      "step1": "In Joplin desktop, choose File, Export all, and then JEX - Joplin Export File.",
+      "step2": "Export with the notes decrypted. Notes that are still encrypted in the file are skipped.",
+      "step3": "Choose the .jex file below. A large export can take a few minutes.",
+      "again": "Importing the same file again adds nothing twice: what is already here is left alone."
+    },
+    "choose": {
+      "button": "Choose a .jex file",
+      "label": "Joplin export file",
+      "limit": "Files up to {size}."
+    },
+    "upload": {
+      "title": "Uploading {name}",
+      "label": "Upload progress",
+      "progress": "{sent} of {total}",
+      "checking": "Checking the file…",
+      "leaveConfirm": "The upload is not finished. Leave this page and stop it?"
+    },
+    "cancel": "Cancel",
+    "loading": "Loading the import…",
+    "connectionLost": "Lost contact with the server. Trying again…",
+    "showRunning": "Show the import that is running",
+    "running": {
+      "title": "Importing {name}",
+      "label": "Import progress",
+      "queued": "Waiting for the import to start…",
+      "progress": "{processed} of {total} items",
+      "leave": "You can leave this page. The import carries on, and this address shows how it went."
+    },
+    "done": {
+      "title": "The import has finished",
+      "titleWithNotes": "The import has finished, with some things to look at"
+    },
+    "failed": {
+      "title": "The import stopped",
+      "keep": "What was imported before it stopped is kept. Importing the same file again carries on where it stopped, and adds nothing twice."
+    },
+    "counts": {
+      "title": "What was imported",
+      "notebooks": "Notebooks",
+      "notes": "Notes",
+      "todos": "Of which to-dos",
+      "tags": "Tags",
+      "images": "Images",
+      "files": "Files"
+    },
+    "left": {
+      "alreadyImported": "{count} item was already imported earlier and was left alone. | {count} items were already imported earlier and were left alone.",
+      "alreadyInTrash": "{count} item imported earlier is in the trash here and was left there. | {count} items imported earlier are in the trash here and were left there.",
+      "trashed": "{count} note was in Joplin’s trash and was not imported. | {count} notes were in Joplin’s trash and were not imported.",
+      "skipped": "{count} item was skipped. | {count} items were skipped.",
+      "failed": "{count} item could not be imported. | {count} items could not be imported.",
+      "unlisted": "{count} more line is not listed below. | {count} more lines are not listed below."
+    },
+    "report": {
+      "title": "What to look at",
+      "empty": "Everything came across as it was.",
+      "intro": "{count} item was skipped or did not come across exactly as it was. | {count} items were skipped or did not come across exactly as they were.",
+      "showMore": "Show {count} more"
+    },
+    "status": {
+      "imperfect": "Imported, with changes",
+      "conflict": "Joplin conflict",
+      "skipped": "Skipped",
+      "failed": "Failed"
+    },
+    "kind": {
+      "notebook": "Notebook",
+      "note": "Note",
+      "tag": "Tag"
+    },
+    "reasons": {
+      "repeated": "{message} ({count} times)",
+      "unknown": "Something did not come across as it was.",
+      "unsupported_element": "The “{detail}” element is not supported. Its text was kept.",
+      "removed_element": "The “{detail}” element was removed, with what was inside it.",
+      "link_removed": "A link was removed because its address ({detail}) is not allowed. Its text was kept.",
+      "link_removed_relative": "A link with a relative address was removed. Its text was kept.",
+      "note_link_pending": "A link to another Joplin note became plain text. Links between notes come in a later version.",
+      "resource_missing": "A picture or file that this note uses is not in the export. Its text was kept.",
+      "resource_link_text_lost": "The text of a link to a file was replaced by the file’s name.",
+      "external_image": "An image from another site became a link to its address.",
+      "image_not_kept": "An image could not be kept. Its description was kept.",
+      "footnote": "Footnotes are not supported. Their text was kept.",
+      "definition_list": "Definition lists are not supported. Their text was kept.",
+      "math": "Math is not supported. The formula was kept as text.",
+      "highlight": "Highlighting is not supported. The text was kept.",
+      "sub_superscript": "Subscript and superscript are not supported. The text was kept.",
+      "mermaid": "A Mermaid diagram was kept as a code block.",
+      "nesting_flattened": "Content nested too deeply was flattened.",
+      "mark_dropped": "Formatting that cannot go with a link was dropped. The link was kept.",
+      "truncated": "Something was too long and was cut off.",
+      "encrypted": "It is encrypted in the export, so it was skipped. Export from Joplin desktop with the notes decrypted.",
+      "item_too_large": "It is too large to import and was skipped.",
+      "resource_too_large": "The file “{detail}” is too large to attach and was left out.",
+      "resource_empty": "The file “{detail}” is empty and was left out.",
+      "notebook_missing": "Its notebook is not in the export, so it was put at the top level.",
+      "notebook_cycle": "Its notebook was inside itself, so it was put at the top level.",
+      "notebook_in_trash": "Its notebook is in the trash. Restore the notebook and import again.",
+      "parent_failed": "Its notebook could not be imported, so this was not imported either.",
+      "conversion_failed": "Its content could not be converted. This is a fault in Inkpact, not in your note.",
+      "item_failed": "Something went wrong while importing it. The server log has the details."
+    },
+    "another": "Import another file",
+    "toPages": "Go to your pages"
   },
   "user": {
     "menu": "Account menu",
