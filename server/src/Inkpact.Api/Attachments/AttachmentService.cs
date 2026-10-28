@@ -11,7 +11,7 @@ public sealed record AttachmentDto(Guid Id, string FileName, string ContentType,
         new(attachment.Id, attachment.FileName, attachment.ContentType, attachment.Size, AttachmentFiles.IsInline(attachment.ContentType));
 }
 
-/// <summary>Adds files to pages and finds them again. The upload endpoint uses it, and the Joplin import (run 1.15) will.</summary>
+/// <summary>Adds files to pages and finds them again. The upload endpoint and the Joplin import use it.</summary>
 public sealed class AttachmentService(
     InkpactDbContext db,
     IAttachmentStore store,
@@ -23,14 +23,24 @@ public sealed class AttachmentService(
     /// Stores the content and adds it to the page under the given name. Null when the file is empty. Throws
     /// <see cref="FileTooLargeException"/> when it is over the limit. The caller has checked the role on the page.
     /// </summary>
-    public async Task<AttachmentDto?> AddAsync(
-        Guid pageId,
-        Guid? userId,
-        string? fileName,
-        Stream content,
-        CancellationToken cancellationToken = default,
-        string? externalSourceType = null,
-        string? externalId = null)
+    public async Task<AttachmentDto?> AddAsync(Guid pageId, Guid? userId, string? fileName, Stream content, CancellationToken cancellationToken = default)
+    {
+        if (await StoreAsync(pageId, userId, fileName, content, cancellationToken) is not { } attachment)
+        {
+            return null;
+        }
+
+        db.Attachments.Add(attachment);
+        await db.SaveChangesAsync(cancellationToken);
+        return AttachmentDto.From(attachment);
+    }
+
+    /// <summary>
+    /// Stores the content and returns the row that adds it to the page, not yet added to the database: for a caller that
+    /// writes the row in a transaction of its own (the import, which stores the files before it takes the workspace's
+    /// lock). Null when the file is empty; throws <see cref="FileTooLargeException"/> when it is over the limit.
+    /// </summary>
+    public async Task<Attachment?> StoreAsync(Guid pageId, Guid? userId, string? fileName, Stream content, CancellationToken cancellationToken = default)
     {
         var stored = await store.PutAsync(content, options.MaxFileSize, cancellationToken);
         if (stored.Size == 0)
@@ -39,7 +49,7 @@ public sealed class AttachmentService(
         }
 
         var name = AttachmentFiles.CleanFileName(fileName);
-        var attachment = new Attachment
+        return new Attachment
         {
             PageId = pageId,
             FileName = name,
@@ -48,12 +58,7 @@ public sealed class AttachmentService(
             Sha256 = stored.Sha256,
             CreatedAt = time.GetUtcNow(),
             CreatedBy = userId,
-            ExternalSourceType = externalId is null ? null : externalSourceType,
-            ExternalId = externalId,
         };
-        db.Attachments.Add(attachment);
-        await db.SaveChangesAsync(cancellationToken);
-        return AttachmentDto.From(attachment);
     }
 
     /// <summary>The attachment and its content, or null when either is missing. The caller has checked the role.</summary>

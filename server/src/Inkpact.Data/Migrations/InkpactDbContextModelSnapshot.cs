@@ -330,6 +330,11 @@ namespace Inkpact.Data.Migrations
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_imports_user_id");
 
+                    b.HasIndex("WorkspaceId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_imports_workspace_id")
+                        .HasFilter("state IN ('queued', 'running')");
+
                     b.HasIndex("WorkspaceId", "CreatedAt")
                         .HasDatabaseName("ix_imports_workspace_id_created_at");
 

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
@@ -5,12 +6,29 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Inkpact.Api.Import;
 
-/// <summary>The imports waiting to run, in the order they were uploaded. In memory: a restart marks what was waiting as interrupted.</summary>
+/// <summary>
+/// The imports waiting to run, in the order they were uploaded, and the imports this process is working on: from the
+/// start of the upload until the job has ended. In memory: a restart marks what was waiting as interrupted, and an
+/// import whose row says it is waiting or running but that is not worked on here was left behind (see <see cref="IsActive"/>).
+/// </summary>
 public sealed class ImportQueue
 {
     private readonly Channel<Guid> _channel = Channel.CreateUnbounded<Guid>(new UnboundedChannelOptions { SingleReader = true });
+    private readonly ConcurrentDictionary<Guid, byte> _active = new();
 
-    public void Enqueue(Guid importId) => _channel.Writer.TryWrite(importId);
+    /// <summary>Says that this import is being worked on here: its upload has started.</summary>
+    public void Claim(Guid importId) => _active[importId] = 0;
+
+    /// <summary>Says that nothing works on this import any more: its upload was refused, or its job has ended.</summary>
+    public void Release(Guid importId) => _active.TryRemove(importId, out _);
+
+    public bool IsActive(Guid importId) => _active.ContainsKey(importId);
+
+    public void Enqueue(Guid importId)
+    {
+        Claim(importId);
+        _channel.Writer.TryWrite(importId);
+    }
 
     public ChannelReader<Guid> Reader => _channel.Reader;
 }
@@ -64,8 +82,14 @@ public sealed class ImportWorker(
             }
             catch (Exception e)
             {
-                // The runner reports what goes wrong with an import in the import. This is what it could not.
+                // The runner reports what goes wrong with an import in the import. This is what it could not: the row
+                // could not be started or ended (the database is away). Give up on it, so it does not block the workspace.
                 logger.LogError(e, "Import {ImportId} stopped unexpectedly", importId);
+                await runner.AbandonAsync(importId);
+            }
+            finally
+            {
+                queue.Release(importId);
             }
         }
     }

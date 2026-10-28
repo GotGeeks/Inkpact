@@ -366,9 +366,12 @@ internal static partial class ContentRules
         }
 
         notes.Add(NoteCodes.Truncated, what);
-        var cut = char.IsHighSurrogate(text[max - 1]) ? max - 1 : max;
-        return text[..cut];
+        return Cut(text, max);
     }
+
+    /// <summary>At most <paramref name="max"/> characters, without cutting a surrogate pair in half: half a pair is not text a database takes.</summary>
+    public static string Cut(string text, int max) =>
+        text.Length <= max ? text : text[..(char.IsHighSurrogate(text[max - 1]) ? max - 1 : max)];
 
     /// <summary>A code block's language as the editor stores it: a short word, or none.</summary>
     public static string? Language(string? info)
