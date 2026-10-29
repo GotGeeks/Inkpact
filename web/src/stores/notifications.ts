@@ -9,6 +9,8 @@ export type Notice =
   | { type: 'error'; code: string; retryAfterSeconds?: number }
   | { type: 'trashed'; pageId: string; title: string }
   | { type: 'restored'; pageId: string; title: string; toTopLevel: boolean }
+  /** Offline edits to the page titled `title` were deleted by a change from elsewhere, and kept in the page `pageId`. */
+  | { type: 'editsKept'; pageId: string; title: string }
 
 export type PostedNotice = Notice & { id: number }
 

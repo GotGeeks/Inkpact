@@ -373,6 +373,13 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
     private async Task<bool> IsInTrashAsync(Guid pageId, CancellationToken cancellationToken) =>
         (await GetChainAsync(pageId, cancellationToken)).Any(link => link.DeletedAt is not null);
 
+    /// <summary>Whether the page exists and is in the tree: neither it nor anything above it is in the trash.</summary>
+    internal async Task<bool> IsLiveAsync(Guid pageId, CancellationToken cancellationToken)
+    {
+        var chain = await GetChainAsync(pageId, cancellationToken);
+        return chain.Count > 0 && chain.All(link => link.DeletedAt is null);
+    }
+
     /// <summary>The parent must be a page of this workspace that is not in the trash. No parent means the top level.</summary>
     private async Task<TreeError?> CheckParentAsync(Guid workspaceId, Guid? parentId, CancellationToken cancellationToken)
     {
@@ -402,7 +409,7 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
         await LiveSiblings(workspaceId, parentId, exceptPageId).OrderByDescending(p => p.SortKey).Select(p => p.SortKey).FirstOrDefaultAsync(cancellationToken);
 
     /// <summary>The smallest key above <paramref name="key"/>, or the first key when <paramref name="key"/> is null.</summary>
-    private async Task<string?> NextKeyAfterAsync(Guid workspaceId, Guid? parentId, Guid? exceptPageId, string? key, CancellationToken cancellationToken)
+    internal async Task<string?> NextKeyAfterAsync(Guid workspaceId, Guid? parentId, Guid? exceptPageId, string? key, CancellationToken cancellationToken)
     {
         var siblings = LiveSiblings(workspaceId, parentId, exceptPageId);
         if (key is not null)

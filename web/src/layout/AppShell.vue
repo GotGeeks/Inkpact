@@ -18,6 +18,7 @@ import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import SidebarContent from './SidebarContent.vue'
 import NoticeToaster from './NoticeToaster.vue'
+import { useKeepLostEdits } from '../sync/useKeepLostEdits'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -26,6 +27,7 @@ const tree = useTreeStore()
 const notifications = useNotificationsStore()
 const sync = useSyncStore()
 const auth = useAuthStore()
+useKeepLostEdits()
 
 // From the md breakpoint (48 rem) the sidebar stays beside the page; below it, a drawer opens from a button.
 const wide = useMediaQuery('(min-width: 48rem)', true)

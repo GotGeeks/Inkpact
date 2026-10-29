@@ -29,22 +29,27 @@ public sealed class PageUpdateStore(IDbContextFactory<InkpactDbContext> dbFactor
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
         var snapshot = await db.PageSnapshots.AsNoTracking()
             .Where(s => s.PageId == pageId)
-            .Select(s => s.State)
+            .Select(s => new { s.State, s.Watermark })
             .SingleOrDefaultAsync(cancellationToken);
         // All live rows, not those above the watermark: a row still in the log has not been merged, and rows can commit
         // out of sequence order (see the compactor).
-        var updates = await db.PageUpdates.AsNoTracking()
+        var rows = await db.PageUpdates.AsNoTracking()
             .Where(u => u.PageId == pageId)
             .OrderBy(u => u.Seq)
-            .Select(u => u.Data)
+            .Select(u => new { u.Seq, u.Data })
             .ToListAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return new PageContent(snapshot, updates);
+        var lastSeq = Math.Max(snapshot?.Watermark ?? 0, rows.Count == 0 ? 0 : rows[^1].Seq);
+        return new PageContent(snapshot?.State, [.. rows.Select(r => r.Data)], lastSeq);
     }
 }
 
-/// <summary>A page's snapshot and the live updates after it.</summary>
-public sealed record PageContent(byte[]? Snapshot, IReadOnlyList<byte[]> Updates)
+/// <summary>
+/// A page's snapshot and the live updates after it. <see cref="LastSeq"/> is the sequence number of the last update in
+/// either (the snapshot's watermark, or the last live update; 0 when there is neither): an update stored later has a higher
+/// one, whether it is still in the log or the compactor has folded it into the snapshot since.
+/// </summary>
+public sealed record PageContent(byte[]? Snapshot, IReadOnlyList<byte[]> Updates, long LastSeq)
 {
     /// <summary>What to hand the codec, or to send a client in log mode: the snapshot first, then the updates.</summary>
     public IReadOnlyList<byte[]> Inputs => Snapshot is null ? Updates : [Snapshot, .. Updates];

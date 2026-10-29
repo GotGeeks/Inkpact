@@ -53,6 +53,13 @@ public class ImportRun
 
     /// <summary>The report's list of items that were skipped or converted imperfectly, as JSON (<c>jsonb</c>). Final at the end.</summary>
     public string Report { get; set; } = "[]";
+
+    /// <summary>
+    /// The title of a conflict copy, in the language of the person who uploaded, with <c>{title}</c> where the note's title
+    /// goes (for example <c>{title} (Joplin)</c>). The server writes no language of its own; without one, a copy has the
+    /// note's title as it is.
+    /// </summary>
+    public string? CopyTitle { get; set; }
 }
 
 /// <summary>
@@ -84,6 +91,23 @@ public class ImportItem
 
     /// <summary>The page's Yjs state vector right after the import. Null for tags and for notebooks.</summary>
     public byte[]? StateVector { get; set; }
+
+    /// <summary>
+    /// SHA-256 of the fingerprint (state vector and delete set) of the page's Yjs document right after the import. A page
+    /// whose fingerprint has changed was edited here, also by a deletion alone, which the state vector does not show. Null
+    /// for tags and notebooks, and for items made before run 1.16, whose pages are compared by the state vector.
+    /// </summary>
+    public byte[]? PageFingerprint { get; set; }
+
+    /// <summary>
+    /// What the other app had of the item, field by field, when it was last imported, as JSON (<c>jsonb</c>): the third
+    /// value of a three-way comparison with the other app's value now and ours. Null for items made before run 1.16, whose
+    /// base is unknown. A field only moves when what it holds has been taken over here.
+    /// </summary>
+    public string? Base { get; set; }
+
+    /// <summary>The version of the converter that made the page's content (<c>ImportOptions.ConverterVersion</c>); 1 for run 1.15.</summary>
+    public int ConverterVersion { get; set; } = 1;
 
     /// <summary>The import that made it.</summary>
     public Guid ImportId { get; set; }

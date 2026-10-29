@@ -7,10 +7,11 @@ import {
   MARK_ATTRIBUTES,
   NODE_ATTRIBUTES,
   buildDocument,
+  replaceDocument,
 } from '../src/build.ts'
-import { OP_BUILD, handle } from '../src/ops.ts'
+import { OP_BUILD, OP_REPLACE, handle } from '../src/ops.ts'
 import { plainText } from '../src/text.ts'
-import { replayed } from './helpers.ts'
+import { fingerprintOf, replayed } from './helpers.ts'
 
 const doc = (...content: unknown[]) => ({ type: 'doc', content })
 const paragraph = (...content: unknown[]) => ({ type: 'paragraph', content })
@@ -191,5 +192,245 @@ describe('the build operation', () => {
     expect(() => handle(OP_BUILD, [unknown])).toThrow(InvalidContentError)
     expect(() => handle(OP_BUILD, [])).toThrow()
     expect(() => handle(OP_BUILD, [unknown, unknown])).toThrow()
+  })
+})
+
+/** Documents that between them use every node and mark the builder knows. */
+const everything = [
+  paragraph(
+    text('plain '),
+    text('bold', { type: 'bold' }),
+    text('italic', { type: 'italic' }),
+    text('strike', { type: 'strike' }),
+    text('underline', { type: 'underline' }),
+    text('code', { type: 'code' }),
+    text('link', { type: 'link', attrs: { href: 'https://example.com/a?b=c' } }),
+    { type: 'hardBreak' },
+    text('both', { type: 'bold' }, { type: 'italic' }),
+  ),
+  { type: 'heading', attrs: { level: 3 }, content: [text('Heading')] },
+  { type: 'blockquote', content: [paragraph(text('quoted'))] },
+  {
+    type: 'bulletList',
+    content: [
+      {
+        type: 'listItem',
+        content: [
+          paragraph(text('outer')),
+          {
+            type: 'orderedList',
+            attrs: { start: 3 },
+            content: [{ type: 'listItem', content: [paragraph(text('inner'))] }],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'taskList',
+    content: [{ type: 'taskItem', attrs: { checked: true }, content: [paragraph(text('done'))] }],
+  },
+  { type: 'codeBlock', attrs: { language: 'ts' }, content: [text('const a = 1')] },
+  { type: 'horizontalRule' },
+  {
+    type: 'table',
+    content: [
+      {
+        type: 'tableRow',
+        content: [
+          { type: 'tableHeader', attrs: { colspan: 1 }, content: [paragraph(text('h'))] },
+          { type: 'tableCell', attrs: { rowspan: 1 }, content: [paragraph(text('c'))] },
+        ],
+      },
+    ],
+  },
+  { type: 'image', attrs: { attachmentId: '3f2b8c1e-9d4a-4e6b-8a57-0c1d2e3f4a5b', alt: 'a' } },
+  paragraph(
+    {
+      type: 'attachment',
+      attrs: { attachmentId: '3f2b8c1e-9d4a-4e6b-8a57-0c1d2e3f4a5b', fileName: 'a.pdf', size: 3 },
+    },
+    text('emoji 😀'),
+  ),
+]
+
+describe('replaceDocument', () => {
+  const page = () => [buildDocument(doc(paragraph(text('old one')), paragraph(text('old two'))))]
+
+  it('makes a page read as if it had been built from the new content', () => {
+    const old = page()
+    const update = replaceDocument(replayed(old), doc(...everything))
+
+    expect(
+      replayed([...old, update])
+        .getXmlFragment(FIELD)
+        .toJSON(),
+    ).toBe(fragmentOf(buildDocument(doc(...everything))).toJSON())
+  })
+
+  it.each(Object.keys(NODE_ATTRIBUTES))('replaces with a %s', (name) => {
+    const old = page()
+    const update = replaceDocument(replayed(old), doc({ type: name }))
+
+    expect(plainText(replayed([...old, update]))).not.toContain('old')
+  })
+
+  it('holds only what the page lacks: a client that has the page applies it like an edit', () => {
+    const old = page()
+    const update = replaceDocument(replayed(old), doc(paragraph(text('new'))))
+
+    const client = replayed(old)
+    Y.applyUpdate(client, update)
+
+    expect(plainText(client)).toBe('new')
+    expect(update.length).toBeLessThan(Y.encodeStateAsUpdate(client).length)
+  })
+
+  it('gives the same document when it is applied twice', () => {
+    const old = page()
+    const update = replaceDocument(replayed(old), doc(paragraph(text('new'))))
+    const once = replayed([...old, update])
+    const twice = replayed([...old, update, update])
+
+    expect(Y.encodeStateAsUpdate(twice)).toEqual(Y.encodeStateAsUpdate(once))
+  })
+
+  it('leaves the first paragraph deleted, also when a client applies it again afterwards', () => {
+    const old = page()
+    const update = replaceDocument(replayed(old), doc(paragraph(text('new'))))
+    const result = replayed([...old, update])
+    const before = Y.encodeStateAsUpdate(result)
+
+    Y.applyUpdate(result, firstParagraph())
+
+    expect(Y.encodeStateAsUpdate(result)).toEqual(before)
+    expect(result.getXmlFragment(FIELD).length).toBe(1)
+    expect(plainText(result)).toBe('new')
+  })
+
+  it('also deletes the first paragraph of a page nobody has written to', () => {
+    const empty = [buildDocument(doc())]
+    const update = replaceDocument(replayed(empty), doc(paragraph(text('new'))))
+
+    const result = replayed([...empty, update])
+    expect(result.getXmlFragment(FIELD).length).toBe(1)
+    expect(plainText(result)).toBe('new')
+  })
+
+  it('ends with an empty paragraph unless the content already does', () => {
+    const old = page()
+    const update = replaceDocument(replayed(old), doc({ type: 'horizontalRule' }))
+
+    const nodes = (
+      replayed([...old, update])
+        .getXmlFragment(FIELD)
+        .toArray() as Y.XmlElement[]
+    ).map((node) => node.nodeName)
+    expect(nodes).toEqual(['horizontalRule', 'paragraph'])
+  })
+
+  it('leaves one empty paragraph for an empty note, so no client adds its own', () => {
+    const old = page()
+    const update = replaceDocument(replayed(old), doc())
+
+    const result = replayed([...old, update])
+    const nodes = (result.getXmlFragment(FIELD).toArray() as Y.XmlElement[]).map((n) => n.nodeName)
+    expect(nodes).toEqual(['paragraph'])
+    expect(plainText(result)).toBe('')
+  })
+
+  it('deletes text a client typed meanwhile into a block it replaces: the reason the server replaces under the page lock', () => {
+    const old = page()
+    const update = replaceDocument(replayed(old), doc(paragraph(text('new'))))
+
+    const person = replayed(old)
+    const typing: Uint8Array[] = []
+    person.on('update', (u: Uint8Array) => typing.push(u))
+    const first = person.getXmlFragment(FIELD).get(0) as Y.XmlElement
+    ;(first.get(0) as Y.XmlText).insert(3, ' typed')
+
+    expect(plainText(replayed([...old, update, ...typing]))).toBe('new')
+  })
+
+  it('keeps a block another client added meanwhile', () => {
+    const old = page()
+    const update = replaceDocument(replayed(old), doc(paragraph(text('new'))))
+
+    // A person typed a new paragraph at the end while the update was being made.
+    const person = replayed(old)
+    const typing: Uint8Array[] = []
+    person.on('update', (u: Uint8Array) => typing.push(u))
+    const added = new Y.XmlElement('paragraph')
+    const addedText = new Y.XmlText()
+    addedText.insert(0, 'typed meanwhile')
+    added.insert(0, [addedText])
+    person.getXmlFragment(FIELD).insert(2, [added])
+
+    const one = replayed([...old, update, ...typing])
+    const other = replayed([...old, ...typing, update])
+
+    expect(plainText(one)).toContain('new')
+    expect(plainText(one)).toContain('typed meanwhile')
+    expect(plainText(one)).not.toContain('old')
+    expect(Y.encodeStateAsUpdate(one)).toEqual(Y.encodeStateAsUpdate(other))
+  })
+
+  it('refuses content the builder refuses, and leaves the page as it was', () => {
+    const current = replayed(page())
+    const before = Y.encodeStateAsUpdate(current)
+
+    expect(() => replaceDocument(current, doc({ type: 'iframe' }))).toThrow(InvalidContentError)
+    expect(() => replaceDocument(current, { type: 'paragraph' })).toThrow(InvalidContentError)
+    expect(Y.encodeStateAsUpdate(current)).toEqual(before)
+  })
+})
+
+describe('the replace operation', () => {
+  const json = (content: unknown) => Buffer.from(JSON.stringify(content), 'utf8')
+
+  it('answers with the update for the page it was sent, and the page after it', () => {
+    const old = buildDocument(doc(paragraph(text('before'))))
+
+    const [update, stateVector, after, pageText, ...rest] = handle(OP_REPLACE, [
+      json(doc(paragraph(text('after')))),
+      old,
+    ])
+
+    const result = replayed([old, update!])
+    expect(plainText(result)).toBe('after')
+    expect(stateVector).toEqual(Y.encodeStateVector(result))
+    expect(after).toEqual(fingerprintOf(result))
+    expect(Buffer.from(pageText!).toString('utf8')).toBe('after')
+    expect(rest).toEqual([])
+  })
+
+  it('takes a snapshot and the updates after it, as compaction does', () => {
+    const old = buildDocument(doc(paragraph(text('before'))))
+    const [state] = handle(2, [old])
+
+    const [update] = handle(OP_REPLACE, [json(doc(paragraph(text('after')))), state!])
+
+    expect(plainText(replayed([state!, update!]))).toBe('after')
+  })
+
+  it('says so when it is the content that is refused, as the server tells it apart', () => {
+    const old = buildDocument(doc())
+
+    expect(() => handle(OP_REPLACE, [json(doc({ type: 'iframe' })), old])).toThrow(
+      /^invalid content: unknown node iframe$/,
+    )
+    expect(() => handle(OP_REPLACE, [json(doc()), new Uint8Array([1, 2, 3])])).not.toThrow(
+      /^invalid content/,
+    )
+  })
+
+  it('is an error, not a crash, for input that is not JSON or not content, or without content', () => {
+    const old = buildDocument(doc())
+
+    expect(() => handle(OP_REPLACE, [Buffer.from('{'), old])).toThrow()
+    expect(() => handle(OP_REPLACE, [json(doc({ type: 'iframe' })), old])).toThrow(
+      InvalidContentError,
+    )
+    expect(() => handle(OP_REPLACE, [])).toThrow()
   })
 })

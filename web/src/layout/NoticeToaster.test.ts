@@ -1,7 +1,9 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createMemoryHistory } from 'vue-router'
 import { createAppI18n, type Locale } from '../i18n'
+import { createAppRouter } from '../router'
 import { useNotificationsStore } from '../stores/notifications'
 import { useTreeStore } from '../stores/tree'
 import { fakeTree, outline } from '../testing/treeFixtures'
@@ -21,8 +23,9 @@ async function toaster(locale: Locale = 'en') {
   const pinia = createPinia()
   setActivePinia(pinia)
   await useTreeStore().init()
+  const router = createAppRouter(createMemoryHistory())
   wrapper = mount(NoticeToaster, {
-    global: { plugins: [pinia, createAppI18n(locale)] },
+    global: { plugins: [pinia, createAppI18n(locale), router] },
     attachTo: document.body,
   })
   const notices = useNotificationsStore()
@@ -32,7 +35,7 @@ async function toaster(locale: Locale = 'en') {
       (el) => el.textContent?.trim() ?? '',
     )
   }
-  return { server, notices, shown }
+  return { server, notices, shown, router }
 }
 
 describe('NoticeToaster', () => {
@@ -51,6 +54,23 @@ describe('NoticeToaster', () => {
     expect(server.writes()).toEqual([
       { method: 'POST', path: '/api/pages/Notes/restore', body: {} },
     ])
+  })
+
+  it('says where offline edits that were deleted elsewhere are kept, and opens the copy', async () => {
+    const { notices, shown, router } = await toaster()
+    const push = vi.spyOn(router, 'push').mockResolvedValue(undefined)
+
+    notices.post({ type: 'editsKept', pageId: 'copy-1', title: 'Plan' })
+    const texts = await shown()
+
+    expect(texts.join(' ')).toContain(
+      'What you typed offline in “Plan” was removed by a change made elsewhere meanwhile. It is kept in a copy beside it.',
+    )
+    const open = [...document.body.querySelectorAll('button')].find(
+      (b) => b.textContent?.trim() === 'Open the copy',
+    )!
+    open.click()
+    expect(push).toHaveBeenCalledWith({ name: 'page', params: { pageId: 'copy-1' } })
   })
 
   it('says it in Dutch', async () => {

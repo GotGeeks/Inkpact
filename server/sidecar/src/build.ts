@@ -43,7 +43,15 @@ export const MARK_ATTRIBUTES: Readonly<Record<string, readonly string[]>> = {
 /** Nesting deeper than any document made by hand; a limit so a hostile input cannot exhaust the stack. */
 const MAX_DEPTH = 64
 
-export class InvalidContentError extends Error {}
+/**
+ * Content the editor's schema does not allow. Its message starts with "invalid content: ", which is how the server tells a
+ * refused document from a page or request it cannot use (`YjsRejectedException.IsInvalidContent`).
+ */
+export class InvalidContentError extends Error {
+  constructor(reason: string) {
+    super(`invalid content: ${reason}`)
+  }
+}
 
 type Attribute = string | number | boolean | null | number[]
 type Attributes = Record<string, Attribute>
@@ -143,39 +151,52 @@ function element(node: unknown, depth: number): Y.XmlElement {
 }
 
 /**
+ * The Yjs elements for the blocks of a ProseMirror document, built before anything is applied so a refusal leaves nothing half
+ * done. A document that does not end in a paragraph gets an empty one, which is what the editor would add when it opens the
+ * page (TipTap's trailing node). If it were left to the editor, every client that opened the page would add its own.
+ */
+function elementsOf(content: unknown): Y.XmlElement[] {
+  if (!isRecord(content) || content.type !== 'doc')
+    throw new InvalidContentError('the content is not a doc')
+  const blocks = content.content ?? []
+  if (!Array.isArray(blocks)) throw new InvalidContentError('doc: content is not a list')
+
+  const elements = blocks.map((block) => element(block, 1))
+  const last = blocks.at(-1)
+  if (elements.length > 0 && !(isRecord(last) && last.type === 'paragraph'))
+    elements.push(new Y.XmlElement('paragraph'))
+  return elements
+}
+
+/** The update that makes a page's first paragraph, as every client makes it (web/src/editor/firstParagraph.ts). */
+function firstParagraphUpdate(): Uint8Array {
+  const first = new Y.Doc()
+  try {
+    first.clientID = FIRST_PARAGRAPH_CLIENT_ID
+    const paragraph = new Y.XmlElement('paragraph')
+    paragraph.insert(0, [new Y.XmlText()])
+    first.getXmlFragment(FIELD).insert(0, [paragraph])
+    return Y.encodeStateAsUpdate(first)
+  } finally {
+    first.destroy()
+  }
+}
+
+/**
  * The Yjs update for a page whose content is `content`, a ProseMirror document as JSON (`{type: 'doc', content: [...]}`).
  *
  * Every page's document starts from the same fixed update, which makes the first paragraph; clients apply it before they
  * subscribe, so none makes a paragraph of its own. This one does too, then deletes that paragraph and writes the content
  * after it. A client that applies the first-paragraph update again changes nothing: the deletion is in the delete set.
  * An empty document keeps the first paragraph as it is.
- *
- * A document that does not end in a paragraph gets an empty one, which is what the editor would add when it opens the page
- * (TipTap's trailing node). If it were left to the editor, every client that opened the page would add its own.
  */
 export function buildDocument(content: unknown): Uint8Array {
-  if (!isRecord(content) || content.type !== 'doc')
-    throw new InvalidContentError('the content is not a doc')
-  const blocks = content.content ?? []
-  if (!Array.isArray(blocks)) throw new InvalidContentError('doc: content is not a list')
+  const elements = elementsOf(content)
+  const firstUpdate = firstParagraphUpdate()
+  if (elements.length === 0) return firstUpdate
 
   const doc = new Y.Doc()
   try {
-    const first = new Y.Doc()
-    first.clientID = FIRST_PARAGRAPH_CLIENT_ID
-    const paragraph = new Y.XmlElement('paragraph')
-    paragraph.insert(0, [new Y.XmlText()])
-    first.getXmlFragment(FIELD).insert(0, [paragraph])
-    const firstUpdate = Y.encodeStateAsUpdate(first)
-    first.destroy()
-
-    // Built before anything is applied, so a refusal leaves nothing half done.
-    const elements = blocks.map((block) => element(block, 1))
-    const last = blocks.at(-1)
-    if (elements.length > 0 && !(isRecord(last) && last.type === 'paragraph'))
-      elements.push(new Y.XmlElement('paragraph'))
-    if (elements.length === 0) return firstUpdate
-
     Y.applyUpdate(doc, firstUpdate)
     const fragment = doc.getXmlFragment(FIELD)
     doc.transact(() => {
@@ -186,4 +207,30 @@ export function buildDocument(content: unknown): Uint8Array {
   } finally {
     doc.destroy()
   }
+}
+
+/**
+ * The update that replaces the content of an existing page, `doc` being the page as it is now: it deletes every block of
+ * the page and writes `content` after them, and holds only what `doc` does not have yet, so it applies to the page, and to
+ * any client that has it, like an edit. An empty document leaves one empty paragraph, as the editor would add.
+ *
+ * What a client wrote that `doc` does not have is merged by Yjs only where it does not depend on a deleted block: a new
+ * block survives, but text typed into a block that existed is deleted with that block. The server therefore replaces a page
+ * only while it knows every update of it (under the hub's page lock), and a client that typed offline into the old blocks
+ * keeps that text in a copy of the page when it reconnects (`onEditsLost` in web/src/sync/syncClient.ts).
+ *
+ * Applying it a second time changes nothing. The first paragraph (client 1) is deleted like any other block when it is
+ * still there, and a client that applies the first-paragraph update again changes nothing, as after `buildDocument`.
+ */
+export function replaceDocument(doc: Y.Doc, content: unknown): Uint8Array {
+  const elements = elementsOf(content)
+  if (elements.length === 0) elements.push(new Y.XmlElement('paragraph'))
+
+  const before = Y.encodeStateVector(doc)
+  const fragment = doc.getXmlFragment(FIELD)
+  doc.transact(() => {
+    fragment.delete(0, fragment.length)
+    fragment.insert(0, elements)
+  })
+  return Y.encodeStateAsUpdate(doc, before)
 }
