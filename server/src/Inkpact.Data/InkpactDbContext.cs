@@ -239,6 +239,9 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             item.Property(i => i.ExternalId).HasMaxLength(200).IsRequired();
             item.Property(i => i.Kind).HasMaxLength(16).IsRequired();
             item.Property(i => i.ContentHash).HasMaxLength(64).IsRequired();
+            item.Property(i => i.PageFingerprint).HasMaxLength(32);
+            item.Property(i => i.Base).HasColumnType("jsonb");
+            item.Property(i => i.ConverterVersion).HasDefaultValue(1);
             item.HasOne<Workspace>().WithMany().HasForeignKey(i => i.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
             // What later imports compare against must outlive the report of the import that made it.
             item.HasOne<ImportRun>().WithMany().HasForeignKey(i => i.ImportId).OnDelete(DeleteBehavior.Restrict);

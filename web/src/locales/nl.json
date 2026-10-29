@@ -110,7 +110,8 @@
       "live": "Live",
       "offline": "Offline · wijzigingen blijven in dit tabblad bewaard"
     },
-    "tooLarge": "Deze wijziging is te groot om op te slaan. Als je de pagina herlaadt, gaat ze verloren."
+    "tooLarge": "Deze wijziging is te groot om op te slaan. Als je de pagina herlaadt, gaat ze verloren.",
+    "offlineCopyTitle": "{title} (je offline wijzigingen)"
   },
   "editor": {
     "label": "Inhoud van de pagina",
@@ -253,7 +254,7 @@
       "step1": "Kies in Joplin desktop Bestand, Alles exporteren, en dan JEX - Joplin Export File.",
       "step2": "Exporteer met ontsleutelde notities. Notities die in het bestand nog versleuteld zijn, worden overgeslagen.",
       "step3": "Kies hieronder het .jex-bestand. Een grote export kan een paar minuten duren.",
-      "again": "Hetzelfde bestand nogmaals importeren voegt niets dubbel toe: wat er al is, blijft zoals het is."
+      "again": "Een nieuwere export later importeren werkt de notities bij die je in Joplin hebt gewijzigd. Wat je hier hebt gewijzigd blijft: een notitie die op beide plekken is gewijzigd krijgt de versie uit Joplin als kopie ernaast."
     },
     "choose": {
       "button": "Kies een .jex-bestand",
@@ -296,7 +297,11 @@
       "files": "Bestanden"
     },
     "left": {
+      "updated": "{count} notitie is in Joplin gewijzigd en hier bijgewerkt. | {count} notities zijn in Joplin gewijzigd en hier bijgewerkt.",
+      "reconverted": "{count} notitie is opnieuw omgezet door een nieuwere versie van de import. | {count} notities zijn opnieuw omgezet door een nieuwere versie van de import.",
+      "conflicts": "{count} notitie is in Joplin én hier gewijzigd: die van jou is gebleven, en de versie uit Joplin staat er als kopie naast. | {count} notities zijn in Joplin én hier gewijzigd: die van jou zijn gebleven, en de versies uit Joplin staan er als kopie naast.",
       "alreadyImported": "{count} item was al eerder geïmporteerd en is met rust gelaten. | {count} items waren al eerder geïmporteerd en zijn met rust gelaten.",
+      "keptInInkpact": "{count} notitie is alleen hier gewijzigd en is gelaten zoals ze is. | {count} notities zijn alleen hier gewijzigd en zijn gelaten zoals ze zijn.",
       "alreadyInTrash": "{count} eerder geïmporteerd item staat hier in de prullenbak en is daar gelaten. | {count} eerder geïmporteerde items staan hier in de prullenbak en zijn daar gelaten.",
       "trashed": "{count} notitie zat in de prullenbak van Joplin en is niet geïmporteerd. | {count} notities zaten in de prullenbak van Joplin en zijn niet geïmporteerd.",
       "skipped": "{count} item is overgeslagen. | {count} items zijn overgeslagen.",
@@ -306,14 +311,17 @@
     "report": {
       "title": "Om te bekijken",
       "empty": "Alles is overgekomen zoals het was.",
-      "intro": "{count} item is overgeslagen of niet precies overgekomen zoals het was. | {count} items zijn overgeslagen of niet precies overgekomen zoals ze waren.",
-      "showMore": "Toon nog {count}"
+      "intro": "{count} item is het bekijken waard. | {count} items zijn het bekijken waard.",
+      "showMore": "Toon nog {count}",
+      "original": "Jouw versie"
     },
     "status": {
       "imperfect": "Geïmporteerd, met wijzigingen",
       "conflict": "Joplin-conflict",
       "skipped": "Overgeslagen",
-      "failed": "Mislukt"
+      "failed": "Mislukt",
+      "updated": "Bijgewerkt",
+      "conflict_copy": "Op beide plekken gewijzigd"
     },
     "kind": {
       "notebook": "Notitieboek",
@@ -349,6 +357,7 @@
       "notebook_cycle": "Het notitieboek zat in zichzelf, dus het staat op het hoogste niveau.",
       "notebook_in_trash": "Het notitieboek staat in de prullenbak. Zet het notitieboek terug en importeer opnieuw.",
       "parent_failed": "Het notitieboek kon niet worden geïmporteerd, dus dit is ook niet geïmporteerd.",
+      "content_conflict": "De notitie is in Joplin én hier gewijzigd. Jouw versie is gebleven zoals ze was; dit is de versie uit Joplin, ernaast.",
       "conversion_failed": "De inhoud kon niet worden omgezet. Dit is een fout in Inkpact, niet in je notitie.",
       "item_failed": "Er ging iets mis bij het importeren. Het serverlog heeft de details."
     },
@@ -367,6 +376,9 @@
     "undoAlt": "Het verplaatsen van “{title}” naar de prullenbak ongedaan maken",
     "restored": "“{title}” is teruggezet.",
     "restoredToTopLevel": "“{title}” is teruggezet op het bovenste niveau, omdat de pagina waar hij onder stond weg is.",
+    "editsKept": "Wat je offline in “{title}” typte, is intussen elders weggehaald. Het staat in een kopie ernaast.",
+    "openCopy": "Open de kopie",
+    "openCopyAlt": "Open de kopie van je offline wijzigingen aan “{title}”",
     "dismiss": "Sluiten"
   }
 }

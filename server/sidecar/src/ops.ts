@@ -1,5 +1,5 @@
 import * as Y from 'yjs'
-import { buildDocument } from './build.ts'
+import { buildDocument, replaceDocument } from './build.ts'
 import { plainText } from './text.ts'
 import yjsPackage from 'yjs/package.json' with { type: 'json' }
 
@@ -11,6 +11,7 @@ export const OP_DIFF = 1
 export const OP_COMPACT = 2
 export const OP_FINGERPRINT = 3
 export const OP_BUILD = 4
+export const OP_REPLACE = 5
 
 const utf8 = (value: string) => Buffer.from(value, 'utf8')
 
@@ -83,6 +84,24 @@ function build([json, ...rest]: Uint8Array[]): Uint8Array[] {
   return [buildDocument(JSON.parse(Buffer.from(json).toString('utf8')))]
 }
 
+/**
+ * [the new content as ProseMirror JSON, in UTF-8, then the page's snapshot and updates] ->
+ * [the update that replaces the content, the page's state vector after it, its fingerprint after it, its text after it].
+ * The update is checked by replaying the inputs and it on a fresh document, as a browser would: the answer is only given
+ * when that is the document the update was made on.
+ */
+function replace([json, ...inputs]: Uint8Array[]): Uint8Array[] {
+  if (json === undefined) throw new Error('replace needs the new content and the page')
+  const content = JSON.parse(Buffer.from(json).toString('utf8'))
+  return withReplay(inputs, (doc) => {
+    const update = replaceDocument(doc, content)
+    const after = fingerprint(doc)
+    if (!Buffer.from(withReplay([...inputs, update], fingerprint)).equals(after))
+      throw new Error('the replacement does not read back as the page it was made on')
+    return [update, Y.encodeStateVector(doc), after, utf8(plainText(doc))]
+  })
+}
+
 /** Answers one request. Anything it throws becomes an error response; the sidecar keeps serving. */
 export function handle(op: number, parts: Uint8Array[]): Uint8Array[] {
   switch (op) {
@@ -96,6 +115,8 @@ export function handle(op: number, parts: Uint8Array[]): Uint8Array[] {
       return fingerprintOf(parts)
     case OP_BUILD:
       return build(parts)
+    case OP_REPLACE:
+      return replace(parts)
     default:
       throw new Error(`Unknown operation ${op}`)
   }

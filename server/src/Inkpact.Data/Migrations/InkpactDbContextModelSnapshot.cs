@@ -192,11 +192,21 @@ namespace Inkpact.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("Base")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("base");
+
                     b.Property<string>("ContentHash")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("content_hash");
+
+                    b.Property<int>("ConverterVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("converter_version");
 
                     b.Property<string>("ExternalId")
                         .IsRequired()
@@ -221,6 +231,11 @@ namespace Inkpact.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
                         .HasColumnName("kind");
+
+                    b.Property<byte[]>("PageFingerprint")
+                        .HasMaxLength(32)
+                        .HasColumnType("bytea")
+                        .HasColumnName("page_fingerprint");
 
                     b.Property<string>("SourceType")
                         .IsRequired()

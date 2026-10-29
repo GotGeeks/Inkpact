@@ -76,6 +76,9 @@ public static class NoteCodes
     /// <summary>The notebook the item belongs to could not be imported, so the item was not either.</summary>
     public const string ParentFailed = "parent_failed";
 
+    /// <summary>The note changed in Joplin and here since it was imported; this is Joplin's version, beside the one here.</summary>
+    public const string ContentConflict = "content_conflict";
+
     /// <summary>The page's content was refused by the Yjs builder: a fault in the conversion, not in the note.</summary>
     public const string ConversionFailed = "conversion_failed";
 

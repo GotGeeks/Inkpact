@@ -33,18 +33,21 @@ public sealed class PageUpdateStore(IDbContextFactory<InkpactDbContext> dbFactor
             .SingleOrDefaultAsync(cancellationToken);
         // All live rows, not those above the watermark: a row still in the log has not been merged, and rows can commit
         // out of sequence order (see the compactor).
-        var updates = await db.PageUpdates.AsNoTracking()
+        var rows = await db.PageUpdates.AsNoTracking()
             .Where(u => u.PageId == pageId)
             .OrderBy(u => u.Seq)
-            .Select(u => u.Data)
+            .Select(u => new { u.Seq, u.Data })
             .ToListAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return new PageContent(snapshot, updates);
+        return new PageContent(snapshot, [.. rows.Select(r => r.Data)], rows.Count == 0 ? 0 : rows[^1].Seq);
     }
 }
 
-/// <summary>A page's snapshot and the live updates after it.</summary>
-public sealed record PageContent(byte[]? Snapshot, IReadOnlyList<byte[]> Updates)
+/// <summary>
+/// A page's snapshot and the live updates after it. <see cref="LastSeq"/> is the sequence number of the last of them (0 when
+/// there are none): an update stored later has a higher one, since compaction only ever takes updates out of the log.
+/// </summary>
+public sealed record PageContent(byte[]? Snapshot, IReadOnlyList<byte[]> Updates, long LastSeq)
 {
     /// <summary>What to hand the codec, or to send a client in log mode: the snapshot first, then the updates.</summary>
     public IReadOnlyList<byte[]> Inputs => Snapshot is null ? Updates : [Snapshot, .. Updates];

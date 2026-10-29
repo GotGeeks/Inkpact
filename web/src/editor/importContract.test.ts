@@ -1,7 +1,7 @@
 import { Editor, type JSONContent } from '@tiptap/core'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { buildDocument, MARK_ATTRIBUTES, NODE_ATTRIBUTES } from 'sidecar/src/build'
+import { buildDocument, MARK_ATTRIBUTES, NODE_ATTRIBUTES, replaceDocument } from 'sidecar/src/build'
 import * as Y from 'yjs'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createExtensions } from './extensions'
@@ -233,6 +233,53 @@ describe('the first paragraph', () => {
     expect(Y.encodeStateAsUpdate(client)).toEqual(before)
     expect(editorFor(client).getJSON().content).toHaveLength(1)
   })
+})
+
+/**
+ * A page that was imported, a person has open (their client applied the first paragraph and the import's update), and the
+ * server replaces its content with an update (run 1.16a). The editor must read the result as the content, and opening it
+ * must write nothing: `expectRoundTrip` for a page that is replaced instead of built.
+ */
+function expectReplacement(content: JSONContent) {
+  const old = buildDocument(doc(paragraph(text('what was there')), paragraph(text('and more'))))
+  const server = new Y.Doc()
+  Y.applyUpdate(server, old)
+  const update = replaceDocument(server, content)
+
+  const client = new Y.Doc()
+  applyFirstParagraph(client)
+  Y.applyUpdate(client, old)
+  Y.applyUpdate(client, update)
+  const before = Y.encodeStateAsUpdate(client)
+  const errors: unknown[] = []
+  const editor = editorFor(client, errors)
+
+  const blocks = content.content ?? []
+  const trailing =
+    blocks.length === 0 || blocks.at(-1)?.type !== 'paragraph' ? [{ type: 'paragraph' }] : []
+  const expected = editor.schema
+    .nodeFromJSON({ ...content, content: [...blocks, ...trailing] })
+    .toJSON()
+
+  expect(errors).toEqual([])
+  expect(editor.getJSON()).toEqual(expected)
+  expect(Y.encodeStateAsUpdate(client)).toEqual(before)
+
+  // Neither a second delivery nor the first paragraph arriving again changes the page.
+  Y.applyUpdate(client, update)
+  applyFirstParagraph(client)
+  expect(Y.encodeStateAsUpdate(client)).toEqual(before)
+}
+
+describe('what the server replaces a page with, the editor reads back', () => {
+  it.each(fixtures)('%s', (_name, content) => expectReplacement(content))
+
+  it('an empty note leaves one empty paragraph', () => expectReplacement(doc()))
+
+  it.each([
+    ...conversions.markdown.map((c) => [`markdown: ${c.name}`, c.expected] as const),
+    ...conversions.html.map((c) => [`html: ${c.name}`, c.expected] as const),
+  ])('what the converter makes from %s', (_name, blocks) => expectReplacement(doc(...blocks)))
 })
 
 describe('the builder and the editor agree on what exists', () => {

@@ -52,6 +52,12 @@ export interface SyncClientOptions {
   onConnectFailing?: () => void
   /** An error about the connection rather than one page, such as `too_many_pages`. */
   onError?: (code: string, pageId: string) => void
+  /**
+   * A Sync deleted changes of this client that the server did not have yet: text typed offline into a block that was
+   * deleted meanwhile (by another person, or by an import that replaced the page). Yjs deletes such text with its block,
+   * so it would be gone without a word. `before` is the page as it was just before, with those changes, as one update.
+   */
+  onEditsLost?: (pageId: string, before: Uint8Array) => void
   random?: () => number
 }
 
@@ -467,21 +473,23 @@ export class SyncClient {
 
   private handleSync(page: Page, serverStateVector: Uint8Array, updates: Uint8Array[]) {
     let serverVector = serverStateVector
-    if (serverStateVector.length > 0) {
-      // Diff mode: one update with everything this client was missing.
-      for (const update of updates) Y.applyUpdate(page.doc, update, this.remote)
-    } else {
-      // Log mode: the stored updates, each in its own apply (one transaction can lose a deletion, run 0.5). The server's
-      // state vector is what a scratch document holding them has. The first one may be a snapshot, which Yjs takes like
-      // any other update.
+    if (serverStateVector.length === 0) {
+      // Log mode: the server's state vector is what a scratch document holding the stored updates has. The first one may
+      // be a snapshot, which Yjs takes like any other update.
       const scratch = new Y.Doc()
-      for (const update of updates) {
-        Y.applyUpdate(page.doc, update, this.remote)
-        Y.applyUpdate(scratch, update)
-      }
+      for (const update of updates) Y.applyUpdate(scratch, update)
       serverVector = Y.encodeStateVector(scratch)
       scratch.destroy()
     }
+
+    // What this client made that the server does not have yet, and the page as it is, in case the Sync deletes some of it.
+    const unsynced = page.readOnly ? [] : unsyncedItems(page.doc, serverVector)
+    const before = unsynced.length > 0 ? Y.encodeStateAsUpdate(page.doc) : null
+    // In diff mode one update, in log mode the stored ones, each in its own apply (one transaction can lose a deletion,
+    // run 0.5).
+    for (const update of updates) Y.applyUpdate(page.doc, update, this.remote)
+    if (before && unsynced.some((item) => item.deleted))
+      this.options.onEditsLost?.(page.pageId, before)
 
     if (page.state === 'tooLarge' || page.state === 'missing') return
     this.setState(page, 'synced')
@@ -549,6 +557,26 @@ export class SyncClient {
       // The socket is closing: its close event starts the reconnect.
     }
   }
+}
+
+/**
+ * The items of the document that the server's state vector does not cover (and that are not deleted already): what this
+ * client made while the server could not see it. Only a Sync is checked, where offline edits meet what happened meanwhile;
+ * an Update that arrives while online could in theory delete a block someone types into at that very moment, a window
+ * of a round trip.
+ */
+function unsyncedItems(doc: Y.Doc, serverVector: Uint8Array): Y.Item[] {
+  const known = Y.decodeStateVector(serverVector)
+  const items: Y.Item[] = []
+  doc.store.clients.forEach((structs, client) => {
+    const clock = known.get(client) ?? 0
+    for (let i = structs.length - 1; i >= 0; i--) {
+      const struct = structs[i]!
+      if (struct.id.clock + struct.length <= clock) break
+      if (struct instanceof Y.Item && !struct.deleted) items.push(struct)
+    }
+  })
+  return items
 }
 
 function defaultSocket(url: string): SocketLike {

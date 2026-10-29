@@ -8,6 +8,7 @@ import {
   ToastViewport,
 } from 'reka-ui'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useErrorMessage } from '../errors'
 import { useNotificationsStore, type PostedNotice } from '../stores/notifications'
 import { useTreeStore } from '../stores/tree'
@@ -17,6 +18,7 @@ const { t } = useI18n()
 const message = useErrorMessage()
 const notifications = useNotificationsStore()
 const tree = useTreeStore()
+const router = useRouter()
 
 /** The words for a notice, in the language of the page. */
 function text(notice: PostedNotice): string {
@@ -30,11 +32,21 @@ function text(notice: PostedNotice): string {
       return notice.toTopLevel
         ? t('notices.restoredToTopLevel', { title })
         : t('notices.restored', { title })
+    case 'editsKept':
+      return t('notices.editsKept', { title })
   }
 }
 
 async function undo(notice: PostedNotice) {
   if (notice.type === 'trashed') await tree.restore(notice.pageId)
+}
+
+/** A notice that must not slip by: it says where the person's own words went. */
+const important = (notice: PostedNotice) => notice.type === 'error' || notice.type === 'editsKept'
+
+function openCopy(notice: PostedNotice) {
+  if (notice.type === 'editsKept')
+    void router.push({ name: 'page', params: { pageId: notice.pageId } })
 }
 </script>
 
@@ -43,8 +55,8 @@ async function undo(notice: PostedNotice) {
     <ToastRoot
       v-for="notice in notifications.notices"
       :key="notice.id"
-      :duration="notice.type === 'error' ? 8000 : 6000"
-      :type="notice.type === 'error' ? 'foreground' : 'background'"
+      :duration="notice.type === 'editsKept' ? 30000 : notice.type === 'error' ? 8000 : 6000"
+      :type="important(notice) ? 'foreground' : 'background'"
       class="flex items-center gap-space-md rounded-md border border-border-subtle bg-surface-elevated p-space-md text-body-sm text-on-surface shadow-lg"
       :class="notice.type === 'error' ? 'border-error' : ''"
       @update:open="(open: boolean) => !open && notifications.dismiss(notice.id)"
@@ -61,6 +73,19 @@ async function undo(notice: PostedNotice) {
           @click="undo(notice)"
         >
           {{ t('notices.undo') }}
+        </button>
+      </ToastAction>
+      <ToastAction
+        v-if="notice.type === 'editsKept'"
+        as-child
+        :alt-text="t('notices.openCopyAlt', { title: notice.title || t('tree.untitled') })"
+      >
+        <button
+          type="button"
+          class="min-h-11 rounded px-space-md text-label-md text-primary hover:bg-surface-container-high focus-visible:outline-2 focus-visible:outline-primary md:min-h-8"
+          @click="openCopy(notice)"
+        >
+          {{ t('notices.openCopy') }}
         </button>
       </ToastAction>
       <ToastClose

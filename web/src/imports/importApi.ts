@@ -13,6 +13,14 @@ export interface ImportCounts {
   images: number
   files: number
   alreadyImported: number
+  /** Notes an earlier import made that changed only in Joplin, and were brought up to date. */
+  updated?: number
+  /** Notes nobody changed here, converted again by a newer version of the import. */
+  reconverted?: number
+  /** Notes that changed only here, and were left as they are. */
+  keptInInkpact?: number
+  /** Notes that changed in Joplin and here: Joplin's version became a copy beside the page. */
+  conflicts?: number
   alreadyInTrash: number
   trashed: number
   skipped: number
@@ -28,7 +36,8 @@ export interface ImportReason {
   count: number
 }
 
-export type ReportStatus = 'imperfect' | 'conflict' | 'skipped' | 'failed'
+export type ReportStatus =
+  'imperfect' | 'conflict' | 'skipped' | 'failed' | 'updated' | 'conflict_copy'
 
 export interface ReportEntry {
   kind: 'notebook' | 'note' | 'tag'
@@ -38,6 +47,8 @@ export interface ReportEntry {
   reasons: ImportReason[]
   /** The page that was made, when one was. */
   pageId?: string
+  /** For a conflict copy: the page that was kept as it was, beside which the copy is. */
+  originalPageId?: string
 }
 
 export interface ImportRun {

@@ -44,11 +44,26 @@ const serverCodes = [
   'notebook_cycle',
   'notebook_in_trash',
   'parent_failed',
+  'content_conflict',
   'conversion_failed',
   'item_failed',
 ]
 
+// Every status the server gives an item in a report (ReportStatus in the server's ImportReport.cs).
+const serverStatuses = ['imperfect', 'conflict', 'skipped', 'failed', 'updated', 'conflict_copy']
+
 describe('useImportMessages', () => {
+  it.each(['en', 'nl'] as const)(
+    'has a status in %s for every status the server reports',
+    (locale) => {
+      const { status } = messagesIn(locale)
+
+      const names = serverStatuses.map(status)
+      expect(new Set(names).size).toBe(serverStatuses.length)
+      for (const name of names) expect(name).not.toContain('import.status')
+    },
+  )
+
   it.each(['en', 'nl'] as const)(
     'has a message in %s for every code the server reports',
     (locale) => {
@@ -98,11 +113,15 @@ describe('useImportMessages', () => {
   it('names every status and kind, and treats an unknown one as the plain case', () => {
     const { status, kind } = messagesIn('en')
 
-    expect(['imperfect', 'conflict', 'skipped', 'failed'].map(status)).toEqual([
+    expect(
+      ['imperfect', 'conflict', 'skipped', 'failed', 'updated', 'conflict_copy'].map(status),
+    ).toEqual([
       'Imported, with changes',
       'Joplin conflict',
       'Skipped',
       'Failed',
+      'Brought up to date',
+      'Changed in both places',
     ])
     expect(['notebook', 'note', 'tag'].map(kind)).toEqual(['Notebook', 'Note', 'Tag'])
     expect(status('new')).toBe('Imported, with changes')

@@ -15,6 +15,7 @@ internal enum SidecarOp : byte
     Compact = 2,
     Fingerprint = 3,
     Build = 4,
+    Replace = 5,
 }
 
 /// <summary>

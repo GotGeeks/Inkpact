@@ -110,7 +110,7 @@ describe('ImportPage before the upload', () => {
 
     expect(wrapper!.get('h1').text()).toBe('Import from Joplin')
     expect(text()).toContain('Export all')
-    expect(text()).toContain('Importing the same file again adds nothing twice')
+    expect(text()).toContain('What you changed here is kept')
     expect(wrapper!.get('[data-testid="import-choose"]').text()).toBe('Choose a .jex file')
     expect(text()).toContain('Files up to 2 GB.')
     // No accept list: iOS greys out a .jex file, since it knows no type for the extension. The server checks the file.
@@ -480,7 +480,7 @@ describe('ImportPage report', () => {
     expect(wrapper!.get('[data-testid="import-result"]').text()).toBe(
       'The import has finished, with some things to look at',
     )
-    expect(text()).toContain('4 items were skipped or did not come across exactly as they were.')
+    expect(text()).toContain('4 items are worth a look.')
 
     expect(rows[0]!.text()).toContain('Imported, with changes')
     expect(rows[0]!.text()).toContain(
@@ -505,6 +505,42 @@ describe('ImportPage report', () => {
       ['Web clipping', '/p/page-1'],
       ['Meeting (conflict)', '/p/page-3'],
     ])
+  })
+
+  it('says what became of a note that changed in Joplin, and links a conflict copy and the page kept beside it', async () => {
+    await openReport({
+      report: [
+        {
+          kind: 'note',
+          externalId: 'e'.repeat(32),
+          title: 'Plan (Joplin)',
+          status: 'conflict_copy',
+          pageId: 'copy-1',
+          originalPageId: 'page-9',
+          reasons: [{ code: 'content_conflict', count: 1 }],
+        },
+        {
+          kind: 'note',
+          externalId: 'f'.repeat(32),
+          title: 'Diary',
+          status: 'updated',
+          pageId: 'page-10',
+          reasons: [{ code: 'external_image', count: 1 }],
+        },
+      ],
+    })
+
+    const rows = wrapper!.findAll('[data-testid="import-report"] > li')
+    expect(rows[0]!.text()).toContain('Changed in both places')
+    expect(rows[0]!.text()).toContain(
+      'The note changed in Joplin and here. Your version is kept as it was; this is Joplin’s version, beside it.',
+    )
+    expect(rows[0]!.findAll('a').map((a) => [a.text(), a.attributes('href')])).toEqual([
+      ['Plan (Joplin)', '/p/copy-1'],
+      ['Your version', '/p/page-9'],
+    ])
+    expect(rows[1]!.text()).toContain('Brought up to date')
+    expect(rows[1]!.findAll('a').map((a) => a.attributes('href'))).toEqual(['/p/page-10'])
   })
 
   it('says so when everything came across as it was', async () => {
@@ -536,6 +572,31 @@ describe('ImportPage report', () => {
       '2 notes were in Joplin’s trash and were not imported.',
       '1 item was skipped.',
       '1,500 more lines are not listed below.',
+    ])
+  })
+
+  it('says what became of the notes imported before, in the right number form', async () => {
+    await openReport({
+      counts: {
+        ...counts,
+        updated: 3,
+        reconverted: 1,
+        conflicts: 2,
+        alreadyImported: 10,
+        keptInInkpact: 1,
+      },
+    })
+
+    const lines = wrapper!
+      .get('[data-testid="import-left"]')
+      .findAll('li')
+      .map((li) => li.text())
+    expect(lines).toEqual([
+      '3 notes changed in Joplin and were brought up to date here.',
+      '1 note was converted again by a newer version of the import.',
+      '2 notes changed in Joplin and here: yours were kept, and Joplin’s versions are copies beside them.',
+      '10 items were already imported earlier and were left alone.',
+      '1 note changed only here and was left as it is.',
     ])
   })
 

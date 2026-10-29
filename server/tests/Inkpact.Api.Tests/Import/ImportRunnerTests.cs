@@ -359,6 +359,9 @@ public sealed class ImportRunnerTests(PostgresFixture postgres, ITestOutputHelpe
         public Task<byte[]> FingerprintAsync(IReadOnlyList<byte[]> updates, CancellationToken cancellationToken) =>
             inner.FingerprintAsync(updates, cancellationToken);
 
+        public Task<YjsReplacement> ReplaceAsync(IReadOnlyList<byte[]> inputs, ReadOnlyMemory<byte> content, CancellationToken cancellationToken) =>
+            inner.ReplaceAsync(inputs, content, cancellationToken);
+
         public async Task<byte[]> BuildAsync(ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
         {
             var call = Interlocked.Increment(ref _builds);

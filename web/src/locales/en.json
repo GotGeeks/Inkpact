@@ -110,7 +110,8 @@
       "live": "Live",
       "offline": "Offline · changes are kept in this tab"
     },
-    "tooLarge": "This change is too large to save. Reloading the page discards it."
+    "tooLarge": "This change is too large to save. Reloading the page discards it.",
+    "offlineCopyTitle": "{title} (your offline changes)"
   },
   "editor": {
     "label": "Page content",
@@ -253,7 +254,7 @@
       "step1": "In Joplin desktop, choose File, Export all, and then JEX - Joplin Export File.",
       "step2": "Export with the notes decrypted. Notes that are still encrypted in the file are skipped.",
       "step3": "Choose the .jex file below. A large export can take a few minutes.",
-      "again": "Importing the same file again adds nothing twice: what is already here is left alone."
+      "again": "Importing a newer export later brings the notes you changed in Joplin up to date. What you changed here is kept: a note changed in both places gets Joplin’s version as a copy beside it."
     },
     "choose": {
       "button": "Choose a .jex file",
@@ -296,7 +297,11 @@
       "files": "Files"
     },
     "left": {
+      "updated": "{count} note changed in Joplin and was brought up to date here. | {count} notes changed in Joplin and were brought up to date here.",
+      "reconverted": "{count} note was converted again by a newer version of the import. | {count} notes were converted again by a newer version of the import.",
+      "conflicts": "{count} note changed in Joplin and here: yours was kept, and Joplin’s version is a copy beside it. | {count} notes changed in Joplin and here: yours were kept, and Joplin’s versions are copies beside them.",
       "alreadyImported": "{count} item was already imported earlier and was left alone. | {count} items were already imported earlier and were left alone.",
+      "keptInInkpact": "{count} note changed only here and was left as it is. | {count} notes changed only here and were left as they are.",
       "alreadyInTrash": "{count} item imported earlier is in the trash here and was left there. | {count} items imported earlier are in the trash here and were left there.",
       "trashed": "{count} note was in Joplin’s trash and was not imported. | {count} notes were in Joplin’s trash and were not imported.",
       "skipped": "{count} item was skipped. | {count} items were skipped.",
@@ -306,14 +311,17 @@
     "report": {
       "title": "What to look at",
       "empty": "Everything came across as it was.",
-      "intro": "{count} item was skipped or did not come across exactly as it was. | {count} items were skipped or did not come across exactly as they were.",
-      "showMore": "Show {count} more"
+      "intro": "{count} item is worth a look. | {count} items are worth a look.",
+      "showMore": "Show {count} more",
+      "original": "Your version"
     },
     "status": {
       "imperfect": "Imported, with changes",
       "conflict": "Joplin conflict",
       "skipped": "Skipped",
-      "failed": "Failed"
+      "failed": "Failed",
+      "updated": "Brought up to date",
+      "conflict_copy": "Changed in both places"
     },
     "kind": {
       "notebook": "Notebook",
@@ -349,6 +357,7 @@
       "notebook_cycle": "Its notebook was inside itself, so it was put at the top level.",
       "notebook_in_trash": "Its notebook is in the trash. Restore the notebook and import again.",
       "parent_failed": "Its notebook could not be imported, so this was not imported either.",
+      "content_conflict": "The note changed in Joplin and here. Your version is kept as it was; this is Joplin’s version, beside it.",
       "conversion_failed": "Its content could not be converted. This is a fault in Inkpact, not in your note.",
       "item_failed": "Something went wrong while importing it. The server log has the details."
     },
@@ -367,6 +376,9 @@
     "undoAlt": "Undo moving “{title}” to the trash",
     "restored": "“{title}” was restored.",
     "restoredToTopLevel": "“{title}” was restored to the top level, because the page it was in is gone.",
+    "editsKept": "What you typed offline in “{title}” was removed by a change made elsewhere meanwhile. It is kept in a copy beside it.",
+    "openCopy": "Open the copy",
+    "openCopyAlt": "Open the copy of your offline changes to “{title}”",
     "dismiss": "Dismiss"
   }
 }

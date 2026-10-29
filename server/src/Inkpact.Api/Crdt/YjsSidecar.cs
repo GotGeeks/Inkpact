@@ -51,14 +51,7 @@ public sealed class YjsSidecar(SidecarOptions options, string contentRoot, TimeP
     public async Task<YjsDiff> DiffAsync(
         ReadOnlyMemory<byte> stateVector, IReadOnlyList<byte[]> updates, CancellationToken cancellationToken)
     {
-        var parts = new ReadOnlyMemory<byte>[updates.Count + 1];
-        parts[0] = stateVector;
-        for (var i = 0; i < updates.Count; i++)
-        {
-            parts[i + 1] = updates[i];
-        }
-
-        var answer = await CallAsync(SidecarOp.Diff, parts, options.DiffTimeout, cancellationToken);
+        var answer = await CallAsync(SidecarOp.Diff, Parts(updates, stateVector), options.DiffTimeout, cancellationToken);
         return answer is [var update, var serverStateVector] ? new YjsDiff(update, serverStateVector) : throw Unexpected(answer);
     }
 
@@ -82,12 +75,27 @@ public sealed class YjsSidecar(SidecarOptions options, string contentRoot, TimeP
         return answer is [var update] ? update : throw Unexpected(answer);
     }
 
-    private static ReadOnlyMemory<byte>[] Parts(IReadOnlyList<byte[]> updates)
+    public async Task<YjsReplacement> ReplaceAsync(IReadOnlyList<byte[]> inputs, ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
     {
-        var parts = new ReadOnlyMemory<byte>[updates.Count];
-        for (var i = 0; i < parts.Length; i++)
+        var answer = await CallAsync(SidecarOp.Replace, Parts(inputs, content), options.RequestTimeout, cancellationToken);
+        return answer is [var update, var stateVector, var fingerprint, var text]
+            ? new YjsReplacement(update, stateVector, fingerprint, Encoding.UTF8.GetString(text))
+            : throw Unexpected(answer);
+    }
+
+    /// <summary>The updates as the parts of a request, after <paramref name="first"/> when an operation takes one more part before them.</summary>
+    private static ReadOnlyMemory<byte>[] Parts(IReadOnlyList<byte[]> updates, ReadOnlyMemory<byte>? first = null)
+    {
+        var offset = first is null ? 0 : 1;
+        var parts = new ReadOnlyMemory<byte>[updates.Count + offset];
+        if (first is { } leading)
         {
-            parts[i] = updates[i];
+            parts[0] = leading;
+        }
+
+        for (var i = 0; i < updates.Count; i++)
+        {
+            parts[i + offset] = updates[i];
         }
 
         return parts;
