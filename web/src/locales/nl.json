@@ -61,6 +61,7 @@
     "import_invalid": "Dat is geen Joplin-export. Kies in Joplin desktop Bestand, Alles exporteren, JEX.",
     "import_too_large": "Dat bestand is te groot om te importeren.",
     "import_in_progress": "In deze werkruimte loopt al een import. Wacht tot die klaar is.",
+    "import_copy_title_invalid": "De import kon niet beginnen door een fout in deze app. Laad de pagina opnieuw en probeer het nog eens.",
     "import_too_many_items": "De export bevat meer items dan in één keer geïmporteerd kunnen worden.",
     "sidecar_unavailable": "Het deel van de server dat de pagina’s opbouwt is niet bereikbaar. Probeer het zo opnieuw; wat al geïmporteerd is blijft bewaard.",
     "import_failed": "De import is gestopt omdat er iets misging op de server.",
@@ -248,6 +249,7 @@
     "menu": "Importeren uit Joplin",
     "title": "Importeren uit Joplin",
     "intro": "Haal je notities over uit Joplin. Notitieboeken worden pagina’s met dezelfde indeling, en notities houden hun tekst, afbeeldingen, bestanden, tags, taken en datums.",
+    "copyTitle": "{title} (Joplin)",
     "viewerOnly": "Je kunt deze werkruimte alleen lezen, dus je kunt er niet in importeren.",
     "export": {
       "title": "Exporteer eerst je notities uit Joplin",

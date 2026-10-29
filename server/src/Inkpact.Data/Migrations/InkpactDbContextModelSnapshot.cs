@@ -274,6 +274,11 @@ namespace Inkpact.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("CopyTitle")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("copy_title");
+
                     b.Property<string>("Counts")
                         .IsRequired()
                         .HasColumnType("jsonb")

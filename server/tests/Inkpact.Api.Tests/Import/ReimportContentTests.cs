@@ -4,6 +4,7 @@ using FsCheck;
 using FsCheck.Fluent;
 using Inkpact.Api.Crdt;
 using Inkpact.Api.Attachments;
+using Inkpact.Api.Compaction;
 using Inkpact.Api.Import;
 using Inkpact.Api.Pages;
 using Inkpact.Api.Sync;
@@ -79,7 +80,10 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
 
     private IYjsCodec Codec => _factory.Services.GetRequiredService<IYjsCodec>();
 
-    private async Task<ImportRun> ImportAsync(JexBuilder jex)
+    /// <summary>The conflict copy's title the English client sends with the upload.</summary>
+    private const string CopyTitle = "{title} (Joplin)";
+
+    private async Task<ImportRun> ImportAsync(JexBuilder jex, string? copyTitle = CopyTitle)
     {
         var options = _factory.Services.GetRequiredService<ImportOptions>();
         var id = Guid.CreateVersion7();
@@ -94,6 +98,7 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
                 UserId = _userId,
                 SourceType = ImportRunner.SourceType,
                 FileName = "export.jex",
+                CopyTitle = copyTitle,
                 State = ImportStates.Queued,
                 CreatedAt = DateTimeOffset.UtcNow,
             });
@@ -245,6 +250,81 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
         (await ItemOfAsync("plan")).ContentHash.ShouldBe(before.ContentHash);
     }
 
+    [Fact]
+    public async Task An_edit_that_the_compactor_folded_away_while_the_new_content_was_made_still_stops_the_replacement()
+    {
+        HookCodec? codec = null;
+        await StartAsync(inner => codec = new HookCodec(inner));
+        await ImportAsync(Library());
+        var plan = await PageOfAsync("plan");
+        codec!.WhileReplacing = async () =>
+        {
+            await PersonEditsAsync(plan.Id, "typed meanwhile");
+            (await _factory.Services.GetRequiredService<Compactor>().CompactAsync(plan.Id, default)).ShouldBe(CompactionResult.Compacted);
+            // The edit is in the snapshot now, not in the log.
+            (await UseDbAsync(db => db.PageUpdates.CountAsync(u => u.PageId == plan.Id))).ShouldBe(0);
+        };
+
+        var import = await ImportAsync(Library("Changed in Joplin"));
+
+        (CountsOf(import).Updated, CountsOf(import).Conflicts).ShouldBe((0, 1));
+        (await TextOfAsync(plan.Id)).ShouldBe("typed meanwhile");
+    }
+
+    [Fact]
+    public async Task A_page_the_sidecar_cannot_replace_is_a_failed_item_and_refused_content_a_fault_in_the_conversion()
+    {
+        HookCodec? codec = null;
+        await StartAsync(inner => codec = new HookCodec(inner));
+        await ImportAsync(Library());
+
+        codec!.Rejection = "The request is over the size the sidecar accepts";
+        var tooLarge = await ImportAsync(Library("Changed in Joplin"));
+        codec.Rejection = YjsRejectedException.InvalidContentPrefix + "unknown node iframe";
+        var refused = await ImportAsync(Library("Changed in Joplin"));
+
+        EntriesOf(tooLarge).Single().Reasons.Single().Code.ShouldBe(NoteCodes.ItemFailed);
+        EntriesOf(refused).Single().Reasons.Single().Code.ShouldBe(NoteCodes.ConversionFailed);
+    }
+
+    [Fact]
+    public async Task A_notes_title_that_is_not_taken_over_gives_no_reason_in_the_report()
+    {
+        await StartAsync();
+        var title = new string('t', TreeService.MaxTitleLength + 20);
+        await ImportAsync(new JexBuilder().Folder("work").Note("plan", "work", body: "Original text", title: title));
+
+        var import = await ImportAsync(new JexBuilder().Folder("work").Note("plan", "work", body: "Changed in Joplin", title: title));
+
+        CountsOf(import).Updated.ShouldBe(1);
+        EntriesOf(import).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task A_file_stored_for_one_page_is_not_read_and_stored_again_for_the_next()
+    {
+        HookCodec? codec = null;
+        await StartAsync(inner => codec = new HookCodec(inner));
+        var store = (LocalAttachmentStore)_factory.Services.GetRequiredService<IAttachmentStore>();
+        var sha = Convert.ToHexStringLower(SHA256.HashData(Png));
+        // After the first note stored the picture, and before the second note's turn: the stored file goes away.
+        codec!.WhileBuilding = () =>
+        {
+            File.Delete(store.PathFor(sha));
+            return Task.CompletedTask;
+        };
+
+        var import = await ImportAsync(new JexBuilder()
+            .Folder("work")
+            .Note("a", "work", body: $"![a](:/{JexBuilder.Id("pic")})")
+            .Note("b", "work", body: $"![b](:/{JexBuilder.Id("pic")})")
+            .Resource("pic", "picture.png", Png, "image/png"));
+
+        CountsOf(import).Notes.ShouldBe(2);
+        (await UseDbAsync(db => db.Attachments.CountAsync(a => a.Sha256 == sha))).ShouldBe(2);
+        File.Exists(store.PathFor(sha)).ShouldBeFalse();
+    }
+
     private async Task TrashAsync(Guid pageId)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
@@ -312,6 +392,50 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
         var entry = EntriesOf(import).Single();
         (entry.Status, entry.PageId, entry.OriginalPageId, entry.Kind).ShouldBe((ReportStatus.ConflictCopy, copy.Id, plan.Id, "note"));
         entry.Reasons.Select(r => r.Code).ShouldContain(NoteCodes.ContentConflict);
+    }
+
+    [Fact]
+    public async Task A_conflict_copy_is_titled_in_the_words_the_upload_came_with_or_keeps_the_notes_title_without_them()
+    {
+        await StartAsync();
+        await ImportAsync(Library());
+        var plan = await PageOfAsync("plan");
+        await PersonEditsAsync(plan.Id, "my own words");
+
+        await ImportAsync(Library("Changed in Joplin"), "{title} (uit Joplin)");
+        await ImportAsync(Library("Changed in Joplin again"), copyTitle: null);
+
+        var titles = (await PagesAsync()).Where(p => p.ExternalId == null && p.ParentId == plan.ParentId).Select(p => p.Title).Order();
+        titles.ShouldBe(["Aplan", "Aplan (uit Joplin)"]);
+    }
+
+    [Fact]
+    public async Task A_long_title_is_cut_so_that_the_copys_title_still_fits()
+    {
+        await StartAsync();
+        // 300 characters outside the basic plane: 600 UTF-16 units, so any cut lands next to half a character.
+        var title = string.Concat(Enumerable.Repeat("😀", 300));
+        await ImportAsync(new JexBuilder().Folder("work").Note("plan", "work", body: "Original text", title: title));
+        var plan = await PageOfAsync("plan");
+        await PersonEditsAsync(plan.Id, "my own words");
+
+        await ImportAsync(new JexBuilder().Folder("work").Note("plan", "work", body: "Changed in Joplin", title: title));
+
+        var copy = (await PagesAsync()).Single(p => p.ExternalId == null && p.Id != plan.Id && p.ParentId == plan.ParentId);
+        copy.Title.Length.ShouldBeLessThanOrEqualTo(TreeService.MaxTitleLength);
+        copy.Title.ShouldEndWith(" (Joplin)");
+        // Never half a character.
+        for (var i = 0; i < copy.Title.Length; i++)
+        {
+            if (char.IsHighSurrogate(copy.Title[i]))
+            {
+                char.IsLowSurrogate(copy.Title[++i]).ShouldBeTrue();
+            }
+            else
+            {
+                char.IsLowSurrogate(copy.Title[i]).ShouldBeFalse();
+            }
+        }
     }
 
     [Fact]
@@ -508,6 +632,9 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
 
         public Func<Task>? WhileBuilding { get; set; }
 
+        /// <summary>When set, replacing is refused by the sidecar with this message.</summary>
+        public string? Rejection { get; set; }
+
         public Task<YjsDiff> DiffAsync(ReadOnlyMemory<byte> stateVector, IReadOnlyList<byte[]> updates, CancellationToken cancellationToken) =>
             inner.DiffAsync(stateVector, updates, cancellationToken);
 
@@ -528,6 +655,11 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
             if (Fail)
             {
                 throw new InvalidOperationException("the sidecar broke");
+            }
+
+            if (Rejection is { } message)
+            {
+                throw new YjsRejectedException(message);
             }
 
             var replacement = await inner.ReplaceAsync(inputs, content, cancellationToken);

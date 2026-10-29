@@ -573,7 +573,14 @@ function unsyncedItems(doc: Y.Doc, serverVector: Uint8Array): Y.Item[] {
     for (let i = structs.length - 1; i >= 0; i--) {
       const struct = structs[i]!
       if (struct.id.clock + struct.length <= clock) break
-      if (struct instanceof Y.Item && !struct.deleted) items.push(struct)
+      // Formatting items are left out: Yjs deletes redundant ones itself when concurrent formatting meets, which loses
+      // nothing, and formatting alone is not what a copy would be made for.
+      if (
+        struct instanceof Y.Item &&
+        !struct.deleted &&
+        !(struct.content instanceof Y.ContentFormat)
+      )
+        items.push(struct)
     }
   })
   return items

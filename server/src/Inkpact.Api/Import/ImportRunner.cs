@@ -50,7 +50,7 @@ public sealed partial class ImportRunner(
     [GeneratedRegex(@":/(?<id>[0-9a-f]{32})", RegexOptions.CultureInvariant)]
     private static partial Regex ResourceReference();
 
-    private sealed class Run(Guid id, Guid workspaceId, Guid? userId, string path)
+    private sealed class Run(Guid id, Guid workspaceId, Guid? userId, string path, string? copyTitle)
     {
         public Guid Id { get; } = id;
 
@@ -59,6 +59,16 @@ public sealed partial class ImportRunner(
         public Guid? UserId { get; } = userId;
 
         public string Path { get; } = path;
+
+        /// <summary>The title of a conflict copy, with <c>{title}</c> for the note's (see <see cref="ImportRun.CopyTitle"/>).</summary>
+        public string? CopyTitle { get; } = copyTitle;
+
+        /// <summary>
+        /// Each file of the export this run has stored, as the row it made: another page that uses the same file gets a row
+        /// of its own without the bytes being read and stored again. (Stored files are never removed while their rows may
+        /// still come: a cleanup of unreferenced files has to leave recent ones alone.)
+        /// </summary>
+        public Dictionary<string, Attachment> Stored { get; } = new(StringComparer.Ordinal);
 
         public JexIndex Index { get; set; } = null!;
 
@@ -191,7 +201,7 @@ public sealed partial class ImportRunner(
         row.State = ImportStates.Running;
         row.StartedAt = time.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
-        return new Run(row.Id, row.WorkspaceId, row.UserId, ImportFiles.PathOf(options, row.Id)) { LastFlush = time.GetUtcNow() };
+        return new Run(row.Id, row.WorkspaceId, row.UserId, ImportFiles.PathOf(options, row.Id), row.CopyTitle) { LastFlush = time.GetUtcNow() };
     }
 
     private async Task ImportAsync(Run run, CancellationToken cancellationToken)
@@ -484,8 +494,30 @@ public sealed partial class ImportRunner(
 
     // ---- notes ---------------------------------------------------------------------------------------------------------
 
-    /// <summary>What a conflict copy's title ends with. A product's name, not a word of a language, so the server may write it.</summary>
-    private const string ConflictCopySuffix = " (Joplin)";
+    /// <summary>Where the note's title goes in <see cref="ImportRun.CopyTitle"/>.</summary>
+    private const string TitlePlaceholder = "{title}";
+
+    /// <summary>The longest <see cref="ImportRun.CopyTitle"/>: a few words around the note's title.</summary>
+    public const int MaxCopyTitleLength = 100;
+
+    /// <summary>Whether a conflict copy's title, as a client sends it, can be used: the note's title once, and plain text.</summary>
+    public static bool IsCopyTitle(string copyTitle) =>
+        copyTitle.Length <= MaxCopyTitleLength
+        && copyTitle.IndexOf(TitlePlaceholder, StringComparison.Ordinal) is var at and >= 0
+        && copyTitle.IndexOf(TitlePlaceholder, at + 1, StringComparison.Ordinal) < 0
+        && ContentRules.CleanText(copyTitle).Replace('\t', ' ').Replace('\n', ' ') == copyTitle;
+
+    /// <summary>The title of a conflict copy: the note's, in the words the uploader's language gives, within a title's length.</summary>
+    private static string CopyTitleOf(Run run, string title)
+    {
+        if (run.CopyTitle is not { } template)
+        {
+            return title;
+        }
+
+        var room = TreeService.MaxTitleLength - (template.Length - TitlePlaceholder.Length);
+        return template.Replace(TitlePlaceholder, ContentRules.Cut(title, room), StringComparison.Ordinal).Trim();
+    }
 
     /// <summary>How often a note is compared again because the page changed while its new content was being made.</summary>
     private const int MaxReimportAttempts = 3;
@@ -608,8 +640,19 @@ public sealed partial class ImportRunner(
         var json = converted.Document.ToUtf8Json();
         if (current is not null)
         {
-            // The sidecar checks a replacement itself, and answers with the page after it.
-            var replacement = await yjs.ReplaceAsync(current, json, cancellationToken);
+            // The sidecar checks a replacement itself, and answers with the page after it. Content it refuses is a fault in
+            // the conversion (reported as such); anything else it refuses is about the page (too large to send, or not
+            // reading back), which the report gives as a failed item.
+            YjsReplacement replacement;
+            try
+            {
+                replacement = await yjs.ReplaceAsync(current, json, cancellationToken);
+            }
+            catch (YjsRejectedException e) when (!e.IsInvalidContent)
+            {
+                throw new InvalidOperationException($"The page of note {note.Id} could not be replaced: {e.Message}", e);
+            }
+
             return new BuiltNote(converted, replacement.Update, replacement.StateVector, replacement.Fingerprint, replacement.Text, added, retired);
         }
 
@@ -623,12 +666,20 @@ public sealed partial class ImportRunner(
         return new BuiltNote(converted, update, after.StateVector, after.ReplayFingerprint, after.Text, added, retired);
     }
 
-    /// <summary>Whether a file of the export has the bytes of the page's earlier row for it: hashed from the export, not stored again.</summary>
+    /// <summary>
+    /// Whether a file of the export has the bytes of the page's earlier row for it: known when this run stored it already,
+    /// otherwise hashed from the export, and not stored again either way.
+    /// </summary>
     private static async Task<bool> HasBytesAsync(Run run, JexResource resource, Attachment earlier, CancellationToken cancellationToken)
     {
         if (earlier.Size != resource.DataLength)
         {
             return false;
+        }
+
+        if (run.Stored.TryGetValue(resource.Id, out var stored))
+        {
+            return stored.Sha256 == earlier.Sha256;
         }
 
         await using var content = JexArchive.OpenSlice(run.Path, resource.DataOffset, resource.DataLength);
@@ -855,13 +906,15 @@ public sealed partial class ImportRunner(
     /// </summary>
     private async Task<bool> ChangedHereAsync(ImportItem item, IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken)
     {
+        var current = await yjs.FingerprintAsync(inputs, cancellationToken);
         if (item.PageFingerprint is { } fingerprint)
         {
-            return !HashBytes(await yjs.FingerprintAsync(inputs, cancellationToken)).AsSpan().SequenceEqual(fingerprint);
+            return !HashBytes(current).AsSpan().SequenceEqual(fingerprint);
         }
 
         return item.StateVector is null
-            || StateVectors.HasGonePast((await yjs.CompactAsync(inputs, cancellationToken)).StateVector, item.StateVector);
+            || StateVectors.OfFingerprint(current) is not { } stateVector
+            || StateVectors.HasGonePast(stateVector, item.StateVector);
     }
 
     /// <summary>
@@ -887,8 +940,9 @@ public sealed partial class ImportRunner(
         var tree = scope.ServiceProvider.GetRequiredService<TreeService>();
         var pageId = existing.InkpactId;
 
+        // The title is not taken over (run 1.16b): what cleaning it would say is no reason here, it only names the line.
         var reasons = new ConversionNotes();
-        var title = CleanTitle(note.Title, reasons);
+        var title = CleanTitle(note.Title, new ConversionNotes());
         var files = await db.Attachments.AsNoTracking()
             .Where(a => a.PageId == pageId && a.ExternalSourceType == SourceType && a.ExternalId != null)
             .ToListAsync(cancellationToken);
@@ -912,7 +966,9 @@ public sealed partial class ImportRunner(
                 return false;
             }
 
-            if (await db.PageUpdates.AnyAsync(u => u.PageId == pageId && u.Seq > content.LastSeq, token))
+            // A client's update stored meanwhile is still in the log, or the compactor has folded it into the snapshot.
+            if (await db.PageUpdates.AnyAsync(u => u.PageId == pageId && u.Seq > content.LastSeq, token)
+                || await db.PageSnapshots.AnyAsync(s => s.PageId == pageId && s.Watermark > content.LastSeq, token))
             {
                 outcome = Replaced.PageChanged;
                 return false;
@@ -1008,7 +1064,7 @@ public sealed partial class ImportRunner(
         var title = CleanTitle(note.Title, reasons);
         var copyId = Guid.CreateVersion7();
         var built = await BuildNoteAsync(run, scope, note, body, copyId, null, null, reasons, cancellationToken);
-        var copyTitle = $"{ContentRules.Cut(title, TreeService.MaxTitleLength - ConflictCopySuffix.Length)}{ConflictCopySuffix}".Trim();
+        var copyTitle = CopyTitleOf(run, title);
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await LockAsync(run, db, cancellationToken);
@@ -1076,6 +1132,23 @@ public sealed partial class ImportRunner(
     private async Task<Attachment?> StoreResourceAsync(
         Run run, AttachmentService attachments, Guid pageId, JexResource resource, ConversionNotes reasons, CancellationToken cancellationToken)
     {
+        if (run.Stored.TryGetValue(resource.Id, out var known))
+        {
+            // Stored earlier in this run, for another page: the same file, a row of this page's own.
+            return new Attachment
+            {
+                PageId = pageId,
+                FileName = known.FileName,
+                ContentType = known.ContentType,
+                Size = known.Size,
+                Sha256 = known.Sha256,
+                CreatedAt = time.GetUtcNow(),
+                CreatedBy = run.UserId,
+                ExternalSourceType = SourceType,
+                ExternalId = resource.Id,
+            };
+        }
+
         var name = ResourceFileName(resource);
         try
         {
@@ -1089,6 +1162,7 @@ public sealed partial class ImportRunner(
 
             file.ExternalSourceType = SourceType;
             file.ExternalId = resource.Id;
+            run.Stored[resource.Id] = file;
             return file;
         }
         catch (FileTooLargeException)

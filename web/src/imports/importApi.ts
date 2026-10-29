@@ -105,6 +105,8 @@ async function ensureNoOpenImport(workspaceId: string) {
 export async function startJoplinImport(
   workspaceId: string,
   file: File,
+  /** The title of a conflict copy, with `{title}` where the note's title goes, in the person's language. */
+  copyTitle: string,
   onProgress: (sent: number, total: number) => void,
   signal?: AbortSignal,
 ): Promise<{ id: string }> {
@@ -113,7 +115,7 @@ export async function startJoplinImport(
   if (max !== null && file.size > max) throw new ApiError(413, 'import_too_large')
   await ensureNoOpenImport(workspaceId)
 
-  const path = `/api/workspaces/${encodeURIComponent(workspaceId)}/imports/joplin?name=${encodeURIComponent(file.name)}`
+  const path = `/api/workspaces/${encodeURIComponent(workspaceId)}/imports/joplin?name=${encodeURIComponent(file.name)}&copyTitle=${encodeURIComponent(copyTitle)}`
   try {
     return await uploadFileWithProgress<{ id: string }>(path, file, onProgress, signal)
   } catch (error) {

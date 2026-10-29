@@ -197,6 +197,8 @@ async function onChosen(event: Event) {
     const { id } = await startJoplinImport(
       workspaceId,
       file,
+      // The server fills in the note's title; the words around it are the person's language.
+      t('import.copyTitle', { title: '{title}' }),
       (sent, total) => {
         if (upload.value) upload.value = { ...upload.value, sent, total }
       },

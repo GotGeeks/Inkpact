@@ -53,6 +53,13 @@ public class ImportRun
 
     /// <summary>The report's list of items that were skipped or converted imperfectly, as JSON (<c>jsonb</c>). Final at the end.</summary>
     public string Report { get; set; } = "[]";
+
+    /// <summary>
+    /// The title of a conflict copy, in the language of the person who uploaded, with <c>{title}</c> where the note's title
+    /// goes (for example <c>{title} (Joplin)</c>). The server writes no language of its own; without one, a copy has the
+    /// note's title as it is.
+    /// </summary>
+    public string? CopyTitle { get; set; }
 }
 
 /// <summary>

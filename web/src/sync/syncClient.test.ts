@@ -479,6 +479,28 @@ describe('SyncClient', () => {
       client.destroy()
     })
 
+    it('reports nothing when only formatting made offline went with a deleted block', async () => {
+      const { hub, client, events, author, handle } = await offlineOnAPage()
+      handle.doc.transact(() =>
+        ((handle.doc.getXmlFragment('default').get(0) as Y.XmlElement).get(0) as Y.XmlText).format(
+          0,
+          3,
+          { bold: {} },
+        ),
+      )
+      hub.store(
+        page,
+        editOf(author, (fragment) => fragment.delete(0, 1)),
+      )
+
+      await tick(250)
+      await tick()
+
+      expect(paragraphs(handle.doc)).toEqual([])
+      expect(events.lost).toEqual([])
+      client.destroy()
+    })
+
     it('reports nothing when the person deleted their own offline text', async () => {
       const { hub, client, events, handle } = await offlineOnAPage()
       typeInto(handle.doc, ' oops')

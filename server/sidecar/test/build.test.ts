@@ -413,6 +413,17 @@ describe('the replace operation', () => {
     expect(plainText(replayed([state!, update!]))).toBe('after')
   })
 
+  it('says so when it is the content that is refused, as the server tells it apart', () => {
+    const old = buildDocument(doc())
+
+    expect(() => handle(OP_REPLACE, [json(doc({ type: 'iframe' })), old])).toThrow(
+      /^invalid content: unknown node iframe$/,
+    )
+    expect(() => handle(OP_REPLACE, [json(doc()), new Uint8Array([1, 2, 3])])).not.toThrow(
+      /^invalid content/,
+    )
+  })
+
   it('is an error, not a crash, for input that is not JSON or not content, or without content', () => {
     const old = buildDocument(doc())
 

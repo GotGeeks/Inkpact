@@ -4,8 +4,18 @@ import { useNotificationsStore } from '../stores/notifications'
 import { useSyncStore, type LostEdits } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 
-/** How much of the original's title the copy's title keeps, so the two together stay under the server's limit (500). */
-const MAX_TITLE_CHARACTERS = 400
+/** The longest title the server takes, in UTF-16 units, as it counts them (TreeService.MaxTitleLength). */
+const MAX_TITLE_LENGTH = 500
+
+/** The start of `text` that is at most `max` UTF-16 units long, never cutting a character in half. */
+function cut(text: string, max: number): string {
+  let result = ''
+  for (const character of text) {
+    if (result.length + character.length > max) break
+    result += character
+  }
+  return result
+}
 
 /**
  * Keeps edits that a Sync deleted (see `onEditsLost` in the sync client) as a new page right after the page they were
@@ -25,7 +35,9 @@ export function useKeepLostEdits() {
     try {
       const original = tree.byId.get(lost.pageId)
       const title = original?.title || t('tree.untitled')
-      const short = Array.from(title).slice(0, MAX_TITLE_CHARACTERS).join('')
+      // As much of the original's title as fits beside the words around it.
+      const room = MAX_TITLE_LENGTH - t('sync.offlineCopyTitle', { title: '' }).length
+      const short = cut(title, room)
       // Beside the original when it is in the tree; at the top level when it is not (in the trash, or not loaded).
       const position = original
         ? { parentId: original.parentId, afterId: original.id }

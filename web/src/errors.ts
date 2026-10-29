@@ -76,6 +76,8 @@ export function useErrorMessage() {
         return t('errors.import_too_large')
       case 'import_in_progress':
         return t('errors.import_in_progress')
+      case 'import_copy_title_invalid':
+        return t('errors.import_copy_title_invalid')
       case 'import_too_many_items':
         return t('errors.import_too_many_items')
       case 'sidecar_unavailable':

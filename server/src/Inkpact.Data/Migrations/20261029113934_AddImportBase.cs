@@ -11,6 +11,13 @@ namespace Inkpact.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
+                name: "copy_title",
+                table: "imports",
+                type: "character varying(100)",
+                maxLength: 100,
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
                 name: "base",
                 table: "import_items",
                 type: "jsonb",
@@ -34,6 +41,10 @@ namespace Inkpact.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropColumn(
+                name: "copy_title",
+                table: "imports");
+
             migrationBuilder.DropColumn(
                 name: "base",
                 table: "import_items");

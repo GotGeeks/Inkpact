@@ -61,6 +61,7 @@
     "import_invalid": "That is not a Joplin export. In Joplin desktop, choose File, Export all, JEX.",
     "import_too_large": "That file is too large to import.",
     "import_in_progress": "An import is already running in this workspace. Wait until it has finished.",
+    "import_copy_title_invalid": "The import could not start because of a fault in this app. Reload the page and try again.",
     "import_too_many_items": "The export holds more items than can be imported at once.",
     "sidecar_unavailable": "The part of the server that builds the pages is not available. Try again in a moment; what was imported is kept.",
     "import_failed": "The import stopped because something went wrong on the server.",
@@ -248,6 +249,7 @@
     "menu": "Import from Joplin",
     "title": "Import from Joplin",
     "intro": "Bring your notes over from Joplin. Notebooks become pages with the same nesting, and notes keep their text, images, files, tags, to-dos and dates.",
+    "copyTitle": "{title} (Joplin)",
     "viewerOnly": "You can only read this workspace, so you cannot import into it.",
     "export": {
       "title": "First, export your notes from Joplin",

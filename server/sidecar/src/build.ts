@@ -43,7 +43,15 @@ export const MARK_ATTRIBUTES: Readonly<Record<string, readonly string[]>> = {
 /** Nesting deeper than any document made by hand; a limit so a hostile input cannot exhaust the stack. */
 const MAX_DEPTH = 64
 
-export class InvalidContentError extends Error {}
+/**
+ * Content the editor's schema does not allow. Its message starts with "invalid content: ", which is how the server tells a
+ * refused document from a page or request it cannot use (`YjsRejectedException.IsInvalidContent`).
+ */
+export class InvalidContentError extends Error {
+  constructor(reason: string) {
+    super(`invalid content: ${reason}`)
+  }
+}
 
 type Attribute = string | number | boolean | null | number[]
 type Attributes = Record<string, Attribute>

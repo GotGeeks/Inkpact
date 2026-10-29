@@ -203,7 +203,10 @@ describe('ImportPage while uploading', () => {
     request.progress(250, 1000)
     await flushPromises()
 
-    expect(request.url).toBe('/api/workspaces/w1/imports/joplin?name=export.jex')
+    // The conflict copy's title goes with it, in the person's language, with the note's title left to the server.
+    expect(request.url).toBe(
+      '/api/workspaces/w1/imports/joplin?name=export.jex&copyTitle=%7Btitle%7D%20(Joplin)',
+    )
     expect(wrapper!.get('[data-testid="import-uploading"]').text()).toContain(
       'Uploading export.jex',
     )

@@ -153,6 +153,8 @@ export const useSyncStore = defineStore('sync', () => {
   function destroy() {
     client?.destroy()
     client = null
+    // The person is gone: what waited to be kept is theirs, and must not be written for whoever signs in next.
+    lostEdits.value = []
     window.removeEventListener('beforeunload', warnBeforeUnload)
     connection.value = 'connecting'
     pages.value = {}

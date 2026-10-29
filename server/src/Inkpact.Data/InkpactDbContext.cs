@@ -221,6 +221,7 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             import.Property(i => i.ErrorCode).HasMaxLength(64);
             import.Property(i => i.Counts).HasColumnType("jsonb").IsRequired();
             import.Property(i => i.Report).HasColumnType("jsonb").IsRequired();
+            import.Property(i => i.CopyTitle).HasMaxLength(100);
             import.HasOne<Workspace>().WithMany().HasForeignKey(i => i.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
             // A person's imports keep their report when they are removed, without the link.
             import.HasOne<User>().WithMany().HasForeignKey(i => i.UserId).OnDelete(DeleteBehavior.SetNull);

@@ -73,6 +73,29 @@ public sealed class StateVectorTests
         StateVectors.HasGonePast(Encode(new Dictionary<ulong, ulong> { [1] = 2, [9] = 4, [77] = 1 }), stored).ShouldBeTrue();
     }
 
+    [Fact]
+    public void The_state_vector_is_read_out_of_a_fingerprint_after_its_delete_set()
+    {
+        var writer = new Lib0Writer();
+        // A delete set of two clients, with one and two ranges.
+        writer.WriteVarUint(2);
+        writer.WriteVarUint(7);
+        writer.WriteVarUint(1);
+        writer.WriteVarUint(0);
+        writer.WriteVarUint(3);
+        writer.WriteVarUint(3_000_000_000);
+        writer.WriteVarUint(2);
+        writer.WriteVarUint(1);
+        writer.WriteVarUint(1);
+        writer.WriteVarUint(5);
+        writer.WriteVarUint(2);
+        var stateVector = Encode(new Dictionary<ulong, ulong> { [7] = 10, [3_000_000_000] = 8 });
+        byte[] fingerprint = [.. writer.ToArray(), .. stateVector];
+
+        StateVectors.OfFingerprint(fingerprint).ShouldBe(stateVector);
+        StateVectors.OfFingerprint(fingerprint[..5]).ShouldBeNull();
+    }
+
     [Theory]
     [InlineData(new byte[] { 0x02, 0x01 })]
     [InlineData(new byte[] { 0x01, 0x01, 0x01, 0xFF })]

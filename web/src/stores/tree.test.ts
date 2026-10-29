@@ -160,6 +160,20 @@ describe('tree store: changing', () => {
     expect(tree.expanded.has('A')).toBe(true)
   })
 
+  it('returns a page it made also when reading the tree afterwards fails, so the caller does not make it again', async () => {
+    const { server, tree } = await started()
+    const answer = server.fetch.getMockImplementation()!
+    server.fetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if ((init?.method ?? 'GET') === 'GET') throw new TypeError('Failed to fetch')
+      return answer(input, init)
+    })
+
+    const change = await tree.create('New')
+
+    expect(change?.page.title).toBe('New')
+    expect(server.writes()).toHaveLength(1)
+  })
+
   it('creates at the top level, last, when nothing is said', async () => {
     const { server, tree } = await started()
 

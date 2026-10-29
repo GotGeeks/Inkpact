@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Inkpact.Data.Migrations
 {
     [DbContext(typeof(InkpactDbContext))]
-    [Migration("20261029072547_AddImportBase")]
+    [Migration("20261029113934_AddImportBase")]
     partial class AddImportBase
     {
         /// <inheritdoc />
@@ -276,6 +276,11 @@ namespace Inkpact.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("CopyTitle")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("copy_title");
 
                     b.Property<string>("Counts")
                         .IsRequired()

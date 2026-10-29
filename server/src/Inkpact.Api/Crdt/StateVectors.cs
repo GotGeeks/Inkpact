@@ -31,6 +31,37 @@ public static class StateVectors
     }
 
     /// <summary>
+    /// The state vector inside a fingerprint as the sidecar makes it (<c>Y.encodeSnapshot</c>: the delete set,
+    /// <c>[varuint clients][clients × (client, [varuint ranges][ranges × (clock, length)])]</c>, then the state vector), or
+    /// null when the bytes are not one.
+    /// </summary>
+    public static byte[]? OfFingerprint(ReadOnlyMemory<byte> fingerprint)
+    {
+        try
+        {
+            var reader = new Lib0Reader(fingerprint);
+            var clients = reader.ReadVarUint();
+            for (ulong i = 0; i < clients; i++)
+            {
+                reader.ReadVarUint();
+                var ranges = reader.ReadVarUint();
+                for (ulong j = 0; j < ranges; j++)
+                {
+                    reader.ReadVarUint();
+                    reader.ReadVarUint();
+                }
+            }
+
+            var stateVector = fingerprint[reader.Position..].ToArray();
+            return TryDecode(stateVector) is null ? null : stateVector;
+        }
+        catch (ProtocolException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Whether <paramref name="current"/> holds anything that <paramref name="stored"/> does not: a client it has not heard
     /// of, or a client that has written more. Bytes that are not a state vector count as gone past: when in doubt, the page
     /// was changed. A deletion alone does not move a state vector; that is what the page fingerprint is for.

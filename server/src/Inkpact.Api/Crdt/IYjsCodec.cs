@@ -62,4 +62,11 @@ public interface IYjsCodec
 public sealed class YjsUnavailableException(string message, Exception? inner = null) : Exception(message, inner);
 
 /// <summary>The sidecar answered with an error: the input does not decode. Trying again gives the same answer.</summary>
-public sealed class YjsRejectedException(string message) : Exception(message);
+public sealed class YjsRejectedException(string message) : Exception(message)
+{
+    /// <summary>What the sidecar's builder says before the reason when it refuses content (<c>InvalidContentError</c> in build.ts).</summary>
+    public const string InvalidContentPrefix = "invalid content: ";
+
+    /// <summary>The content given to build or replace a page was refused, rather than the page or the request.</summary>
+    public bool IsInvalidContent => Message.StartsWith(InvalidContentPrefix, StringComparison.Ordinal);
+}

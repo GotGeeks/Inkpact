@@ -54,8 +54,12 @@ const texts = (doc: Y.Doc) =>
  * The app with the page "Plan" open, its connection lost while the person typed into its paragraph, and an import that
  * replaced the page meanwhile; then the connection comes back.
  */
-async function typedOfflineIntoAReplacedPage(locale: Locale = 'en') {
-  server = fakeTree({ pages: outline(['Work', '  Plan']) })
+async function typedOfflineIntoAReplacedPage(locale: Locale = 'en', title = 'Plan') {
+  server = fakeTree({
+    pages: outline(['Work', '  Plan']).map((page) =>
+      page.id === 'Plan' ? { ...page, title } : page,
+    ),
+  })
   const pinia = createPinia()
   setActivePinia(pinia)
   await useTreeStore().init()
@@ -150,6 +154,30 @@ describe('useKeepLostEdits', () => {
     expect(server.writes().find((write) => write.method === 'POST')!.body.title).toBe(
       'Plan (je offline wijzigingen)',
     )
+  })
+
+  it('cuts a long title so that the title of the copy fits the server, in UTF-16 units and never half a character', async () => {
+    const long = '😀'.repeat(300)
+    await typedOfflineIntoAReplacedPage('en', long)
+
+    await reconnect()
+
+    const title = String(server.writes().find((write) => write.method === 'POST')!.body.title)
+    expect(title.length).toBeLessThanOrEqual(500)
+    expect(title.endsWith(' (your offline changes)')).toBe(true)
+    expect(title).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/)
+    expect(title.length).toBeGreaterThan(470)
+  })
+
+  it('forgets what waited to be kept when the person leaves, so nobody who signs in next gets it', async () => {
+    const { sync } = await typedOfflineIntoAReplacedPage()
+    server.failNext(503, 'unavailable')
+    await reconnect()
+    expect(sync.lostEdits).toHaveLength(1)
+
+    sync.destroy()
+
+    expect(sync.lostEdits).toEqual([])
   })
 
   it('tries again when the copy could not be made, once the connection is back', async () => {
