@@ -11,6 +11,8 @@ export const MAX_FRAME_BYTES = 256 * 1024 * 1024
 
 export const STATUS_OK = 0
 export const STATUS_ERROR = 1
+/** The content given to build or replace a page is not what the editor's schema allows (`InvalidContentError`). */
+export const STATUS_INVALID_CONTENT = 2
 
 export class FrameTooLargeError extends Error {
   constructor(length: number) {

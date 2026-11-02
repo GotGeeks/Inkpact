@@ -5,11 +5,13 @@ import {
   FrameTooLargeError,
   MalformedRequestError,
   STATUS_ERROR,
+  STATUS_INVALID_CONTENT,
   STATUS_OK,
   encodeResponse,
   parseRequest,
   requestId,
 } from './framing.ts'
+import { InvalidContentError } from './build.ts'
 import { handle } from './ops.ts'
 
 function respond(body: Buffer): Buffer {
@@ -21,7 +23,9 @@ function respond(body: Buffer): Buffer {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (!(error instanceof MalformedRequestError)) console.error(`request ${id} failed: ${message}`)
-    return encodeResponse(id, STATUS_ERROR, [Buffer.from(message, 'utf8')])
+    // Refused content is told apart by its status, so the server never has to read the message.
+    const status = error instanceof InvalidContentError ? STATUS_INVALID_CONTENT : STATUS_ERROR
+    return encodeResponse(id, status, [Buffer.from(message, 'utf8')])
   }
 }
 

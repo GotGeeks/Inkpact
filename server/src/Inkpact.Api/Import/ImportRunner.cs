@@ -342,9 +342,11 @@ public sealed partial class ImportRunner(
         {
             throw;
         }
-        catch (YjsRejectedException e)
+        catch (YjsRejectedException e) when (e.IsInvalidContent)
         {
             // The editor's own schema refused what the conversion made: a fault in the conversion, which a later version fixes.
+            // Anything else the sidecar refuses (a page's log that does not decode, a request too large) is the item's own
+            // failure, below.
             logger.LogError(e, "The content of {Kind} {ExternalId} was refused by the Yjs builder", kind, id);
             run.Counts.Failed++;
             AddEntry(run, new ReportEntry(kind, id, ShortTitle(title), ReportStatus.Failed, [new ConversionNote(NoteCodes.ConversionFailed)]));
@@ -569,7 +571,8 @@ public sealed partial class ImportRunner(
 
     /// <summary>
     /// What was made of one note's content: the document, the page's update, the page right after it (state vector,
-    /// fingerprint, text), and the files: rows to add, and earlier rows that give up their external id.
+    /// fingerprint, text), and the files: rows to add, and earlier rows that give up their external id. For a replacement,
+    /// also the page's fingerprint before it.
     /// </summary>
     private sealed record BuiltNote(
         ConvertedContent Converted,
@@ -578,7 +581,8 @@ public sealed partial class ImportRunner(
         byte[] Fingerprint,
         string Text,
         IReadOnlyList<Attachment> NewFiles,
-        IReadOnlyList<Guid> RetiredFiles);
+        IReadOnlyList<Guid> RetiredFiles,
+        byte[]? Before = null);
 
     /// <summary>
     /// The slow part of writing a note's content, done outside any transaction: the files are stored, the content is
@@ -640,20 +644,10 @@ public sealed partial class ImportRunner(
         var json = converted.Document.ToUtf8Json();
         if (current is not null)
         {
-            // The sidecar checks a replacement itself, and answers with the page after it. Content it refuses is a fault in
-            // the conversion (reported as such); anything else it refuses is about the page (too large to send, or not
-            // reading back), which the report gives as a failed item.
-            YjsReplacement replacement;
-            try
-            {
-                replacement = await yjs.ReplaceAsync(current, json, cancellationToken);
-            }
-            catch (YjsRejectedException e) when (!e.IsInvalidContent)
-            {
-                throw new InvalidOperationException($"The page of note {note.Id} could not be replaced: {e.Message}", e);
-            }
-
-            return new BuiltNote(converted, replacement.Update, replacement.StateVector, replacement.Fingerprint, replacement.Text, added, retired);
+            // The sidecar checks a replacement itself, and answers with the page before and after it.
+            var replacement = await yjs.ReplaceAsync(current, json, cancellationToken);
+            return new BuiltNote(
+                converted, replacement.Update, replacement.StateVector, replacement.Fingerprint, replacement.Text, added, retired, replacement.Before);
         }
 
         var update = await yjs.BuildAsync(json, cancellationToken);
@@ -702,12 +696,57 @@ public sealed partial class ImportRunner(
         }
     }
 
+    /// <summary>The files of the export that a note's text uses, by id, each once.</summary>
+    private static List<JexResource> ResourcesOf(Run run, string text) =>
+        [.. ResourceReference().Matches(text)
+            .Select(m => m.Groups["id"].Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .Select(id => run.Index.Resources.GetValueOrDefault(id))
+            .OfType<JexResource>()];
+
+    /// <summary>
+    /// The hash the fast path compares (<c>import_items.content_hash</c>): the note's file, and the version of each file of
+    /// the export it uses, since a file whose bytes changed leaves the note's own file as it was. A note that uses no files
+    /// hashes as its file alone, as run 1.15 hashed it.
+    /// </summary>
+    private static string ContentHashOf(Run run, byte[] bytes, string text)
+    {
+        var resources = ResourcesOf(run, text);
+        if (resources.Count == 0)
+        {
+            return HashOf(bytes);
+        }
+
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData(bytes);
+        foreach (var resource in resources)
+        {
+            hash.AppendData(Encoding.UTF8.GetBytes($"\n{resource.Id}:{resource.Version}"));
+        }
+
+        return Convert.ToHexStringLower(hash.GetHashAndReset());
+    }
+
+    /// <summary>The note's <see cref="ImportBase.ContentKey"/>: its body, whether it is HTML, and the version of each file it uses.</summary>
+    private static string ContentKeyOf(Run run, JexNote note, string body)
+    {
+        var key = new StringBuilder(note.IsHtml ? "html" : "markdown");
+        foreach (var resource in ResourcesOf(run, body))
+        {
+            key.Append('\n').Append(resource.Id).Append(':').Append(resource.Version);
+        }
+
+        key.Append("\n\n").Append(body);
+        return HashOf(Encoding.UTF8.GetBytes(key.ToString()));
+    }
+
     /// <summary>The base of a note as it is now in the export: what the next import compares against.</summary>
-    private static ImportBase BaseOf(Run run, JexNote note, string title, string bodyHash) => new()
+    private static ImportBase BaseOf(Run run, JexNote note, string title, string contentKey) => new()
     {
         Title = title,
         ParentId = note.ParentId,
-        BodyHash = bodyHash,
+        ContentKey = contentKey,
         IsTodo = note.IsTodo,
         TodoDue = note.IsTodo ? note.Due?.ToUnixTimeMilliseconds() : null,
         TodoCompleted = note.IsTodo ? note.Completed?.ToUnixTimeMilliseconds() : null,
@@ -770,7 +809,8 @@ public sealed partial class ImportRunner(
             db.Reminders.Add(new Reminder { PageId = pageId, UserId = userId, RemindAt = due, CreatedAt = now });
         }
 
-        var row = NewItem(run, "note", note.Id, pageId, itemBytes, built, BaseOf(run, note, title, HashOf(Encoding.UTF8.GetBytes(body))));
+        var row = NewItem(run, "note", note.Id, pageId, itemBytes, built, BaseOf(run, note, title, ContentKeyOf(run, note, body)));
+        row.ContentHash = ContentHashOf(run, itemBytes, Encoding.UTF8.GetString(itemBytes));
         db.ImportItems.Add(row);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -820,7 +860,7 @@ public sealed partial class ImportRunner(
 
     /// <summary>
     /// A note that an earlier import made, met again. Its content is compared three ways: what Joplin had when it was last
-    /// imported (the body's hash in the item's base), what Joplin has now, and what the page is now (its fingerprint).
+    /// imported (the content key in the item's base), what Joplin has now, and what the page is now (its fingerprint).
     /// Changed only in Joplin: the page's content is replaced, through the hub so that open editors see it. Changed only
     /// here: left alone. Changed in both: the page here is left alone and Joplin's version becomes a page beside it, so
     /// nothing is lost on either side. The note's title, place, to-do fields and tags are not looked at yet (run 1.16b).
@@ -828,26 +868,27 @@ public sealed partial class ImportRunner(
     private async Task ReimportNoteAsync(Run run, JexNote note, ImportItem existing, CancellationToken cancellationToken)
     {
         var bytes = await ReadItemAsync(run, note.Offset, note.Length, cancellationToken);
-        var hash = HashOf(bytes);
+        var text = Encoding.UTF8.GetString(bytes);
+        var hash = ContentHashOf(run, bytes, text);
         if (hash == existing.ContentHash && existing.ConverterVersion >= ImportOptions.ConverterVersion)
         {
-            // Nothing at all changed in Joplin: not even parsed, so a library that did not change is quick.
+            // Nothing at all changed in Joplin, neither the note nor a file it uses: not even parsed, so a library that did
+            // not change is quick.
             run.Counts.AlreadyImported++;
             return;
         }
 
-        var item = JexItem.Parse(Encoding.UTF8.GetString(bytes))
-            ?? throw new InvalidDataException($"Note {note.Id} no longer reads as an item.");
-        var bodyHash = HashOf(Encoding.UTF8.GetBytes(item.Body));
+        var item = JexItem.Parse(text) ?? throw new InvalidDataException($"Note {note.Id} no longer reads as an item.");
+        var contentKey = ContentKeyOf(run, note, item.Body);
         var baseInfo = ImportBase.FromJson(existing.Base);
 
-        // Without a base (an item of run 1.15) the file's hash is all there is: any change counts as a change.
-        var changedInJoplin = baseInfo?.BodyHash is { } known ? known != bodyHash : hash != existing.ContentHash;
+        // Without a base (an item of run 1.15) the hash is all there is: any change counts as a change.
+        var changedInJoplin = baseInfo?.ContentKey is { } known ? known != contentKey : hash != existing.ContentHash;
         var outdated = existing.ConverterVersion < ImportOptions.ConverterVersion;
         if (!changedInJoplin && !outdated)
         {
             // Only Joplin's bookkeeping or the note's fields changed, which this run does not take over (run 1.16b). The
-            // file's hash moves on so the next import takes the fast path again; the base keeps the fields as they were.
+            // hash moves on so the next import takes the fast path again; the base keeps the fields as they were.
             await UpdateItemAsync(existing.Id, set => set.SetProperty(i => i.ContentHash, hash), cancellationToken);
             existing.ContentHash = hash;
             run.Counts.AlreadyImported++;
@@ -856,12 +897,19 @@ public sealed partial class ImportRunner(
 
         for (var attempt = 1; ; attempt++)
         {
+            await using var scope = scopes.CreateAsyncScope();
             var content = await pages.LoadAsync(existing.InkpactId, cancellationToken);
-            var changedHere = await ChangedHereAsync(existing, content.Inputs, cancellationToken);
+
+            // The replacement is made first: the sidecar reads the page once for it, and says what the page was before,
+            // which is what tells whether it was edited here. When it was, the replacement is not used (its files are
+            // kept for the run, so a copy does not read them again).
+            var reasons = new ConversionNotes();
+            var replacement = await PrepareReplacementAsync(run, scope, note, item.Body, existing, content, reasons, cancellationToken);
+            var changedHere = ChangedHere(existing, replacement.Before!);
 
             if (changedInJoplin && changedHere)
             {
-                await MakeConflictCopyAsync(run, note, item.Body, hash, bodyHash, existing, baseInfo, cancellationToken);
+                await MakeConflictCopyAsync(run, note, item.Body, hash, contentKey, existing, baseInfo, cancellationToken);
                 return;
             }
 
@@ -875,7 +923,8 @@ public sealed partial class ImportRunner(
                 return;
             }
 
-            var replaced = await ReplaceContentAsync(run, note, item.Body, hash, bodyHash, existing, baseInfo, content, changedInJoplin, cancellationToken);
+            var replaced = await WriteReplacementAsync(
+                run, scope, note, replacement, reasons, hash, contentKey, existing, baseInfo, content, changedInJoplin, cancellationToken);
             if (replaced != Replaced.PageChanged)
             {
                 return;
@@ -899,14 +948,14 @@ public sealed partial class ImportRunner(
     }
 
     /// <summary>
-    /// Whether the page has been written to since the import: its fingerprint (the state vector and the delete set) differs
-    /// from the one stored. A deletion alone moves no state vector, so for an item without a fingerprint (run 1.15) the
-    /// state vector is all there is, and a page where someone only deleted text counts as unchanged. Anything that cannot
-    /// be told counts as changed: a conflict copy is the worse outcome only for noise, an overwrite would lose text.
+    /// Whether the page has been written to since the import, from its fingerprint as it is now (the state vector and the
+    /// delete set): it differs from the one stored. A deletion alone moves no state vector, so for an item without a
+    /// fingerprint (run 1.15) the state vector is all there is, and a page where someone only deleted text counts as
+    /// unchanged. Anything that cannot be told counts as changed: a conflict copy is the worse outcome only for noise, an
+    /// overwrite would lose text.
     /// </summary>
-    private async Task<bool> ChangedHereAsync(ImportItem item, IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken)
+    private static bool ChangedHere(ImportItem item, byte[] current)
     {
-        var current = await yjs.FingerprintAsync(inputs, cancellationToken);
         if (item.PageFingerprint is { } fingerprint)
         {
             return !HashBytes(current).AsSpan().SequenceEqual(fingerprint);
@@ -917,52 +966,64 @@ public sealed partial class ImportRunner(
             || StateVectors.HasGonePast(stateVector, item.StateVector);
     }
 
-    /// <summary>
-    /// Replaces the content of a page that only Joplin changed (or that a newer converter converts again). The update is made
-    /// from <paramref name="content"/>, and written only while the page still is exactly that: the hub holds the page's
-    /// lock, so no client's update can be stored meanwhile, and one stored since the page was read means the replacement
-    /// would delete what was typed into the old blocks. Then nothing is written, and the note is compared again.
-    /// </summary>
-    private async Task<Replaced> ReplaceContentAsync(
+    /// <summary>The page's new content, made from <paramref name="content"/> (its files stored, the update made), not yet written.</summary>
+    private async Task<BuiltNote> PrepareReplacementAsync(
         Run run,
+        IServiceScope scope,
         JexNote note,
         string body,
-        string fileHash,
-        string bodyHash,
+        ImportItem existing,
+        PageContent content,
+        ConversionNotes reasons,
+        CancellationToken cancellationToken)
+    {
+        var db = scope.ServiceProvider.GetRequiredService<InkpactDbContext>();
+        var files = await db.Attachments.AsNoTracking()
+            .Where(a => a.PageId == existing.InkpactId && a.ExternalSourceType == SourceType && a.ExternalId != null)
+            .ToListAsync(cancellationToken);
+        return await BuildNoteAsync(run, scope, note, body, existing.InkpactId, content.Inputs, files, reasons, cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes the new content of a page that only Joplin changed (or that a newer converter converts again). It was made from
+    /// <paramref name="content"/>, and is written only while the page still is exactly that: the hub holds the page's lock,
+    /// so no client's update can be stored meanwhile, and one stored since the page was read means the replacement would
+    /// delete what was typed into the old blocks. Then nothing is written, and the note is compared again.
+    /// </summary>
+    private async Task<Replaced> WriteReplacementAsync(
+        Run run,
+        IServiceScope scope,
+        JexNote note,
+        BuiltNote built,
+        ConversionNotes reasons,
+        string hash,
+        string contentKey,
         ImportItem existing,
         ImportBase? baseInfo,
         PageContent content,
         bool changedInJoplin,
         CancellationToken cancellationToken)
     {
-        await using var scope = scopes.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<InkpactDbContext>();
         var tree = scope.ServiceProvider.GetRequiredService<TreeService>();
         var pageId = existing.InkpactId;
-
-        // The title is not taken over (run 1.16b): what cleaning it would say is no reason here, it only names the line.
-        var reasons = new ConversionNotes();
-        var title = CleanTitle(note.Title, new ConversionNotes());
-        var files = await db.Attachments.AsNoTracking()
-            .Where(a => a.PageId == pageId && a.ExternalSourceType == SourceType && a.ExternalId != null)
-            .ToListAsync(cancellationToken);
-        var built = await BuildNoteAsync(run, scope, note, body, pageId, content.Inputs, files, reasons, cancellationToken);
-
-        var next = ((baseInfo ?? new ImportBase()) with { BodyHash = bodyHash }).ToJson();
+        var next = ((baseInfo ?? new ImportBase()) with { ContentKey = contentKey }).ToJson();
         var fingerprint = HashBytes(built.Fingerprint);
         var text = built.Text.Replace("\0", "");
         var now = time.GetUtcNow();
         var updatedAt = note.Updated ?? now;
         Guid[] retired = [.. built.RetiredFiles];
-        var outcome = Replaced.Written;
-        await hub.PublishAsync(pageId, built.Update, async token =>
+
+        // Why the commit wrote nothing; whether it wrote is what the hub answers.
+        var refused = Replaced.Written;
+        var written = await hub.PublishAsync(pageId, built.Update, async token =>
         {
             await using var transaction = await db.Database.BeginTransactionAsync(token);
             // The tree's own lock, so the page cannot be put in the trash between this look and the write.
             await LockAsync(run, db, token);
             if (!await tree.IsLiveAsync(pageId, token))
             {
-                outcome = Replaced.InTrash;
+                refused = Replaced.InTrash;
                 return false;
             }
 
@@ -970,7 +1031,7 @@ public sealed partial class ImportRunner(
             if (await db.PageUpdates.AnyAsync(u => u.PageId == pageId && u.Seq > content.LastSeq, token)
                 || await db.PageSnapshots.AnyAsync(s => s.PageId == pageId && s.Watermark > content.LastSeq, token))
             {
-                outcome = Replaced.PageChanged;
+                refused = Replaced.PageChanged;
                 return false;
             }
 
@@ -988,7 +1049,7 @@ public sealed partial class ImportRunner(
             await db.Pages.Where(p => p.Id == pageId).ExecuteUpdateAsync(
                 set => set.SetProperty(p => p.ContentText, text).SetProperty(p => p.UpdatedAt, updatedAt), token);
             await db.ImportItems.Where(i => i.Id == existing.Id).ExecuteUpdateAsync(
-                set => set.SetProperty(i => i.ContentHash, fileHash)
+                set => set.SetProperty(i => i.ContentHash, hash)
                     .SetProperty(i => i.Base, next)
                     .SetProperty(i => i.ConverterVersion, ImportOptions.ConverterVersion)
                     .SetProperty(i => i.StateVector, built.StateVector)
@@ -1000,18 +1061,19 @@ public sealed partial class ImportRunner(
             return true;
         }, cancellationToken);
 
-        if (outcome == Replaced.InTrash)
+        if (!written)
         {
-            run.Counts.AlreadyInTrash++;
-            return outcome;
+            if (refused == Replaced.InTrash)
+            {
+                run.Counts.AlreadyInTrash++;
+            }
+
+            return refused == Replaced.Written
+                ? throw new InvalidOperationException($"The new content of note {note.Id} was not written, and nothing said why.")
+                : refused;
         }
 
-        if (outcome == Replaced.PageChanged)
-        {
-            return outcome;
-        }
-
-        existing.ContentHash = fileHash;
+        existing.ContentHash = hash;
         existing.Base = next;
         existing.ConverterVersion = ImportOptions.ConverterVersion;
         existing.StateVector = built.StateVector;
@@ -1033,10 +1095,11 @@ public sealed partial class ImportRunner(
 
         if (!reasons.IsEmpty)
         {
-            AddEntry(run, new ReportEntry("note", note.Id, ShortTitle(title), ReportStatus.Updated, reasons.ToList(), pageId));
+            // The title is not taken over (run 1.16b), so cleaning it is no reason here; it only names the line.
+            AddEntry(run, new ReportEntry("note", note.Id, ShortTitle(CleanTitle(note.Title, new ConversionNotes())), ReportStatus.Updated, reasons.ToList(), pageId));
         }
 
-        return outcome;
+        return Replaced.Written;
     }
 
     /// <summary>
@@ -1051,7 +1114,7 @@ public sealed partial class ImportRunner(
         JexNote note,
         string body,
         string fileHash,
-        string bodyHash,
+        string contentKey,
         ImportItem existing,
         ImportBase? baseInfo,
         CancellationToken cancellationToken)
@@ -1101,7 +1164,7 @@ public sealed partial class ImportRunner(
         db.PageUpdates.Add(new PageUpdate { PageId = copyId, UserId = run.UserId, Data = built.Update, CreatedAt = now });
         await db.SaveChangesAsync(cancellationToken);
 
-        var next = ((baseInfo ?? new ImportBase()) with { BodyHash = bodyHash }).ToJson();
+        var next = ((baseInfo ?? new ImportBase()) with { ContentKey = contentKey }).ToJson();
         await db.ImportItems.Where(i => i.Id == existing.Id).ExecuteUpdateAsync(
             set => set.SetProperty(i => i.ContentHash, fileHash)
                 .SetProperty(i => i.Base, next)

@@ -29,6 +29,7 @@ export const text = (part: Uint8Array | undefined) => Buffer.from(part ?? []).to
 
 export interface Answer {
   ok: boolean
+  status: number
   parts: Buffer[]
 }
 
@@ -56,7 +57,7 @@ export class SidecarProcess {
       for (const body of this.#reader.push(chunk)) {
         // A response has the layout of a request; what is called the op there is the status here.
         const { id, op: status, parts } = parseRequest(body)
-        this.#pending.get(id)?.({ ok: status === 0, parts })
+        this.#pending.get(id)?.({ ok: status === 0, status, parts })
         this.#pending.delete(id)
       }
     })

@@ -17,9 +17,12 @@ public sealed record ImportBase
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ParentId { get; init; }
 
-    /// <summary>SHA-256 of the note's body only, as lower-case hex: what tells a change of the content from the file's bookkeeping.</summary>
+    /// <summary>
+    /// SHA-256, as lower-case hex, of what makes the note's content: its body, whether it is HTML, and the version of each
+    /// file it uses. What tells a change of the content from the file's bookkeeping.
+    /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? BodyHash { get; init; }
+    public string? ContentKey { get; init; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? IsTodo { get; init; }

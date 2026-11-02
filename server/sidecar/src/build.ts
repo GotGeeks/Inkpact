@@ -44,14 +44,10 @@ export const MARK_ATTRIBUTES: Readonly<Record<string, readonly string[]>> = {
 const MAX_DEPTH = 64
 
 /**
- * Content the editor's schema does not allow. Its message starts with "invalid content: ", which is how the server tells a
- * refused document from a page or request it cannot use (`YjsRejectedException.IsInvalidContent`).
+ * Content the editor's schema does not allow. The sidecar answers it with its own status (`STATUS_INVALID_CONTENT`), which
+ * is how the server tells a refused document from a page or request it cannot use.
  */
-export class InvalidContentError extends Error {
-  constructor(reason: string) {
-    super(`invalid content: ${reason}`)
-  }
-}
+export class InvalidContentError extends Error {}
 
 type Attribute = string | number | boolean | null | number[]
 type Attributes = Record<string, Attribute>
@@ -164,8 +160,18 @@ function elementsOf(content: unknown): Y.XmlElement[] {
   const elements = blocks.map((block) => element(block, 1))
   const last = blocks.at(-1)
   if (elements.length > 0 && !(isRecord(last) && last.type === 'paragraph'))
-    elements.push(new Y.XmlElement('paragraph'))
+    elements.push(emptyParagraph())
   return elements
+}
+
+/**
+ * A paragraph with nothing in it yet, holding an empty text as the first paragraph does: every client types into that one
+ * text. Without it, two clients typing into the paragraph at the same time would each make a text of their own in it.
+ */
+function emptyParagraph(): Y.XmlElement {
+  const paragraph = new Y.XmlElement('paragraph')
+  paragraph.insert(0, [new Y.XmlText()])
+  return paragraph
 }
 
 /** The update that makes a page's first paragraph, as every client makes it (web/src/editor/firstParagraph.ts). */
@@ -173,9 +179,7 @@ function firstParagraphUpdate(): Uint8Array {
   const first = new Y.Doc()
   try {
     first.clientID = FIRST_PARAGRAPH_CLIENT_ID
-    const paragraph = new Y.XmlElement('paragraph')
-    paragraph.insert(0, [new Y.XmlText()])
-    first.getXmlFragment(FIELD).insert(0, [paragraph])
+    first.getXmlFragment(FIELD).insert(0, [emptyParagraph()])
     return Y.encodeStateAsUpdate(first)
   } finally {
     first.destroy()
@@ -224,7 +228,7 @@ export function buildDocument(content: unknown): Uint8Array {
  */
 export function replaceDocument(doc: Y.Doc, content: unknown): Uint8Array {
   const elements = elementsOf(content)
-  if (elements.length === 0) elements.push(new Y.XmlElement('paragraph'))
+  if (elements.length === 0) elements.push(emptyParagraph())
 
   const before = Y.encodeStateVector(doc)
   const fragment = doc.getXmlFragment(FIELD)

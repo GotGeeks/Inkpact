@@ -5,9 +5,10 @@ public sealed record YjsDiff(byte[] Update, byte[] StateVector);
 
 /// <summary>
 /// The update that replaces a page's content, and the page right after it: its state vector, its fingerprint (as
-/// <see cref="IYjsCodec.FingerprintAsync"/> gives it) and its text for search.
+/// <see cref="IYjsCodec.FingerprintAsync"/> gives it) and its text for search; and the page's fingerprint before it, which
+/// tells whether it was edited, from the same replay.
 /// </summary>
-public sealed record YjsReplacement(byte[] Update, byte[] StateVector, byte[] Fingerprint, string Text);
+public sealed record YjsReplacement(byte[] Update, byte[] StateVector, byte[] Fingerprint, string Text, byte[] Before);
 
 /// <summary>
 /// The result of replaying a page's snapshot and updates. The two fingerprints are those of the inputs replayed and of
@@ -62,11 +63,11 @@ public interface IYjsCodec
 public sealed class YjsUnavailableException(string message, Exception? inner = null) : Exception(message, inner);
 
 /// <summary>The sidecar answered with an error: the input does not decode. Trying again gives the same answer.</summary>
-public sealed class YjsRejectedException(string message) : Exception(message)
+public sealed class YjsRejectedException(string message, bool invalidContent = false) : Exception(message)
 {
-    /// <summary>What the sidecar's builder says before the reason when it refuses content (<c>InvalidContentError</c> in build.ts).</summary>
-    public const string InvalidContentPrefix = "invalid content: ";
-
-    /// <summary>The content given to build or replace a page was refused, rather than the page or the request.</summary>
-    public bool IsInvalidContent => Message.StartsWith(InvalidContentPrefix, StringComparison.Ordinal);
+    /// <summary>
+    /// The content given to build or replace a page was refused by the editor's schema (the sidecar's own status for it),
+    /// rather than the page or the request: a fault in the conversion.
+    /// </summary>
+    public bool IsInvalidContent { get; } = invalidContent;
 }

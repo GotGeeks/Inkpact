@@ -379,6 +379,7 @@
     "restored": "“{title}” was restored.",
     "restoredToTopLevel": "“{title}” was restored to the top level, because the page it was in is gone.",
     "editsKept": "What you typed offline in “{title}” was removed by a change made elsewhere meanwhile. It is kept in a copy beside it.",
+    "editsWaiting": "What you typed offline in “{title}” was removed by a change made elsewhere, and a copy of it could not be made yet. Keep this tab open: it is tried again when the connection is back.",
     "openCopy": "Open the copy",
     "openCopyAlt": "Open the copy of your offline changes to “{title}”",
     "dismiss": "Dismiss"

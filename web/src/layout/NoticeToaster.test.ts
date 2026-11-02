@@ -73,6 +73,20 @@ describe('NoticeToaster', () => {
     expect(push).toHaveBeenCalledWith({ name: 'page', params: { pageId: 'copy-1' } })
   })
 
+  it('says when a copy of offline edits is still waiting to be made, and offers no copy to open', async () => {
+    const { notices, shown } = await toaster()
+
+    notices.post({ type: 'editsWaiting', title: 'Plan' })
+    const texts = await shown()
+
+    expect(texts.join(' ')).toContain(
+      'What you typed offline in “Plan” was removed by a change made elsewhere, and a copy of it could not be made yet.',
+    )
+    expect(
+      [...document.body.querySelectorAll('button')].map((b) => b.textContent?.trim()),
+    ).not.toContain('Open the copy')
+  })
+
   it('says it in Dutch', async () => {
     const { notices, shown } = await toaster('nl')
 

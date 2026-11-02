@@ -34,6 +34,8 @@ function text(notice: PostedNotice): string {
         : t('notices.restored', { title })
     case 'editsKept':
       return t('notices.editsKept', { title })
+    case 'editsWaiting':
+      return t('notices.editsWaiting', { title })
   }
 }
 
@@ -42,7 +44,8 @@ async function undo(notice: PostedNotice) {
 }
 
 /** A notice that must not slip by: it says where the person's own words went. */
-const important = (notice: PostedNotice) => notice.type === 'error' || notice.type === 'editsKept'
+const important = (notice: PostedNotice) =>
+  notice.type === 'error' || notice.type === 'editsKept' || notice.type === 'editsWaiting'
 
 function openCopy(notice: PostedNotice) {
   if (notice.type === 'editsKept')
@@ -55,7 +58,7 @@ function openCopy(notice: PostedNotice) {
     <ToastRoot
       v-for="notice in notifications.notices"
       :key="notice.id"
-      :duration="notice.type === 'editsKept' ? 30000 : notice.type === 'error' ? 8000 : 6000"
+      :duration="notice.type === 'error' ? 8000 : important(notice) ? 30000 : 6000"
       :type="important(notice) ? 'foreground' : 'background'"
       class="flex items-center gap-space-md rounded-md border border-border-subtle bg-surface-elevated p-space-md text-body-sm text-on-surface shadow-lg"
       :class="notice.type === 'error' ? 'border-error' : ''"

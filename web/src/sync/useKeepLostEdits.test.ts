@@ -9,6 +9,8 @@ import { useNotificationsStore } from '../stores/notifications'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import { FakeSyncHub } from '../testing/fakeSyncHub'
+import { jsonResponse } from '../testing/helpers'
+import { MessageType } from './protocol'
 import { fakeTree, outline, type FakeTree } from '../testing/treeFixtures'
 import { useKeepLostEdits } from './useKeepLostEdits'
 
@@ -169,9 +171,23 @@ describe('useKeepLostEdits', () => {
     expect(title.length).toBeGreaterThan(470)
   })
 
+  /** Every POST answered with this, counted, instead of what the fake tree answers. */
+  function refuseCreates(status: number, code: string) {
+    const answer = server.fetch.getMockImplementation()!
+    const refused: Record<string, unknown>[] = []
+    server.fetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method !== 'POST') return answer(input, init)
+      refused.push(JSON.parse(String(init.body)) as Record<string, unknown>)
+      return jsonResponse(status, { code })
+    })
+    return { refused, allow: () => server.fetch.mockImplementation(answer) }
+  }
+
+  const posts = () => server.writes().filter((write) => write.method === 'POST')
+
   it('forgets what waited to be kept when the person leaves, so nobody who signs in next gets it', async () => {
     const { sync } = await typedOfflineIntoAReplacedPage()
-    server.failNext(503, 'unavailable')
+    server.failNext(503, 'network_error')
     await reconnect()
     expect(sync.lostEdits).toHaveLength(1)
 
@@ -180,22 +196,83 @@ describe('useKeepLostEdits', () => {
     expect(sync.lostEdits).toEqual([])
   })
 
-  it('tries again when the copy could not be made, once the connection is back', async () => {
+  it('writes nothing when the person leaves while the copy is being made', async () => {
     const { sync } = await typedOfflineIntoAReplacedPage()
-    server.failNext(503, 'unavailable')
+    const answer = server.fetch.getMockImplementation()!
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    server.fetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') await held
+      return answer(input, init)
+    })
+
+    await reconnect()
+    await vi.waitFor(() => expect(posts()).toHaveLength(0))
+    sync.destroy()
+    release()
+    await flushPromises()
+
+    expect(hub.sent(MessageType.Subscribe, 'new')).toEqual([])
+    expect(useNotificationsStore().notices.map((notice) => notice.type)).not.toContain('editsKept')
+  })
+
+  it('puts the copy at the top level when the place beside the page is gone', async () => {
+    await typedOfflineIntoAReplacedPage()
+    server.failNext(409, 'parent_in_trash')
+
+    await reconnect()
+
+    await vi.waitFor(() => expect(posts()).toHaveLength(2))
+    expect(posts()[1]!.body).toEqual({
+      title: 'Plan (your offline changes)',
+      parentId: null,
+      afterId: null,
+      beforeId: null,
+    })
+    await vi.waitFor(() => expect(texts(hub.doc('new'))).toContain('typed offline'))
+  })
+
+  it('says once that the copy is waiting, however often it is tried again', async () => {
+    const { sync } = await typedOfflineIntoAReplacedPage()
+    const { refused } = refuseCreates(500, 'unknown')
+
+    await reconnect()
+    await vi.waitFor(() => expect(refused).toHaveLength(2))
+    hub.current.serverClose(1006)
+    await vi.waitFor(() => expect(refused).toHaveLength(4), { timeout: 3000 })
+    await flushPromises()
+
+    expect(useNotificationsStore().notices).toEqual([
+      expect.objectContaining({ type: 'editsWaiting', title: 'Plan' }),
+    ])
+    expect(sync.lostEdits).toHaveLength(1)
+  })
+
+  it('waits for the workspace to be read before it makes the copy', async () => {
+    await typedOfflineIntoAReplacedPage()
+    useTreeStore().reset()
+
+    await reconnect()
+    expect(posts()).toEqual([])
+
+    await useTreeStore().init()
+
+    await vi.waitFor(() => expect(posts()).toHaveLength(1))
+    await vi.waitFor(() => expect(texts(hub.doc('new'))).toContain('typed offline'))
+  })
+
+  it('tries again when the server could not be reached, once the connection is back', async () => {
+    const { sync } = await typedOfflineIntoAReplacedPage()
+    server.failNext(503, 'network_error')
 
     await reconnect()
 
     expect(sync.lostEdits).toHaveLength(1)
-    expect(server.writes().filter((write) => write.method === 'POST')).toHaveLength(1)
+    expect(posts()).toHaveLength(1)
+    expect(useNotificationsStore().notices.map((notice) => notice.type)).toEqual(['editsWaiting'])
 
     hub.current.serverClose(1006)
-    await vi.waitFor(
-      () => expect(server.writes().filter((w) => w.method === 'POST')).toHaveLength(2),
-      {
-        timeout: 3000,
-      },
-    )
+    await vi.waitFor(() => expect(posts()).toHaveLength(2), { timeout: 3000 })
     await vi.waitFor(() => expect(sync.lostEdits).toEqual([]))
     await vi.waitFor(() => expect(texts(hub.doc('new'))).toContain('typed offline'))
   })

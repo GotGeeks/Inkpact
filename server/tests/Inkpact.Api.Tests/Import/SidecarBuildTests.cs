@@ -88,13 +88,14 @@ public sealed class SidecarBuildTests(YjsSidecarFixture yjs)
     {
         var content = """{"type":"doc","content":[{"type":"iframe"}]}"""u8.ToArray();
 
-        await Should.ThrowAsync<YjsRejectedException>(() => Codec.BuildAsync(content, default));
+        // Told apart from a page or request the sidecar cannot use by its status, not by its words.
+        (await Should.ThrowAsync<YjsRejectedException>(() => Codec.BuildAsync(content, default))).IsInvalidContent.ShouldBeTrue();
     }
 
     [Fact]
     public async Task The_sidecar_refuses_content_that_is_not_json()
     {
-        await Should.ThrowAsync<YjsRejectedException>(() => Codec.BuildAsync("{"u8.ToArray(), default));
+        (await Should.ThrowAsync<YjsRejectedException>(() => Codec.BuildAsync("{"u8.ToArray(), default))).IsInvalidContent.ShouldBeFalse();
     }
 
     private static byte[] Json(string markdown) =>
@@ -114,6 +115,8 @@ public sealed class SidecarBuildTests(YjsSidecarFixture yjs)
         replacement.Fingerprint.ShouldBe(compaction.ReplayFingerprint);
         replacement.StateVector.ShouldBe(compaction.StateVector);
         replacement.Text.ShouldBe(compaction.Text);
+        // And the page before it, as a fingerprint of the page alone gives it.
+        replacement.Before.ShouldBe(await Codec.FingerprintAsync([old], default));
         YjsFixture.Lines(compaction.Text).ShouldBe(YjsFixture.Lines(TextOf(converted.Document.ToJson())));
         compaction.Text.ShouldNotContain("old");
     }
@@ -136,6 +139,14 @@ public sealed class SidecarBuildTests(YjsSidecarFixture yjs)
         var content = """{"type":"doc","content":[{"type":"iframe"}]}"""u8.ToArray();
 
         await Should.ThrowAsync<YjsRejectedException>(() => Codec.ReplaceAsync([old], content, default));
+    }
+
+    [Fact]
+    public async Task A_page_that_does_not_decode_is_refused_as_the_page_not_as_the_content()
+    {
+        var error = await Should.ThrowAsync<YjsRejectedException>(() => Codec.ReplaceAsync([[1, 2, 3]], Json("after"), default));
+
+        error.IsInvalidContent.ShouldBeFalse();
     }
 
     [Fact]

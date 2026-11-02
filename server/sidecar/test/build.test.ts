@@ -329,6 +329,28 @@ describe('replaceDocument', () => {
     expect(nodes).toEqual(['horizontalRule', 'paragraph'])
   })
 
+  it('gives the empty paragraphs it makes an empty text, so clients typing into one share it', () => {
+    const old = page()
+    const emptied = replaceDocument(replayed(old), doc())
+    const ruled = replaceDocument(replayed(old), doc({ type: 'horizontalRule' }))
+
+    const textsOf = (update: Uint8Array) =>
+      (
+        replayed([...old, update])
+          .getXmlFragment(FIELD)
+          .toArray() as Y.XmlElement[]
+      )
+        .filter((node) => node.nodeName === 'paragraph')
+        .map((node) => node.toArray().map((child) => child.constructor.name))
+    expect(textsOf(emptied)).toEqual([['YXmlText']])
+    expect(textsOf(ruled)).toEqual([['YXmlText']])
+    expect(
+      (fragmentOf(buildDocument(doc({ type: 'horizontalRule' }))).get(1) as Y.XmlElement)
+        .toArray()
+        .map((child) => child.constructor.name),
+    ).toEqual(['YXmlText'])
+  })
+
   it('leaves one empty paragraph for an empty note, so no client adds its own', () => {
     const old = page()
     const update = replaceDocument(replayed(old), doc())
@@ -391,11 +413,12 @@ describe('the replace operation', () => {
   it('answers with the update for the page it was sent, and the page after it', () => {
     const old = buildDocument(doc(paragraph(text('before'))))
 
-    const [update, stateVector, after, pageText, ...rest] = handle(OP_REPLACE, [
+    const [update, stateVector, after, pageText, before, ...rest] = handle(OP_REPLACE, [
       json(doc(paragraph(text('after')))),
       old,
     ])
 
+    expect(before).toEqual(fingerprintOf(replayed([old])))
     const result = replayed([old, update!])
     expect(plainText(result)).toBe('after')
     expect(stateVector).toEqual(Y.encodeStateVector(result))
@@ -411,17 +434,6 @@ describe('the replace operation', () => {
     const [update] = handle(OP_REPLACE, [json(doc(paragraph(text('after')))), state!])
 
     expect(plainText(replayed([state!, update!]))).toBe('after')
-  })
-
-  it('says so when it is the content that is refused, as the server tells it apart', () => {
-    const old = buildDocument(doc())
-
-    expect(() => handle(OP_REPLACE, [json(doc({ type: 'iframe' })), old])).toThrow(
-      /^invalid content: unknown node iframe$/,
-    )
-    expect(() => handle(OP_REPLACE, [json(doc()), new Uint8Array([1, 2, 3])])).not.toThrow(
-      /^invalid content/,
-    )
   })
 
   it('is an error, not a crash, for input that is not JSON or not content, or without content', () => {

@@ -156,7 +156,6 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
         return writer.ToArray();
     }
 
-    private static string BodyHash(string body) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(body)));
 
     /// <summary>A notebook with two notes. "Aplan" sorts before "Bother", so a copy of it has a note after it to go before.</summary>
     private static JexBuilder Library(string plan = "Original text", string? updatedTime = null) => new JexBuilder()
@@ -184,7 +183,7 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
         (await PageOfAsync("plan")).ContentText.Trim().ShouldBe("Changed in Joplin");
         EntriesOf(import).ShouldBeEmpty();
         var item = await ItemOfAsync("plan");
-        ImportBase.FromJson(item.Base)!.BodyHash.ShouldBe(BodyHash("Changed in Joplin"));
+        ImportBase.FromJson(item.Base)!.ContentKey.ShouldNotBe(ImportBase.FromJson(itemBefore.Base)!.ContentKey);
         item.ContentHash.ShouldNotBe(itemBefore.ContentHash);
         item.PageFingerprint.ShouldNotBe(itemBefore.PageFingerprint);
         item.ImportId.ShouldBe(import.Id);
@@ -278,13 +277,73 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
         await StartAsync(inner => codec = new HookCodec(inner));
         await ImportAsync(Library());
 
-        codec!.Rejection = "The request is over the size the sidecar accepts";
+        codec!.Rejection = new YjsRejectedException("The request is over the size the sidecar accepts");
         var tooLarge = await ImportAsync(Library("Changed in Joplin"));
-        codec.Rejection = YjsRejectedException.InvalidContentPrefix + "unknown node iframe";
+        codec.Rejection = new YjsRejectedException("unknown node iframe", invalidContent: true);
         var refused = await ImportAsync(Library("Changed in Joplin"));
 
         EntriesOf(tooLarge).Single().Reasons.Single().Code.ShouldBe(NoteCodes.ItemFailed);
         EntriesOf(refused).Single().Reasons.Single().Code.ShouldBe(NoteCodes.ConversionFailed);
+    }
+
+    [Fact]
+    public async Task A_page_whose_own_log_does_not_decode_is_a_failed_item_not_a_fault_in_the_conversion()
+    {
+        await StartAsync();
+        await ImportAsync(Library());
+        var plan = await PageOfAsync("plan");
+        await AppendAsync(plan.Id, [1, 2, 3]);
+
+        var import = await ImportAsync(Library("Changed in Joplin"));
+
+        EntriesOf(import).Single().Reasons.Single().Code.ShouldBe(NoteCodes.ItemFailed);
+    }
+
+    [Fact]
+    public async Task A_note_that_changed_in_Joplin_reads_the_page_once_to_be_replaced()
+    {
+        HookCodec? codec = null;
+        await StartAsync(inner => codec = new HookCodec(inner));
+        await ImportAsync(Library());
+
+        await ImportAsync(Library("Changed in Joplin"));
+
+        // One replacement, which says what the page was before as well; no separate look at the page.
+        (codec!.Replacements, codec.Fingerprints).ShouldBe((1, 0));
+    }
+
+    [Fact]
+    public async Task A_note_whose_markup_changed_from_Markdown_to_HTML_with_the_same_body_is_converted_again()
+    {
+        await StartAsync();
+        // Emphasis in Markdown, the same characters as they are in HTML.
+        const string body = "*stars*";
+        await ImportAsync(new JexBuilder().Folder("work").Note("plan", "work", body: body, title: "Aplan"));
+        var plan = await PageOfAsync("plan");
+        (await TextOfAsync(plan.Id)).ShouldBe("stars");
+
+        var import = await ImportAsync(new JexBuilder().Folder("work").Note("plan", "work", body: body, title: "Aplan", html: true));
+
+        CountsOf(import).Updated.ShouldBe(1);
+        (await TextOfAsync(plan.Id)).ShouldBe("*stars*");
+    }
+
+    [Fact]
+    public async Task A_file_whose_bytes_changed_in_Joplin_reaches_the_page_though_the_note_itself_did_not_change()
+    {
+        await StartAsync();
+        await ImportAsync(WithPicture("Same text", Png));
+        var plan = await PageOfAsync("plan");
+        var first = await UseDbAsync(db => db.Attachments.AsNoTracking().SingleAsync(a => a.PageId == plan.Id));
+
+        // Joplin rewrites the resource's item (its size and time) when its file is replaced; the note's own item stays.
+        var import = await ImportAsync(WithPicture("Same text", OtherPng));
+
+        CountsOf(import).Updated.ShouldBe(1);
+        var rows = await UseDbAsync(db => db.Attachments.AsNoTracking().Where(a => a.PageId == plan.Id).ToListAsync());
+        rows.Single(a => a.ExternalId == JexBuilder.Id("pic")).Sha256.ShouldBe(Convert.ToHexStringLower(SHA256.HashData(OtherPng)));
+        rows.Single(a => a.Id == first.Id).ExternalId.ShouldBeNull();
+        CountsOf(await ImportAsync(WithPicture("Same text", OtherPng))).AlreadyImported.ShouldBe(2);
     }
 
     [Fact]
@@ -578,7 +637,7 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
         (await TextOfAsync(plan.Id)).ShouldBe("Changed in Joplin");
         (await TextOfAsync(other.Id)).ShouldBe("my own words");
         // The base is there from now on.
-        ImportBase.FromJson((await ItemOfAsync("plan")).Base)!.BodyHash.ShouldBe(BodyHash("Changed in Joplin"));
+        ImportBase.FromJson((await ItemOfAsync("plan")).Base)!.ContentKey.ShouldNotBeNull();
     }
 
     // ---- files -----------------------------------------------------------------------------------------------------------
@@ -632,8 +691,13 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
 
         public Func<Task>? WhileBuilding { get; set; }
 
-        /// <summary>When set, replacing is refused by the sidecar with this message.</summary>
-        public string? Rejection { get; set; }
+        /// <summary>When set, replacing is refused by the sidecar with this.</summary>
+        public YjsRejectedException? Rejection { get; set; }
+
+        /// <summary>How often the import asked for the pages' fingerprints, and for replacements.</summary>
+        public int Fingerprints { get; private set; }
+
+        public int Replacements { get; private set; }
 
         public Task<YjsDiff> DiffAsync(ReadOnlyMemory<byte> stateVector, IReadOnlyList<byte[]> updates, CancellationToken cancellationToken) =>
             inner.DiffAsync(stateVector, updates, cancellationToken);
@@ -641,8 +705,11 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
         public Task<YjsCompaction> CompactAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken) =>
             inner.CompactAsync(inputs, cancellationToken);
 
-        public Task<byte[]> FingerprintAsync(IReadOnlyList<byte[]> updates, CancellationToken cancellationToken) =>
-            inner.FingerprintAsync(updates, cancellationToken);
+        public Task<byte[]> FingerprintAsync(IReadOnlyList<byte[]> updates, CancellationToken cancellationToken)
+        {
+            Fingerprints++;
+            return inner.FingerprintAsync(updates, cancellationToken);
+        }
 
         public async Task<byte[]> BuildAsync(ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
         {
@@ -657,10 +724,12 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
                 throw new InvalidOperationException("the sidecar broke");
             }
 
-            if (Rejection is { } message)
+            if (Rejection is { } rejection)
             {
-                throw new YjsRejectedException(message);
+                throw rejection;
             }
+
+            Replacements++;
 
             var replacement = await inner.ReplaceAsync(inputs, content, cancellationToken);
             // After the replacement is made from the inputs, as a person's edit that lands while the import works would.

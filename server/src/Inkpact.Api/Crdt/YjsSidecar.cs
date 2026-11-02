@@ -78,8 +78,8 @@ public sealed class YjsSidecar(SidecarOptions options, string contentRoot, TimeP
     public async Task<YjsReplacement> ReplaceAsync(IReadOnlyList<byte[]> inputs, ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
     {
         var answer = await CallAsync(SidecarOp.Replace, Parts(inputs, content), options.RequestTimeout, cancellationToken);
-        return answer is [var update, var stateVector, var fingerprint, var text]
-            ? new YjsReplacement(update, stateVector, fingerprint, Encoding.UTF8.GetString(text))
+        return answer is [var update, var stateVector, var fingerprint, var text, var before]
+            ? new YjsReplacement(update, stateVector, fingerprint, Encoding.UTF8.GetString(text), before)
             : throw Unexpected(answer);
     }
 

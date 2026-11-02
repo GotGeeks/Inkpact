@@ -86,7 +86,9 @@ function build([json, ...rest]: Uint8Array[]): Uint8Array[] {
 
 /**
  * [the new content as ProseMirror JSON, in UTF-8, then the page's snapshot and updates] ->
- * [the update that replaces the content, the page's state vector after it, its fingerprint after it, its text after it].
+ * [the update that replaces the content, the page's state vector after it, its fingerprint after it, its text after it,
+ * its fingerprint before it]. The fingerprint before is what the server compares to tell whether the page was edited, so
+ * one replay of the page answers that too.
  * The update is checked by replaying the inputs and it on a fresh document, as a browser would: the answer is only given
  * when that is the document the update was made on.
  */
@@ -94,11 +96,12 @@ function replace([json, ...inputs]: Uint8Array[]): Uint8Array[] {
   if (json === undefined) throw new Error('replace needs the new content and the page')
   const content = JSON.parse(Buffer.from(json).toString('utf8'))
   return withReplay(inputs, (doc) => {
+    const before = fingerprint(doc)
     const update = replaceDocument(doc, content)
     const after = fingerprint(doc)
     if (!Buffer.from(withReplay([...inputs, update], fingerprint)).equals(after))
       throw new Error('the replacement does not read back as the page it was made on')
-    return [update, Y.encodeStateVector(doc), after, utf8(plainText(doc))]
+    return [update, Y.encodeStateVector(doc), after, utf8(plainText(doc)), before]
   })
 }
 

@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
-import { MAX_FRAME_BYTES, encodeRequest } from '../src/framing.ts'
-import { OP_COMPACT, OP_DIFF, OP_PING } from '../src/ops.ts'
+import {
+  MAX_FRAME_BYTES,
+  STATUS_ERROR,
+  STATUS_INVALID_CONTENT,
+  encodeRequest,
+} from '../src/framing.ts'
+import { OP_BUILD, OP_COMPACT, OP_DIFF, OP_PING, OP_REPLACE } from '../src/ops.ts'
 import { SidecarProcess, bytes, replayed, text, typed } from './helpers.ts'
 
 /** The sidecar as the server runs it: a child process with the protocol on stdin and stdout. */
@@ -44,6 +49,26 @@ describe('the sidecar process', () => {
     expect(brokenUpdate.ok).toBe(false)
     expect(next.ok).toBe(true)
     expect(new Uint8Array(next.parts[0]!)).toEqual(Y.encodeStateAsUpdate(replayed(updates)))
+  })
+
+  it('answers content the editor does not allow with a status of its own, and a page it cannot read with the plain error', async () => {
+    const sidecar = start()
+    const content = (value: unknown) => Buffer.from(JSON.stringify(value), 'utf8')
+    const iframe = content({ type: 'doc', content: [{ type: 'iframe' }] })
+
+    const refusedBuild = await sidecar.call(OP_BUILD, [iframe])
+    const refusedReplace = await sidecar.call(OP_REPLACE, [iframe])
+    const brokenPage = await sidecar.call(OP_REPLACE, [
+      content({ type: 'doc' }),
+      bytes(255, 255, 255, 255),
+    ])
+
+    expect([refusedBuild.status, refusedReplace.status]).toEqual([
+      STATUS_INVALID_CONTENT,
+      STATUS_INVALID_CONTENT,
+    ])
+    expect(text(refusedBuild.parts[0])).toContain('iframe')
+    expect(brokenPage.status).toBe(STATUS_ERROR)
   })
 
   it('answers a request it cannot read with an error, and keeps serving', async () => {
