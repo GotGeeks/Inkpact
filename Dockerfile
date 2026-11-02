@@ -6,7 +6,7 @@
 # Tags are pinned with their digest; Dependabot's docker ecosystem moves them.
 
 # The web bundle.
-FROM node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS web
+FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS web
 WORKDIR /src
 RUN corepack enable
 # Manifests first, so the dependency layer is only rebuilt when they change.
@@ -22,7 +22,7 @@ RUN pnpm --filter web build
 
 # The sidecar with its production dependencies. `pnpm deploy` puts the store inside the folder, so the sidecar's
 # permission model needs no path outside it.
-FROM node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS sidecar
+FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS sidecar
 WORKDIR /src
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
