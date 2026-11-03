@@ -99,8 +99,8 @@ public class MigrationIntegrationTests(PostgresFixture postgres)
         columns["tags"].ShouldBe(["id", "workspace_id", "name", "normalized_name", "external_source_type", "external_id", "created_at"]);
         columns["page_tags"].ShouldBe(["page_id", "tag_id"]);
         columns["reminders"].ShouldBe(["id", "page_id", "user_id", "remind_at", "delivered_at", "created_at"]);
-        columns["imports"].ShouldBe(["id", "workspace_id", "user_id", "source_type", "file_name", "file_size", "state", "error_code", "total_items", "processed_items", "created_at", "started_at", "finished_at", "counts", "report"]);
-        columns["import_items"].ShouldBe(["id", "workspace_id", "source_type", "external_id", "kind", "inkpact_id", "content_hash", "state_vector", "import_id", "imported_at"]);
+        columns["imports"].ShouldBe(["id", "workspace_id", "user_id", "source_type", "file_name", "file_size", "state", "error_code", "total_items", "processed_items", "created_at", "started_at", "finished_at", "counts", "report", "copy_title"]);
+        columns["import_items"].ShouldBe(["id", "workspace_id", "source_type", "external_id", "kind", "inkpact_id", "content_hash", "state_vector", "import_id", "imported_at", "base", "converter_version", "page_fingerprint"]);
         columns["page_snapshots"].ShouldBe(["page_id", "state", "state_vector", "watermark", "version", "update_count", "history_complete", "updated_at"]);
         columns["pages"].ShouldBe(
         [

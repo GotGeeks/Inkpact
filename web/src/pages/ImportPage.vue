@@ -88,15 +88,40 @@ const counts = computed(() => {
   ]
 })
 
-// What was left alone, one line each, only for what applies.
+// What became of notes imported before, and what was left alone, one line each, only for what applies. An import from
+// before re-imports compared notes has no counts of the first four.
 const leftAlone = computed(() => {
   const c = run.value?.counts
   if (!c) return []
+  const updated = c.updated ?? 0
+  const reconverted = c.reconverted ?? 0
+  const conflicts = c.conflicts ?? 0
+  const keptInInkpact = c.keptInInkpact ?? 0
   return [
+    {
+      key: 'updated',
+      text: t('import.left.updated', { count: n(updated) }, updated),
+      value: updated,
+    },
+    {
+      key: 'reconverted',
+      text: t('import.left.reconverted', { count: n(reconverted) }, reconverted),
+      value: reconverted,
+    },
+    {
+      key: 'conflicts',
+      text: t('import.left.conflicts', { count: n(conflicts) }, conflicts),
+      value: conflicts,
+    },
     {
       key: 'alreadyImported',
       text: t('import.left.alreadyImported', { count: n(c.alreadyImported) }, c.alreadyImported),
       value: c.alreadyImported,
+    },
+    {
+      key: 'keptInInkpact',
+      text: t('import.left.keptInInkpact', { count: n(keptInInkpact) }, keptInInkpact),
+      value: keptInInkpact,
     },
     {
       key: 'alreadyInTrash',
@@ -149,6 +174,8 @@ const statusBadge: Record<ReportStatus, string> = {
   conflict: 'bg-secondary-container text-on-secondary-container',
   skipped: 'bg-surface-container-high text-on-surface',
   failed: 'bg-error-container text-on-error-container',
+  updated: 'bg-primary-container text-on-primary-container',
+  conflict_copy: 'bg-secondary-container text-on-secondary-container',
 }
 
 function choose() {
@@ -170,6 +197,8 @@ async function onChosen(event: Event) {
     const { id } = await startJoplinImport(
       workspaceId,
       file,
+      // The server fills in the note's title; the words around it are the person's language.
+      t('import.copyTitle', { title: '{title}' }),
       (sent, total) => {
         if (upload.value) upload.value = { ...upload.value, sent, total }
       },
@@ -438,6 +467,14 @@ const primaryButton =
                   {{ entry.title || t('tree.untitled') }}
                 </RouterLink>
                 <template v-else>{{ entry.title || t('tree.untitled') }}</template>
+              </p>
+              <p v-if="entry.originalPageId" class="text-body-sm">
+                <RouterLink
+                  :to="{ name: 'page', params: { pageId: entry.originalPageId } }"
+                  class="text-primary underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  {{ t('import.report.original') }}
+                </RouterLink>
               </p>
               <ul
                 v-if="entry.reasons.length > 0"

@@ -88,13 +88,65 @@ public sealed class SidecarBuildTests(YjsSidecarFixture yjs)
     {
         var content = """{"type":"doc","content":[{"type":"iframe"}]}"""u8.ToArray();
 
-        await Should.ThrowAsync<YjsRejectedException>(() => Codec.BuildAsync(content, default));
+        // Told apart from a page or request the sidecar cannot use by its status, not by its words.
+        (await Should.ThrowAsync<YjsRejectedException>(() => Codec.BuildAsync(content, default))).IsInvalidContent.ShouldBeTrue();
     }
 
     [Fact]
     public async Task The_sidecar_refuses_content_that_is_not_json()
     {
-        await Should.ThrowAsync<YjsRejectedException>(() => Codec.BuildAsync("{"u8.ToArray(), default));
+        (await Should.ThrowAsync<YjsRejectedException>(() => Codec.BuildAsync("{"u8.ToArray(), default))).IsInvalidContent.ShouldBeFalse();
+    }
+
+    private static byte[] Json(string markdown) =>
+        JoplinContent.Convert(markdown, isHtml: false, NoResources.Instance).Document.ToUtf8Json();
+
+    [Fact]
+    public async Task A_page_is_replaced_by_an_update_that_reads_as_the_new_content()
+    {
+        var old = await Codec.BuildAsync(Json("# Old\n\nold text"), default);
+        var converted = JoplinContent.Convert("New *text*\n\n- one\n- two", isHtml: false, NoResources.Instance);
+
+        var replacement = await Codec.ReplaceAsync([old], converted.Document.ToUtf8Json(), default);
+
+        var compaction = await Codec.CompactAsync([old, replacement.Update], default);
+        compaction.StateFingerprint.ShouldBe(compaction.ReplayFingerprint);
+        // The page after the update, as the sidecar answered it, is the page the update makes.
+        replacement.Fingerprint.ShouldBe(compaction.ReplayFingerprint);
+        replacement.StateVector.ShouldBe(compaction.StateVector);
+        replacement.Text.ShouldBe(compaction.Text);
+        // And the page before it, as a fingerprint of the page alone gives it.
+        replacement.Before.ShouldBe(await Codec.FingerprintAsync([old], default));
+        YjsFixture.Lines(compaction.Text).ShouldBe(YjsFixture.Lines(TextOf(converted.Document.ToJson())));
+        compaction.Text.ShouldNotContain("old");
+    }
+
+    [Fact]
+    public async Task A_page_is_replaced_from_its_snapshot_and_the_updates_after_it()
+    {
+        var old = await Codec.BuildAsync(Json("before"), default);
+        var snapshot = (await Codec.CompactAsync([old], default)).State;
+
+        var replacement = await Codec.ReplaceAsync([snapshot], Json("after"), default);
+
+        (await Codec.CompactAsync([snapshot, replacement.Update], default)).Text.Trim().ShouldBe("after");
+    }
+
+    [Fact]
+    public async Task Replacing_with_a_node_the_editor_does_not_have_is_refused()
+    {
+        var old = await Codec.BuildAsync(Json("before"), default);
+        var content = """{"type":"doc","content":[{"type":"iframe"}]}"""u8.ToArray();
+
+        await Should.ThrowAsync<YjsRejectedException>(() => Codec.ReplaceAsync([old], content, default));
+    }
+
+    [Fact]
+    public async Task A_page_that_does_not_decode_is_refused_as_the_page_not_as_the_content()
+    {
+        var error = await Should.ThrowAsync<YjsRejectedException>(() => Codec.ReplaceAsync([[1, 2, 3]], Json("after"), default));
+
+        error.IsInvalidContent.ShouldBeFalse();
     }
 
     [Fact]

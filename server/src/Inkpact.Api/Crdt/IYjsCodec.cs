@@ -4,6 +4,13 @@ namespace Inkpact.Api.Crdt;
 public sealed record YjsDiff(byte[] Update, byte[] StateVector);
 
 /// <summary>
+/// The update that replaces a page's content, and the page right after it: its state vector, its fingerprint (as
+/// <see cref="IYjsCodec.FingerprintAsync"/> gives it) and its text for search; and the page's fingerprint before it, which
+/// tells whether it was edited, from the same replay.
+/// </summary>
+public sealed record YjsReplacement(byte[] Update, byte[] StateVector, byte[] Fingerprint, string Text, byte[] Before);
+
+/// <summary>
 /// The result of replaying a page's snapshot and updates. The two fingerprints are those of the inputs replayed and of
 /// <see cref="State"/> decoded on its own fresh document; equal fingerprints mean the encoding lost nothing.
 /// </summary>
@@ -36,6 +43,17 @@ public interface IYjsCodec
     /// rejected with <see cref="YjsRejectedException"/>.
     /// </summary>
     Task<byte[]> BuildAsync(ReadOnlyMemory<byte> content, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The Yjs update that replaces the content of an existing page, made of <paramref name="inputs"/> (its snapshot first,
+    /// if any, then its updates), with <paramref name="content"/> (a ProseMirror document as JSON). It deletes every block the
+    /// page has and writes the new content after them, and holds only what the inputs lack. An edit made meanwhile is merged
+    /// only where it does not depend on a deleted block: text typed into an old block is deleted with it, so the caller makes
+    /// sure the page has no update the inputs lack (see <c>SyncHub.PublishAsync</c>). The same content rules as
+    /// <see cref="BuildAsync"/> apply, and are refused the same way. The sidecar checks the update by replaying the inputs and
+    /// it, and answers with the page after it as well.
+    /// </summary>
+    Task<YjsReplacement> ReplaceAsync(IReadOnlyList<byte[]> inputs, ReadOnlyMemory<byte> content, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -45,4 +63,11 @@ public interface IYjsCodec
 public sealed class YjsUnavailableException(string message, Exception? inner = null) : Exception(message, inner);
 
 /// <summary>The sidecar answered with an error: the input does not decode. Trying again gives the same answer.</summary>
-public sealed class YjsRejectedException(string message) : Exception(message);
+public sealed class YjsRejectedException(string message, bool invalidContent = false) : Exception(message)
+{
+    /// <summary>
+    /// The content given to build or replace a page was refused by the editor's schema (the sidecar's own status for it),
+    /// rather than the page or the request: a fault in the conversion.
+    /// </summary>
+    public bool IsInvalidContent { get; } = invalidContent;
+}

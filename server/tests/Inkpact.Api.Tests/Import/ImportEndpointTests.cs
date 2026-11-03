@@ -135,6 +135,33 @@ public sealed class ImportEndpointTests(PostgresFixture postgres) : IAsyncLifeti
     // ---- the round trip ------------------------------------------------------------------------------------------------
 
     [Fact]
+    public async Task The_title_of_a_conflict_copy_comes_with_the_upload_in_the_uploaders_words()
+    {
+        var response = await SendAsync(
+            _owner, $"/api/workspaces/{_workspaceId}/imports/joplin?name=a.jex&copyTitle={Uri.EscapeDataString("{title} (uit Joplin)")}", Bytes(SmallExport()));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        var id = (await response.Content.ReadFromJsonAsync<ImportAccepted>())!.Id;
+        await WaitForEndAsync(_owner, id);
+        (await UseDbAsync(db => db.Imports.Where(i => i.Id == id).Select(i => i.CopyTitle).SingleAsync())).ShouldBe("{title} (uit Joplin)");
+    }
+
+    [Theory]
+    [InlineData("(Joplin)")]
+    [InlineData("{title} {title}")]
+    [InlineData("{title}\n(Joplin)")]
+    [InlineData("{title} (a copy with far too many words in it, more than any language needs to say that this is a copy of a note)")]
+    public async Task A_conflict_copys_title_without_the_note_or_that_is_not_one_line_is_refused(string copyTitle)
+    {
+        var response = await SendAsync(
+            _owner, $"/api/workspaces/{_workspaceId}/imports/joplin?name=a.jex&copyTitle={Uri.EscapeDataString(copyTitle)}", Bytes(SmallExport()));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await response.ReadErrorAsync()).Code.ShouldBe("import_copy_title_invalid");
+        (await UseDbAsync(db => db.Imports.CountAsync())).ShouldBe(0);
+    }
+
+    [Fact]
     public async Task An_uploaded_export_is_accepted_imported_in_the_background_and_reported()
     {
         var response = await UploadAsync(_owner, Bytes(SmallExport()), "My library.jex");

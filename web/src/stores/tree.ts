@@ -94,12 +94,14 @@ export const useTreeStore = defineStore('tree', () => {
     persistExpanded()
   }
 
-  /** Runs a change. Returns what the server answered, or null after telling the person why it did not work. */
+  /**
+   * Runs a change. Returns what the server answered, or null after telling the person why it did not work. Once the server
+   * has made the change it is returned, also when reading the tree again fails: the caller must not try it a second time.
+   */
   async function change(call: () => Promise<PageChange>): Promise<PageChange | null> {
+    let result: PageChange
     try {
-      const result = await call()
-      await load()
-      return result
+      result = await call()
     } catch (error) {
       const code = error instanceof ApiError ? error.code : 'unknown'
       notifications.post({
@@ -111,6 +113,9 @@ export const useTreeStore = defineStore('tree', () => {
       await load().catch(() => undefined)
       return null
     }
+    // A tree that cannot be read now is read again by the next change or reload.
+    await load().catch(() => undefined)
+    return result
   }
 
   function positionBody(position: Position) {

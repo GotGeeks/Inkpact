@@ -359,6 +359,9 @@ public sealed class ImportRunnerTests(PostgresFixture postgres, ITestOutputHelpe
         public Task<byte[]> FingerprintAsync(IReadOnlyList<byte[]> updates, CancellationToken cancellationToken) =>
             inner.FingerprintAsync(updates, cancellationToken);
 
+        public Task<YjsReplacement> ReplaceAsync(IReadOnlyList<byte[]> inputs, ReadOnlyMemory<byte> content, CancellationToken cancellationToken) =>
+            inner.ReplaceAsync(inputs, content, cancellationToken);
+
         public async Task<byte[]> BuildAsync(ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
         {
             var call = Interlocked.Increment(ref _builds);
@@ -461,7 +464,7 @@ public sealed class ImportRunnerTests(PostgresFixture postgres, ITestOutputHelpe
     [Fact]
     public async Task A_note_the_builder_refuses_is_reported_and_the_others_still_come_in()
     {
-        await StartAsync(inner => new FaultyCodec(inner, call => call == 2 ? new YjsRejectedException("unknown node") : null));
+        await StartAsync(inner => new FaultyCodec(inner, call => call == 2 ? new YjsRejectedException("unknown node", invalidContent: true) : null));
 
         var import = await ImportAsync(new JexBuilder().Folder("f").Note("a", "f", title: "A").Note("b", "f", title: "B").Note("c", "f", title: "C"));
 

@@ -51,6 +51,9 @@ public sealed class Lib0Reader(ReadOnlyMemory<byte> data)
 
     public bool HasMore => _position < data.Length;
 
+    /// <summary>How many bytes have been read.</summary>
+    public int Position => _position;
+
     public ulong ReadVarUint()
     {
         ulong value = 0;

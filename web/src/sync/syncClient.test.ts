@@ -15,6 +15,7 @@ function start() {
     failing: 0,
     errors: [] as string[],
     changes: 0,
+    lost: [] as { pageId: string; before: Uint8Array }[],
   }
   const client = new SyncClient({
     url: 'ws://localhost/api/sync',
@@ -24,6 +25,7 @@ function start() {
     onConnectFailing: () => events.failing++,
     onError: (code) => events.errors.push(code),
     onPageChange: () => events.changes++,
+    onEditsLost: (pageId, before) => events.lost.push({ pageId, before }),
     // No jitter, so delays are exact.
     random: () => 0.5,
   })
@@ -368,6 +370,147 @@ describe('SyncClient', () => {
       expect(serverText(hub)).toContain('offline')
       expect(serverText(hub)).toContain('meanwhile')
       expect(handle.unsent).toBe(false)
+      client.destroy()
+    })
+  })
+
+  describe('offline edits that a change from elsewhere deleted', () => {
+    /** The page as the editor keeps it: paragraphs of text in the `default` fragment. */
+    function paragraphs(doc: Y.Doc): string[] {
+      return doc
+        .getXmlFragment('default')
+        .toArray()
+        .map((node) => ((node as Y.XmlElement).get(0) as Y.XmlText).toString())
+    }
+
+    /** An update from `doc` (which has the page) that makes a change, as another client or the import would. */
+    function editOf(doc: Y.Doc, change: (fragment: Y.XmlFragment) => void): Uint8Array {
+      const before = Y.encodeStateVector(doc)
+      doc.transact(() => change(doc.getXmlFragment('default')))
+      return Y.encodeStateAsUpdate(doc, before)
+    }
+
+    function paragraph(text: string): Y.XmlElement {
+      const element = new Y.XmlElement('paragraph')
+      const content = new Y.XmlText()
+      content.insert(0, text)
+      element.insert(0, [content])
+      return element
+    }
+
+    /** A page with one paragraph, open in the client, then the connection lost. */
+    async function offlineOnAPage(mode: 'diff' | 'log' = 'diff') {
+      const started = start()
+      started.hub.mode = mode
+      const author = new Y.Doc()
+      started.hub.store(
+        page,
+        editOf(author, (fragment) => fragment.insert(0, [paragraph('old')])),
+      )
+      await tick()
+      const handle = started.client.subscribe(page)
+      await tick()
+      started.hub.current.serverClose(1006)
+      return { ...started, author, handle }
+    }
+
+    const typeInto = (doc: Y.Doc, text: string) =>
+      doc.transact(() =>
+        ((doc.getXmlFragment('default').get(0) as Y.XmlElement).get(0) as Y.XmlText).insert(
+          3,
+          text,
+        ),
+      )
+
+    it.each(['diff', 'log'] as const)(
+      'reports text typed offline into a block that was deleted meanwhile, with the page as it was (%s mode)',
+      async (mode) => {
+        const { hub, client, events, author, handle } = await offlineOnAPage(mode)
+        typeInto(handle.doc, ' typed offline')
+        // An import replaced the page meanwhile: every old block deleted, the new content written.
+        hub.store(
+          page,
+          editOf(author, (fragment) => {
+            fragment.delete(0, fragment.length)
+            fragment.insert(0, [paragraph('new')])
+          }),
+        )
+
+        await tick(250)
+        await tick()
+
+        expect(paragraphs(handle.doc)).toEqual(['new'])
+        expect(events.lost.map((lost) => lost.pageId)).toEqual([page])
+        const before = new Y.Doc()
+        Y.applyUpdate(before, events.lost[0]!.before)
+        expect(paragraphs(before)).toEqual(['old typed offline'])
+        client.destroy()
+      },
+    )
+
+    it('reports nothing when what was typed offline survives the change from elsewhere', async () => {
+      const { hub, client, events, author, handle } = await offlineOnAPage()
+      handle.doc.transact(() => handle.doc.getXmlFragment('default').insert(1, [paragraph('mine')]))
+      hub.store(
+        page,
+        editOf(author, (fragment) => fragment.insert(0, [paragraph('theirs')])),
+      )
+
+      await tick(250)
+      await tick()
+
+      expect(paragraphs(handle.doc).sort()).toEqual(['mine', 'old', 'theirs'])
+      expect(events.lost).toEqual([])
+      client.destroy()
+    })
+
+    it('reports nothing when a block was deleted elsewhere and nothing was typed here', async () => {
+      const { hub, client, events, author, handle } = await offlineOnAPage()
+      hub.store(
+        page,
+        editOf(author, (fragment) => fragment.delete(0, 1)),
+      )
+
+      await tick(250)
+      await tick()
+
+      expect(paragraphs(handle.doc)).toEqual([])
+      expect(events.lost).toEqual([])
+      client.destroy()
+    })
+
+    it('reports nothing when only formatting made offline went with a deleted block', async () => {
+      const { hub, client, events, author, handle } = await offlineOnAPage()
+      handle.doc.transact(() =>
+        ((handle.doc.getXmlFragment('default').get(0) as Y.XmlElement).get(0) as Y.XmlText).format(
+          0,
+          3,
+          { bold: {} },
+        ),
+      )
+      hub.store(
+        page,
+        editOf(author, (fragment) => fragment.delete(0, 1)),
+      )
+
+      await tick(250)
+      await tick()
+
+      expect(paragraphs(handle.doc)).toEqual([])
+      expect(events.lost).toEqual([])
+      client.destroy()
+    })
+
+    it('reports nothing when the person deleted their own offline text', async () => {
+      const { hub, client, events, handle } = await offlineOnAPage()
+      typeInto(handle.doc, ' oops')
+      handle.doc.transact(() => handle.doc.getXmlFragment('default').delete(0, 1))
+      hub.store(page, textEdit(hub.doc(page), 'unrelated'))
+
+      await tick(250)
+      await tick()
+
+      expect(events.lost).toEqual([])
       client.destroy()
     })
   })

@@ -24,7 +24,7 @@ internal sealed class PageRoom
     /// <summary>Set when the last subscriber left and the room was removed. A subscriber that finds it set starts over.</summary>
     public bool Closed { get; set; }
 
-    public void Broadcast(byte[] message, SyncConnection except)
+    public void Broadcast(byte[] message, SyncConnection? except)
     {
         foreach (var subscriber in Subscribers)
         {
@@ -62,6 +62,33 @@ public sealed class SyncHub(
     public int OpenPages => _rooms.Count;
 
     public int OpenConnections => _connections.Count;
+
+    /// <summary>
+    /// Stores an update that the server itself made for a page (the Joplin import replacing a note's content) and relays it
+    /// to everyone who has the page open, the way an update from a client is. <paramref name="commit"/> does the storing,
+    /// in the caller's own transaction, so that the update and whatever else belongs with it are written together. It runs
+    /// under the page's lock, so no client's update is stored meanwhile: what <paramref name="commit"/> reads of the page's
+    /// log is the whole log until it returns. It returns false when it decided not to store the update after all; nothing is
+    /// relayed then, nor when it throws. A page nobody has open is stored just the same. Returns whether it was published.
+    /// </summary>
+    public async Task<bool> PublishAsync(Guid pageId, byte[] update, Func<CancellationToken, Task<bool>> commit, CancellationToken cancellationToken)
+    {
+        var room = await EnterRoomAsync(pageId, cancellationToken);
+        try
+        {
+            if (!await commit(cancellationToken))
+            {
+                return false;
+            }
+
+            room.Broadcast(Frame.Encode(MessageType.Update, pageId, update), except: null);
+            return true;
+        }
+        finally
+        {
+            ExitRoom(pageId, room);
+        }
+    }
 
     /// <summary>Takes one of the user's connection slots. False when they have all their sockets open already.</summary>
     public bool TryReserveConnection(Guid userId)
@@ -281,34 +308,22 @@ public sealed class SyncHub(
             return;
         }
 
-        while (true)
+        var room = await EnterRoomAsync(pageId, connection.Aborted);
+        try
         {
-            var room = _rooms.GetOrAdd(pageId, _ => new PageRoom());
-            await room.Lock.WaitAsync(connection.Aborted);
-            try
+            room.Subscribers.Add(connection);
+            connection.Pages[pageId] = new Subscription(room, role >= WorkspaceRole.Editor);
+
+            var log = (await store.LoadAsync(pageId, connection.Aborted)).Inputs;
+            connection.Enqueue(await EncodeSyncAsync(pageId, clientStateVector, log, connection.Aborted));
+            if (room.Awareness.EncodeAll() is { } presence)
             {
-                if (room.Closed)
-                {
-                    // The last subscriber left while this one waited; the next GetOrAdd makes a fresh room.
-                    continue;
-                }
-
-                room.Subscribers.Add(connection);
-                connection.Pages[pageId] = new Subscription(room, role >= WorkspaceRole.Editor);
-
-                var log = (await store.LoadAsync(pageId, connection.Aborted)).Inputs;
-                connection.Enqueue(await EncodeSyncAsync(pageId, clientStateVector, log, connection.Aborted));
-                if (room.Awareness.EncodeAll() is { } presence)
-                {
-                    connection.Enqueue(Frame.Encode(MessageType.Awareness, pageId, presence));
-                }
-
-                return;
+                connection.Enqueue(Frame.Encode(MessageType.Awareness, pageId, presence));
             }
-            finally
-            {
-                room.Lock.Release();
-            }
+        }
+        finally
+        {
+            ExitRoom(pageId, room);
         }
     }
 
@@ -358,22 +373,68 @@ public sealed class SyncHub(
         }
 
         // Not cancellable: the cleanup must run even when the connection was dropped.
-        await WithLockAsync(subscription.Room, room =>
+        var room = subscription.Room;
+        await room.Lock.WaitAsync(CancellationToken.None);
+        try
         {
             room.Subscribers.Remove(connection);
             if (room.Awareness.RemoveOwner(connection) is { } removal)
             {
                 room.Broadcast(Frame.Encode(MessageType.Awareness, pageId, removal), except: connection);
             }
+        }
+        finally
+        {
+            ExitRoom(pageId, room);
+        }
+    }
 
-            if (room.Subscribers.Count == 0)
+    /// <summary>
+    /// Takes the lock of the page's room, making the room when the page has none. A room that was closed while this waited
+    /// is left for a fresh one. Leave it with <see cref="ExitRoom"/>.
+    /// </summary>
+    private async Task<PageRoom> EnterRoomAsync(Guid pageId, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            var room = _rooms.GetOrAdd(pageId, _ => new PageRoom());
+            try
             {
-                room.Closed = true;
-                _rooms.TryRemove(new KeyValuePair<Guid, PageRoom>(pageId, room));
+                await room.Lock.WaitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // The room may have been made for this wait alone: it is forgotten, if empty, once its lock is free.
+                _ = ForgetIfEmptyAsync(pageId, room);
+                throw;
             }
 
-            return Task.CompletedTask;
-        }, CancellationToken.None);
+            if (!room.Closed)
+            {
+                return room;
+            }
+
+            // The last subscriber left while this waited; the next GetOrAdd makes a fresh room.
+            room.Lock.Release();
+        }
+    }
+
+    /// <summary>Releases the room's lock, and forgets the room when nobody is in it: a page without subscribers has none.</summary>
+    private void ExitRoom(Guid pageId, PageRoom room)
+    {
+        if (!room.Closed && room.Subscribers.Count == 0)
+        {
+            room.Closed = true;
+            _rooms.TryRemove(new KeyValuePair<Guid, PageRoom>(pageId, room));
+        }
+
+        room.Lock.Release();
+    }
+
+    private async Task ForgetIfEmptyAsync(Guid pageId, PageRoom room)
+    {
+        await room.Lock.WaitAsync(CancellationToken.None);
+        ExitRoom(pageId, room);
     }
 
     private async Task<WorkspaceRole> GetRoleAsync(Guid userId, Guid pageId, CancellationToken cancellationToken)

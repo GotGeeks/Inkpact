@@ -597,6 +597,121 @@ public class SyncHubTests(PostgresFixture postgres) : IAsyncLifetime
         close.CloseReason.ShouldBe(SyncClose.ServerStoppingReason);
     }
 
+    // ---- updates the server makes itself (the import replacing a note) -----------------------------------------------------
+
+    private Task<bool> StoreAsync(Guid pageId, string text) =>
+        Hub.PublishAsync(pageId, Bytes(text), async token =>
+        {
+            await using var scope = _factory.Services.CreateAsyncScope();
+            var store = scope.ServiceProvider.GetRequiredService<PageUpdateStore>();
+            await store.AppendAsync(pageId, _jos.UserId, Bytes(text), token);
+            return true;
+        }, CancellationToken.None);
+
+    [Fact]
+    public async Task An_update_the_server_publishes_is_stored_and_sent_to_everyone_who_has_the_page_open()
+    {
+        var page = await CreatePageAsync();
+        var first = await ConnectAsync();
+        var second = await ConnectAsync(await _jos.LogInAgainAsync());
+        await first.JoinAsync(page);
+        await second.JoinAsync(page);
+
+        await StoreAsync(page, "from the import");
+
+        ShouldBeUpdate(await first.ReceiveAsync(MessageType.Update), page, "from the import");
+        ShouldBeUpdate(await second.ReceiveAsync(MessageType.Update), page, "from the import");
+        (await StoredAsync(page)).Select(u => u.Data).ShouldBe([Bytes("from the import")]);
+    }
+
+    [Fact]
+    public async Task An_update_that_could_not_be_stored_is_not_sent()
+    {
+        var page = await CreatePageAsync();
+        var client = await ConnectAsync();
+        await client.JoinAsync(page);
+
+        await Should.ThrowAsync<InvalidOperationException>(() =>
+            Hub.PublishAsync(page, Bytes("never stored"), _ => throw new InvalidOperationException("the database is gone"), CancellationToken.None));
+
+        await client.ExpectSilenceAsync();
+        await Hub.PublishAsync(page, Bytes("after"), _ => Task.FromResult(true), CancellationToken.None);
+        ShouldBeUpdate(await client.ReceiveAsync(MessageType.Update), page, "after");
+    }
+
+    [Fact]
+    public async Task An_update_the_caller_decides_not_to_store_after_all_is_not_sent()
+    {
+        var page = await CreatePageAsync();
+        var client = await ConnectAsync();
+        await client.JoinAsync(page);
+
+        (await Hub.PublishAsync(page, Bytes("not after all"), _ => Task.FromResult(false), CancellationToken.None)).ShouldBeFalse();
+
+        await client.ExpectSilenceAsync();
+    }
+
+    [Fact]
+    public async Task A_publish_that_is_cancelled_before_it_gets_the_page_leaves_no_room_behind()
+    {
+        var page = await CreatePageAsync();
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() =>
+            Hub.PublishAsync(page, Bytes("never"), _ => Task.FromResult(true), cancelled.Token));
+
+        await WaitUntilAsync(() => Hub.OpenPages == 0);
+        (await StoredAsync(page)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task A_page_nobody_has_open_is_stored_just_the_same_and_leaves_no_room_behind()
+    {
+        var page = await CreatePageAsync();
+
+        await StoreAsync(page, "quiet");
+
+        (await StoredAsync(page)).Select(u => u.Data).ShouldBe([Bytes("quiet")]);
+        Hub.OpenPages.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Someone_who_opens_the_page_while_an_update_is_published_gets_it_once()
+    {
+        var page = await CreatePageAsync();
+        var client = await ConnectAsync();
+        var committing = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+
+        var publishing = Hub.PublishAsync(page, Bytes("one"), async token =>
+        {
+            committing.SetResult();
+            await release.Task;
+            await using var scope = _factory.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<PageUpdateStore>().AppendAsync(page, _jos.UserId, Bytes("one"), token);
+            return true;
+        }, CancellationToken.None);
+        await committing.Task;
+        var joining = client.JoinAsync(page);
+        release.SetResult();
+        await publishing;
+
+        // Stored before the sync was made, or relayed after it: either way once.
+        var synced = (await joining).Select(u => Convert.ToHexString(u)).ToList();
+        var relayed = synced.Count == 0;
+        if (relayed)
+        {
+            ShouldBeUpdate(await client.ReceiveAsync(MessageType.Update), page, "one");
+        }
+        else
+        {
+            synced.ShouldBe([Convert.ToHexString(Bytes("one"))]);
+        }
+
+        await client.ExpectSilenceAsync();
+    }
+
     private static void ShouldBeUpdate(Received received, Guid pageId, string text)
     {
         received.Type.ShouldBe(MessageType.Update, received.ToString());

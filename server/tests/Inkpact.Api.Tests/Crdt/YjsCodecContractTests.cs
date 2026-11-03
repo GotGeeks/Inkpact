@@ -48,6 +48,18 @@ public sealed class YjsCodecContractTests(YjsSidecarFixture yjs, ITestOutputHelp
 
     [Theory]
     [MemberData(nameof(YjsFixture.Names), MemberType = typeof(YjsFixture))]
+    public async Task The_state_vector_read_out_of_a_fingerprint_is_the_pages_state_vector(string name)
+    {
+        var updates = YjsFixture.Load(name).UpdateBytes;
+
+        var stateVector = StateVectors.OfFingerprint(await Codec.FingerprintAsync(updates, default));
+
+        stateVector.ShouldNotBeNull();
+        YjsFixture.DecodeStateVector(stateVector).ShouldBe(YjsFixture.DecodeStateVector((await Codec.CompactAsync(updates, default)).StateVector), ignoreOrder: true);
+    }
+
+    [Theory]
+    [MemberData(nameof(YjsFixture.Names), MemberType = typeof(YjsFixture))]
     public async Task The_two_fingerprints_of_a_compaction_are_equal_and_match_the_replay(string name)
     {
         var updates = YjsFixture.Load(name).UpdateBytes;

@@ -71,6 +71,8 @@ export function useImportMessages() {
         return t('import.reasons.notebook_in_trash')
       case 'parent_failed':
         return t('import.reasons.parent_failed')
+      case 'content_conflict':
+        return t('import.reasons.content_conflict')
       case 'conversion_failed':
         return t('import.reasons.conversion_failed')
       case 'item_failed':
@@ -90,6 +92,10 @@ export function useImportMessages() {
         return t('import.status.skipped')
       case 'failed':
         return t('import.status.failed')
+      case 'updated':
+        return t('import.status.updated')
+      case 'conflict_copy':
+        return t('import.status.conflict_copy')
       default:
         return t('import.status.imperfect')
     }

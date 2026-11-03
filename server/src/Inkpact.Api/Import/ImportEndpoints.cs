@@ -71,6 +71,7 @@ public static class ImportEndpoints
     private static async Task<IResult> UploadJoplin(
         Guid workspaceId,
         string? name,
+        string? copyTitle,
         HttpContext http,
         InkpactDbContext db,
         ImportOptions options,
@@ -89,6 +90,11 @@ public static class ImportEndpoints
             return Error("import_empty", StatusCodes.Status400BadRequest);
         }
 
+        if (copyTitle is not null && !ImportRunner.IsCopyTitle(copyTitle))
+        {
+            return Error("import_copy_title_invalid", StatusCodes.Status400BadRequest);
+        }
+
         var importId = Guid.CreateVersion7();
         queue.Claim(importId);
         var enqueued = false;
@@ -103,6 +109,7 @@ public static class ImportEndpoints
                 UserId = Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null,
                 SourceType = ImportRunner.SourceType,
                 FileName = AttachmentFiles.CleanFileName(name),
+                CopyTitle = copyTitle,
                 State = ImportStates.Queued,
                 CreatedAt = time.GetUtcNow(),
             };

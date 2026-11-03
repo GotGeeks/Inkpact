@@ -15,12 +15,13 @@ internal enum SidecarOp : byte
     Compact = 2,
     Fingerprint = 3,
     Build = 4,
+    Replace = 5,
 }
 
 /// <summary>
 /// One running sidecar process and the conversation with it. All integers are little-endian u32:
 /// <c>request: [length][id][op: u8][count][count × ([length][bytes])]</c> and
-/// <c>response: [length][id][status: u8, 0 = ok][count][count × ([length][bytes])]</c>, where <c>length</c> counts the
+/// <c>response: [length][id][status: u8, 0 = ok, 1 = error, 2 = invalid content][count][count × ([length][bytes])]</c>, where <c>length</c> counts the
 /// bytes after it. Requests are answered in order, but responses are matched by id anyway. When the process is gone
 /// (exited, killed, or its output no longer makes sense) the session is over for good; the supervisor starts a new one.
 /// </summary>
@@ -30,6 +31,11 @@ internal sealed class SidecarSession : IDisposable
     public const int MaxFrameBytes = 256 * 1024 * 1024;
 
     private const int HeaderBytes = 4 + 4 + 1 + 4;
+
+    private const byte StatusOk = 0;
+
+    /// <summary>The content to build or replace a page with is not what the editor's schema allows.</summary>
+    private const byte StatusInvalidContent = 2;
     private const int MaxResponseParts = 16;
     private const int ErrorLinesKept = 20;
 
@@ -152,9 +158,11 @@ internal sealed class SidecarSession : IDisposable
             throw response.Failure;
         }
 
-        if (!response.Ok)
+        if (response.Status != StatusOk)
         {
-            throw new YjsRejectedException(response.Parts is [var message, ..] ? Encoding.UTF8.GetString(message) : "The Yjs sidecar refused the request");
+            throw new YjsRejectedException(
+                response.Parts is [var message, ..] ? Encoding.UTF8.GetString(message) : "The Yjs sidecar refused the request",
+                invalidContent: response.Status == StatusInvalidContent);
         }
 
         return response.Parts;
@@ -222,7 +230,7 @@ internal sealed class SidecarSession : IDisposable
         var failure = new YjsUnavailableException("The Yjs sidecar stopped");
         foreach (var pending in _pending.Values)
         {
-            pending.Completion.TrySetResult(new Response(true, [], failure));
+            pending.Completion.TrySetResult(new Response(StatusOk, [], failure));
         }
 
         _pending.Clear();
@@ -321,7 +329,7 @@ internal sealed class SidecarSession : IDisposable
 
                 await _stdout.ReadExactlyAsync(header.AsMemory(4, HeaderBytes - 4));
                 var id = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(4));
-                var ok = header[8] == 0;
+                var status = header[8];
                 var count = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(9));
                 if (count > MaxResponseParts)
                 {
@@ -353,7 +361,7 @@ internal sealed class SidecarSession : IDisposable
 
                 if (_pending.TryRemove(id, out var pending))
                 {
-                    pending.Completion.TrySetResult(new Response(ok, parts, null));
+                    pending.Completion.TrySetResult(new Response(status, parts, null));
                 }
                 else
                 {
@@ -419,5 +427,5 @@ internal sealed class SidecarSession : IDisposable
     }
 
     /// <summary>An answer, or the reason there will be none. Not an exception on the task, which nobody who gave up would observe.</summary>
-    private sealed record Response(bool Ok, byte[][] Parts, Exception? Failure);
+    private sealed record Response(byte Status, byte[][] Parts, Exception? Failure);
 }
