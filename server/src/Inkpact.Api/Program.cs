@@ -36,6 +36,22 @@ await app.Services.MigrateInkpactDatabaseAsync();
 // Before everything that looks at the scheme or the client address: behind a proxy, what the browser used.
 app.UseForwardedHeaders();
 
+// Traefik forwards a WebSocket upgrade as "wss" (or "ws"), not "https". The socket belongs to the page that opened it,
+// so it is that page's scheme that counts: for the session cookie's name and for the sync socket's origin check.
+app.Use((context, next) =>
+{
+    if (string.Equals(context.Request.Scheme, "wss", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Request.Scheme = "https";
+    }
+    else if (string.Equals(context.Request.Scheme, "ws", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Request.Scheme = "http";
+    }
+
+    return next(context);
+});
+
 // Next, so that errors and 404s carry the security headers too.
 app.UseSecurityHeaders();
 
