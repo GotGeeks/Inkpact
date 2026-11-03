@@ -587,6 +587,7 @@ describe('ImportPage report', () => {
         conflicts: 2,
         alreadyImported: 10,
         keptInInkpact: 1,
+        movedToTrash: 2,
       },
     })
 
@@ -595,11 +596,12 @@ describe('ImportPage report', () => {
       .findAll('li')
       .map((li) => li.text())
     expect(lines).toEqual([
-      '3 notes changed in Joplin and were brought up to date here.',
+      '3 items changed in Joplin and were brought up to date here.',
       '1 note was converted again by a newer version of the import.',
       '2 notes changed in Joplin and here: yours were kept, and Joplin’s versions are copies beside them.',
       '10 items were already imported earlier and were left alone.',
-      '1 note changed only here and was left as it is.',
+      '1 item was left as it is here instead of being brought up to date.',
+      '2 items were in Joplin’s trash and were put in the trash here too.',
     ])
   })
 

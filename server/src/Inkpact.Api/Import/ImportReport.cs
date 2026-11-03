@@ -18,6 +18,12 @@ public static class ReportStatus
     /// </summary>
     public const string ConflictCopy = "conflict_copy";
 
+    /// <summary>
+    /// An earlier import's page was left as it is although Joplin changed something about it, because it was changed here too
+    /// (see the reasons).
+    /// </summary>
+    public const string Kept = "kept";
+
     /// <summary>Imported as a copy of a conflict that Joplin had made.</summary>
     public const string Conflict = "conflict";
 
@@ -55,17 +61,23 @@ public sealed class ImportCounts
 
     public int AlreadyImported { get; set; }
 
-    /// <summary>Pages of an earlier import whose content was taken from a note that changed only in Joplin.</summary>
+    /// <summary>Items of an earlier import that took something from Joplin: a note's content, title, place, to-do fields or tags, a notebook's or tag's name.</summary>
     public int Updated { get; set; }
 
     /// <summary>Pages of an earlier import that nobody changed here, converted again because the converter is newer.</summary>
     public int Reconverted { get; set; }
 
-    /// <summary>Pages that changed only here, and were left as they were.</summary>
+    /// <summary>
+    /// Items that something from Joplin was not taken over for: changed here too, a move that could not be made, a page in
+    /// Joplin's trash that stays, or a newer converter for a page changed here (the only case without a line of its own).
+    /// </summary>
     public int KeptInInkpact { get; set; }
 
     /// <summary>Notes that changed in Joplin and here: Joplin's version became a page beside the page here.</summary>
     public int Conflicts { get; set; }
+
+    /// <summary>Pages of an earlier import that are in Joplin's trash now and were unchanged here: put in the trash here, where they can be restored.</summary>
+    public int MovedToTrash { get; set; }
 
     /// <summary>Items an earlier import made that are in the trash here now; left there.</summary>
     public int AlreadyInTrash { get; set; }

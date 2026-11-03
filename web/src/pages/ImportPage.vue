@@ -97,6 +97,7 @@ const leftAlone = computed(() => {
   const reconverted = c.reconverted ?? 0
   const conflicts = c.conflicts ?? 0
   const keptInInkpact = c.keptInInkpact ?? 0
+  const movedToTrash = c.movedToTrash ?? 0
   return [
     {
       key: 'updated',
@@ -122,6 +123,11 @@ const leftAlone = computed(() => {
       key: 'keptInInkpact',
       text: t('import.left.keptInInkpact', { count: n(keptInInkpact) }, keptInInkpact),
       value: keptInInkpact,
+    },
+    {
+      key: 'movedToTrash',
+      text: t('import.left.movedToTrash', { count: n(movedToTrash) }, movedToTrash),
+      value: movedToTrash,
     },
     {
       key: 'alreadyInTrash',
@@ -175,6 +181,7 @@ const statusBadge: Record<ReportStatus, string> = {
   skipped: 'bg-surface-container-high text-on-surface',
   failed: 'bg-error-container text-on-error-container',
   updated: 'bg-primary-container text-on-primary-container',
+  kept: 'bg-surface-container-high text-on-surface',
   conflict_copy: 'bg-secondary-container text-on-secondary-container',
 }
 
