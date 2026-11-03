@@ -5,6 +5,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import SyncStatus from '../sync/SyncStatus.vue'
+import ChildPages from './ChildPages.vue'
 import TitleField from './TitleField.vue'
 import type { PageDetail } from '../tree/types'
 
@@ -106,6 +107,7 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
       :read-only="!tree.canEdit || detail.inTrash"
       @enter="editor?.focus()"
     />
+    <ChildPages :page-id="detail.page.id" />
     <PageEditor
       :key="detail.page.id"
       ref="editor"

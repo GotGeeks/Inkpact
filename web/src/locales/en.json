@@ -244,7 +244,9 @@
     "notFound": "This page could not be found",
     "backToStart": "Back to the start",
     "inTrash": "This page is in the trash.",
-    "inTrashThroughParent": "A page above this one is in the trash."
+    "inTrashThroughParent": "A page above this one is in the trash.",
+    "children": "Pages in here",
+    "childCount": "{count} page | {count} pages"
   },
   "start": {
     "title": "Welcome",

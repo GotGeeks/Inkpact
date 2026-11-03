@@ -337,7 +337,7 @@ The import must lose nothing Joplin users care about, and it must be repeatable.
 
 | Joplin | Inkpact |
 | --- | --- |
-| Notebook and nested notebooks | Page with child pages, same nesting |
+| Notebook and nested notebooks | Page with child pages, same nesting; a page lists the pages right under it below its title, so a notebook shows its notes as in Joplin |
 | Note (Markdown body) | Page, with the Markdown converted to editor content |
 | Internal link `:/noteId` | A link mark to `/p/<pageId>` (run 1.16c): see "Importing again" and the next paragraph. A `#anchor` is dropped (`note_link_anchor_dropped`) |
 | Resource (image or file) | Attachment; a picture of a type the editor shows inline (PNG, JPEG, GIF, WebP) becomes an inline image, anything else (SVG included) a file in the text |
