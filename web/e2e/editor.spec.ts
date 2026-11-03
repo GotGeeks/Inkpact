@@ -91,6 +91,29 @@ test('a checklist item can be ticked, and is crossed out when it is', async ({
   await expect(item.locator('div').first()).toHaveCSS('text-decoration-line', 'line-through')
 })
 
+test('a checklist box sits on the first line of its text, also when the text wraps', async ({
+  page,
+}, testInfo) => {
+  await openNewPage(page, unique(testInfo.project.name, 'Aligned'))
+  await editorBody(page).click()
+  await page.keyboard.type(`[ ] ${'a long task that wraps onto more lines '.repeat(6)}`)
+
+  const item = editorBody(page).locator('li[data-checked]')
+  const box = await item.getByRole('checkbox').boundingBox()
+  // The first line of the text: the height of one line, from the top of the paragraph.
+  const firstLine = await item.locator('p').evaluate((p) => {
+    const range = document.createRange()
+    range.setStart(p.firstChild!, 0)
+    range.setEnd(p.firstChild!, 1)
+    const rect = range.getBoundingClientRect()
+    return { top: rect.top, height: rect.height }
+  })
+
+  const boxCentre = box!.y + box!.height / 2
+  const lineCentre = firstLine.top + firstLine.height / 2
+  expect(Math.abs(boxCentre - lineCentre)).toBeLessThanOrEqual(2)
+})
+
 test('pasted HTML cannot run anything, and the text and the safe parts stay', async ({
   page,
 }, testInfo) => {

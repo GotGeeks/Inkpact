@@ -25,11 +25,14 @@ const headings = [
 const lists = [
   '[&_ul]:list-disc [&_ul]:ps-space-xl [&_ol]:list-decimal [&_ol]:ps-space-xl',
   '[&_li>p]:my-space-xs',
-  // Checklists: a box of 18 px and, once ticked, the text crossed out and faded.
+  // Checklists: a box of 18 px and, once ticked, the text crossed out and faded. The item's text keeps the margin of a
+  // list item's (not a paragraph's), and the box sits in a strip as high as one line of body text (1.625rem) with the
+  // same margin above it, so it is centred on the first line however the text wraps.
   '[&_ul[data-type=taskList]]:list-none [&_ul[data-type=taskList]]:ps-0',
   '[&_li[data-checked]]:flex [&_li[data-checked]]:items-start [&_li[data-checked]]:gap-space-md',
-  '[&_li[data-checked]>label]:mt-space-xs [&_li[data-checked]>label]:select-none',
-  '[&_li[data-checked]>div]:flex-1',
+  '[&_li[data-checked]>label]:mt-space-xs [&_li[data-checked]>label]:flex [&_li[data-checked]>label]:h-6.5',
+  '[&_li[data-checked]>label]:items-center [&_li[data-checked]>label]:select-none',
+  '[&_li[data-checked]>div]:flex-1 [&_li[data-checked]>div>p]:my-space-xs',
   '[&_input[type=checkbox]]:size-4.5 [&_input[type=checkbox]]:accent-primary-container',
   '[&_li[data-checked=true]>div]:line-through [&_li[data-checked=true]>div]:opacity-40',
 ]
