@@ -1,0 +1,29 @@
+# Inkpact on its own, for a PostgreSQL server you already run (on Unraid, a NAS, another host), with the image built from
+# this checkout. deploy/inkpact.sh runs it; its settings are in deploy/.env (copy external-db.env.example).
+name: inkpact
+
+services:
+  app:
+    image: ${INKPACT_IMAGE:-inkpact:local}
+    container_name: ${INKPACT_CONTAINER:-inkpact}
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__Inkpact: Host=${DB_HOST:?Set DB_HOST in deploy/.env};Port=${DB_PORT:-5432};Database=${DB_NAME:-inkpact};Username=${DB_USER:-inkpact};Password=${DB_PASSWORD:?Set DB_PASSWORD in deploy/.env}
+      # Empty: the app makes a code and writes it to its log until the first account exists (inkpact.sh setup-code).
+      Auth__SetupCode: ${AUTH_SETUP_CODE:-}
+    ports:
+      - '${INKPACT_PORT:-8080}:8080'
+    volumes:
+      # A folder on the host (writable by UID 1654; inkpact.sh init makes it so), or the name of a Docker volume.
+      - ${INKPACT_DATA:-inkpact-data}:/data
+    # Hardening: nothing is written outside /data and /tmp, no extra privileges.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  inkpact-data:
