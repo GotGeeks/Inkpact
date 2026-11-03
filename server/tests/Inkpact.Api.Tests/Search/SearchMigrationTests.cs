@@ -54,6 +54,42 @@ public class SearchMigrationTests(PostgresFixture postgres) : IClassFixture<Post
     }
 
     [Fact]
+    public async Task The_file_text_migration_keeps_what_is_found_and_then_finds_the_text_of_a_file()
+    {
+        var connectionString = await postgres.CreateDatabaseAsync();
+        await using var db = new InkpactDbContext(new DbContextOptionsBuilder<InkpactDbContext>().UseNpgsql(connectionString).Options);
+        var searchMigration = db.Database.GetMigrations().Single(m => m.EndsWith("_AddSearch", StringComparison.Ordinal));
+        await db.GetService<IMigrator>().MigrateAsync(searchMigration);
+        var (userId, workspaceId, page) = (Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        await db.Database.ExecuteSqlAsync($"""
+            INSERT INTO users (id, email, normalized_email, display_name, created_at, is_admin)
+            VALUES ({userId}, 'old@example.com', 'old@example.com', 'Old', now(), true)
+            """);
+        await db.Database.ExecuteSqlAsync($"""
+            INSERT INTO workspaces (id, name, owner_id, created_at) VALUES ({workspaceId}, 'Old workspace', {userId}, now())
+            """);
+        await db.Database.ExecuteSqlAsync($"""
+            INSERT INTO pages (id, workspace_id, title, sort_key, created_at, updated_at, is_todo, version, content_text)
+            VALUES ({page}, {workspaceId}, 'Café', 'a0', now(), now(), false, 1, 'Een bezoek aan het museum.')
+            """);
+
+        await db.Database.MigrateAsync();
+
+        var found = async (string query) => await db.Database
+            .SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM pages WHERE id = {page} AND search_vector @@ to_tsquery('inkpact_search', {query})")
+            .SingleAsync() == 1;
+        (await found("cafe:*")).ShouldBeTrue();
+        (await found("museum:*")).ShouldBeTrue();
+        (await found("zeppelin:*")).ShouldBeFalse();
+
+        await db.Database.ExecuteSqlAsync($"UPDATE pages SET file_text = 'the zeppelin hangar' WHERE id = {page}");
+
+        (await found("zeppelin:*")).ShouldBeTrue();
+        (await found("museum:*")).ShouldBeTrue();
+        (await db.Database.SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM pg_indexes WHERE indexname = 'ix_pages_search_vector'").SingleAsync()).ShouldBe(1);
+    }
+
+    [Fact]
     public async Task The_migration_can_be_undone()
     {
         var connectionString = await postgres.CreateDatabaseAsync();

@@ -50,6 +50,8 @@ public static class ImportEndpoints
         services.AddSingleton<ImportQueue>();
         services.AddSingleton<ImportRunner>();
         services.AddHostedService<ImportWorker>();
+        services.AddSingleton<FileTextBackfill>();
+        services.AddHostedService(sp => sp.GetRequiredService<FileTextBackfill>());
         return services;
     }
 

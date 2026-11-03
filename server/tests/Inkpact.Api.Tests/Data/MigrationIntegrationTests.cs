@@ -104,7 +104,7 @@ public class MigrationIntegrationTests(PostgresFixture postgres) : IClassFixture
         columns["pages"].ShouldBe(
         [
             "id", "workspace_id", "parent_id", "title", "sort_key", "created_at", "updated_at", "deleted_at",
-            "is_todo", "completed_at", "due_at", "external_source_type", "external_id", "version", "content_text", "tag_text", "search_vector", "title_vector",
+            "is_todo", "completed_at", "due_at", "external_source_type", "external_id", "version", "content_text", "tag_text", "title_vector", "file_text", "search_vector",
         ]);
     }
 

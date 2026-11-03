@@ -87,6 +87,7 @@ public sealed class SearchService(InkpactDbContext db)
             SELECT h.id AS "Id", p.title AS "Title", e.snippet AS "Snippet",
                    m.at > 0 AND m.at <= {SnippetLead} + 1 AS "SnippetAtStart",
                    COALESCE(char_length(e.snippet) < {SnippetLength}, false) AS "SnippetAtEnd",
+                   p.file_text <> '' AS "HasFileText",
                    (SELECT count(*) FROM matches)::int AS "Total"
             FROM hits h JOIN pages p ON p.id = h.id CROSS JOIN q
             CROSS JOIN LATERAL (
@@ -102,6 +103,8 @@ public sealed class SearchService(InkpactDbContext db)
             ORDER BY h.part, h.rank DESC, h.updated_at DESC, h.id
             """).ToListAsync(cancellationToken);
 
+        await AddSnippetsFromFilesAsync(rows, pattern, cancellationToken);
+
         return new SearchResponse(
             [
                 .. rows.Select(r => new SearchHit(
@@ -110,6 +113,40 @@ public sealed class SearchService(InkpactDbContext db)
                     SearchHeadline.OnlyWithMatch(SearchHeadline.Mark(r.Snippet, words, r.SnippetAtStart, r.SnippetAtEnd)))),
             ],
             rows.Count > 0 && rows[0].Total > rows.Count);
+    }
+
+    /// <summary>
+    /// A page that keeps a note as a file has the note's words in <c>file_text</c> (migration AddFileText), after its content in the text
+    /// the vector is made from. The snippet of such a page comes from there when the content has no match. A query of its own, for
+    /// those pages only: reading a second text for every result would cost every search, and few pages are files.
+    /// </summary>
+    private async Task AddSnippetsFromFilesAsync(List<HitRow> rows, string pattern, CancellationToken cancellationToken)
+    {
+        var ids = rows.Where(r => r.Snippet is null && r.HasFileText).Select(r => r.Id).ToArray();
+        if (ids.Length == 0)
+        {
+            return;
+        }
+
+        var found = await db.Database.SqlQuery<HitRow>($"""
+            SELECT p.id AS "Id", '' AS "Title", e.snippet AS "Snippet",
+                   m.at <= {SnippetLead} + 1 AS "SnippetAtStart",
+                   char_length(e.snippet) < {SnippetLength} AS "SnippetAtEnd",
+                   true AS "HasFileText", 0 AS "Total"
+            FROM pages p
+            CROSS JOIN LATERAL (
+                SELECT left(left(p.content_text, {IndexedText}) || E'\n' || p.file_text, {IndexedText}) AS text
+            ) t
+            CROSS JOIN LATERAL (SELECT regexp_instr(t.text, {pattern}) AS at) m
+            CROSS JOIN LATERAL (SELECT substr(t.text, greatest(m.at - {SnippetLead}, 1), {SnippetLength}) AS snippet) e
+            WHERE p.id = ANY({ids}) AND m.at > 0
+            """).ToListAsync(cancellationToken);
+
+        foreach (var snippet in found)
+        {
+            var row = rows.First(r => r.Id == snippet.Id);
+            (row.Snippet, row.SnippetAtStart, row.SnippetAtEnd) = (snippet.Snippet, snippet.SnippetAtStart, snippet.SnippetAtEnd);
+        }
     }
 
     // What the raw query returns; the names match the aliases in the SQL.
@@ -124,6 +161,8 @@ public sealed class SearchService(InkpactDbContext db)
         public bool SnippetAtStart { get; set; }
 
         public bool SnippetAtEnd { get; set; }
+
+        public bool HasFileText { get; set; }
 
         public int Total { get; set; }
     }
