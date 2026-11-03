@@ -42,6 +42,9 @@ public class Page
 
     public string? ExternalId { get; set; }
 
-    /// <summary>The plain text of the content, refreshed by every compaction. Feeds search (run 1.17).</summary>
+    /// <summary>The plain text of the content, refreshed by every compaction and by the import. Feeds search (run 1.17).</summary>
     public string ContentText { get; set; } = "";
+
+    /// <summary>The names of the page's tags, one space between them, kept by the code that changes a page's tags. Feeds search (run 1.17).</summary>
+    public string TagText { get; set; } = "";
 }

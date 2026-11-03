@@ -445,6 +445,13 @@ namespace Inkpact.Data.Migrations
                         .HasColumnName("sort_key")
                         .UseCollation("C");
 
+                    b.Property<string>("TagText")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("")
+                        .HasColumnName("tag_text");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(500)

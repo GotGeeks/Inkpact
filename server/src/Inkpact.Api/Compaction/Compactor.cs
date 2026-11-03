@@ -144,9 +144,11 @@ public sealed class Compactor(
         await hooks.AfterStageAsync(pageId, CompactionStage.Deleted, cancellationToken);
 
         // The text only; the page's version and updated_at belong to its title and its place in the tree. Postgres text
-        // cannot hold a NUL character, which a document can.
+        // cannot hold a NUL character, which a document can. Only when it changed: writing it makes Postgres build the page's
+        // search vector again, which costs what the page is long.
         var text = merged.Text.Replace("\0", "");
-        await db.Pages.Where(p => p.Id == pageId).ExecuteUpdateAsync(p => p.SetProperty(x => x.ContentText, text), cancellationToken);
+        await db.Pages.Where(p => p.Id == pageId && p.ContentText != text)
+            .ExecuteUpdateAsync(p => p.SetProperty(x => x.ContentText, text), cancellationToken);
         await hooks.AfterStageAsync(pageId, CompactionStage.TextWritten, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);

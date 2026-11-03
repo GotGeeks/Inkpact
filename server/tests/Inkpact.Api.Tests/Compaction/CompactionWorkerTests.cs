@@ -26,7 +26,7 @@ public class CompactionWorkerTests(PostgresFixture postgres, YjsSidecarFixture y
 
         options.Enabled.ShouldBeTrue();
         options.UpdateThreshold.ShouldBe(500);
-        options.IdleAfter.ShouldBe(TimeSpan.FromMinutes(10));
+        options.IdleAfter.ShouldBe(TimeSpan.FromMinutes(2));
         options.ArchiveRetention.ShouldBe(TimeSpan.FromDays(30));
         options.PollInterval.ShouldBe(TimeSpan.FromSeconds(30));
         options.PagesPerRound.ShouldBe(100);

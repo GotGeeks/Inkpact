@@ -15,7 +15,7 @@ public sealed class CompactionOptions
     public int UpdateThreshold { get; set; } = 500;
 
     /// <summary>A page whose newest live update is older than this is compacted, however few updates it has.</summary>
-    public TimeSpan IdleAfter { get; set; } = TimeSpan.FromMinutes(10);
+    public TimeSpan IdleAfter { get; set; } = TimeSpan.FromMinutes(2);
 
     /// <summary>The most pages one round compacts; the rest wait for the next round.</summary>
     public int PagesPerRound { get; set; } = 100;

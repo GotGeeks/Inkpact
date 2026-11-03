@@ -57,6 +57,10 @@ public abstract class ReimportHarness(PostgresFixture postgres) : IAsyncLifetime
             await db.Users.Select(u => u.Id).SingleAsync()));
     }
 
+    /// <summary>A service of the running app, for a test that has to do what the app does in the background.</summary>
+    protected T Service<T>()
+        where T : notnull => _factory.Services.GetRequiredService<T>();
+
     protected async Task<T> UseDbAsync<T>(Func<InkpactDbContext, Task<T>> action)
     {
         await using var scope = _factory.Services.CreateAsyncScope();

@@ -61,20 +61,12 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
     /// <summary>The pages that are not in the trash, nor below something that is.</summary>
     public async Task<TreeDto> GetTreeAsync(Guid workspaceId, CancellationToken cancellationToken = default)
     {
-        // Reaches the pages from the top, and stops at trashed ones, so their children are not reached either.
+        // live_pages (migration AddSearch) reaches the pages from the top, and stops at trashed ones, so their children are
+        // not reached either. Search reads the same function, so it can never find a page this hides.
         var rows = await db.Database.SqlQuery<PageRow>($"""
-            WITH RECURSIVE live AS (
-                SELECT id, parent_id, title, sort_key, version, updated_at
-                FROM pages
-                WHERE workspace_id = {workspaceId} AND parent_id IS NULL AND deleted_at IS NULL
-              UNION ALL
-                SELECT c.id, c.parent_id, c.title, c.sort_key, c.version, c.updated_at
-                FROM pages c JOIN live p ON c.parent_id = p.id
-                WHERE c.deleted_at IS NULL
-            )
-            SELECT id AS "Id", parent_id AS "ParentId", title AS "Title", sort_key AS "SortKey",
-                   version AS "Version", updated_at AS "UpdatedAt", NULL::timestamptz AS "DeletedAt"
-            FROM live
+            SELECT p.id AS "Id", p.parent_id AS "ParentId", p.title AS "Title", p.sort_key AS "SortKey",
+                   p.version AS "Version", p.updated_at AS "UpdatedAt", NULL::timestamptz AS "DeletedAt"
+            FROM live_pages({workspaceId}) live JOIN pages p ON p.id = live.page_id
             """).ToListAsync(cancellationToken);
         var treeVersion = await db.Workspaces.AsNoTracking()
             .Where(w => w.Id == workspaceId)
