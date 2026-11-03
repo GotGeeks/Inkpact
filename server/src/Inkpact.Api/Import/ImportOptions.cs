@@ -7,9 +7,10 @@ public sealed class ImportOptions
 
     /// <summary>
     /// The version of the conversion from a note to a page. A page that an older version made and nobody has changed here is
-    /// converted again by the next import, so a better conversion reaches the notes that are already imported. 1 is run 1.15's.
+    /// converted again by the next import, so a better conversion reaches the notes that are already imported. 1 is run 1.15's;
+    /// 2 (run 1.16c) turns links between notes into links.
     /// </summary>
-    public const int ConverterVersion = 1;
+    public const int ConverterVersion = 2;
 
     /// <summary>Where an uploaded file is kept until the job has read it. The image points it at the data volume.</summary>
     public string Directory { get; set; } = "data/imports";

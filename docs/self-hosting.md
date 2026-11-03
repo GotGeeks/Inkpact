@@ -34,6 +34,17 @@ In Joplin desktop, choose File → Export all → JEX (leave encryption off; an 
 - **If the app stops during an import,** the import is marked as interrupted when it starts again. Upload the same file again: what was already imported is skipped, the rest is added.
 - **Importing the same file twice** adds nothing; the report says every item was already imported.
 
+### Importing again
+
+While you use Joplin and Inkpact side by side, export again and import the new file. Nothing is duplicated: every note, notebook and tag is recognised by its Joplin id.
+
+- **Changed only in Joplin:** taken over. That is a note's text (also on a page someone has open), title, notebook, tags, to-do state, completion and due date, a notebook's title and place, and a tag's name.
+- **Changed only in Inkpact:** left alone, and not reported.
+- **Changed in both:** what you changed in Inkpact stays. For the text of a note, Joplin's version becomes a new page right after it, titled with " (Joplin)" added. For a title, notebook, tag name or to-do field, the value in Inkpact stays and the report says so once.
+- **Deleted in Joplin:** a note or notebook that is in Joplin's trash goes to the trash in Inkpact too, where you can restore it, unless you changed it here. A note that is missing from the export is never deleted: an export can be of one notebook. A page that the import put in the trash is not restored when you restore the note in Joplin; restore it in Inkpact.
+- **Links between notes** become links to the pages, also to a note that you import later.
+- **The first import after an update of the converter** converts the pages you did not change again, so a better conversion reaches notes that are already imported. A page you changed keeps its content.
+
 ## Updating
 
 ```bash

@@ -11,7 +11,13 @@ public interface IResourceResolver
 {
     /// <summary>The attachment for the resource, or null when the export has no such resource (or could not be stored).</summary>
     ImportedResource? Find(string joplinResourceId);
+
+    /// <summary>The page a link to this Joplin id points to: null when the id is not one a page can have (a file that could not be stored, say).</summary>
+    PageLink? FindPage(string joplinId) => null;
 }
+
+/// <summary>The page a link to a note or notebook points to. <paramref name="Known"/>: the export, or an earlier import, has that note or notebook.</summary>
+public sealed record PageLink(Guid PageId, bool Known);
 
 /// <summary>A resolver for content without resources.</summary>
 public sealed class NoResources : IResourceResolver
@@ -71,8 +77,26 @@ internal sealed class ConversionContext(IResourceResolver resources, ConversionN
         {
             if (Resources.Find(id) is not { } resource)
             {
-                // Another note (arriving in run 1.16), or a resource that is not in the export.
-                Notes.Add(NoteCodes.NoteLinkPending);
+                if (Resources.FindPage(id) is { } page)
+                {
+                    // Another note or notebook: a link to its page, also when the page is not made yet (its id is known).
+                    href = $"/p/{page.PageId:D}";
+                    if (address.Contains('#'))
+                    {
+                        Notes.Add(NoteCodes.NoteLinkAnchorDropped);
+                    }
+
+                    if (!page.Known)
+                    {
+                        Notes.Add(NoteCodes.NoteLinkMissing);
+                    }
+                }
+                else
+                {
+                    // A resource of the export that could not be stored: its text stays.
+                    Notes.Add(NoteCodes.NoteLinkMissing);
+                }
+
                 return null;
             }
 

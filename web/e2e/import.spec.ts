@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures'
 import { chooseLanguage, closeDrawer, openSidebar, openUserMenu, rowFor } from './helpers'
-import { generateJex, type GeneratedJex } from './jex'
+import { generateJex, generateLinkedJex, type GeneratedJex, type LinkedJex } from './jex'
 
 const editorBody = (page: Page) => page.getByTestId('editor').locator('.ProseMirror')
 
@@ -21,7 +21,7 @@ async function openImportPage(page: Page, menuItem = 'Import from Joplin') {
  * Picks the file and waits for the report. The devices of the suite share one workspace, and a workspace takes one
  * import at a time: when another device's import is running, the server says so and this tries again a moment later.
  */
-async function importJex(page: Page, jex: GeneratedJex) {
+async function importJex(page: Page, jex: GeneratedJex | LinkedJex) {
   await expect(async () => {
     await page.getByTestId('import-file').setInputFiles({
       name: 'export.jex',
@@ -178,4 +178,29 @@ test('a file that is not a Joplin export is refused with a message', async ({ pa
     })
   }).toPass({ timeout: 120_000, intervals: [1_000, 2_000, 4_000] })
   await expect(page.getByTestId('import-choose')).toBeVisible()
+})
+
+test('a link between two imported notes opens the other note, and back', async ({
+  page,
+}, testInfo) => {
+  const jex = generateLinkedJex(unique(testInfo.project.name))
+  await openImportPage(page)
+  await importJex(page, jex)
+  // Both notes are in the export, so nothing about their links needs a line in the report.
+  await expect(page.getByTestId('import-report')).toHaveCount(0)
+
+  await openSidebar(page)
+  await rowFor(page, jex.titles.notebook)
+    .getByRole('button', { name: `Expand ${jex.titles.notebook}` })
+    .click()
+  await rowFor(page, jex.titles.first).click()
+  await closeDrawer(page)
+  await expect(editorBody(page)).toContainText('Start of the trail.')
+
+  await editorBody(page).getByRole('link', { name: 'Go to the destination' }).click()
+  await expect(editorBody(page)).toContainText('Destination page text.')
+  await expect(page).toHaveURL(/\/p\/[0-9a-f-]{36}$/)
+
+  await editorBody(page).getByRole('link', { name: 'Back to the start' }).click()
+  await expect(editorBody(page)).toContainText('Start of the trail.')
 })

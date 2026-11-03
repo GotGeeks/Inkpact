@@ -340,6 +340,8 @@
       "link_removed": "A link was removed because its address ({detail}) is not allowed. Its text was kept.",
       "link_removed_relative": "A link with a relative address was removed. Its text was kept.",
       "note_link_pending": "A link to another Joplin note became plain text. Links between notes come in a later version.",
+      "note_link_missing": "A link points to a note that is not in this export. It points to the page that note will have once it is imported; until then it opens a page that is not found.",
+      "note_link_anchor_dropped": "A link to a place inside another note opens that note from the top.",
       "resource_missing": "A picture or file that this note uses is not in the export. Its text was kept.",
       "resource_link_text_lost": "The text of a link to a file was replaced by the file’s name.",
       "external_image": "An image from another site became a link to its address.",

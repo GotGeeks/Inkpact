@@ -5,11 +5,16 @@ using Inkpact.Api.Import;
 namespace Inkpact.Api.Tests.Import;
 
 /// <summary>A resolver over a fixed list of resources.</summary>
-internal sealed class FakeResources(IEnumerable<(string Id, ImportedResource Resource)> resources) : IResourceResolver
+internal sealed class FakeResources(
+    IEnumerable<(string Id, ImportedResource Resource)> resources,
+    IEnumerable<(string Id, PageLink Page)>? pages = null) : IResourceResolver
 {
     private readonly Dictionary<string, ImportedResource> _byId = resources.ToDictionary(pair => pair.Id, pair => pair.Resource);
+    private readonly Dictionary<string, PageLink> _pages = (pages ?? []).ToDictionary(pair => pair.Id, pair => pair.Page);
 
     public ImportedResource? Find(string joplinResourceId) => _byId.GetValueOrDefault(joplinResourceId);
+
+    public PageLink? FindPage(string joplinId) => _pages.GetValueOrDefault(joplinId);
 }
 
 /// <summary>
@@ -27,7 +32,10 @@ internal sealed record ConversionCase(string Name, string? Markdown, string? Htm
             Guid.Parse(resource["attachmentId"]!.GetValue<string>()),
             resource["fileName"]!.GetValue<string>(),
             resource["size"]!.GetValue<long>(),
-            resource["isInlineImage"]!.GetValue<bool>()))));
+            resource["isInlineImage"]!.GetValue<bool>()))),
+        File.Value["pages"]!.AsArray().Select(page => (
+            page!["id"]!.GetValue<string>(),
+            new PageLink(Guid.Parse(page["pageId"]!.GetValue<string>()), page["known"]!.GetValue<bool>()))));
 
     public static TheoryData<string> MarkdownNames => Names("markdown");
 

@@ -503,6 +503,7 @@ public sealed partial class ImportRunner(
         var now = time.GetUtcNow();
         var page = new Page
         {
+            Id = PageIds.For(run.WorkspaceId, folder.Id),
             WorkspaceId = run.WorkspaceId,
             ParentId = parentPage,
             Title = title,
@@ -639,7 +640,7 @@ public sealed partial class ImportRunner(
 
         // The page's own copy of each file the note uses, stored before the note is converted: the conversion only ever
         // refers to a file through these. The rows are written with the page.
-        var resources = new NoteResources();
+        var resources = new NoteResources(id => PageLinkTo(run, id));
         var added = new List<Attachment>();
         var retired = new List<Guid>();
         foreach (var id in ResourceReference().Matches(body).Select(m => m.Groups["id"].Value).Distinct(StringComparer.Ordinal))
@@ -804,7 +805,7 @@ public sealed partial class ImportRunner(
 
         var reasons = new ConversionNotes();
         var title = CleanTitle(note.Title, reasons);
-        var pageId = Guid.CreateVersion7();
+        var pageId = PageIds.For(run.WorkspaceId, note.Id);
         var built = await BuildNoteAsync(run, scope, note, body, pageId, null, null, reasons, cancellationToken);
         var files = built.NewFiles;
 
@@ -1343,11 +1344,32 @@ public sealed partial class ImportRunner(
         return extension.Length > 0 && !Path.HasExtension(name) ? $"{name}.{extension}" : name;
     }
 
-    private sealed class NoteResources : IResourceResolver
+    private sealed class NoteResources(Func<string, PageLink?> pages) : IResourceResolver
     {
         public Dictionary<string, ImportedResource> Found { get; } = new(StringComparer.Ordinal);
 
         public ImportedResource? Find(string joplinResourceId) => Found.GetValueOrDefault(joplinResourceId);
+
+        public PageLink? FindPage(string joplinId) => pages(joplinId);
+    }
+
+    /// <summary>
+    /// The page a link to a Joplin id points to: the page an earlier import made, else the page the note or notebook gets
+    /// (<see cref="PageIds"/>), also when it is not in this export. Null for the id of a file of the export, which is no page.
+    /// </summary>
+    private static PageLink? PageLinkTo(Run run, string joplinId)
+    {
+        if (run.Existing.TryGetValue(joplinId, out var existing) && existing.Kind != "tag")
+        {
+            return new PageLink(existing.InkpactId, Known: true);
+        }
+
+        if (run.Index.Resources.ContainsKey(joplinId))
+        {
+            return null;
+        }
+
+        return new PageLink(PageIds.For(run.WorkspaceId, joplinId), Known: run.Index.Notes.ContainsKey(joplinId) || run.Index.Folders.ContainsKey(joplinId));
     }
 
     // ---- the tree ------------------------------------------------------------------------------------------------------

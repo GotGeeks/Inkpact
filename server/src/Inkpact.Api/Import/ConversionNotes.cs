@@ -19,8 +19,14 @@ public static class NoteCodes
     /// <summary>A link with an address the editor does not allow: its text stayed. Detail: the scheme, or <c>relative</c>.</summary>
     public const string LinkRemoved = "link_removed";
 
-    /// <summary>A link to another Joplin note: its text stayed. The link itself arrives in run 1.16.</summary>
-    public const string NoteLinkPending = "note_link_pending";
+    /// <summary>
+    /// A link to a note or notebook that is not in the export (or a file that could not be stored). A note: the link points
+    /// to the page that note will have once it is imported. A file: the text stayed.
+    /// </summary>
+    public const string NoteLinkMissing = "note_link_missing";
+
+    /// <summary>A link to a place inside another note (<c>#anchor</c>): it opens the page, not that place.</summary>
+    public const string NoteLinkAnchorDropped = "note_link_anchor_dropped";
 
     /// <summary>A link or image that refers to a resource that is not in the export. Its text stayed.</summary>
     public const string ResourceMissing = "resource_missing";

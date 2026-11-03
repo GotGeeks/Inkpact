@@ -340,6 +340,8 @@
       "link_removed": "Een link is verwijderd omdat het adres ({detail}) niet is toegestaan. De tekst is bewaard.",
       "link_removed_relative": "Een link met een relatief adres is verwijderd. De tekst is bewaard.",
       "note_link_pending": "Een link naar een andere Joplin-notitie is gewone tekst geworden. Links tussen notities komen in een latere versie.",
+      "note_link_missing": "Een link verwijst naar een notitie die niet in deze export zit. Hij verwijst naar de pagina die die notitie krijgt zodra hij is geïmporteerd; tot dan opent hij een pagina die niet wordt gevonden.",
+      "note_link_anchor_dropped": "Een link naar een plek in een andere notitie opent die notitie vanaf het begin.",
       "resource_missing": "Een afbeelding of bestand dat deze notitie gebruikt zit niet in de export. De tekst is bewaard.",
       "resource_link_text_lost": "De tekst van een link naar een bestand is vervangen door de naam van het bestand.",
       "external_image": "Een afbeelding van een andere site is een link naar het adres geworden.",

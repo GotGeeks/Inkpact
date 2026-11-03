@@ -12,6 +12,7 @@ import { FIELD } from './firstParagraph'
 import { createMoveBlockExtension } from './blockActions'
 import type { Translate } from './blockCommands'
 import { isAllowedLink } from './links'
+import { LinkOpening } from './linkOpening'
 import { createSlashExtension, type SlashState } from './slashExtension'
 
 /**
@@ -35,6 +36,8 @@ export interface EditorExtensionsOptions {
   onBlockMoved?: (direction: -1 | 1) => void
   /** The handle next to a block: the element it moves along the page, and which block the mouse is over. */
   dragHandle?: { element: HTMLElement; onHover: (pos: number) => void }
+  /** Opens a link that was clicked; without it (a test that only needs the schema) a click on a link does nothing. */
+  openLink?: (href: string, newTab: boolean) => void
   /** How a file in the text reads. */
   files?: AttachmentFileOptions
   /** Adding files from the picker, a paste or a drop; without it (a read-only page, most tests) there is no way in. */
@@ -50,6 +53,7 @@ export function createExtensions({
   dragHandle,
   files,
   upload,
+  openLink,
 }: EditorExtensionsOptions): Extensions {
   return [
     StarterKit.configure({
@@ -67,6 +71,7 @@ export function createExtensions({
         HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' },
       },
     }),
+    LinkOpening.configure({ open: openLink }),
     Collaboration.configure({ document: doc, field: FIELD }),
     TaskList,
     TaskItem.configure({
