@@ -78,6 +78,7 @@ export function fakeTree(
               page,
               inTrash:
                 trash.some((p) => p.id === page.id) || (initial.hidden ?? []).includes(page.id),
+              workspaceId: workspace.id,
             })
           : jsonResponse(404, { code: 'not_found' })
       }
@@ -95,7 +96,8 @@ export function fakeTree(
     const target = /^\/api\/pages\/([^/]+)/.exec(path)?.[1]
     const page = pages.find((p) => p.id === target) ??
       trash.find((p) => p.id === target) ?? {
-        id: 'new',
+        // A page the client gave an id to has that id.
+        id: typeof body.id === 'string' ? body.id : 'new',
         parentId: null,
         title: String(body.title ?? ''),
         sortKey: 'a0',

@@ -209,6 +209,77 @@ public class PageEndpointTests(PostgresFixture postgres) : IAsyncLifetime
         (await response.Content.ReadAsStringAsync()).ShouldNotContain("deletedAt");
     }
 
+    // ---- a page made with its content, by a client that chose its id ------------------------------------------------------
+
+    private Task<HttpResponseMessage> CreateWithContentAsync(Guid id, byte[]? content, Guid? workspace = null) =>
+        _owner.PostJsonAsync($"/api/workspaces/{workspace ?? _workspaceId}/pages", new
+        {
+            id,
+            title = "Copy",
+            content = content is null ? null : Convert.ToBase64String(content),
+        });
+
+    [Fact]
+    public async Task A_page_made_with_an_id_and_content_has_both_and_the_same_request_again_gives_the_same_page()
+    {
+        var id = Guid.NewGuid();
+        byte[] content = [1, 2, 3, 4];
+
+        var first = await CreateWithContentAsync(id, content);
+        var again = await CreateWithContentAsync(id, content);
+
+        first.StatusCode.ShouldBe(HttpStatusCode.Created);
+        again.IsSuccessStatusCode.ShouldBeTrue();
+        (await ReadAsync<PageChange>(first)).Page.Id.ShouldBe(id);
+        (await ReadAsync<PageChange>(again)).Page.Id.ShouldBe(id);
+        (await UseDbAsync(db => db.Pages.CountAsync(p => p.Id == id))).ShouldBe(1);
+        (await UseDbAsync(db => db.PageUpdates.Where(u => u.PageId == id).Select(u => u.Data).ToListAsync())).ShouldBe([content]);
+    }
+
+    [Fact]
+    public async Task A_page_id_that_is_taken_in_another_workspace_is_refused()
+    {
+        var other = await UseDbAsync(async db =>
+        {
+            var owner = await db.Users.Select(u => u.Id).FirstAsync();
+            var workspace = new Workspace { Name = "Other", OwnerId = owner, CreatedAt = DateTimeOffset.UtcNow };
+            db.Workspaces.Add(workspace);
+            var page = new Page { WorkspaceId = workspace.Id, Title = "Theirs", SortKey = "a0", CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow };
+            db.Pages.Add(page);
+            await db.SaveChangesAsync();
+            return page.Id;
+        });
+
+        var response = await CreateWithContentAsync(other, [1, 2, 3]);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        (await response.ReadErrorAsync()).ShouldBe(new ApiError("page_exists", "id"));
+        (await UseDbAsync(db => db.PageUpdates.CountAsync(u => u.PageId == other))).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Content_without_an_id_content_that_is_not_base64_and_content_over_a_sync_message_are_refused()
+    {
+        var noId = await _owner.PostJsonAsync($"/api/workspaces/{_workspaceId}/pages", new { title = "A", content = "AQID" });
+        var notBase64 = await _owner.PostJsonAsync($"/api/workspaces/{_workspaceId}/pages", new { id = Guid.NewGuid(), title = "A", content = "not base64!" });
+        var tooLarge = await CreateWithContentAsync(Guid.NewGuid(), new byte[3 * 1024 * 1024]);
+
+        (await noId.ReadErrorAsync()).ShouldBe(new ApiError("id_invalid", "id"));
+        (await notBase64.ReadErrorAsync()).ShouldBe(new ApiError("content_invalid", "content"));
+        tooLarge.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
+        (await UseDbAsync(db => db.Pages.CountAsync())).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task A_page_says_which_workspace_it_is_in()
+    {
+        var page = await CreateAsync(_owner, "A");
+
+        var detail = await ReadAsync<PageDetail>(await _owner.GetAsync($"/api/pages/{page.Id}"));
+
+        detail.WorkspaceId.ShouldBe(_workspaceId);
+    }
+
     [Fact]
     public async Task The_error_codes_come_back_as_json_with_the_right_status()
     {

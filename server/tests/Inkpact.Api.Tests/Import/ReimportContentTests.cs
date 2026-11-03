@@ -347,6 +347,65 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
     }
 
     [Fact]
+    public async Task A_file_whose_item_changed_but_not_its_bytes_does_not_change_the_note()
+    {
+        await StartAsync();
+        await ImportAsync(WithPicture("Same text", Png));
+        var plan = await PageOfAsync("plan");
+        await PersonEditsAsync(plan.Id, "my own words");
+
+        // Joplin's OCR wrote the text it found into the resource's item, and bumped its time; the picture is the same.
+        var import = await ImportAsync(new JexBuilder()
+            .Folder("work")
+            .Note("plan", "work", body: $"Same text\n\n![a picture](:/{JexBuilder.Id("pic")})", title: "Aplan")
+            .Resource("pic", "picture.png", Png, "image/png", new() { ["ocr_text"] = "found text", ["ocr_status"] = "2", ["updated_time"] = "2026-06-01T00:00:00.000Z" }));
+
+        (CountsOf(import).Conflicts, CountsOf(import).Updated).ShouldBe((0, 0));
+        (await TextOfAsync(plan.Id)).ShouldBe("my own words");
+    }
+
+    [Fact]
+    public async Task A_note_changed_in_both_places_builds_no_replacement_it_would_not_use()
+    {
+        HookCodec? codec = null;
+        await StartAsync(inner => codec = new HookCodec(inner));
+        await ImportAsync(Library());
+        var plan = await PageOfAsync("plan");
+        await PersonEditsAsync(plan.Id, "my own words");
+        var replacementsBefore = codec!.Replacements;
+
+        await ImportAsync(Library("Changed in Joplin"));
+
+        // The page's log has an update after the import's: the page is read once, and only the copy is built.
+        (codec.Replacements - replacementsBefore, codec.Fingerprints).ShouldBe((0, 1));
+    }
+
+    [Fact]
+    public async Task Pages_the_sidecar_cannot_replace_are_failed_items_and_never_stop_the_import()
+    {
+        HookCodec? codec = null;
+        await StartAsync(inner => codec = new HookCodec(inner));
+        JexBuilder Many(string text)
+        {
+            var jex = new JexBuilder().Folder("work");
+            for (var i = 0; i < 15; i++)
+            {
+                jex.Note($"n{i}", "work", body: $"{text} {i}");
+            }
+
+            return jex;
+        }
+
+        await ImportAsync(Many("First"));
+        codec!.Rejection = new YjsRejectedException("Some page log the sidecar cannot read");
+
+        var import = await ImportAsync(Many("Second"));
+
+        import.State.ShouldBe(ImportStates.Completed);
+        CountsOf(import).Failed.ShouldBe(15);
+    }
+
+    [Fact]
     public async Task A_notes_title_that_is_not_taken_over_gives_no_reason_in_the_report()
     {
         await StartAsync();
@@ -612,9 +671,16 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
 
     // ---- items of run 1.15 -----------------------------------------------------------------------------------------------
 
-    private Task MakeItLikeRun115Async(string name) =>
-        UseDbAsync(db => db.ImportItems.Where(i => i.ExternalId == JexBuilder.Id(name)).ExecuteUpdateAsync(
-            set => set.SetProperty(i => i.Base, (string?)null).SetProperty(i => i.PageFingerprint, (byte[]?)null)));
+    /// <summary>The item as run 1.15 left it: no base, no fingerprint, no sequence number, and a hash of the note's file alone.</summary>
+    private Task MakeItLikeRun115Async(string name, JexBuilder export)
+    {
+        var fileHash = Convert.ToHexStringLower(SHA256.HashData(export.ItemBytes(name)));
+        return UseDbAsync(db => db.ImportItems.Where(i => i.ExternalId == JexBuilder.Id(name)).ExecuteUpdateAsync(
+            set => set.SetProperty(i => i.Base, (string?)null)
+                .SetProperty(i => i.PageFingerprint, (byte[]?)null)
+                .SetProperty(i => i.PageSeq, (long?)null)
+                .SetProperty(i => i.ContentHash, fileHash)));
+    }
 
     [Fact]
     public async Task An_item_without_a_base_is_compared_by_its_files_hash_and_the_state_vector()
@@ -623,8 +689,8 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
         await ImportAsync(Library());
         var plan = await PageOfAsync("plan");
         var other = await PageOfAsync("other");
-        await MakeItLikeRun115Async("plan");
-        await MakeItLikeRun115Async("other");
+        await MakeItLikeRun115Async("plan", Library());
+        await MakeItLikeRun115Async("other", Library());
         await PersonEditsAsync(other.Id, "my own words");
 
         var import = await ImportAsync(new JexBuilder()
@@ -638,6 +704,26 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifet
         (await TextOfAsync(other.Id)).ShouldBe("my own words");
         // The base is there from now on.
         ImportBase.FromJson((await ItemOfAsync("plan")).Base)!.ContentKey.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task A_note_of_run_115_that_did_not_change_is_left_alone_and_gets_its_base_also_when_it_uses_a_file()
+    {
+        await StartAsync();
+        var export = WithPicture("Same text", Png);
+        await ImportAsync(export);
+        var plan = await PageOfAsync("plan");
+        await MakeItLikeRun115Async("plan", export);
+        await PersonEditsAsync(plan.Id, "my own words");
+
+        var import = await ImportAsync(WithPicture("Same text", Png));
+
+        (CountsOf(import).AlreadyImported, CountsOf(import).Conflicts, CountsOf(import).Updated).ShouldBe((2, 0, 0));
+        (await PagesAsync()).ShouldNotContain(p => p.Title.EndsWith(" (Joplin)"));
+        (await TextOfAsync(plan.Id)).ShouldBe("my own words");
+        // It has a base now, and the next import passes over it unparsed.
+        (await ItemOfAsync("plan")).Base.ShouldNotBeNull();
+        CountsOf(await ImportAsync(WithPicture("Same text", Png))).AlreadyImported.ShouldBe(2);
     }
 
     // ---- files -----------------------------------------------------------------------------------------------------------

@@ -50,6 +50,29 @@ public sealed partial class ImportRunner(
     [GeneratedRegex(@":/(?<id>[0-9a-f]{32})", RegexOptions.CultureInvariant)]
     private static partial Regex ResourceReference();
 
+    /// <summary>
+    /// An item an earlier import made, as the start of a run reads it: what the fast path needs. The rest of its record is
+    /// read only for a note that changed.
+    /// </summary>
+    private sealed class ExistingItem(Guid id, string kind, Guid inkpactId, string contentHash, int converterVersion, bool hasBase)
+    {
+        public Guid Id { get; } = id;
+
+        public string Kind { get; } = kind;
+
+        public Guid InkpactId { get; } = inkpactId;
+
+        public string ContentHash { get; set; } = contentHash;
+
+        public int ConverterVersion { get; set; } = converterVersion;
+
+        /// <summary>Whether the item has a base: made by run 1.16 or later, or brought up to it. Without one, the hash is of the note's file alone.</summary>
+        public bool HasBase { get; set; } = hasBase;
+
+        public static ExistingItem Of(ImportItem row) =>
+            new(row.Id, row.Kind, row.InkpactId, row.ContentHash, row.ConverterVersion, row.Base is not null);
+    }
+
     private sealed class Run(Guid id, Guid workspaceId, Guid? userId, string path, string? copyTitle)
     {
         public Guid Id { get; } = id;
@@ -82,10 +105,10 @@ public sealed partial class ImportRunner(
         public List<ReportEntry> Entries { get; } = [];
 
         /// <summary>
-        /// What an earlier import made and is still there, by the id in the export: its record, read once at the start and
-        /// kept up to date as this import changes it.
+        /// What an earlier import made and is still there, by the id in the export: what the fast path needs of its record,
+        /// read once at the start and kept up to date as this import changes it.
         /// </summary>
-        public Dictionary<string, ImportItem> Existing { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, ExistingItem> Existing { get; } = new(StringComparer.Ordinal);
 
         /// <summary>The live page of each notebook and note, from before or made now.</summary>
         public Dictionary<string, Guid> PageOf { get; } = new(StringComparer.Ordinal);
@@ -248,6 +271,7 @@ public sealed partial class ImportRunner(
         var db = scope.ServiceProvider.GetRequiredService<InkpactDbContext>();
         var items = await db.ImportItems.AsNoTracking()
             .Where(i => i.WorkspaceId == run.WorkspaceId && i.SourceType == SourceType)
+            .Select(i => new { i.Id, i.ExternalId, i.Kind, i.InkpactId, i.ContentHash, i.ConverterVersion, HasBase = i.Base != null })
             .ToListAsync(cancellationToken);
         if (items.Count == 0)
         {
@@ -288,7 +312,7 @@ public sealed partial class ImportRunner(
                 continue;
             }
 
-            run.Existing[item.ExternalId] = item;
+            run.Existing[item.ExternalId] = new ExistingItem(item.Id, item.Kind, item.InkpactId, item.ContentHash, item.ConverterVersion, item.HasBase);
         }
 
         if (gone.Count > 0)
@@ -342,14 +366,15 @@ public sealed partial class ImportRunner(
         {
             throw;
         }
-        catch (YjsRejectedException e) when (e.IsInvalidContent)
+        catch (YjsRejectedException e)
         {
-            // The editor's own schema refused what the conversion made: a fault in the conversion, which a later version fixes.
-            // Anything else the sidecar refuses (a page's log that does not decode, a request too large) is the item's own
-            // failure, below.
-            logger.LogError(e, "The content of {Kind} {ExternalId} was refused by the Yjs builder", kind, id);
+            // The sidecar answered, so nothing is wrong around the item: it never counts towards stopping the import. Content
+            // the editor's schema refused is a fault in the conversion, which a later version fixes; anything else it refused
+            // (a page's log that does not decode, a request too large) is this item's own failure.
+            logger.LogError(e, "The Yjs sidecar refused {Kind} {ExternalId}", kind, id);
             run.Counts.Failed++;
-            AddEntry(run, new ReportEntry(kind, id, ShortTitle(title), ReportStatus.Failed, [new ConversionNote(NoteCodes.ConversionFailed)]));
+            var code = e.IsInvalidContent ? NoteCodes.ConversionFailed : NoteCodes.ItemFailed;
+            AddEntry(run, new ReportEntry(kind, id, ShortTitle(title), ReportStatus.Failed, [new ConversionNote(code)]));
             run.ConsecutiveFailures = 0;
         }
         catch (Exception e)
@@ -378,15 +403,23 @@ public sealed partial class ImportRunner(
             return false;
         }
 
-        if (run.InTrash.Contains(id))
-        {
-            run.Counts.AlreadyInTrash++;
-        }
-        else
+        if (!LeftInTrash(run, id))
         {
             run.Counts.AlreadyImported++;
         }
 
+        return true;
+    }
+
+    /// <summary>Whether an earlier import made this item and the person has put its page in the trash since: counted, and left there.</summary>
+    private static bool LeftInTrash(Run run, string id)
+    {
+        if (!run.Existing.ContainsKey(id) || !run.InTrash.Contains(id))
+        {
+            return false;
+        }
+
+        run.Counts.AlreadyInTrash++;
         return true;
     }
 
@@ -430,13 +463,13 @@ public sealed partial class ImportRunner(
             db.Tags.Add(made);
         }
 
-        var row = NewItem(run, "tag", tag.Id, made.Id, bytes, page: null, new ImportBase { Title = name });
+        var row = NewItem(run, "tag", tag.Id, made.Id, HashOf(bytes), page: null, new ImportBase { Title = name });
         db.ImportItems.Add(row);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         run.TagOf[tag.Id] = made.Id;
-        run.Existing[tag.Id] = row;
+        run.Existing[tag.Id] = ExistingItem.Of(row);
         run.Counts.Tags++;
     }
 
@@ -480,13 +513,13 @@ public sealed partial class ImportRunner(
             ExternalId = folder.Id,
         };
         db.Pages.Add(page);
-        var row = NewItem(run, "notebook", folder.Id, page.Id, bytes, page: null, new ImportBase { Title = title, ParentId = folder.ParentId });
+        var row = NewItem(run, "notebook", folder.Id, page.Id, HashOf(bytes), page: null, new ImportBase { Title = title, ParentId = folder.ParentId });
         db.ImportItems.Add(row);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         run.PageOf[folder.Id] = page.Id;
-        run.Existing[folder.Id] = row;
+        run.Existing[folder.Id] = ExistingItem.Of(row);
         run.Counts.Notebooks++;
         if (!reasons.IsEmpty)
         {
@@ -527,14 +560,13 @@ public sealed partial class ImportRunner(
     private async Task ImportNoteAsync(Run run, ImportStep step, CancellationToken cancellationToken)
     {
         var note = run.Index.Notes[step.Id];
+        if (LeftInTrash(run, note.Id))
+        {
+            return;
+        }
+
         if (run.Existing.TryGetValue(note.Id, out var existing))
         {
-            if (run.InTrash.Contains(note.Id))
-            {
-                run.Counts.AlreadyInTrash++;
-                return;
-            }
-
             await WithSidecarAsync(run, () => ReimportNoteAsync(run, note, existing, cancellationToken), cancellationToken);
             return;
         }
@@ -791,7 +823,8 @@ public sealed partial class ImportRunner(
             ContentText = built.Text.Replace("\0", ""),
         });
         db.Attachments.AddRange(files);
-        db.PageUpdates.Add(new PageUpdate { PageId = pageId, UserId = run.UserId, Data = built.Update, CreatedAt = now });
+        var first = new PageUpdate { PageId = pageId, UserId = run.UserId, Data = built.Update, CreatedAt = now };
+        db.PageUpdates.Add(first);
 
         // Two tags of the export can be one tag here (the same name in another case), and a page has a tag once.
         var tags = run.Index.TagsOfNote.GetValueOrDefault(note.Id, [])
@@ -809,15 +842,18 @@ public sealed partial class ImportRunner(
             db.Reminders.Add(new Reminder { PageId = pageId, UserId = userId, RemindAt = due, CreatedAt = now });
         }
 
-        var row = NewItem(run, "note", note.Id, pageId, itemBytes, built, BaseOf(run, note, title, ContentKeyOf(run, note, body)));
-        row.ContentHash = ContentHashOf(run, itemBytes, Encoding.UTF8.GetString(itemBytes));
+        var row = NewItem(
+            run, "note", note.Id, pageId, ContentHashOf(run, itemBytes, Encoding.UTF8.GetString(itemBytes)), built, BaseOf(run, note, title, ContentKeyOf(run, note, body)));
         db.ImportItems.Add(row);
+        await db.SaveChangesAsync(cancellationToken);
+        // The page's update has its number now: nothing after it in the log means nobody wrote to the page since.
+        row.PageSeq = first.Seq;
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         // Only now, when the note is in: what the retry of a note that did not get this far must not count twice.
         run.PageOf[note.Id] = pageId;
-        run.Existing[note.Id] = row;
+        run.Existing[note.Id] = ExistingItem.Of(row);
         run.Counts.Notes++;
         run.Counts.Todos += note.IsTodo ? 1 : 0;
         CountFiles(run, files);
@@ -865,12 +901,13 @@ public sealed partial class ImportRunner(
     /// here: left alone. Changed in both: the page here is left alone and Joplin's version becomes a page beside it, so
     /// nothing is lost on either side. The note's title, place, to-do fields and tags are not looked at yet (run 1.16b).
     /// </summary>
-    private async Task ReimportNoteAsync(Run run, JexNote note, ImportItem existing, CancellationToken cancellationToken)
+    private async Task ReimportNoteAsync(Run run, JexNote note, ExistingItem existing, CancellationToken cancellationToken)
     {
         var bytes = await ReadItemAsync(run, note.Offset, note.Length, cancellationToken);
         var text = Encoding.UTF8.GetString(bytes);
         var hash = ContentHashOf(run, bytes, text);
-        if (hash == existing.ContentHash && existing.ConverterVersion >= ImportOptions.ConverterVersion)
+        var outdated = existing.ConverterVersion < ImportOptions.ConverterVersion;
+        if (existing.HasBase && hash == existing.ContentHash && !outdated)
         {
             // Nothing at all changed in Joplin, neither the note nor a file it uses: not even parsed, so a library that did
             // not change is quick.
@@ -880,11 +917,23 @@ public sealed partial class ImportRunner(
 
         var item = JexItem.Parse(text) ?? throw new InvalidDataException($"Note {note.Id} no longer reads as an item.");
         var contentKey = ContentKeyOf(run, note, item.Body);
-        var baseInfo = ImportBase.FromJson(existing.Base);
 
-        // Without a base (an item of run 1.15) the hash is all there is: any change counts as a change.
-        var changedInJoplin = baseInfo?.ContentKey is { } known ? known != contentKey : hash != existing.ContentHash;
-        var outdated = existing.ConverterVersion < ImportOptions.ConverterVersion;
+        // An item of run 1.15 has no base, and its hash is of the note's file alone (it kept nothing of the files the note
+        // uses). When that file did not change, run 1.15 imported this very version: it becomes the base, and the item
+        // takes the fast path from now on. A file of the note whose bytes changed since cannot be told, and is not.
+        var fileHash = HashOf(bytes);
+        if (!existing.HasBase && fileHash == existing.ContentHash && !outdated)
+        {
+            var itemBase = BaseOf(run, note, CleanTitle(note.Title, new ConversionNotes()), contentKey).ToJson();
+            await UpdateItemAsync(existing.Id, set => set.SetProperty(i => i.ContentHash, hash).SetProperty(i => i.Base, itemBase), cancellationToken);
+            (existing.ContentHash, existing.HasBase) = (hash, true);
+            run.Counts.AlreadyImported++;
+            return;
+        }
+
+        var row = await ReadItemRowAsync(existing.Id, cancellationToken);
+        var baseInfo = ImportBase.FromJson(row.Base);
+        var changedInJoplin = baseInfo?.ContentKey is { } known ? known != contentKey : fileHash != existing.ContentHash;
         if (!changedInJoplin && !outdated)
         {
             // Only Joplin's bookkeeping or the note's fields changed, which this run does not take over (run 1.16b). The
@@ -900,12 +949,20 @@ public sealed partial class ImportRunner(
             await using var scope = scopes.CreateAsyncScope();
             var content = await pages.LoadAsync(existing.InkpactId, cancellationToken);
 
-            // The replacement is made first: the sidecar reads the page once for it, and says what the page was before,
-            // which is what tells whether it was edited here. When it was, the replacement is not used (its files are
-            // kept for the run, so a copy does not read them again).
+            // Nothing in the page's log after the import's own update: nobody wrote to it, which needs no look at the page.
+            // Otherwise the page is read for its fingerprint.
+            var changedHere = row.PageSeq is not { } seq || seq != content.LastSeq
+                ? ChangedHere(row, await yjs.FingerprintAsync(content.Inputs, cancellationToken))
+                : false;
+
             var reasons = new ConversionNotes();
-            var replacement = await PrepareReplacementAsync(run, scope, note, item.Body, existing, content, reasons, cancellationToken);
-            var changedHere = ChangedHere(existing, replacement.Before!);
+            BuiltNote? replacement = null;
+            if (!changedHere)
+            {
+                replacement = await PrepareReplacementAsync(run, scope, note, item.Body, existing, content, reasons, cancellationToken);
+                // The page as the replacement found it, from the same replay: what the log said is checked once more.
+                changedHere = ChangedHere(row, replacement.Before!);
+            }
 
             if (changedInJoplin && changedHere)
             {
@@ -924,7 +981,7 @@ public sealed partial class ImportRunner(
             }
 
             var replaced = await WriteReplacementAsync(
-                run, scope, note, replacement, reasons, hash, contentKey, existing, baseInfo, content, changedInJoplin, cancellationToken);
+                run, scope, note, replacement!, reasons, hash, contentKey, existing, baseInfo, content, changedInJoplin, cancellationToken);
             if (replaced != Replaced.PageChanged)
             {
                 return;
@@ -934,7 +991,17 @@ public sealed partial class ImportRunner(
             {
                 throw new InvalidOperationException($"The page of note {note.Id} kept changing while the import replaced its content.");
             }
+
+            // Compared again with the page as it is now; the item's record has not changed.
         }
+    }
+
+    /// <summary>The whole record of an item, read when its note has changed.</summary>
+    private async Task<ImportItem> ReadItemRowAsync(Guid itemId, CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<InkpactDbContext>();
+        return await db.ImportItems.AsNoTracking().SingleAsync(i => i.Id == itemId, cancellationToken);
     }
 
     private async Task UpdateItemAsync(
@@ -972,7 +1039,7 @@ public sealed partial class ImportRunner(
         IServiceScope scope,
         JexNote note,
         string body,
-        ImportItem existing,
+        ExistingItem existing,
         PageContent content,
         ConversionNotes reasons,
         CancellationToken cancellationToken)
@@ -998,7 +1065,7 @@ public sealed partial class ImportRunner(
         ConversionNotes reasons,
         string hash,
         string contentKey,
-        ImportItem existing,
+        ExistingItem existing,
         ImportBase? baseInfo,
         PageContent content,
         bool changedInJoplin,
@@ -1043,8 +1110,10 @@ public sealed partial class ImportRunner(
             }
 
             db.Attachments.AddRange(built.NewFiles);
-            db.PageUpdates.Add(new PageUpdate { PageId = pageId, UserId = run.UserId, Data = built.Update, CreatedAt = now });
+            var update = new PageUpdate { PageId = pageId, UserId = run.UserId, Data = built.Update, CreatedAt = now };
+            db.PageUpdates.Add(update);
             await db.SaveChangesAsync(token);
+            var seq = update.Seq;
 
             await db.Pages.Where(p => p.Id == pageId).ExecuteUpdateAsync(
                 set => set.SetProperty(p => p.ContentText, text).SetProperty(p => p.UpdatedAt, updatedAt), token);
@@ -1054,6 +1123,7 @@ public sealed partial class ImportRunner(
                     .SetProperty(i => i.ConverterVersion, ImportOptions.ConverterVersion)
                     .SetProperty(i => i.StateVector, built.StateVector)
                     .SetProperty(i => i.PageFingerprint, fingerprint)
+                    .SetProperty(i => i.PageSeq, seq)
                     .SetProperty(i => i.ImportId, run.Id)
                     .SetProperty(i => i.ImportedAt, now),
                 token);
@@ -1074,10 +1144,8 @@ public sealed partial class ImportRunner(
         }
 
         existing.ContentHash = hash;
-        existing.Base = next;
         existing.ConverterVersion = ImportOptions.ConverterVersion;
-        existing.StateVector = built.StateVector;
-        existing.PageFingerprint = fingerprint;
+        existing.HasBase = true;
         if (changedInJoplin)
         {
             run.Counts.Updated++;
@@ -1115,7 +1183,7 @@ public sealed partial class ImportRunner(
         string body,
         string fileHash,
         string contentKey,
-        ImportItem existing,
+        ExistingItem existing,
         ImportBase? baseInfo,
         CancellationToken cancellationToken)
     {
@@ -1175,8 +1243,8 @@ public sealed partial class ImportRunner(
         await transaction.CommitAsync(cancellationToken);
 
         existing.ContentHash = fileHash;
-        existing.Base = next;
         existing.ConverterVersion = ImportOptions.ConverterVersion;
+        existing.HasBase = true;
         run.Counts.Conflicts++;
         CountFiles(run, built.NewFiles);
         foreach (var reason in built.Converted.Notes)
@@ -1319,14 +1387,14 @@ public sealed partial class ImportRunner(
             ?? throw new InvalidDataException("The file ended before an item it had listed.");
 
     /// <summary>The record of an item just imported: the hash of its file, its base, and for a page the state of its document.</summary>
-    private ImportItem NewItem(Run run, string kind, string externalId, Guid inkpactId, byte[] content, BuiltNote? page, ImportBase itemBase) => new()
+    private ImportItem NewItem(Run run, string kind, string externalId, Guid inkpactId, string contentHash, BuiltNote? page, ImportBase itemBase) => new()
     {
         WorkspaceId = run.WorkspaceId,
         SourceType = SourceType,
         ExternalId = externalId,
         Kind = kind,
         InkpactId = inkpactId,
-        ContentHash = HashOf(content),
+        ContentHash = contentHash,
         StateVector = page?.StateVector,
         PageFingerprint = page is null ? null : HashBytes(page.Fingerprint),
         Base = itemBase.ToJson(),

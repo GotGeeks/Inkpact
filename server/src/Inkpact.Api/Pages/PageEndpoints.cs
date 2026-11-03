@@ -1,10 +1,17 @@
+using System.Security.Claims;
 using Inkpact.Api.Auth;
 using Inkpact.Api.Permissions;
+using Inkpact.Api.Sync;
 using Inkpact.Data.Entities;
 
 namespace Inkpact.Api.Pages;
 
-public sealed record CreatePageRequest(string? Title, Guid? ParentId, Guid? AfterId, Guid? BeforeId);
+/// <summary>
+/// A new page. <c>Id</c> and <c>Content</c> are for a client that makes a page with content in one step (a copy of edits
+/// that would be lost): the id it chose, so that sending the same request again gives the same page rather than a second
+/// one, and the page's first Yjs update, in base64, stored with the page.
+/// </summary>
+public sealed record CreatePageRequest(string? Title, Guid? ParentId, Guid? AfterId, Guid? BeforeId, Guid? Id = null, string? Content = null);
 
 public sealed record RenamePageRequest(string? Title, int? ExpectedVersion);
 
@@ -12,7 +19,7 @@ public sealed record MovePageRequest(Guid? ParentId, Guid? AfterId, Guid? Before
 
 public sealed record VersionedRequest(int? ExpectedVersion);
 
-public sealed record PageDetail(PageDto Page, bool InTrash);
+public sealed record PageDetail(PageDto Page, bool InTrash, Guid WorkspaceId);
 
 /// <summary>
 /// The page tree over REST. Tree operations never go through the CRDT: they go here, one at a time. Reading needs
@@ -43,11 +50,56 @@ public static class PageEndpoints
 
     private static async Task<IResult> GetPage(Guid pageId, TreeService tree, CancellationToken cancellationToken) =>
         await tree.GetPageAsync(pageId, cancellationToken) is { } found
-            ? Results.Ok(new PageDetail(found.Page, found.InTrash))
+            ? Results.Ok(new PageDetail(found.Page, found.InTrash, found.WorkspaceId))
             : NotFound();
 
-    private static async Task<IResult> Create(Guid workspaceId, CreatePageRequest request, TreeService tree, CancellationToken cancellationToken) =>
-        Respond(await tree.CreateAsync(workspaceId, request.Title, new Position(request.ParentId, request.AfterId, request.BeforeId), cancellationToken), StatusCodes.Status201Created);
+    private static async Task<IResult> Create(
+        Guid workspaceId, CreatePageRequest request, HttpContext http, TreeService tree, SyncOptions sync, CancellationToken cancellationToken)
+    {
+        PageSeed? seed = null;
+        if (request.Id is { } id)
+        {
+            if (id == Guid.Empty)
+            {
+                return Respond(new TreeError(StatusCodes.Status400BadRequest, "id_invalid", "id"));
+            }
+
+            byte[]? content = null;
+            if (request.Content is { } encoded)
+            {
+                // Content larger than a sync message could not reach the page the other way either.
+                if (encoded.Length > (sync.MaxMessageBytes + 2) / 3 * 4)
+                {
+                    return Respond(new TreeError(StatusCodes.Status413PayloadTooLarge, "content_too_large", "content"));
+                }
+
+                try
+                {
+                    content = Convert.FromBase64String(encoded);
+                }
+                catch (FormatException)
+                {
+                    return Respond(new TreeError(StatusCodes.Status400BadRequest, "content_invalid", "content"));
+                }
+
+                if (content.Length == 0)
+                {
+                    return Respond(new TreeError(StatusCodes.Status400BadRequest, "content_invalid", "content"));
+                }
+            }
+
+            var userId = Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsed) ? parsed : (Guid?)null;
+            seed = new PageSeed(id, content, userId);
+        }
+        else if (request.Content is not null)
+        {
+            // Content only comes with an id: sent twice without one, it would make two pages.
+            return Respond(new TreeError(StatusCodes.Status400BadRequest, "id_invalid", "id"));
+        }
+
+        var position = new Position(request.ParentId, request.AfterId, request.BeforeId);
+        return Respond(await tree.CreateAsync(workspaceId, request.Title, position, seed, cancellationToken), StatusCodes.Status201Created);
+    }
 
     private static async Task<IResult> Rename(Guid pageId, RenamePageRequest request, TreeService tree, CancellationToken cancellationToken) =>
         Respond(await tree.RenameAsync(pageId, request.Title, request.ExpectedVersion, cancellationToken));

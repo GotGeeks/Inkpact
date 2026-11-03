@@ -24,6 +24,12 @@ public sealed record PageChange(
     bool Conflict,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RestoredTo = null);
 
+/// <summary>
+/// What a client gives a new page beyond its title and place: the id it chose, and the page's first Yjs update (opaque,
+/// stored as it came, as the sync hub stores a client's update), written by <paramref name="UserId"/>.
+/// </summary>
+public sealed record PageSeed(Guid Id, byte[]? Content, Guid? UserId);
+
 /// <summary>Where a page is wanted among its new siblings: between two of them, or at the end when neither is named.</summary>
 public sealed record Position(Guid? ParentId, Guid? AfterId, Guid? BeforeId);
 
@@ -99,7 +105,7 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
     }
 
     /// <summary>One page, and whether it is in the trash, itself or through something above it.</summary>
-    public async Task<(PageDto Page, bool InTrash)?> GetPageAsync(Guid pageId, CancellationToken cancellationToken = default)
+    public async Task<(PageDto Page, bool InTrash, Guid WorkspaceId)?> GetPageAsync(Guid pageId, CancellationToken cancellationToken = default)
     {
         var page = await db.Pages.AsNoTracking().SingleOrDefaultAsync(p => p.Id == pageId, cancellationToken);
         if (page is null)
@@ -108,7 +114,7 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
         }
 
         var inTrash = (await GetChainAsync(pageId, cancellationToken)).Any(link => link.DeletedAt is not null);
-        return (ToDto(page), inTrash);
+        return (ToDto(page), inTrash, page.WorkspaceId);
     }
 
     /// <summary>Parents before children, and siblings by key, compared as bytes the way the database sorts them.</summary>
@@ -136,7 +142,15 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
 
     // ---- changing ----------------------------------------------------------------------------------------------------
 
-    public async Task<TreeResult<PageChange>> CreateAsync(Guid workspaceId, string? title, Position position, CancellationToken cancellationToken = default)
+    public Task<TreeResult<PageChange>> CreateAsync(Guid workspaceId, string? title, Position position, CancellationToken cancellationToken = default) =>
+        CreateAsync(workspaceId, title, position, seed: null, cancellationToken);
+
+    /// <summary>
+    /// Makes a page. With a <paramref name="seed"/>, the page gets the id it names and its content; when a page with that id
+    /// is there already in this workspace, the same request came again (its answer was lost), and that page is the answer.
+    /// </summary>
+    public async Task<TreeResult<PageChange>> CreateAsync(
+        Guid workspaceId, string? title, Position position, PageSeed? seed, CancellationToken cancellationToken = default)
     {
         var cleanTitle = CleanTitle(title);
         if (cleanTitle is null)
@@ -148,6 +162,14 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
         if (!await LockWorkspaceAsync(workspaceId, cancellationToken))
         {
             return new TreeError(StatusCodes.Status404NotFound, "not_found");
+        }
+
+        if (seed is not null && await db.Pages.AsNoTracking().SingleOrDefaultAsync(p => p.Id == seed.Id, cancellationToken) is { } made)
+        {
+            // The id is the client's: a page in another workspace that has it is not this request's.
+            return made.WorkspaceId == workspaceId
+                ? new PageChange(ToDto(made), Conflict: false)
+                : new TreeError(StatusCodes.Status409Conflict, "page_exists", "id");
         }
 
         if (await CheckParentAsync(workspaceId, position.ParentId, cancellationToken) is { } parentError)
@@ -171,6 +193,15 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
             CreatedAt = now,
             UpdatedAt = now,
         };
+        if (seed is not null)
+        {
+            page.Id = seed.Id;
+            if (seed.Content is { } content)
+            {
+                db.PageUpdates.Add(new PageUpdate { PageId = page.Id, UserId = seed.UserId, Data = content, CreatedAt = now });
+            }
+        }
+
         db.Pages.Add(page);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);

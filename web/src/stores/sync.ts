@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import * as Y from 'yjs'
-import { applyFirstParagraph, FIELD } from '../editor/firstParagraph'
+import type * as Y from 'yjs'
 import { useAuthStore } from './auth'
 import { useNotificationsStore } from './notifications'
 import {
@@ -121,33 +120,6 @@ export const useSyncStore = defineStore('sync', () => {
     if (!client?.get(pageId)) pages.value = without(pages.value, pageId)
   }
 
-  /**
-   * Makes the content of `before` (a page as one update) the content of the new page `pageId`, the way every page is
-   * written: from the fixed first paragraph, which is deleted, with the blocks after it. The page is left as soon as the
-   * server has the content. Refused (false) once the socket is gone: whoever ended it took their edits along, and a new
-   * socket would be someone else's.
-   */
-  function writeCopy(pageId: string, before: Uint8Array): boolean {
-    if (!client) return false
-    const source = new Y.Doc()
-    Y.applyUpdate(source, before)
-    const blocks = source
-      .getXmlFragment(FIELD)
-      .toArray()
-      .filter((node): node is Y.XmlElement | Y.XmlText => !(node instanceof Y.XmlHook))
-      .map((node) => node.clone())
-    source.destroy()
-
-    const handle = open(pageId, { init: applyFirstParagraph })
-    const fragment = handle.doc.getXmlFragment(FIELD)
-    handle.doc.transact(() => {
-      fragment.delete(0, fragment.length)
-      fragment.insert(0, blocks)
-    })
-    close(pageId)
-    return true
-  }
-
   function forgetLostEdits(id: number) {
     lostEdits.value = lostEdits.value.filter((lost) => lost.id !== id)
   }
@@ -172,7 +144,6 @@ export const useSyncStore = defineStore('sync', () => {
     lostEdits,
     open,
     close,
-    writeCopy,
     forgetLostEdits,
     destroy,
   }
