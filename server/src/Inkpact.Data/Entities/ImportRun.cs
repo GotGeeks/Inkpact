@@ -100,6 +100,13 @@ public class ImportItem
     public byte[]? PageFingerprint { get; set; }
 
     /// <summary>
+    /// The sequence number of the update the import last wrote to the page. When the page's log has nothing after it (and
+    /// no snapshot past it), nobody has written to the page since, and the import need not read the page to know that.
+    /// Null for tags and notebooks, and for items made before run 1.16.
+    /// </summary>
+    public long? PageSeq { get; set; }
+
+    /// <summary>
     /// What the other app had of the item, field by field, when it was last imported, as JSON (<c>jsonb</c>): the third
     /// value of a three-way comparison with the other app's value now and ours. Null for items made before run 1.16, whose
     /// base is unknown. A field only moves when what it holds has been taken over here.

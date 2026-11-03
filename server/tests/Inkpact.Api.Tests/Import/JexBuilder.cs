@@ -72,10 +72,14 @@ public sealed class JexBuilder
         Add(Id($"{note}->{tag}"), $"\n\n{Fields([("id", Id($"{note}->{tag}")), ("note_id", Id(note)), ("tag_id", Id(tag))], 6)}");
 
     /// <summary>A resource: its item (the file name is in the title, as Joplin writes it) and its bytes.</summary>
-    public JexBuilder Resource(string name, string fileName, byte[] bytes, string mime = "application/octet-stream")
+    public JexBuilder Resource(string name, string fileName, byte[] bytes, string mime = "application/octet-stream", Dictionary<string, string>? extra = null)
     {
         var extension = Path.GetExtension(fileName).TrimStart('.');
-        Add(Id(name), $"{fileName}\n\n{Fields([("id", Id(name)), ("mime", mime), ("filename", ""), ("file_extension", extension), ("size", bytes.Length.ToString())], 4)}");
+        IEnumerable<(string, string)> fields =
+        [
+            ("id", Id(name)), ("mime", mime), ("filename", ""), ("file_extension", extension), ("size", bytes.Length.ToString()), .. Extra(extra),
+        ];
+        Add(Id(name), $"{fileName}\n\n{Fields(fields, 4)}");
         _entries.Add(($"resources/{Id(name)}.{extension}", bytes));
         return this;
     }
@@ -97,6 +101,9 @@ public sealed class JexBuilder
         _entries.Add((name, data));
         return this;
     }
+
+    /// <summary>The bytes of an item's file as the export holds them.</summary>
+    public byte[] ItemBytes(string name) => _entries.Single(entry => entry.Name == $"{Id(name)}.md").Data;
 
     public byte[] ToBytes()
     {

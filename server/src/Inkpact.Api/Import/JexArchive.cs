@@ -31,8 +31,9 @@ internal sealed record JexNote(
 internal sealed record JexTag(string Id, string Title, bool Encrypted, long Offset, long Length);
 
 /// <summary>
-/// A file of the export. <c>Version</c> changes when the file does: Joplin rewrites a resource's item when its bytes change
-/// (their size and time are in it), while the note that uses it stays as it is.
+/// A file of the export. <c>Version</c> changes when the file's bytes do, and only then: Joplin sets the resource's
+/// <c>blob_updated_time</c> when its bytes change, while the note that uses it stays as it is. The rest of the resource's item
+/// (its title, the text OCR finds in it, its own times) changes without the file changing, and is left out.
 /// </summary>
 internal sealed record JexResource(string Id, string Title, string FileName, string Extension, long DataOffset, long DataLength, string Version = "");
 
@@ -92,7 +93,7 @@ internal static partial class JexArchive
         string path, CancellationToken cancellationToken, long maxItemSize = MaxItemSize, int maxEntries = MaxEntries)
     {
         var index = new JexIndex(path);
-        var resourceItems = new Dictionary<string, (JexItem Item, string Hash)>(StringComparer.Ordinal);
+        var resourceItems = new Dictionary<string, JexItem>(StringComparer.Ordinal);
         var entries = 0;
         try
         {
@@ -131,7 +132,7 @@ internal static partial class JexArchive
         }
 
         // The bytes of a resource are in the archive on their own; its title, name and extension are in its item.
-        foreach (var (id, (item, hash)) in resourceItems)
+        foreach (var (id, item) in resourceItems)
         {
             var data = index.Resources.GetValueOrDefault(id);
             index.Resources[id] = new JexResource(
@@ -141,7 +142,7 @@ internal static partial class JexArchive
                 item.Get("file_extension"),
                 data?.DataOffset ?? -1,
                 data?.DataLength ?? 0,
-                $"{hash}:{data?.DataLength ?? 0}");
+                $"{item.Get("blob_updated_time")}:{item.Get("size")}:{data?.DataLength ?? 0}");
         }
 
         // Bytes that no item describes are not a resource of the export.
@@ -159,7 +160,7 @@ internal static partial class JexArchive
     }
 
     private static async Task ReadItemAsync(
-        JexIndex index, Dictionary<string, (JexItem Item, string Hash)> resourceItems, string id, TarEntry entry, long maxItemSize, CancellationToken cancellationToken)
+        JexIndex index, Dictionary<string, JexItem> resourceItems, string id, TarEntry entry, long maxItemSize, CancellationToken cancellationToken)
     {
         if (entry.Length > maxItemSize)
         {
@@ -209,7 +210,7 @@ internal static partial class JexArchive
                 index.Tags[id] = new JexTag(id, item.Title, item.Flag("encryption_applied"), offset, length);
                 break;
             case JexTypes.Resource:
-                resourceItems[id] = (item, Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes)));
+                resourceItems[id] = item;
                 break;
             case JexTypes.NoteTag:
                 if (JexItem.IsId(item.Get("note_id")) && JexItem.IsId(item.Get("tag_id")))

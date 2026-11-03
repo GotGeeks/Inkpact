@@ -43,4 +43,5 @@ export interface WorkspaceSummary {
 export interface PageDetail {
   page: PageNode
   inTrash: boolean
+  workspaceId: string
 }

@@ -237,6 +237,10 @@ namespace Inkpact.Data.Migrations
                         .HasColumnType("bytea")
                         .HasColumnName("page_fingerprint");
 
+                    b.Property<long?>("PageSeq")
+                        .HasColumnType("bigint")
+                        .HasColumnName("page_seq");
+
                     b.Property<string>("SourceType")
                         .IsRequired()
                         .HasMaxLength(50)

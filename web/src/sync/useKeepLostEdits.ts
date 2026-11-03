@@ -4,7 +4,8 @@ import { ApiError, api } from '../api'
 import { useNotificationsStore } from '../stores/notifications'
 import { useSyncStore, type LostEdits } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
-import type { PageChange } from '../tree/types'
+import type { PageChange, PageDetail } from '../tree/types'
+import { copyUpdate, newPageId, toBase64 } from './pageCopy'
 
 /** The longest title the server takes, in UTF-16 units, as it counts them (TreeService.MaxTitleLength). */
 const MAX_TITLE_LENGTH = 500
@@ -23,10 +24,13 @@ const unreachable = (error: unknown) => error instanceof ApiError && error.code 
 
 /**
  * Keeps edits that a Sync deleted (see `onEditsLost` in the sync client) as a new page right after the page they were
- * made on, titled after it, and tells the person where they are. When the place beside the page is gone (its parent was
- * put in the trash meanwhile), the copy goes to the top level. A copy that cannot be made now is tried again when the
- * connection is back or the workspace has loaded; the person is told once that it is waiting. Until then the edits wait
- * in the tab, and they go when the person signs out: they are never written for whoever signs in next.
+ * made on, in that page's workspace, titled after it, and tells the person where they are.
+ *
+ * The page and its content are made by one request, with an id chosen here: when its answer is lost and it is sent again,
+ * the server gives the page it made rather than a second one, and there is never a page without its content. When the
+ * place beside the page is gone (it or its parent is in the trash), the copy goes to the top level. A copy that cannot be
+ * made now is tried again when the connection is back or the workspace has been read; the person is told once that it is
+ * waiting. Until then the edits wait in the tab, and they go when the person signs out.
  */
 export function useKeepLostEdits() {
   const { t } = useI18n()
@@ -36,50 +40,62 @@ export function useKeepLostEdits() {
   const busy = new Set<number>()
   /** Lost edits the person was told could not be kept yet, so a failure that comes back is not said again. */
   const told = new Set<number>()
+  /** The id each copy gets: every try for the same edits asks for the same page. */
+  const copyIds = new Map<number, string>()
 
   const stillWaiting = (lost: LostEdits) => sync.lostEdits.some((other) => other.id === lost.id)
 
-  function create(
-    workspaceId: string,
-    title: string,
-    parentId: string | null,
-    afterId: string | null,
-  ) {
-    return api<PageChange>('POST', `/api/workspaces/${workspaceId}/pages`, {
-      title,
-      parentId,
-      afterId,
-      beforeId: null,
-    })
+  /** The page the edits were made on, as the server has it; null when it is gone altogether. */
+  async function pageOf(pageId: string): Promise<PageDetail | null> {
+    try {
+      return await api<PageDetail>('GET', `/api/pages/${encodeURIComponent(pageId)}`)
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'not_found') return null
+      throw error
+    }
   }
 
   async function keep(lost: LostEdits) {
-    const workspaceId = tree.workspace?.id
-    if (busy.has(lost.id) || !workspaceId) return
+    if (busy.has(lost.id)) return
     busy.add(lost.id)
-    const original = tree.byId.get(lost.pageId)
-    const title = original?.title || t('tree.untitled')
+    let title = t('tree.untitled')
     try {
+      const original = await pageOf(lost.pageId)
+      // A page that is gone has no workspace to ask about: its copy goes to the one on screen, the person's own.
+      const workspaceId = original?.workspaceId ?? tree.workspace?.id
+      if (!workspaceId) return
+      title = original?.page.title || title
+
       // As much of the original's title as fits beside the words around it.
       const room = MAX_TITLE_LENGTH - t('sync.offlineCopyTitle', { title: '' }).length
-      const copyTitle = t('sync.offlineCopyTitle', { title: cut(title, room) })
+      const id = copyIds.get(lost.id) ?? newPageId()
+      copyIds.set(lost.id, id)
+      const body = {
+        id,
+        title: t('sync.offlineCopyTitle', { title: cut(title, room) }),
+        content: toBase64(copyUpdate(lost.before)),
+        beforeId: null,
+      }
+      const create = (parentId: string | null, afterId: string | null) =>
+        api<PageChange>('POST', `/api/workspaces/${encodeURIComponent(workspaceId)}/pages`, {
+          ...body,
+          parentId,
+          afterId,
+        })
+
       let made: PageChange
+      const beside = original && !original.inTrash ? original.page : null
       try {
-        // Beside the original when it is in the tree; at the top level when it is not (in the trash, or not loaded).
-        made = await create(
-          workspaceId,
-          copyTitle,
-          original?.parentId ?? null,
-          original?.id ?? null,
-        )
+        made = await create(beside?.parentId ?? null, beside?.id ?? null)
       } catch (error) {
-        if (!original || unreachable(error)) throw error
-        made = await create(workspaceId, copyTitle, null, null)
+        if (!beside || unreachable(error)) throw error
+        made = await create(null, null)
       }
 
-      // The person left while the page was made: their edits are not written, not for them and not for anyone after them.
-      if (!stillWaiting(lost) || !sync.writeCopy(made.page.id, lost.before)) return
+      // The page is made with the edits in it. A person who left meanwhile has their copy, and nobody else is told.
+      if (!stillWaiting(lost)) return
       sync.forgetLostEdits(lost.id)
+      copyIds.delete(lost.id)
       told.delete(lost.id)
       notifications.post({ type: 'editsKept', pageId: made.page.id, title })
       await tree.load().catch(() => undefined)
