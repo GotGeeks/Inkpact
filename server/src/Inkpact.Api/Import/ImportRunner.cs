@@ -4,7 +4,6 @@ using System.Text.RegularExpressions;
 using Inkpact.Api.Attachments;
 using Inkpact.Api.Crdt;
 using Inkpact.Api.Pages;
-using Inkpact.Api.Search;
 using Inkpact.Api.Sync;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
@@ -971,8 +970,7 @@ public sealed partial class ImportRunner(
         var tags = run.Index.TagsOfNote.GetValueOrDefault(note.Id, [])
             .Select(tagId => run.TagOf.TryGetValue(tagId, out var tag) ? tag : (Guid?)null)
             .OfType<Guid>()
-            .Distinct()
-            .ToList();
+            .Distinct();
         foreach (var tag in tags)
         {
             db.PageTags.Add(new PageTag { PageId = pageId, TagId = tag });
@@ -988,11 +986,6 @@ public sealed partial class ImportRunner(
             run, "note", note.Id, pageId, ContentHashOf(run, note, itemBytes, Encoding.UTF8.GetString(itemBytes)), built, BaseOf(run, note, title, ContentKeyOf(run, note, body)));
         db.ImportItems.Add(row);
         await db.SaveChangesAsync(cancellationToken);
-        if (tags.Count > 0)
-        {
-            await PageSearchText.RefreshAsync(db, pageId, cancellationToken);
-        }
-
         // The page's update has its number now: nothing after it in the log means nobody wrote to the page since.
         row.PageSeq = first.Seq;
         await db.SaveChangesAsync(cancellationToken);

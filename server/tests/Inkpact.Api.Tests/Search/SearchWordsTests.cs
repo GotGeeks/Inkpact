@@ -33,7 +33,7 @@ public class SearchWordsTests
     }
 
     [Fact]
-    public void Nothing_typed_is_no_query() => SearchWords.ToTsQuery(null).ShouldBeNull();
+    public void Nothing_typed_is_no_query() => SearchWords.ToTsQuery((string?)null).ShouldBeNull();
 
     [Theory]
     [InlineData("a & b | !c", "a:* & b:* & c:*")]

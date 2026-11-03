@@ -71,9 +71,9 @@ public static class SearchWords
     }
 
     /// <summary>The text as a <c>to_tsquery</c> string (<c>meet:* &amp; week:*</c>), or null when it has no words.</summary>
-    public static string? ToTsQuery(string? text)
-    {
-        var words = Split(text);
-        return words.Count == 0 ? null : string.Join(" & ", words.Select(w => w + ":*"));
-    }
+    public static string? ToTsQuery(string? text) => ToTsQuery(Split(text));
+
+    /// <summary>Words from <see cref="Split"/> as a <c>to_tsquery</c> string, or null when there are none.</summary>
+    public static string? ToTsQuery(IReadOnlyList<string> words) =>
+        words.Count == 0 ? null : string.Join(" & ", words.Select(w => w + ":*"));
 }

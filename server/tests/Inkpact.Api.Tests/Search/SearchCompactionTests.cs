@@ -2,6 +2,7 @@ using Inkpact.Api.Search;
 using Inkpact.Api.Tests.Compaction;
 using Inkpact.Api.Tests.Crdt;
 using Inkpact.Api.Tests.Testing;
+using Microsoft.EntityFrameworkCore;
 
 namespace Inkpact.Api.Tests.Search;
 
@@ -45,5 +46,32 @@ public class SearchCompactionTests(PostgresFixture postgres, YjsSidecarFixture y
         (await FindAsync("weekend")).ShouldBe([pageId]);
         (await FindAsync("famil")).ShouldBe([pageId]);
         (await FindAsync("kaas")).ShouldBe([pageId]);
+    }
+
+    [Fact]
+    public async Task A_compaction_that_does_not_change_the_text_leaves_the_page_row_and_its_vectors_alone()
+    {
+        var stream = EditStreams.Get(0, 1);
+        var pageId = await AddPageAsync();
+        var text = (await Codec.CompactAsync(stream, default)).Text.Replace("\0", "");
+        await using (var db = CreateContext())
+        {
+            await db.Pages.Where(p => p.Id == pageId).ExecuteUpdateAsync(s => s.SetProperty(p => p.ContentText, text));
+        }
+
+        var before = await RowVersionAsync(pageId);
+        await AppendAsync(pageId, stream);
+
+        (await CreateCompactor().CompactAsync(pageId, default)).ShouldBe(Inkpact.Api.Compaction.CompactionResult.Compacted);
+
+        (await RowVersionAsync(pageId)).ShouldBe(before);
+        (await FindAsync("kaas")).ShouldBe([pageId]);
+    }
+
+    // Postgres' transaction id of the row's current version: it changes with every update of the row.
+    private async Task<string> RowVersionAsync(Guid pageId)
+    {
+        await using var db = CreateContext();
+        return await db.Database.SqlQuery<string>($"SELECT xmin::text AS \"Value\" FROM pages WHERE id = {pageId}").SingleAsync();
     }
 }

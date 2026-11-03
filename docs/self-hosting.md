@@ -52,6 +52,8 @@ The search box (run 1.17) finds a page by its title, its tags and its text, in t
 
 - **When a word becomes findable:** a title or a tag at once; the text of a page after the page has been compacted, which is when it has had two minutes without an edit (`Compaction__IdleAfter`, `00:02:00` by default) or 500 edits.
 - **How much of a page is searched:** the first 200,000 characters of its text, about 100 printed pages. A word further on is not found. A note that the import keeps as a file is found by its title and file names only.
+- **Words joined by punctuation** are found one by one: `pdf` finds `report.pdf`, `example` finds `user@example.com`, `11` finds `2026-11-03`.
+- **The first start after the update to search** adds the search columns to every page, which rewrites the pages table once: with tens of thousands of long notes, it can take a minute or two before the app answers.
 - **The extension:** PostgreSQL's `unaccent` (part of every official image). The migration creates it, which the owner of the database may do; a database owned by another role needs `CREATE EXTENSION unaccent` run once by a superuser before the app starts.
 
 ## Updating

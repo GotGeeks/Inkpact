@@ -1,5 +1,4 @@
 using Inkpact.Api.Pages;
-using Inkpact.Api.Search;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -335,11 +334,6 @@ public sealed partial class ImportRunner
             await db.PageTags.Where(t => t.PageId == page.Id && remove.Contains(t.TagId)).ExecuteDeleteAsync(cancellationToken);
         }
 
-        if (plan.AddTags.Count > 0 || plan.RemoveTags.Count > 0)
-        {
-            await PageSearchText.RefreshAsync(db, page.Id, cancellationToken);
-        }
-
         if (plan.Due is not null && page.DueAt != oldDue && run.UserId is { } userId)
         {
             // The reminder follows the due date: only the importing person's, and only one that has not been delivered.
@@ -572,12 +566,6 @@ public sealed partial class ImportRunner
         var now = time.GetUtcNow();
         var baseJson = new ImportBase { Title = name }.ToJson();
         await db.SaveChangesAsync(cancellationToken);
-        if (taken)
-        {
-            // The pages that have the tag are found by its new name.
-            await PageSearchText.RefreshPagesOfTagAsync(db, existing.InkpactId, cancellationToken);
-        }
-
         await db.ImportItems.Where(i => i.Id == existing.Id).ExecuteUpdateAsync(
             set =>
             {

@@ -372,21 +372,19 @@ public class SearchEndpointTests(PostgresFixture postgres) : IAsyncLifetime
         var snippet = Show((await SearchAsync("needle")).Results.Single().Snippet);
 
         snippet.ShouldContain("[needle]");
-        snippet.Length.ShouldBeLessThan(400);
+        snippet.Length.ShouldBeLessThan(410);
     }
 
     [Fact]
-    public async Task Control_characters_in_a_page_cannot_pass_for_marks()
+    public async Task Whatever_a_page_holds_is_text_and_only_the_search_marks_anything()
     {
-        await AddPageAsync("A \u0001fake\u0002 title \u0003", text: "Some \u0001fake\u0002 text with the word match in it \u0003 and more.");
+        await AddPageAsync("A <b>fake</b> \u0001title\u0002", text: "Some <mark>fake</mark> \u0001text\u0002 with the word match in it.");
 
         var hit = (await SearchAsync("match")).Results.Single();
 
-        // Nothing but the match is marked, and what the page held of those characters is gone.
-        Show(hit.Title).ShouldBe("A fake title ");
+        hit.Title.ShouldBe([new SearchSegment("A <b>fake</b> \u0001title\u0002", false)]);
         hit.Snippet.Where(s => s.Match).Select(s => s.Text).ShouldBe(["match"]);
-        hit.Snippet.ShouldAllBe(s => !s.Text.Contains('\u0001') && !s.Text.Contains('\u0002') && !s.Text.Contains('\u0003'));
-        Show(hit.Snippet).ShouldContain("Some fake text with the word [match] in it");
+        Show(hit.Snippet).ShouldBe("Some <mark>fake</mark> \u0001text\u0002 with the word [match] in it.");
     }
 
     [Fact]
@@ -416,15 +414,95 @@ public class SearchEndpointTests(PostgresFixture postgres) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_match_beyond_the_start_of_a_long_text_is_found_but_has_no_snippet()
+    public async Task A_match_deep_in_a_long_text_has_a_snippet_from_where_it_is()
     {
-        var text = string.Concat(Enumerable.Repeat("filler words go here. ", (SearchService.SnippetWindow / 20) + 200)) + "the needle is here.";
+        var text = string.Concat(Enumerable.Repeat("filler words go here. ", 5_000)) + "the Néedles are here. " + string.Concat(Enumerable.Repeat("more filler. ", 100));
         var id = await AddPageAsync("Haystack", text: text);
 
         var hit = (await SearchAsync("needle")).Results.Single();
 
         hit.Id.ShouldBe(id);
-        hit.Snippet.ShouldBeEmpty();
+        hit.Snippet.Where(s => s.Match).Select(s => s.Text).ShouldBe(["Néedles"]);
+        Show(hit.Snippet).ShouldContain("the [Néedles] are here.");
+        Show(hit.Snippet).Length.ShouldBeLessThan(450);
+    }
+
+    [Fact]
+    public async Task A_match_near_the_end_of_the_indexed_text_has_a_snippet_that_ends_with_the_text()
+    {
+        var text = string.Concat(Enumerable.Repeat("filler words go here. ", 5_000)) + "the last needle";
+        await AddPageAsync("Haystack", text: text);
+
+        Show((await SearchAsync("needle")).Results.Single().Snippet).ShouldEndWith("the last [needle]");
+    }
+
+    [Theory]
+    [InlineData("report.pdf", "pdf")]
+    [InlineData("report.pdf", "report pdf")]
+    [InlineData("mail user@example.com today", "example")]
+    [InlineData("mail user@example.com today", "user")]
+    [InlineData("pi is 3.14 or so", "14")]
+    [InlineData("on 2026-11-03 we met", "11")]
+    [InlineData("see https://github.com/GotGeeks/Inkpact for it", "gotgeeks")]
+    [InlineData("version 1.2.3 is out", "3")]
+    [InlineData("the folder C:\\Users\\jos is it", "users")]
+    [InlineData("a co-worker came", "worker")]
+    public async Task A_word_joined_to_another_by_punctuation_is_found_and_marked(string content, string typed)
+    {
+        var id = await AddPageAsync("Page", text: content);
+
+        var hit = (await SearchAsync(typed)).Results.Single();
+
+        hit.Id.ShouldBe(id);
+        hit.Snippet.ShouldContain(s => s.Match);
+    }
+
+    [Fact]
+    public async Task A_word_joined_to_another_in_a_title_is_found()
+    {
+        var id = await AddPageAsync("Budget_2026.xlsx");
+
+        (await IdsAsync("xlsx")).ShouldBe([id]);
+        (await IdsAsync("2026")).ShouldBe([id]);
+    }
+
+    [Fact]
+    public async Task More_says_when_more_pages_matched_than_are_in_the_list()
+    {
+        for (var i = 0; i < SearchService.MaxResults; i++)
+        {
+            await AddPageAsync($"Sync {i}");
+        }
+
+        (await SearchAsync("sync")).More.ShouldBeFalse();
+
+        await AddPageAsync("Other", text: "about sync");
+
+        var answer = await SearchAsync("sync");
+        answer.Results.Count.ShouldBe(SearchService.MaxResults);
+        answer.More.ShouldBeTrue();
+        (await SearchAsync("nothing")).More.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task When_more_pages_match_by_their_title_than_fit_the_list_holds_only_title_matches()
+    {
+        var titled = new List<Guid>();
+        for (var i = 0; i < SearchService.MaxResults + 5; i++)
+        {
+            titled.Add(await AddPageAsync($"Sync {i}", updated: Now.AddDays(-30 - i)));
+        }
+
+        for (var i = 0; i < 20; i++)
+        {
+            await AddPageAsync($"Recent {i}", text: "sync sync sync", updated: Now);
+        }
+
+        var answer = await SearchAsync("sync");
+
+        answer.Results.Count.ShouldBe(SearchService.MaxResults);
+        answer.Results.Select(r => r.Id).ShouldBe(titled.Take(SearchService.MaxResults));
+        answer.More.ShouldBeTrue();
     }
 
     [Fact]

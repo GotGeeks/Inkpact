@@ -50,6 +50,8 @@ public class SearchMigrationTests(PostgresFixture postgres)
         (await db.Database.SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM pg_extension WHERE extname = 'unaccent'").SingleAsync()).ShouldBe(1);
         (await db.Database.SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM pg_ts_config WHERE cfgname = 'inkpact_search'").SingleAsync()).ShouldBe(1);
         (await db.Database.SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM pg_indexes WHERE indexname IN ('ix_pages_search_vector', 'ix_pages_title_vector')").SingleAsync()).ShouldBe(2);
+        (await db.Database.SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM pg_trigger WHERE tgname IN ('page_tags_search', 'tags_search')").SingleAsync()).ShouldBe(2);
+        (await db.Database.SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM live_pages({workspaceId})").SingleAsync()).ShouldBe(2);
     }
 
     [Fact]
@@ -64,5 +66,7 @@ public class SearchMigrationTests(PostgresFixture postgres)
 
         (await db.Database.SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM information_schema.columns WHERE table_name = 'pages' AND column_name IN ('search_vector', 'title_vector', 'tag_text')").SingleAsync()).ShouldBe(0);
         (await db.Database.SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM pg_ts_config WHERE cfgname = 'inkpact_search'").SingleAsync()).ShouldBe(0);
+        (await db.Database.SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM pg_trigger WHERE tgname IN ('page_tags_search', 'tags_search')").SingleAsync()).ShouldBe(0);
+        (await db.Database.SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM pg_proc WHERE proname IN ('live_pages', 'refresh_tag_text', 'page_tags_changed', 'tag_renamed')").SingleAsync()).ShouldBe(0);
     }
 }

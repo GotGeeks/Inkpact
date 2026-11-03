@@ -4,59 +4,90 @@ namespace Inkpact.Api.Tests.Search;
 
 public class SearchHeadlineTests
 {
-    private const string Start = "\u0001";
-    private const string Stop = "\u0002";
-    private const string End = "\u0003";
-
     private static string Show(IEnumerable<SearchSegment> segments) =>
         string.Concat(segments.Select(s => s.Match ? $"[{s.Text}]" : s.Text));
 
-    [Fact]
-    public void A_match_in_the_middle_is_marked() =>
-        Show(SearchHeadline.Segments($"Weekly {Start}meeting{Stop} notes")).ShouldBe("Weekly [meeting] notes");
+    private static string Mark(string text, params string[] words) => Show(SearchHeadline.Mark(text, words, atStart: true, atEnd: true));
 
     [Fact]
-    public void A_match_at_the_start_and_at_the_end_is_marked()
-    {
-        Show(SearchHeadline.Segments($"{Start}Weekly{Stop} notes {Start}meeting{Stop}")).ShouldBe("[Weekly] notes [meeting]");
-    }
+    public void Every_word_that_starts_with_a_search_word_is_marked_whole() =>
+        Mark("Meetings and a meeting, met", "meet").ShouldBe("[Meetings] and a [meeting], met");
+
+    [Fact]
+    public void Case_and_accents_do_not_matter_and_the_text_keeps_its_own() =>
+        Mark("Het CAFÉ en het café", "cafe").ShouldBe("Het [CAFÉ] en het [café]");
+
+    [Fact]
+    public void An_accent_in_the_search_word_does_not_matter_either() =>
+        Mark("Het cafe", "Café").ShouldBe("Het [cafe]");
+
+    [Fact]
+    public void An_accent_written_as_a_letter_and_a_combining_mark_is_marked_with_its_mark() =>
+        Mark("een café hier", "cafe").ShouldBe("een [café] hier");
+
+    [Fact]
+    public void A_word_joined_to_the_one_before_by_punctuation_is_found() =>
+        Mark("see report.pdf or user@example.com", "pdf", "example").ShouldBe("see report.[pdf] or user@[example].com");
+
+    [Fact]
+    public void Only_the_start_of_a_word_counts() =>
+        Mark("decaf coffee", "caf").ShouldBe("decaf coffee");
+
+    [Fact]
+    public void Several_search_words_are_each_marked() =>
+        Mark("the weekly plan for the meeting", "meet", "week").ShouldBe("the [weekly] plan for the [meeting]");
 
     [Fact]
     public void Two_matches_next_to_each_other_are_one_piece() =>
-        SearchHeadline.Segments($"{Start}one{Stop}{Start}two{Stop}").ShouldBe([new SearchSegment("onetwo", true)]);
+        SearchHeadline.Mark("ab-ac", ["a"], true, true).ShouldBe([new SearchSegment("ab", true), new SearchSegment("-", false), new SearchSegment("ac", true)]);
 
     [Fact]
-    public void A_text_without_a_match_is_one_plain_piece() =>
-        SearchHeadline.Segments("Just a title").ShouldBe([new SearchSegment("Just a title", false)]);
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    public void Nothing_is_no_segments(string? headline) => SearchHeadline.Segments(headline).ShouldBeEmpty();
+    public void A_letter_outside_the_basic_plane_is_kept_whole() =>
+        Mark("𠀀𠀀 here", "𠀀").ShouldBe("[𠀀𠀀] here");
 
     [Fact]
-    public void The_end_of_a_fragment_becomes_a_gap_between_the_two()
+    public void Control_characters_in_the_text_are_text_and_never_marks() =>
+        Mark("a \u0001fake\u0002 mark and a match", "match").ShouldBe("a \u0001fake\u0002 mark and a [match]");
+
+    [Fact]
+    public void A_piece_from_the_middle_of_a_text_loses_the_partial_words_at_its_ends() =>
+        Show(SearchHeadline.Mark("ngs before the needle and after th", ["needle"], atStart: false, atEnd: false))
+            .ShouldBe("before the [needle] and after");
+
+    [Fact]
+    public void Nothing_to_mark_is_no_segments_and_a_snippet_without_a_match_is_left_out()
     {
-        var segments = SearchHeadline.Segments($"before {Start}sync{Stop} after{End}and {Start}sync{Stop} again");
+        SearchHeadline.Mark(null, ["a"], true, true).ShouldBeEmpty();
+        SearchHeadline.Mark("", ["a"], true, true).ShouldBeEmpty();
+        SearchHeadline.Mark("text", [], true, true).ShouldBeEmpty();
+        SearchHeadline.Mark("nothing here", ["zebra"], true, true).ShouldBe([new SearchSegment("nothing here", false)]);
+        SearchHeadline.OnlyWithMatch(SearchHeadline.Mark("nothing here", ["zebra"], true, true)).ShouldBeEmpty();
+    }
 
-        Show(segments).ShouldBe("before [sync] after … and [sync] again");
-        segments.Count(s => s.Match).ShouldBe(2);
+    // ---- the regular expression Postgres finds the first match with -----------------------------------------------------
+
+    [Fact]
+    public void The_pattern_finds_a_word_start_with_every_case_and_accent_of_each_letter()
+    {
+        var pattern = SearchHeadline.Pattern(["Café", "b2"]);
+
+        pattern.ShouldStartWith(@"\m(?:");
+        pattern.ShouldContain("é");
+        pattern.ShouldContain("É");
+        pattern.ShouldContain("C");
+        pattern.ShouldContain("2");
+        pattern.Split('|').Length.ShouldBe(2);
     }
 
     [Fact]
-    public void A_gap_does_not_leave_a_marked_piece_open() =>
-        SearchHeadline.Segments($"{Start}a{End}b").Select(s => s.Match).ShouldBe([true, false]);
+    public void The_pattern_of_a_letter_outside_the_latin_table_has_both_cases() =>
+        SearchHeadline.Pattern(["ж"]).ShouldBe(@"\m(?:[жЖ])");
 
     [Fact]
-    public void A_mark_that_is_never_closed_runs_to_the_end() =>
-        Show(SearchHeadline.Segments($"x {Start}open")).ShouldBe("x [open]");
-
-    [Fact]
-    public void A_snippet_without_a_match_is_left_out_because_the_page_matched_by_something_else()
+    public void The_pattern_holds_nothing_but_letters_digits_and_its_own_syntax()
     {
-        var plain = SearchHeadline.Segments("The start of a page that matched by its title.");
+        var pattern = SearchHeadline.Pattern(SearchWords.Split("a&b|c(d) e*f \\g [h]"));
 
-        SearchHeadline.OnlyWithMatch(plain).ShouldBeEmpty();
-        SearchHeadline.OnlyWithMatch(SearchHeadline.Segments($"a {Start}b{Stop}")).Count.ShouldBe(2);
+        pattern[@"\m(?:".Length..^1].Replace("[", "").Replace("]", "").Replace("|", "").ShouldAllBe(c => char.IsLetterOrDigit(c));
     }
 }
