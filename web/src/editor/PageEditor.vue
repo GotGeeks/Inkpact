@@ -18,6 +18,7 @@ import { createExtensions } from './extensions'
 import { applyFirstParagraph } from './firstParagraph'
 import BlockHandle from './BlockHandle.vue'
 import EditorToolbar from './EditorToolbar.vue'
+import LinkMenu from './LinkMenu.vue'
 import { sanitizePastedHtml } from './sanitize'
 import SlashMenu from './SlashMenu.vue'
 import { openLinkIn } from './linkOpening'
@@ -131,6 +132,7 @@ function keepCaretAboveToolbar(view: EditorView): boolean {
 /** Files on their way to the server; they go into the page once they are there. */
 const uploading = ref(0)
 const router = useRouter()
+const openLink = openLinkIn(router)
 
 function attributes() {
   return {
@@ -148,7 +150,7 @@ const editor = useEditor({
     // Written out, so the lint rule that finds unused translations can see the keys.
     checkboxLabel: (checked) => (checked ? t('editor.checkboxDone') : t('editor.checkboxNotDone')),
     slash: { state: slashState, translate: (key) => t(key) },
-    openLink: openLinkIn(router),
+    openLink,
     onBlockMoved: announceMove,
     dragHandle: {
       element: handleElement, // Leaving the block for the handle reports no block; the handle still belongs to the one it was next to.
@@ -193,6 +195,10 @@ const editor = useEditor({
 
 const inTable = computed(
   () => editable.value && focusWithin.value && editor.value?.isActive('table') === true,
+)
+
+const inLink = computed(
+  () => editable.value && focusWithin.value && editor.value?.isActive('link') === true,
 )
 
 watch(
@@ -242,6 +248,13 @@ defineExpose({ focus: () => editor.value?.commands.focus('start') })
       {{ t('editor.attachment.uploading', { count: uploading }, uploading) }}
     </p>
     <SlashMenu :state="slashState" :reserve-bottom="showToolbar ? TOOLBAR_HEIGHT : 0" />
+    <LinkMenu
+      v-if="editor && inLink"
+      :editor="editor"
+      :open="openLink"
+      @focusin="refreshFocus"
+      @focusout="focusChanged"
+    />
     <TableMenu
       v-if="editor && inTable"
       :editor="editor"

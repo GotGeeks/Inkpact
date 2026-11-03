@@ -59,7 +59,9 @@ public static class PageEndpoints
         PageSeed? seed = null;
         if (request.Id is { } id)
         {
-            if (id == Guid.Empty)
+            // Version 8 is what the import gives the pages it makes (PageIds), worked out in advance so links can point to
+            // them: a client that took one first would keep that note from being imported.
+            if (id == Guid.Empty || id.Version == 8)
             {
                 return Respond(new TreeError(StatusCodes.Status400BadRequest, "id_invalid", "id"));
             }

@@ -20,8 +20,8 @@ public static class NoteCodes
     public const string LinkRemoved = "link_removed";
 
     /// <summary>
-    /// A link to a note or notebook that is not in the export (or a file that could not be stored). A note: the link points
-    /// to the page that note will have once it is imported. A file: the text stayed.
+    /// A link to a note that this import does not make: not in the export (or a file that was deleted in Joplin, which looks
+    /// the same), or skipped. The link points to the page that note will have once it is imported.
     /// </summary>
     public const string NoteLinkMissing = "note_link_missing";
 

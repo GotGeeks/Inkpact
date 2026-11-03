@@ -93,8 +93,8 @@ internal sealed class ConversionContext(IResourceResolver resources, ConversionN
                 }
                 else
                 {
-                    // A resource of the export that could not be stored: its text stays.
-                    Notes.Add(NoteCodes.NoteLinkMissing);
+                    // A file of the export that could not be stored, or a tag: no link, its text stays.
+                    Notes.Add(NoteCodes.ResourceMissing);
                 }
 
                 return null;

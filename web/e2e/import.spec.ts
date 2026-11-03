@@ -197,10 +197,19 @@ test('a link between two imported notes opens the other note, and back', async (
   await closeDrawer(page)
   await expect(editorBody(page)).toContainText('Start of the trail.')
 
+  // A click places the cursor in the link, as in any text; the menu under it opens the page.
+  const start = page.url()
   await editorBody(page).getByRole('link', { name: 'Go to the destination' }).click()
+  await expect(page.getByTestId('link-open')).toHaveText('Open page')
+  expect(page.url()).toBe(start)
+  await page.getByTestId('link-open').click()
   await expect(editorBody(page)).toContainText('Destination page text.')
   await expect(page).toHaveURL(/\/p\/[0-9a-f-]{36}$/)
+  expect(page.url()).not.toBe(start)
 
   await editorBody(page).getByRole('link', { name: 'Back to the start' }).click()
+  await page.getByTestId('link-open').click()
   await expect(editorBody(page)).toContainText('Start of the trail.')
+  // One tab: opening a page did not open another.
+  expect(page.context().pages()).toHaveLength(1)
 })

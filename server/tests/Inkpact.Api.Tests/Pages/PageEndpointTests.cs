@@ -258,6 +258,19 @@ public class PageEndpointTests(PostgresFixture postgres) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task An_id_of_the_kind_the_import_works_out_in_advance_is_refused()
+    {
+        // What PageIds gives a Joplin note that is not imported yet, and a link already points to.
+        var reserved = Inkpact.Api.Import.PageIds.For(_workspaceId, "0123456789abcdef0123456789abcdef");
+
+        var response = await CreateWithContentAsync(reserved, [1, 2, 3]);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await response.ReadErrorAsync()).ShouldBe(new ApiError("id_invalid", "id"));
+        (await UseDbAsync(db => db.Pages.CountAsync())).ShouldBe(0);
+    }
+
+    [Fact]
     public async Task Content_without_an_id_content_that_is_not_base64_and_content_over_a_sync_message_are_refused()
     {
         var noId = await _owner.PostJsonAsync($"/api/workspaces/{_workspaceId}/pages", new { title = "A", content = "AQID" });

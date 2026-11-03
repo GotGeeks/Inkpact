@@ -95,6 +95,52 @@ public sealed class NoteLinkTests(PostgresFixture postgres) : ReimportHarness(po
     }
 
     [Fact]
+    public async Task A_link_to_a_note_this_import_skips_is_reported_as_one_it_does_not_make()
+    {
+        await StartAsync();
+        var jex = new JexBuilder()
+            .Folder("work")
+            .Note("a", "work", body: $"See {Link("binned", "binned")} and {Link("secret", "secret")}.")
+            .Note("binned", "work", body: "x", extra: new() { ["deleted_time"] = "1793358000000" })
+            .Note("secret", "work", body: "x", extra: new() { ["encryption_applied"] = "1" });
+
+        var import = await ImportAsync(jex);
+
+        EntryOf(import, "a").Reasons.Select(r => (r.Code, r.Count)).ShouldBe([(NoteCodes.NoteLinkMissing, 2)]);
+    }
+
+    [Fact]
+    public async Task A_link_to_a_tag_is_no_page_link_and_keeps_its_text()
+    {
+        await StartAsync();
+        var jex = new JexBuilder().Folder("work").Tag("urgent").Note("a", "work", body: $"See {Link("the tag", "urgent")}.");
+
+        var import = await ImportAsync(jex);
+
+        EntryOf(import, "a").Reasons.Select(r => r.Code).ShouldBe([NoteCodes.ResourceMissing]);
+    }
+
+    [Fact]
+    public async Task A_note_whose_id_another_page_has_taken_is_imported_with_an_id_of_its_own()
+    {
+        await StartAsync();
+        var taken = PageIds.For(WorkspaceId, JexBuilder.Id("b"));
+        await UseDbAsync(async db =>
+        {
+            db.Pages.Add(new Inkpact.Data.Entities.Page { Id = taken, WorkspaceId = WorkspaceId, Title = "Got there first", SortKey = "a0", CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+            return 0;
+        });
+
+        var import = await ImportAsync(new JexBuilder().Folder("work").Note("b", "work", body: "The note"));
+
+        CountsOf(import).Failed.ShouldBe(0);
+        var page = await PageOfAsync("b");
+        page.Id.ShouldNotBe(taken);
+        page.Title.ShouldBe("b");
+    }
+
+    [Fact]
     public async Task A_page_that_version_1_made_is_converted_again_and_one_changed_here_is_not()
     {
         await StartAsync();

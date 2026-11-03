@@ -1,8 +1,10 @@
+import { UUID } from './uuid'
+
 /** What a link may point to: web addresses and mail, and pages of this app; nothing a browser would run (`javascript:`, `data:`, `vbscript:`). */
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:', 'mailto:'])
 
 /** A page of this app, as the Joplin import writes a link between notes: exactly `/p/<id>`, no query, no fragment, no dots. */
-const PAGE_PATH = /^\/p\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/
+const PAGE_PATH = new RegExp(`^/p/(${UUID})$`)
 
 /** The id of the page a link points to, when it is a link to a page of this app (`/p/<id>`, or that address in full on this origin). */
 export function pageIdOfLink(
