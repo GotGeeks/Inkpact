@@ -79,6 +79,48 @@ public static class NoteCodes
     /// <summary>The note changed in Joplin and here since it was imported; this is Joplin's version, beside the one here.</summary>
     public const string ContentConflict = "content_conflict";
 
+    /// <summary>The title changed in Joplin and here: the one here stays.</summary>
+    public const string TitleKept = "title_kept";
+
+    /// <summary>The notebook the note was moved to in Joplin differs from where it was moved here: the page stays where it is.</summary>
+    public const string NotebookKept = "notebook_kept";
+
+    /// <summary>
+    /// Whether the note is a to-do changed in Joplin and here, or its to-do changed in both places in a way that cannot be
+    /// combined (a note that is no longer a to-do with a due date): the to-do here stays as it is.
+    /// </summary>
+    public const string TodoKept = "todo_kept";
+
+    /// <summary>Whether the to-do is completed changed in Joplin and here: the one here stays.</summary>
+    public const string CompletedKept = "completed_kept";
+
+    /// <summary>The due date changed in Joplin and here: the one here stays.</summary>
+    public const string DueKept = "due_kept";
+
+    /// <summary>The tag was renamed in Joplin and not taken over here (renamed here too, made by hand, or the name is taken). Detail: the name in Joplin.</summary>
+    public const string TagNameKept = "tag_name_kept";
+
+    /// <summary>
+    /// The item was imported by run 1.15, which did not keep what the other app had, so a field that differs between the two
+    /// could not be told apart from a change here: the value here stays. Said once for the item; the next import knows.
+    /// </summary>
+    public const string BaseUnknown = "base_unknown";
+
+    /// <summary>The note's notebook is in the trash here, so the page was not moved into it. Restore the notebook and import again.</summary>
+    public const string MoveTargetInTrash = "move_target_in_trash";
+
+    /// <summary>Moving the page there would put it below itself (moved the other way here): it stays where it is.</summary>
+    public const string MoveCycle = "move_cycle";
+
+    /// <summary>The notebook the item was moved to in Joplin is not imported (it is not in the export, or failed): the page stays.</summary>
+    public const string MoveTargetMissing = "move_target_missing";
+
+    /// <summary>The note is in Joplin's trash, but its page has changed here, so it stays.</summary>
+    public const string DeletedInJoplinKept = "deleted_in_joplin_kept";
+
+    /// <summary>The item is in Joplin's trash and unchanged here, but a page under it stays (changed here, made here, or kept by Joplin), so it stays too.</summary>
+    public const string DeletedInJoplinNotEmpty = "deleted_in_joplin_not_empty";
+
     /// <summary>The page's content was refused by the Yjs builder: a fault in the conversion, not in the note.</summary>
     public const string ConversionFailed = "conversion_failed";
 

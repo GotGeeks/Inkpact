@@ -121,6 +121,9 @@ public sealed partial class ImportRunner(
 
         public Dictionary<string, Guid> TagOf { get; } = new(StringComparer.Ordinal);
 
+        /// <summary>Notes and notebooks of an earlier import that Joplin has in its trash now and whose page is live here: see <see cref="TrashDeletedAsync"/>.</summary>
+        public List<DeletedItem> Deleted { get; } = [];
+
         public HashSet<string> ResourcesCounted { get; } = new(StringComparer.Ordinal);
 
         public int Total { get; set; }
@@ -258,6 +261,8 @@ public sealed partial class ImportRunner(
                 () => step.Kind == StepKind.Notebook ? ImportNotebookAsync(run, step, cancellationToken) : ImportNoteAsync(run, step, cancellationToken),
                 cancellationToken);
         }
+
+        await TrashDeletedAsync(run, cancellationToken);
     }
 
     /// <summary>
@@ -329,6 +334,14 @@ public sealed partial class ImportRunner(
             run.Processed++;
             if (reason == SkipReason.Trashed)
             {
+                if (run.Existing.ContainsKey(id) && run.PageOf.ContainsKey(id))
+                {
+                    // An earlier import made it, and it is live here: whether it follows Joplin into the trash is decided after the
+                    // rest of the import, when its fields are compared.
+                    run.Deleted.Add(new DeletedItem(kind, id, title));
+                    continue;
+                }
+
                 // Counted, not listed: the trash of a long-used Joplin is hundreds of notes nobody wants a line for.
                 run.Counts.Trashed++;
                 continue;
@@ -392,25 +405,6 @@ public sealed partial class ImportRunner(
         await MaybeFlushAsync(run, cancellationToken);
     }
 
-    /// <summary>
-    /// Whether an earlier import made this item: counted as already imported (or as in the trash, when the person has put
-    /// it there), and left alone.
-    /// </summary>
-    private static bool AlreadyThere(Run run, string id)
-    {
-        if (!run.Existing.ContainsKey(id))
-        {
-            return false;
-        }
-
-        if (!LeftInTrash(run, id))
-        {
-            run.Counts.AlreadyImported++;
-        }
-
-        return true;
-    }
-
     /// <summary>Whether an earlier import made this item and the person has put its page in the trash since: counted, and left there.</summary>
     private static bool LeftInTrash(Run run, string id)
     {
@@ -434,14 +428,14 @@ public sealed partial class ImportRunner(
             return;
         }
 
-        if (AlreadyThere(run, tag.Id))
+        if (run.Existing.TryGetValue(tag.Id, out var earlier))
         {
+            await ReimportTagAsync(run, tag, earlier, cancellationToken);
             return;
         }
 
         var bytes = await ReadItemAsync(run, tag.Offset, tag.Length, cancellationToken);
-        var name = ContentRules.Cut(ContentRules.CleanText(tag.Title).Replace('\t', ' ').Trim(), 200);
-        name = name.Length == 0 ? "-" : name;
+        var name = TagNameOf(tag);
         var normalized = name.ToLowerInvariant();
 
         await using var scope = scopes.CreateAsyncScope();
@@ -478,8 +472,14 @@ public sealed partial class ImportRunner(
     private async Task ImportNotebookAsync(Run run, ImportStep step, CancellationToken cancellationToken)
     {
         var folder = run.Index.Folders[step.Id];
-        if (AlreadyThere(run, folder.Id))
+        if (LeftInTrash(run, folder.Id))
         {
+            return;
+        }
+
+        if (run.Existing.TryGetValue(folder.Id, out var existing))
+        {
+            await ReimportNotebookAsync(run, step, folder, existing, cancellationToken);
             return;
         }
 
@@ -739,13 +739,14 @@ public sealed partial class ImportRunner(
 
     /// <summary>
     /// The hash the fast path compares (<c>import_items.content_hash</c>): the note's file, and the version of each file of
-    /// the export it uses, since a file whose bytes changed leaves the note's own file as it was. A note that uses no files
-    /// hashes as its file alone, as run 1.15 hashed it.
+    /// the export it uses, since a file whose bytes changed leaves the note's own file as it was, and its tags, which a JEX keeps
+    /// as items of their own. A note that uses no files and has no tags hashes as its file alone, as run 1.15 hashed it.
     /// </summary>
-    private static string ContentHashOf(Run run, byte[] bytes, string text)
+    private static string ContentHashOf(Run run, JexNote note, byte[] bytes, string text)
     {
         var resources = ResourcesOf(run, text);
-        if (resources.Count == 0)
+        var tags = TagIdsHere(run, run.Index.TagsOfNote.GetValueOrDefault(note.Id, []));
+        if (resources.Count == 0 && tags.Count == 0)
         {
             return HashOf(bytes);
         }
@@ -755,6 +756,11 @@ public sealed partial class ImportRunner(
         foreach (var resource in resources)
         {
             hash.AppendData(Encoding.UTF8.GetBytes($"\n{resource.Id}:{resource.Version}"));
+        }
+
+        foreach (var tag in tags)
+        {
+            hash.AppendData(Encoding.UTF8.GetBytes($"\ntag:{tag}"));
         }
 
         return Convert.ToHexStringLower(hash.GetHashAndReset());
@@ -782,7 +788,7 @@ public sealed partial class ImportRunner(
         IsTodo = note.IsTodo,
         TodoDue = note.IsTodo ? note.Due?.ToUnixTimeMilliseconds() : null,
         TodoCompleted = note.IsTodo ? note.Completed?.ToUnixTimeMilliseconds() : null,
-        TagIds = [.. run.Index.TagsOfNote.GetValueOrDefault(note.Id, []).Order(StringComparer.Ordinal)],
+        TagIds = TagIdsHere(run, run.Index.TagsOfNote.GetValueOrDefault(note.Id, [])),
     };
 
     /// <summary>
@@ -843,7 +849,7 @@ public sealed partial class ImportRunner(
         }
 
         var row = NewItem(
-            run, "note", note.Id, pageId, ContentHashOf(run, itemBytes, Encoding.UTF8.GetString(itemBytes)), built, BaseOf(run, note, title, ContentKeyOf(run, note, body)));
+            run, "note", note.Id, pageId, ContentHashOf(run, note, itemBytes, Encoding.UTF8.GetString(itemBytes)), built, BaseOf(run, note, title, ContentKeyOf(run, note, body)));
         db.ImportItems.Add(row);
         await db.SaveChangesAsync(cancellationToken);
         // The page's update has its number now: nothing after it in the log means nobody wrote to the page since.
@@ -899,13 +905,14 @@ public sealed partial class ImportRunner(
     /// imported (the content key in the item's base), what Joplin has now, and what the page is now (its fingerprint).
     /// Changed only in Joplin: the page's content is replaced, through the hub so that open editors see it. Changed only
     /// here: left alone. Changed in both: the page here is left alone and Joplin's version becomes a page beside it, so
-    /// nothing is lost on either side. The note's title, place, to-do fields and tags are not looked at yet (run 1.16b).
+    /// nothing is lost on either side. The note's title, place, to-do fields and tags are compared first, each on its own
+    /// (<see cref="ApplyFieldsAsync"/>).
     /// </summary>
     private async Task ReimportNoteAsync(Run run, JexNote note, ExistingItem existing, CancellationToken cancellationToken)
     {
         var bytes = await ReadItemAsync(run, note.Offset, note.Length, cancellationToken);
         var text = Encoding.UTF8.GetString(bytes);
-        var hash = ContentHashOf(run, bytes, text);
+        var hash = ContentHashOf(run, note, bytes, text);
         var outdated = existing.ConverterVersion < ImportOptions.ConverterVersion;
         if (existing.HasBase && hash == existing.ContentHash && !outdated)
         {
@@ -919,30 +926,44 @@ public sealed partial class ImportRunner(
         var contentKey = ContentKeyOf(run, note, item.Body);
 
         // An item of run 1.15 has no base, and its hash is of the note's file alone (it kept nothing of the files the note
-        // uses). When that file did not change, run 1.15 imported this very version: it becomes the base, and the item
-        // takes the fast path from now on. A file of the note whose bytes changed since cannot be told, and is not.
+        // uses, nor of its tags). When that file did not change, run 1.15 imported this very version: what the file holds is
+        // the base, except for the tags, which are not in it. A file of the note whose bytes changed since cannot be told.
         var fileHash = HashOf(bytes);
+        var row = await ReadItemRowAsync(existing.Id, cancellationToken);
+        var baseInfo = ImportBase.FromJson(row.Base);
         if (!existing.HasBase && fileHash == existing.ContentHash && !outdated)
         {
-            var itemBase = BaseOf(run, note, CleanTitle(note.Title, new ConversionNotes()), contentKey).ToJson();
-            await UpdateItemAsync(existing.Id, set => set.SetProperty(i => i.ContentHash, hash).SetProperty(i => i.Base, itemBase), cancellationToken);
-            (existing.ContentHash, existing.HasBase) = (hash, true);
-            run.Counts.AlreadyImported++;
+            baseInfo = BaseOf(run, note, CleanTitle(note.Title, new ConversionNotes()), contentKey) with { TagIds = null };
+        }
+
+        var changedInJoplin = baseInfo?.ContentKey is { } known ? known != contentKey : fileHash != existing.ContentHash;
+        var contentToDo = changedInJoplin || outdated;
+
+        // The fields first: title, place, to-do fields and tags. The hash moves only when nothing more is to be done to the
+        // item, since it is what lets the next import skip it: with the content still to be written, the content step moves it.
+        var fields = await ApplyFieldsAsync(
+            run, existing, FieldsOf(run, note), baseInfo, contentToDo ? null : contentKey, contentToDo ? null : hash, cancellationToken);
+        if (fields.InTrash)
+        {
+            run.Counts.AlreadyInTrash++;
             return;
         }
 
-        var row = await ReadItemRowAsync(existing.Id, cancellationToken);
-        var baseInfo = ImportBase.FromJson(row.Base);
-        var changedInJoplin = baseInfo?.ContentKey is { } known ? known != contentKey : fileHash != existing.ContentHash;
-        if (!changedInJoplin && !outdated)
+        existing.HasBase = true;
+        baseInfo = fields.Base;
+        if (!contentToDo)
         {
-            // Only Joplin's bookkeeping or the note's fields changed, which this run does not take over (run 1.16b). The
-            // hash moves on so the next import takes the fast path again; the base keeps the fields as they were.
-            await UpdateItemAsync(existing.Id, set => set.SetProperty(i => i.ContentHash, hash), cancellationToken);
-            existing.ContentHash = hash;
-            run.Counts.AlreadyImported++;
+            if (!fields.Retry)
+            {
+                existing.ContentHash = hash;
+            }
+
+            ReportFields(run, "note", note.Id, note.Title, existing.InkpactId, fields);
             return;
         }
+
+        // A move that was refused leaves the old hash, so the item is looked at again next time.
+        var hashToStore = fields.Retry ? existing.ContentHash : hash;
 
         for (var attempt = 1; ; attempt++)
         {
@@ -956,6 +977,11 @@ public sealed partial class ImportRunner(
                 : false;
 
             var reasons = new ConversionNotes();
+            foreach (var reason in fields.Reasons)
+            {
+                reasons.Add(reason);
+            }
+
             BuiltNote? replacement = null;
             if (!changedHere)
             {
@@ -966,7 +992,7 @@ public sealed partial class ImportRunner(
 
             if (changedInJoplin && changedHere)
             {
-                await MakeConflictCopyAsync(run, note, item.Body, hash, contentKey, existing, baseInfo, cancellationToken);
+                await MakeConflictCopyAsync(run, note, item.Body, hashToStore, contentKey, existing, baseInfo, cancellationToken);
                 return;
             }
 
@@ -976,12 +1002,12 @@ public sealed partial class ImportRunner(
                 // looked at again.
                 await UpdateItemAsync(existing.Id, set => set.SetProperty(i => i.ConverterVersion, ImportOptions.ConverterVersion), cancellationToken);
                 existing.ConverterVersion = ImportOptions.ConverterVersion;
-                run.Counts.KeptInInkpact++;
+                ReportFields(run, "note", note.Id, note.Title, existing.InkpactId, fields, contentKept: true);
                 return;
             }
 
             var replaced = await WriteReplacementAsync(
-                run, scope, note, replacement!, reasons, hash, contentKey, existing, baseInfo, content, changedInJoplin, cancellationToken);
+                run, scope, note, replacement!, reasons, hashToStore, contentKey, existing, baseInfo, content, changedInJoplin, cancellationToken);
             if (replaced != Replaced.PageChanged)
             {
                 return;
@@ -1116,7 +1142,8 @@ public sealed partial class ImportRunner(
             var seq = update.Seq;
 
             await db.Pages.Where(p => p.Id == pageId).ExecuteUpdateAsync(
-                set => set.SetProperty(p => p.ContentText, text).SetProperty(p => p.UpdatedAt, updatedAt), token);
+                // Joplin's time, but never back: the field step may have set the time of the import, or a person a later one.
+                set => set.SetProperty(p => p.ContentText, text).SetProperty(p => p.UpdatedAt, p => p.UpdatedAt > updatedAt ? p.UpdatedAt : updatedAt), token);
             await db.ImportItems.Where(i => i.Id == existing.Id).ExecuteUpdateAsync(
                 set => set.SetProperty(i => i.ContentHash, hash)
                     .SetProperty(i => i.Base, next)
@@ -1163,7 +1190,7 @@ public sealed partial class ImportRunner(
 
         if (!reasons.IsEmpty)
         {
-            // The title is not taken over (run 1.16b), so cleaning it is no reason here; it only names the line.
+            // The field step said how the title was cleaned when it took it (it is in the reasons); here it only names the line.
             AddEntry(run, new ReportEntry("note", note.Id, ShortTitle(CleanTitle(note.Title, new ConversionNotes())), ReportStatus.Updated, reasons.ToList(), pageId));
         }
 

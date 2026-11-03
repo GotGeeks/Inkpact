@@ -45,12 +45,32 @@ const serverCodes = [
   'notebook_in_trash',
   'parent_failed',
   'content_conflict',
+  'title_kept',
+  'notebook_kept',
+  'todo_kept',
+  'completed_kept',
+  'due_kept',
+  'tag_name_kept',
+  'base_unknown',
+  'move_target_in_trash',
+  'move_cycle',
+  'move_target_missing',
+  'deleted_in_joplin_kept',
+  'deleted_in_joplin_not_empty',
   'conversion_failed',
   'item_failed',
 ]
 
 // Every status the server gives an item in a report (ReportStatus in the server's ImportReport.cs).
-const serverStatuses = ['imperfect', 'conflict', 'skipped', 'failed', 'updated', 'conflict_copy']
+const serverStatuses = [
+  'imperfect',
+  'conflict',
+  'skipped',
+  'failed',
+  'updated',
+  'kept',
+  'conflict_copy',
+]
 
 describe('useImportMessages', () => {
   it.each(['en', 'nl'] as const)(
@@ -87,6 +107,15 @@ describe('useImportMessages', () => {
     )
   })
 
+  it.each(['en', 'nl'] as const)(
+    'puts the name Joplin gave a tag in the sentence in %s',
+    (locale) => {
+      const { reason } = messagesIn(locale)
+
+      expect(reason({ code: 'tag_name_kept', detail: 'Job', count: 1 })).toContain('“Job”')
+    },
+  )
+
   it('says so when a relative link was removed, and which address otherwise', () => {
     const { reason } = messagesIn('en')
 
@@ -114,13 +143,16 @@ describe('useImportMessages', () => {
     const { status, kind } = messagesIn('en')
 
     expect(
-      ['imperfect', 'conflict', 'skipped', 'failed', 'updated', 'conflict_copy'].map(status),
+      ['imperfect', 'conflict', 'skipped', 'failed', 'updated', 'kept', 'conflict_copy'].map(
+        status,
+      ),
     ).toEqual([
       'Imported, with changes',
       'Joplin conflict',
       'Skipped',
       'Failed',
       'Brought up to date',
+      'Left as it is',
       'Changed in both places',
     ])
     expect(['notebook', 'note', 'tag'].map(kind)).toEqual(['Notebook', 'Note', 'Tag'])

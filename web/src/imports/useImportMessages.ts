@@ -73,6 +73,30 @@ export function useImportMessages() {
         return t('import.reasons.parent_failed')
       case 'content_conflict':
         return t('import.reasons.content_conflict')
+      case 'title_kept':
+        return t('import.reasons.title_kept')
+      case 'notebook_kept':
+        return t('import.reasons.notebook_kept')
+      case 'todo_kept':
+        return t('import.reasons.todo_kept')
+      case 'completed_kept':
+        return t('import.reasons.completed_kept')
+      case 'due_kept':
+        return t('import.reasons.due_kept')
+      case 'tag_name_kept':
+        return t('import.reasons.tag_name_kept', { detail })
+      case 'base_unknown':
+        return t('import.reasons.base_unknown')
+      case 'move_target_in_trash':
+        return t('import.reasons.move_target_in_trash')
+      case 'move_cycle':
+        return t('import.reasons.move_cycle')
+      case 'move_target_missing':
+        return t('import.reasons.move_target_missing')
+      case 'deleted_in_joplin_kept':
+        return t('import.reasons.deleted_in_joplin_kept')
+      case 'deleted_in_joplin_not_empty':
+        return t('import.reasons.deleted_in_joplin_not_empty')
       case 'conversion_failed':
         return t('import.reasons.conversion_failed')
       case 'item_failed':
@@ -94,6 +118,8 @@ export function useImportMessages() {
         return t('import.status.failed')
       case 'updated':
         return t('import.status.updated')
+      case 'kept':
+        return t('import.status.kept')
       case 'conflict_copy':
         return t('import.status.conflict_copy')
       default:

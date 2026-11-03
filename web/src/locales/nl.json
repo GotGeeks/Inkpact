@@ -256,7 +256,7 @@
       "step1": "Kies in Joplin desktop Bestand, Alles exporteren, en dan JEX - Joplin Export File.",
       "step2": "Exporteer met ontsleutelde notities. Notities die in het bestand nog versleuteld zijn, worden overgeslagen.",
       "step3": "Kies hieronder het .jex-bestand. Een grote export kan een paar minuten duren.",
-      "again": "Een nieuwere export later importeren werkt de notities bij die je in Joplin hebt gewijzigd. Wat je hier hebt gewijzigd blijft: een notitie die op beide plekken is gewijzigd krijgt de versie uit Joplin als kopie ernaast."
+      "again": "Een nieuwere export later importeren werkt bij wat je in Joplin hebt gewijzigd: de tekst, titel, het notitieboek, de labels en de datums van een taak. Wat je hier hebt gewijzigd blijft: een notitie die op beide plekken is gewijzigd krijgt de versie uit Joplin als kopie ernaast. Een notitie die je in Joplin in de prullenbak hebt gezet, gaat hier ook naar de prullenbak, tenzij je hem hier hebt gewijzigd."
     },
     "choose": {
       "button": "Kies een .jex-bestand",
@@ -299,13 +299,14 @@
       "files": "Bestanden"
     },
     "left": {
-      "updated": "{count} notitie is in Joplin gewijzigd en hier bijgewerkt. | {count} notities zijn in Joplin gewijzigd en hier bijgewerkt.",
+      "updated": "{count} item is in Joplin gewijzigd en hier bijgewerkt. | {count} items zijn in Joplin gewijzigd en hier bijgewerkt.",
       "reconverted": "{count} notitie is opnieuw omgezet door een nieuwere versie van de import. | {count} notities zijn opnieuw omgezet door een nieuwere versie van de import.",
       "conflicts": "{count} notitie is in Joplin én hier gewijzigd: die van jou is gebleven, en de versie uit Joplin staat er als kopie naast. | {count} notities zijn in Joplin én hier gewijzigd: die van jou zijn gebleven, en de versies uit Joplin staan er als kopie naast.",
       "alreadyImported": "{count} item was al eerder geïmporteerd en is met rust gelaten. | {count} items waren al eerder geïmporteerd en zijn met rust gelaten.",
-      "keptInInkpact": "{count} notitie is alleen hier gewijzigd en is gelaten zoals ze is. | {count} notities zijn alleen hier gewijzigd en zijn gelaten zoals ze zijn.",
+      "keptInInkpact": "{count} item is hier gelaten zoals het was in plaats van bijgewerkt. | {count} items zijn hier gelaten zoals ze waren in plaats van bijgewerkt.",
       "alreadyInTrash": "{count} eerder geïmporteerd item staat hier in de prullenbak en is daar gelaten. | {count} eerder geïmporteerde items staan hier in de prullenbak en zijn daar gelaten.",
       "trashed": "{count} notitie zat in de prullenbak van Joplin en is niet geïmporteerd. | {count} notities zaten in de prullenbak van Joplin en zijn niet geïmporteerd.",
+      "movedToTrash": "{count} item zat in de prullenbak van Joplin en is hier ook naar de prullenbak gegaan. | {count} items zaten in de prullenbak van Joplin en zijn hier ook naar de prullenbak gegaan.",
       "skipped": "{count} item is overgeslagen. | {count} items zijn overgeslagen.",
       "failed": "{count} item kon niet worden geïmporteerd. | {count} items konden niet worden geïmporteerd.",
       "unlisted": "{count} regel meer staat niet hieronder. | {count} regels meer staan niet hieronder."
@@ -323,7 +324,8 @@
       "skipped": "Overgeslagen",
       "failed": "Mislukt",
       "updated": "Bijgewerkt",
-      "conflict_copy": "Op beide plekken gewijzigd"
+      "conflict_copy": "Op beide plekken gewijzigd",
+      "kept": "Gelaten zoals het was"
     },
     "kind": {
       "notebook": "Notitieboek",
@@ -361,7 +363,19 @@
       "parent_failed": "Het notitieboek kon niet worden geïmporteerd, dus dit is ook niet geïmporteerd.",
       "content_conflict": "De notitie is in Joplin én hier gewijzigd. Jouw versie is gebleven zoals ze was; dit is de versie uit Joplin, ernaast.",
       "conversion_failed": "De inhoud kon niet worden omgezet. Dit is een fout in Inkpact, niet in je notitie.",
-      "item_failed": "Er ging iets mis bij het importeren. Het serverlog heeft de details."
+      "item_failed": "Er ging iets mis bij het importeren. Het serverlog heeft de details.",
+      "title_kept": "De titel is in Joplin én hier gewijzigd. De titel hier is gebleven.",
+      "notebook_kept": "Het is in Joplin naar een ander notitieboek verplaatst en hier naar een andere plek. Het blijft waar jij het hebt gezet.",
+      "todo_kept": "Of het een taak is, is in Joplin én hier gewijzigd. De instelling hier is gebleven.",
+      "completed_kept": "Of het klaar is, is in Joplin én hier gewijzigd. De instelling hier is gebleven.",
+      "due_kept": "De deadline is in Joplin én hier gewijzigd. De datum hier is gebleven.",
+      "tag_name_kept": "Het label is in Joplin hernoemd naar “{detail}”, maar is hier gelaten zoals het was: het is hier ook hernoemd, het is met de hand gemaakt, of een ander label heeft die naam.",
+      "base_unknown": "Een oudere versie van de import heeft dit gemaakt, dus Inkpact kan niet zien wat waar is gewijzigd. Wat verschilt is hier gelaten zoals het was; de volgende import weet het wel.",
+      "move_target_in_trash": "Het is verplaatst naar een notitieboek dat hier in de prullenbak staat, dus het is gebleven waar het was. Zet het notitieboek terug en importeer opnieuw.",
+      "move_cycle": "Verplaatsen zoals in Joplin zou het in zichzelf zetten, door een verplaatsing die hier is gedaan. Het is gebleven waar het was.",
+      "move_target_missing": "Het is verplaatst naar een notitieboek dat niet is geïmporteerd, dus het is gebleven waar het was.",
+      "deleted_in_joplin_kept": "Het staat in de prullenbak van Joplin, maar het is hier gewijzigd, dus het is niet naar de prullenbak gegaan.",
+      "deleted_in_joplin_not_empty": "Het staat in de prullenbak van Joplin, maar een pagina erin blijft hier, dus het is ook niet naar de prullenbak gegaan."
     },
     "another": "Nog een bestand importeren",
     "toPages": "Naar je pagina’s"

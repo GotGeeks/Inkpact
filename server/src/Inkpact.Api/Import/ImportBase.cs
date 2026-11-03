@@ -5,7 +5,8 @@ namespace Inkpact.Api.Import;
 /// <summary>
 /// What the other app had of an item when it was last imported, field by field (<c>import_items.base</c>): the third value
 /// of a three-way comparison, next to the other app's value now and ours. Only the fields of the item's kind are set. A
-/// field moves only when its value has been taken over here, so a change that was left alone is still seen next time.
+/// field moves to the other app's value as soon as that value has been seen, also when the value here is kept (so it is
+/// reported once); only a move that was refused leaves the notebook as it was, so the next import tries it again.
 /// </summary>
 public sealed record ImportBase
 {
@@ -34,7 +35,7 @@ public sealed record ImportBase
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public long? TodoCompleted { get; init; }
 
-    /// <summary>The Joplin ids of the tags on the note, in order.</summary>
+    /// <summary>The Joplin ids of the tags on the note that exist here, sorted; null on an item whose tags were never compared (run 1.15).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<string>? TagIds { get; init; }
 

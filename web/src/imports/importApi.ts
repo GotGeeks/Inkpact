@@ -17,10 +17,12 @@ export interface ImportCounts {
   updated?: number
   /** Notes nobody changed here, converted again by a newer version of the import. */
   reconverted?: number
-  /** Notes that changed only here, and were left as they are. */
+  /** Items that were changed here, and were left as they are. */
   keptInInkpact?: number
   /** Notes that changed in Joplin and here: Joplin's version became a copy beside the page. */
   conflicts?: number
+  /** Items that were in Joplin's trash and unchanged here, and were put in the trash here too. */
+  movedToTrash?: number
   alreadyInTrash: number
   trashed: number
   skipped: number
@@ -37,7 +39,7 @@ export interface ImportReason {
 }
 
 export type ReportStatus =
-  'imperfect' | 'conflict' | 'skipped' | 'failed' | 'updated' | 'conflict_copy'
+  'imperfect' | 'conflict' | 'skipped' | 'failed' | 'updated' | 'kept' | 'conflict_copy'
 
 export interface ReportEntry {
   kind: 'notebook' | 'note' | 'tag'

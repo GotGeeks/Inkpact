@@ -256,7 +256,7 @@
       "step1": "In Joplin desktop, choose File, Export all, and then JEX - Joplin Export File.",
       "step2": "Export with the notes decrypted. Notes that are still encrypted in the file are skipped.",
       "step3": "Choose the .jex file below. A large export can take a few minutes.",
-      "again": "Importing a newer export later brings the notes you changed in Joplin up to date. What you changed here is kept: a note changed in both places gets Joplin’s version as a copy beside it."
+      "again": "Importing a newer export later brings what you changed in Joplin up to date: a note’s text, title, notebook, tags and to-do dates. What you changed here is kept: a note changed in both places gets Joplin’s version as a copy beside it. A note that you put in Joplin’s trash goes to the trash here too, unless you changed it here."
     },
     "choose": {
       "button": "Choose a .jex file",
@@ -299,13 +299,14 @@
       "files": "Files"
     },
     "left": {
-      "updated": "{count} note changed in Joplin and was brought up to date here. | {count} notes changed in Joplin and were brought up to date here.",
+      "updated": "{count} item changed in Joplin and was brought up to date here. | {count} items changed in Joplin and were brought up to date here.",
       "reconverted": "{count} note was converted again by a newer version of the import. | {count} notes were converted again by a newer version of the import.",
       "conflicts": "{count} note changed in Joplin and here: yours was kept, and Joplin’s version is a copy beside it. | {count} notes changed in Joplin and here: yours were kept, and Joplin’s versions are copies beside them.",
       "alreadyImported": "{count} item was already imported earlier and was left alone. | {count} items were already imported earlier and were left alone.",
-      "keptInInkpact": "{count} note changed only here and was left as it is. | {count} notes changed only here and were left as they are.",
+      "keptInInkpact": "{count} item was left as it is here instead of being brought up to date. | {count} items were left as they are here instead of being brought up to date.",
       "alreadyInTrash": "{count} item imported earlier is in the trash here and was left there. | {count} items imported earlier are in the trash here and were left there.",
       "trashed": "{count} note was in Joplin’s trash and was not imported. | {count} notes were in Joplin’s trash and were not imported.",
+      "movedToTrash": "{count} item was in Joplin’s trash and was put in the trash here too. | {count} items were in Joplin’s trash and were put in the trash here too.",
       "skipped": "{count} item was skipped. | {count} items were skipped.",
       "failed": "{count} item could not be imported. | {count} items could not be imported.",
       "unlisted": "{count} more line is not listed below. | {count} more lines are not listed below."
@@ -323,7 +324,8 @@
       "skipped": "Skipped",
       "failed": "Failed",
       "updated": "Brought up to date",
-      "conflict_copy": "Changed in both places"
+      "conflict_copy": "Changed in both places",
+      "kept": "Left as it is"
     },
     "kind": {
       "notebook": "Notebook",
@@ -361,7 +363,19 @@
       "parent_failed": "Its notebook could not be imported, so this was not imported either.",
       "content_conflict": "The note changed in Joplin and here. Your version is kept as it was; this is Joplin’s version, beside it.",
       "conversion_failed": "Its content could not be converted. This is a fault in Inkpact, not in your note.",
-      "item_failed": "Something went wrong while importing it. The server log has the details."
+      "item_failed": "Something went wrong while importing it. The server log has the details.",
+      "title_kept": "The title changed in Joplin and here. The title here was kept.",
+      "notebook_kept": "It was moved to another notebook in Joplin and to another place here. It stays where you put it.",
+      "todo_kept": "Whether it is a to-do changed in Joplin and here. The setting here was kept.",
+      "completed_kept": "Whether it is done changed in Joplin and here. The setting here was kept.",
+      "due_kept": "The due date changed in Joplin and here. The date here was kept.",
+      "tag_name_kept": "The tag was renamed to “{detail}” in Joplin, but it was left as it is here: it was renamed here too, it was made by hand, or another tag has that name.",
+      "base_unknown": "An older version of the import made this, so Inkpact cannot tell what changed where. What differs was left as it is here; the next import will know.",
+      "move_target_in_trash": "It was moved to a notebook that is in the trash here, so it stayed where it is. Restore the notebook and import again.",
+      "move_cycle": "Moving it as Joplin did would put it inside itself, because of a move made here. It stayed where it is.",
+      "move_target_missing": "It was moved to a notebook that was not imported, so it stayed where it is.",
+      "deleted_in_joplin_kept": "It is in Joplin’s trash, but it was changed here, so it was not put in the trash.",
+      "deleted_in_joplin_not_empty": "It is in Joplin’s trash, but a page inside it stays here, so it was not put in the trash either."
     },
     "another": "Import another file",
     "toPages": "Go to your pages"

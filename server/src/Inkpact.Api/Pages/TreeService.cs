@@ -250,16 +250,9 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
             return new TreeError(StatusCodes.Status409Conflict, "page_in_trash");
         }
 
-        if (await CheckParentAsync(page.WorkspaceId, position.ParentId, cancellationToken) is { } parentError)
+        if (await CheckMoveAsync(pageId, page.WorkspaceId, position.ParentId, cancellationToken) is { } moveError)
         {
-            return parentError;
-        }
-
-        // The new parent may not be the page, nor anything below it: that would cut the page off from the tree.
-        if (position.ParentId is { } parentId
-            && (await GetChainAsync(parentId, cancellationToken)).Any(link => link.Id == pageId))
-        {
-            return new TreeError(StatusCodes.Status409Conflict, "move_cycle", "parentId");
+            return moveError;
         }
 
         var key = await ResolveKeyAsync(page.WorkspaceId, pageId, position, cancellationToken);
@@ -275,6 +268,26 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return new PageChange(ToDto(page), conflict);
+    }
+
+    /// <summary>
+    /// Whether a page may go under this parent (null: the top level): the parent is a page of the workspace that is not in the
+    /// trash, and it is not the page nor anything below it, which would cut the page off from the tree. Reads on the caller's
+    /// transaction, so the Joplin import applies the same rules as a person's move.
+    /// </summary>
+    internal async Task<TreeError?> CheckMoveAsync(Guid pageId, Guid workspaceId, Guid? parentId, CancellationToken cancellationToken)
+    {
+        if (await CheckParentAsync(workspaceId, parentId, cancellationToken) is { } parentError)
+        {
+            return parentError;
+        }
+
+        if (parentId is { } parent && (await GetChainAsync(parent, cancellationToken)).Any(link => link.Id == pageId))
+        {
+            return new TreeError(StatusCodes.Status409Conflict, "move_cycle", "parentId");
+        }
+
+        return null;
     }
 
     /// <summary>Puts a page in the trash. Its children are not touched: they are in the trash because the page is.</summary>
