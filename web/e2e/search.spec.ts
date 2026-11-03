@@ -90,7 +90,12 @@ test('the arrow keys choose a result, and the last search is there when it opens
   await input(page).fill(token)
   await expect(page.getByRole('option')).toHaveCount(2)
   await page.keyboard.press('ArrowDown')
-  await expect(page.getByRole('option').nth(1)).toHaveAttribute('aria-selected', 'true')
+  const second = page.getByRole('option').nth(1)
+  await expect(second).toHaveAttribute('data-highlighted', '')
+  await expect(input(page)).toHaveAttribute(
+    'aria-activedescendant',
+    (await second.getAttribute('id'))!,
+  )
   const chosen = await page.getByRole('option').nth(1).getAttribute('data-page-id')
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL(new RegExp(`/p/${chosen}$`))

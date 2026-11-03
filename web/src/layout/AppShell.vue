@@ -7,11 +7,12 @@ import {
   DialogRoot,
   DialogTitle,
 } from 'reka-ui'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import SearchDialog from '../search/SearchDialog.vue'
+import { isSearchShortcut } from '../search/shortcut'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationsStore } from '../stores/notifications'
@@ -98,10 +99,21 @@ watch(wide, (isWide) => {
 })
 
 /** Ctrl+K, or Cmd+K on a Mac, from anywhere in the app, also inside the editor. */
-function onShortcut(event: KeyboardEvent) {
-  if (event.key.toLowerCase() !== 'k' || event.altKey || event.shiftKey) return
-  if (!(event.ctrlKey || event.metaKey)) return
+async function onShortcut(event: KeyboardEvent) {
+  if (!isSearchShortcut(event)) return
   event.preventDefault()
+  if (drawerOpen.value) {
+    // Two dialogs do not share the focus: the drawer makes way, as for the Search row in it.
+    drawerOpen.value = false
+    await nextTick()
+  } else if (
+    document.querySelector(
+      '[role="dialog"]:not([data-testid="search-dialog"]), [role="alertdialog"]',
+    )
+  ) {
+    // Another dialog (moving a page, say) is being answered: it is finished or closed first.
+    return
+  }
   search.show()
 }
 

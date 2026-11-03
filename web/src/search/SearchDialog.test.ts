@@ -2,7 +2,7 @@ import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RouterView } from 'vue-router'
 import { SEARCH_DEBOUNCE_MS } from '../stores/search'
-import { mountAt } from '../testing/helpers'
+import { jsonResponse, mountAt } from '../testing/helpers'
 import { fakeTree, outline } from '../testing/treeFixtures'
 import type { SearchHit, SearchResponse, SearchSegment } from './types'
 
@@ -64,8 +64,13 @@ async function shell(
 const answer = (...results: SearchHit[]): SearchResponse => ({ results, more: false })
 
 const dialog = () => document.body.querySelector('[data-testid="search-dialog"]')
+/** The phone's drawer: a dialog that is not the search. */
+const drawer = () =>
+  document.body.querySelector('[role="dialog"]:not([data-testid="search-dialog"])')
 const input = () => document.body.querySelector<HTMLInputElement>('[data-testid="search-input"]')!
 const options = () => [...document.body.querySelectorAll('[role="option"]')]
+/** Which result is highlighted, as the listbox marks it. */
+const active = () => options().findIndex((o) => o.hasAttribute('data-highlighted'))
 
 async function openByShortcut(init: KeyboardEventInit = { ctrlKey: true }) {
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', bubbles: true, ...init }))
@@ -260,6 +265,34 @@ describe('searching as you type', () => {
     )
   })
 
+  it('says what the server said when it refuses, not that the connection is gone', async () => {
+    await shell(() => jsonResponse(500, { code: 'server_error' }))
+    await openByShortcut()
+
+    await typeAndSearch('meeting')
+
+    expect(document.body.querySelector('[data-testid="search-error"]')!.textContent).toContain(
+      'Something went wrong on the server.',
+    )
+  })
+
+  it('drops the old list when a search fails, so it cannot be opened as the answer to the new text', async () => {
+    const { router } = await shell((query) => {
+      if (query === 'meet') return answer(meeting)
+      throw new Error('offline')
+    })
+    await openByShortcut()
+    await typeAndSearch('meet')
+    expect(options()).toHaveLength(1)
+
+    await typeAndSearch('meeting')
+    await press('Enter')
+
+    expect(options()).toHaveLength(0)
+    expect(document.body.querySelector('[data-testid="search-error"]')).not.toBeNull()
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
   it('says when more pages matched than are listed', async () => {
     await shell(() => ({ results: [meeting], more: true }))
     await openByShortcut()
@@ -331,11 +364,9 @@ describe('choosing a page', () => {
       answer(meeting, hit('Ideas', plain('Ideas')), hit('Notebook', plain('Notebook'))),
     )
     await openByShortcut()
-    await typeAndSearch('i')
     await typeAndSearch('id')
-    const active = () => options().findIndex((o) => o.getAttribute('aria-selected') === 'true')
     expect(active()).toBe(0)
-    expect(input().getAttribute('aria-activedescendant')).toBe('search-option-0')
+    expect(input().getAttribute('aria-activedescendant')).toBe(options()[0]!.id)
 
     await press('ArrowDown')
     await press('ArrowDown')
@@ -344,8 +375,84 @@ describe('choosing a page', () => {
     expect(active()).toBe(0)
     await press('ArrowUp')
     expect(active()).toBe(2)
-    expect(input().getAttribute('aria-activedescendant')).toBe('search-option-2')
+    expect(input().getAttribute('aria-activedescendant')).toBe(options()[2]!.id)
     expect(input().getAttribute('aria-expanded')).toBe('true')
+    // The cursor stays in the field all the while.
+    expect(document.activeElement).toBe(input())
+  })
+
+  it('goes to the first and the last result with Home and End', async () => {
+    await shell(() =>
+      answer(meeting, hit('Ideas', plain('Ideas')), hit('Notebook', plain('Notebook'))),
+    )
+    await openByShortcut()
+    await typeAndSearch('id')
+
+    await press('End')
+    expect(active()).toBe(2)
+    await press('Home')
+    expect(active()).toBe(0)
+  })
+
+  it('points the field at the list also before there is a result', async () => {
+    await shell(() => answer())
+    await openByShortcut()
+
+    const list = document.getElementById(input().getAttribute('aria-controls')!)
+    expect(list?.getAttribute('role')).toBe('listbox')
+    expect(input().getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('does not scroll the list when the pointer moves over a result', async () => {
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+    await shell(() => answer(meeting, hit('Ideas', plain('Ideas'))))
+    await openByShortcut()
+    await typeAndSearch('id')
+    scroll.mockClear()
+
+    options()[1]!.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }))
+    await flushPromises()
+
+    expect(active()).toBe(1)
+    expect(scroll).not.toHaveBeenCalled()
+    scroll.mockRestore()
+  })
+
+  it('opens the first result of the new text on an Enter pressed before it is there, not one of the old list', async () => {
+    let release: (() => void) | undefined
+    const { router } = await shell((query) =>
+      query === 'idea'
+        ? answer(meeting)
+        : new Promise<SearchResponse>((resolve) => {
+            release = () => resolve(answer(hit('Ideas', plain('Ideas'))))
+          }),
+    )
+    await openByShortcut()
+    await typeAndSearch('idea')
+    expect(options()).toHaveLength(1)
+
+    // Typed on, and Enter at once: the old list (for "idea") is still on screen.
+    await type('ideas')
+    await press('Enter')
+    expect(router.currentRoute.value.name).toBe('home')
+    expect(dialog()).not.toBeNull()
+
+    release!()
+    await vi.waitFor(() => expect(router.currentRoute.value.params.pageId).toBe('Ideas'))
+    expect(dialog()).toBeNull()
+  })
+
+  it('forgets an early Enter when the text changes again before the answer', async () => {
+    const { router } = await shell(() => new Promise<SearchResponse>(() => undefined))
+    await openByShortcut()
+    await type('ideas')
+    await press('Enter')
+
+    await type('idea')
+    await vi.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_MS)
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('home')
   })
 
   it('opens the chosen page with Enter, closes the dialog and keeps the search for next time', async () => {
@@ -433,10 +540,62 @@ describe('on a phone', () => {
 
     await wrapper.get('button[aria-label="Open the page list"]').trigger('click')
     await flushPromises()
+    expect(drawer()).not.toBeNull()
     document.body.querySelector<HTMLButtonElement>('[data-testid="search-row"]')!.click()
     await flushPromises()
 
     expect(dialog()).not.toBeNull()
-    expect(document.body.querySelector('[aria-label="Navigation"]')).toBeNull()
+    expect(drawer()).toBeNull()
+  })
+})
+
+describe('the shortcut', () => {
+  it('opens the search once, however often it is pressed', async () => {
+    const { server } = await shell(() => answer(meeting))
+    await openByShortcut()
+    await typeAndSearch('meeting')
+    document.body.querySelector<HTMLButtonElement>('button[aria-label="Close search"]')!.click()
+    await flushPromises()
+
+    await openByShortcut()
+    await openByShortcut()
+    await openByShortcut()
+    await vi.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_MS * 2)
+    await flushPromises()
+
+    expect(server.searches()).toEqual(['meeting', 'meeting'])
+  })
+
+  it('closes the drawer first on a narrow screen, so that the two do not stack', async () => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }))
+    fakeTree({ pages, search: () => answer() })
+    const mounted = await mountAt(RouterView, '/', 'en')
+    wrapper = mounted.wrapper
+    await flushPromises()
+    await vi.waitFor(() => expect(wrapper!.find('main').text().length).toBeGreaterThan(0))
+    await wrapper.get('button[aria-label="Open the page list"]').trigger('click')
+    await flushPromises()
+    expect(drawer()).not.toBeNull()
+
+    await openByShortcut()
+
+    expect(drawer()).toBeNull()
+    expect(dialog()).not.toBeNull()
+    expect(document.body.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+  })
+
+  it('leaves another open dialog alone, and opens nothing over it', async () => {
+    await shell(() => answer())
+    const other = document.createElement('div')
+    other.setAttribute('role', 'dialog')
+    document.body.appendChild(other)
+
+    await openByShortcut()
+
+    expect(dialog()).toBeNull()
   })
 })

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { api } from '../api'
+import { ApiError, api } from '../api'
 import type { SearchHit, SearchResponse } from '../search/types'
 import { useTreeStore } from './tree'
 
@@ -15,7 +15,7 @@ export type SearchState = 'idle' | 'loading' | 'done' | 'error'
 /**
  * The search dialog's state: whether it is open, what was typed and what the server found. The text stays after the
  * dialog is closed, so that opening it again shows the last search. A new search cancels the one before it, and only the
- * answer to the newest text is ever shown. Errors are shown as a state of the dialog, not thrown.
+ * answer to the newest text is ever shown. Errors are a state of the dialog, with the server's code, not thrown.
  */
 export const useSearchStore = defineStore('search', () => {
   const tree = useTreeStore()
@@ -27,16 +27,19 @@ export const useSearchStore = defineStore('search', () => {
   const state = ref<SearchState>('idle')
   /** The text the hits on screen were found for. */
   const searchedFor = ref('')
+  /** Why the last search failed: `network_error`, or a code from the server. */
+  const errorCode = ref<string | null>(null)
 
   let timer: ReturnType<typeof setTimeout> | undefined
   let controller: AbortController | undefined
   let latest = 0
 
   function show() {
-    if (!tree.workspace) return
+    // Already open (the shortcut pressed again, or held down): nothing new to ask.
+    if (open.value || !tree.workspace) return
     open.value = true
     // The last search, found again: pages change.
-    if (query.value.trim().length >= MIN_SEARCH_LENGTH) void run()
+    if (query.value.trim().length >= MIN_SEARCH_LENGTH) flush()
   }
 
   function hide() {
@@ -50,14 +53,25 @@ export const useSearchStore = defineStore('search', () => {
     if (text.trim().length < MIN_SEARCH_LENGTH) {
       // Nothing to look for: what was on screen is not the answer to this text any more.
       cancel()
-      hits.value = []
-      more.value = false
-      searchedFor.value = ''
+      clear()
       state.value = 'idle'
       return
     }
 
     timer = setTimeout(() => void run(), SEARCH_DEBOUNCE_MS)
+  }
+
+  /** Searches for the text now, without waiting for the pause after the last key. */
+  function flush() {
+    clearTimeout(timer)
+    void run()
+  }
+
+  function clear() {
+    hits.value = []
+    more.value = false
+    searchedFor.value = ''
+    errorCode.value = null
   }
 
   function cancel() {
@@ -86,10 +100,14 @@ export const useSearchStore = defineStore('search', () => {
       hits.value = answer.results
       more.value = answer.more
       searchedFor.value = text
+      errorCode.value = null
       state.value = 'done'
     } catch (error) {
       // Cancelled by a newer search, or by closing: the newer one has its own say.
       if (mine !== latest || (error instanceof DOMException && error.name === 'AbortError')) return
+      // The old list is not the answer to this text: it goes, so it cannot be opened as if it were.
+      clear()
+      errorCode.value = error instanceof ApiError ? error.code : 'unknown'
       state.value = 'error'
     }
   }
@@ -99,11 +117,22 @@ export const useSearchStore = defineStore('search', () => {
     clearTimeout(timer)
     open.value = false
     query.value = ''
-    hits.value = []
-    more.value = false
-    searchedFor.value = ''
+    clear()
     state.value = 'idle'
   }
 
-  return { open, query, hits, more, state, searchedFor, show, hide, setQuery, run, reset }
+  return {
+    open,
+    query,
+    hits,
+    more,
+    state,
+    searchedFor,
+    errorCode,
+    show,
+    hide,
+    setQuery,
+    flush,
+    reset,
+  }
 })

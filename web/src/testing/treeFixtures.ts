@@ -49,11 +49,11 @@ export function fakeTree(
     restoredTo?: 'original' | 'root'
     /** Pages the server says are in the trash only because a page above them is. */
     hidden?: string[]
-    /** Answers a search; a promise lets a test hold an answer back. Without it, a search is an unexpected read. */
+    /** Answers a search (a Response for an error); a promise lets a test hold an answer back. Without it, a search is an unexpected read. */
     search?: (
       query: string,
       signal: AbortSignal | undefined,
-    ) => SearchResponse | Promise<SearchResponse>
+    ) => SearchResponse | Response | Promise<SearchResponse | Response>
   } = {},
 ): FakeTree {
   let pages = initial.pages ?? []
@@ -85,7 +85,7 @@ export function fakeTree(
         searches.push(query)
         const answer = await initial.search(query, init?.signal ?? undefined)
         if (init?.signal?.aborted) throw new DOMException('Aborted', 'AbortError')
-        return jsonResponse(200, answer)
+        return answer instanceof Response ? answer : jsonResponse(200, answer)
       }
       const single = /^\/api\/pages\/(.+)$/.exec(path)
       if (single) {
