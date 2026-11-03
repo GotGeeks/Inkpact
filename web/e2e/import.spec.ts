@@ -110,6 +110,31 @@ test('a Joplin export is imported and reported, and its notes open with their pi
   await expect(editorBody(page)).not.toContainText('circle')
 })
 
+test('an imported notebook lists its sub-notebook and its notes, and each opens', async ({
+  page,
+}, testInfo) => {
+  const jex = generateJex(unique(testInfo.project.name))
+  await openImportPage(page)
+  await importJex(page, jex)
+
+  await openSidebar(page)
+  await rowFor(page, jex.titles.notebook).click()
+  await closeDrawer(page)
+
+  // Sub-notebooks first, then notes, as in the sidebar; the sub-notebook says how many pages it holds (the encrypted
+  // note was skipped, so two).
+  const list = page.getByTestId('child-pages')
+  await expect(list.getByRole('heading')).toHaveText('Pages in here')
+  await expect(list.getByRole('listitem')).toHaveText([
+    `${jex.titles.subNotebook}2 pages`,
+    jex.titles.pictures,
+  ])
+
+  await list.getByRole('link', { name: jex.titles.pictures }).click()
+  await expect(editorBody(page)).toContainText('Rent and bold words.')
+  await expect(page.getByTestId('child-pages')).toHaveCount(0)
+})
+
 test('the pictures page has its image and its file', async ({ page }, testInfo) => {
   const jex = generateJex(unique(testInfo.project.name))
   await openImportPage(page)

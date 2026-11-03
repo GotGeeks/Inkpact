@@ -99,6 +99,46 @@ describe('PageView', () => {
   })
 })
 
+describe('the pages in a page', () => {
+  const library = outline(['Work', '  Plans', '    Q1', '    Q2', '  Ideas', '  ', 'Home'])
+  library[5] = { ...library[5]!, id: 'blank', title: '' }
+
+  it('lists the pages right under a notebook, in the sidebar order, and how many a sub-notebook holds', async () => {
+    await open('/p/Work', { pages: library })
+
+    await vi.waitFor(() => expect(wrapper!.find('[data-testid="child-pages"]').exists()).toBe(true))
+    const list = wrapper!.get('[data-testid="child-pages"]')
+    expect(list.get('h2').text()).toBe('Pages in here')
+    const rows = list.findAll('li a')
+    expect(rows.map((row) => row.text())).toEqual(['Plans2 pages', 'Ideas', 'Untitled'])
+    expect(rows.map((row) => row.attributes('href'))).toEqual(['/p/Plans', '/p/Ideas', '/p/blank'])
+  })
+
+  it('says it in Dutch, with one page in the singular', async () => {
+    await open('/p/Work', { pages: outline(['Work', '  Plans', '    Q1']) }, 'nl')
+
+    await vi.waitFor(() => expect(wrapper!.find('[data-testid="child-pages"]').exists()).toBe(true))
+    expect(wrapper!.get('[data-testid="child-pages"] h2').text()).toBe("Pagina's hierin")
+    expect(wrapper!.get('[data-testid="child-pages"] li').text()).toBe('Plans1 pagina')
+  })
+
+  it('shows no list on a page with nothing under it', async () => {
+    await open('/p/Home', { pages: library })
+
+    await vi.waitFor(() => expect(wrapper!.find('[data-testid="page-title"]').exists()).toBe(true))
+    expect(wrapper!.find('[data-testid="child-pages"]').exists()).toBe(false)
+  })
+
+  it('goes to a page through the router when it is clicked', async () => {
+    const { router } = await open('/p/Work', { pages: library })
+
+    await vi.waitFor(() => expect(wrapper!.find('[data-testid="child-pages"]').exists()).toBe(true))
+    await wrapper!.get('[data-testid="child-pages"] a').trigger('click')
+
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/p/Plans'))
+  })
+})
+
 describe('TrashView', () => {
   const trashed = outline(['Old', 'Older']).map((p, i) => ({
     ...p,

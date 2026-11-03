@@ -244,7 +244,9 @@
     "notFound": "Deze pagina is niet gevonden",
     "backToStart": "Terug naar het begin",
     "inTrash": "Deze pagina staat in de prullenbak.",
-    "inTrashThroughParent": "Een pagina erboven staat in de prullenbak."
+    "inTrashThroughParent": "Een pagina erboven staat in de prullenbak.",
+    "children": "Pagina's hierin",
+    "childCount": "{count} pagina | {count} pagina's"
   },
   "start": {
     "title": "Welkom",
