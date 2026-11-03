@@ -66,3 +66,34 @@ public class SyncBehindProxyTests(PostgresFixture postgres)
         await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
     }
 }
+
+/// <summary>
+/// Traefik forwards a WebSocket upgrade with <c>X-Forwarded-Proto: wss</c> (or <c>ws</c>), not <c>https</c>: the same
+/// browser on the same page, so the same session cookie and the same origin must count.
+/// </summary>
+[Collection(PostgresCollection.Name)]
+public class SyncBehindTraefikTests(PostgresFixture postgres)
+{
+    [Theory]
+    [InlineData("wss", "https://localhost")]
+    [InlineData("WSS", "https://localhost")]
+    [InlineData("ws", "http://localhost")]
+    public async Task A_websocket_forwarded_as_ws_or_wss_is_the_http_or_https_page_it_came_from(string forwardedProto, string pageOrigin)
+    {
+        await using var factory = new InkpactFactory(await postgres.CreateDatabaseAsync(), trustedProxies: ["10.0.0.0/8"], remoteIp: "10.0.0.2");
+        // Signed in through the proxy, as https or http: the cookie the browser holds is the one for that scheme.
+        var jos = await SyncUser.SetUpAdministratorAsync(factory, pageOrigin);
+
+        var socketClient = factory.Server.CreateWebSocketClient();
+        socketClient.ConfigureRequest = request =>
+        {
+            request.Headers.Cookie = jos.CookieHeader;
+            request.Headers.Origin = pageOrigin;
+            request.Headers["X-Forwarded-Proto"] = forwardedProto;
+        };
+
+        using var socket = await socketClient.ConnectAsync(new Uri("ws://localhost" + SyncEndpoints.Path), CancellationToken.None);
+        socket.State.ShouldBe(WebSocketState.Open);
+        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+    }
+}
