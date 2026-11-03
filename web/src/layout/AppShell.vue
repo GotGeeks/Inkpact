@@ -11,9 +11,11 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
+import SearchDialog from '../search/SearchDialog.vue'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationsStore } from '../stores/notifications'
+import { useSearchStore } from '../stores/search'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import SidebarContent from './SidebarContent.vue'
@@ -25,6 +27,7 @@ const route = useRoute()
 const router = useRouter()
 const tree = useTreeStore()
 const notifications = useNotificationsStore()
+const search = useSearchStore()
 const sync = useSyncStore()
 const auth = useAuthStore()
 useKeepLostEdits()
@@ -45,8 +48,14 @@ async function start() {
   }
 }
 
-onMounted(start)
+onMounted(() => {
+  void start()
+  // Capturing, so that the editor does not take the key first; the browser would otherwise use it for its own search.
+  window.addEventListener('keydown', onShortcut, true)
+})
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onShortcut, true)
+  search.reset()
   tree.reset()
   sync.destroy()
 })
@@ -88,6 +97,14 @@ watch(wide, (isWide) => {
   if (isWide) drawerOpen.value = false
 })
 
+/** Ctrl+K, or Cmd+K on a Mac, from anywhere in the app, also inside the editor. */
+function onShortcut(event: KeyboardEvent) {
+  if (event.key.toLowerCase() !== 'k' || event.altKey || event.shiftKey) return
+  if (!(event.ctrlKey || event.metaKey)) return
+  event.preventDefault()
+  search.show()
+}
+
 function show(id: string) {
   void router.push({ name: 'page', params: { pageId: id } })
 }
@@ -121,7 +138,16 @@ function open(id: string) {
         >
           <AppIcon name="menu" class="size-6" />
         </button>
-        <p class="truncate text-headline-sm">{{ t('app.name') }}</p>
+        <p class="min-w-0 flex-1 truncate text-headline-sm">{{ t('app.name') }}</p>
+        <button
+          type="button"
+          :aria-label="t('search.open')"
+          class="flex size-11 items-center justify-center rounded text-on-surface hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-primary-container"
+          data-testid="search-open"
+          @click="search.show()"
+        >
+          <AppIcon name="search" class="size-6" />
+        </button>
       </header>
 
       <main class="min-h-0 flex-1 overflow-y-auto" tabindex="-1">
@@ -160,6 +186,8 @@ function open(id: string) {
         </DialogContent>
       </DialogPortal>
     </DialogRoot>
+
+    <SearchDialog />
 
     <NoticeToaster />
   </div>

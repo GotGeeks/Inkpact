@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
+import { useSearchStore } from '../stores/search'
 import { useTreeStore } from '../stores/tree'
 import SidebarTree from '../tree/SidebarTree.vue'
 import UserMenu from './UserMenu.vue'
@@ -11,6 +13,17 @@ const emit = defineEmits<{ open: [id: string]; created: [id: string]; navigate: 
 
 const { t, n } = useI18n()
 const tree = useTreeStore()
+const search = useSearchStore()
+
+// The shortcut is written as the person's keyboard has it.
+const isMac = /Mac|iPhone|iPad/.test(globalThis.navigator?.userAgent ?? '')
+
+async function openSearch() {
+  // A drawer closes first: two dialogs do not share the focus.
+  emit('navigate')
+  await nextTick()
+  search.show()
+}
 </script>
 
 <template>
@@ -20,6 +33,21 @@ const tree = useTreeStore()
       <p class="truncate text-headline-sm" data-testid="workspace-name">
         {{ tree.workspace?.name }}
       </p>
+    </div>
+
+    <div class="px-space-xs">
+      <button
+        type="button"
+        class="flex min-h-11 w-full items-center gap-space-sm rounded border border-border-subtle px-space-md text-body-sm text-on-surface-variant hover:bg-surface-elevated focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary md:min-h-9"
+        data-testid="search-row"
+        @click="openSearch"
+      >
+        <AppIcon name="search" />
+        <span class="flex-1 text-start">{{ t('search.link') }}</span>
+        <kbd class="hidden text-label-xs md:inline" aria-hidden="true">{{
+          isMac ? t('search.shortcutMac') : t('search.shortcutOther')
+        }}</kbd>
+      </button>
     </div>
 
     <SidebarTree

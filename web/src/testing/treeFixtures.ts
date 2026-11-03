@@ -1,5 +1,6 @@
 import { vi, type Mock } from 'vitest'
 import { jsonResponse } from './helpers'
+import type { SearchResponse } from '../search/types'
 import type { PageChange, PageNode, WorkspaceSummary } from '../tree/types'
 
 export const workspace: WorkspaceSummary = { id: 'w1', name: 'Private', role: 'owner' }
@@ -26,6 +27,8 @@ export function outline(lines: string[]): PageNode[] {
 
 export interface FakeTree {
   fetch: Mock
+  /** The texts that were searched for, in order. */
+  searches: () => string[]
   /** The writes the client made, in order: method, path and body. */
   writes: () => { method: string; path: string; body: Record<string, unknown> }[]
   setPages: (pages: PageNode[]) => void
@@ -46,12 +49,18 @@ export function fakeTree(
     restoredTo?: 'original' | 'root'
     /** Pages the server says are in the trash only because a page above them is. */
     hidden?: string[]
+    /** Answers a search; a promise lets a test hold an answer back. Without it, a search is an unexpected read. */
+    search?: (
+      query: string,
+      signal: AbortSignal | undefined,
+    ) => SearchResponse | Promise<SearchResponse>
   } = {},
 ): FakeTree {
   let pages = initial.pages ?? []
   let trash = initial.trash ?? []
   let failure: { status: number; code: string } | null = null
   const writes: { method: string; path: string; body: Record<string, unknown> }[] = []
+  const searches: string[] = []
 
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const method = init?.method ?? 'GET'
@@ -70,6 +79,14 @@ export function fakeTree(
       if (path === `/api/workspaces/${workspace.id}/pages`)
         return jsonResponse(200, { treeVersion: 1, pages })
       if (path === `/api/workspaces/${workspace.id}/trash`) return jsonResponse(200, trash)
+      const searchPath = `/api/workspaces/${workspace.id}/search?q=`
+      if (path.startsWith(searchPath) && initial.search) {
+        const query = decodeURIComponent(path.slice(searchPath.length))
+        searches.push(query)
+        const answer = await initial.search(query, init?.signal ?? undefined)
+        if (init?.signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+        return jsonResponse(200, answer)
+      }
       const single = /^\/api\/pages\/(.+)$/.exec(path)
       if (single) {
         const page = [...pages, ...trash].find((p) => p.id === single[1])
@@ -115,6 +132,7 @@ export function fakeTree(
   vi.stubGlobal('fetch', fetchMock)
   return {
     fetch: fetchMock,
+    searches: () => searches,
     writes: () => writes,
     setPages: (next) => {
       pages = next

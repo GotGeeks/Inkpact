@@ -75,6 +75,24 @@
     "loadFailed": "The pages could not be loaded.",
     "retry": "Try again"
   },
+  "search": {
+    "link": "Search",
+    "open": "Search",
+    "shortcutMac": "⌘ K",
+    "shortcutOther": "Ctrl K",
+    "title": "Search",
+    "description": "Search the titles, tags and text of your pages. Use the arrow keys to choose a page and Enter to open it.",
+    "inputLabel": "Search pages",
+    "placeholder": "Search your pages…",
+    "close": "Close search",
+    "results": "Search results",
+    "hint": "Type at least {count} letter to search. | Type at least {count} letters to search.",
+    "empty": "Nothing found for “{query}”.",
+    "error": "Search needs a connection to the server. Check your connection and type again.",
+    "more": "Showing the first {count} result. Type more to narrow it down. | Showing the first {count} results. Type more to narrow them down.",
+    "searching": "Searching…",
+    "count": "{count} result | {count} results"
+  },
   "tree": {
     "label": "Pages",
     "newPage": "New page",

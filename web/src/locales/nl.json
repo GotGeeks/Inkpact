@@ -75,6 +75,24 @@
     "loadFailed": "De pagina’s konden niet worden geladen.",
     "retry": "Opnieuw proberen"
   },
+  "search": {
+    "link": "Zoeken",
+    "open": "Zoeken",
+    "shortcutMac": "⌘ K",
+    "shortcutOther": "Ctrl K",
+    "title": "Zoeken",
+    "description": "Zoek in de titels, de tags en de tekst van je pagina’s. Kies een pagina met de pijltjestoetsen en open hem met Enter.",
+    "inputLabel": "Pagina’s doorzoeken",
+    "placeholder": "Zoek in je pagina’s…",
+    "close": "Zoeken sluiten",
+    "results": "Zoekresultaten",
+    "hint": "Typ minstens {count} letter om te zoeken. | Typ minstens {count} letters om te zoeken.",
+    "empty": "Niets gevonden voor “{query}”.",
+    "error": "Zoeken heeft een verbinding met de server nodig. Controleer je verbinding en typ opnieuw.",
+    "more": "De eerste {count} resultaat wordt getoond. Typ meer om het te verfijnen. | De eerste {count} resultaten worden getoond. Typ meer om ze te verfijnen.",
+    "searching": "Zoeken…",
+    "count": "{count} resultaat | {count} resultaten"
+  },
   "tree": {
     "label": "Pagina’s",
     "newPage": "Nieuwe pagina",
