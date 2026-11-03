@@ -46,6 +46,14 @@ While you use Joplin and Inkpact side by side, export again and import the new f
 - **Links between notes** become links to the pages, also to a note that you import later.
 - **The first import after an update of the converter** converts the pages you did not change again, so a better conversion reaches notes that are already imported. A page you changed keeps its content.
 
+## Search
+
+The search box (run 1.17) finds a page by its title, its tags and its text, in the current workspace. Capitals and accents do not matter (`cafe` finds `Café`), and a word that is only half typed already finds its page (`vergad` finds `vergadering`), in English and Dutch alike: words are not reduced to their stems. A page in the trash, or under one, is not found.
+
+- **When a word becomes findable:** a title or a tag at once; the text of a page after the page has been compacted, which is when it has had two minutes without an edit (`Compaction__IdleAfter`, `00:02:00` by default) or 500 edits.
+- **How much of a page is searched:** the first 200,000 characters of its text, about 100 printed pages. A word further on is not found. A note that the import keeps as a file is found by its title and file names only.
+- **The extension:** PostgreSQL's `unaccent` (part of every official image). The migration creates it, which the owner of the database may do; a database owned by another role needs `CREATE EXTENSION unaccent` run once by a superuser before the app starts.
+
 ## Updating
 
 ```bash
@@ -110,7 +118,7 @@ networks:
     external: true
 ```
 
-**PostgreSQL:** Inkpact needs no extensions and makes its own tables. It is tested on PostgreSQL 18. An older server should work but is not tested; a newer one cannot be backed up by the image's `pg_dump` 18 before a migration, and the app then does not start. If the app cannot connect, check that the server accepts connections from the container's address (`pg_hba.conf`), or put both containers on one network with `INKPACT_NETWORK`. A password with a `;` in it does not fit the connection string: choose another.
+**PostgreSQL:** Inkpact makes its own tables and one extension that ships with PostgreSQL (`unaccent`, for search; see "Search"). It is tested on PostgreSQL 18. An older server should work but is not tested; a newer one cannot be backed up by the image's `pg_dump` 18 before a migration, and the app then does not start. If the app cannot connect, check that the server accepts connections from the container's address (`pg_hba.conf`), or put both containers on one network with `INKPACT_NETWORK`. A password with a `;` in it does not fit the connection string: choose another.
 
 ## Building the image yourself
 
