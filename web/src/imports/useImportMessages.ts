@@ -29,6 +29,10 @@ export function useImportMessages() {
           : t('import.reasons.link_removed', { detail })
       case 'note_link_pending':
         return t('import.reasons.note_link_pending')
+      case 'note_link_missing':
+        return t('import.reasons.note_link_missing')
+      case 'note_link_anchor_dropped':
+        return t('import.reasons.note_link_anchor_dropped')
       case 'resource_missing':
         return t('import.reasons.resource_missing')
       case 'resource_link_text_lost':

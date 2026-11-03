@@ -181,3 +181,58 @@ export function generateJex(label: string, ids = randomBytes(8).toString('hex'))
 
   return { file: tar(files), titles }
 }
+
+export interface LinkedJex {
+  file: Buffer
+  titles: { notebook: string; first: string; second: string }
+}
+
+/** Two notes in a notebook that link to each other, with fresh ids and titles every time. */
+export function generateLinkedJex(label: string, ids = randomBytes(8).toString('hex')): LinkedJex {
+  const id = (name: string) =>
+    createHash('sha256').update(`${ids}:${name}`).digest('hex').slice(0, 32)
+  const titles = {
+    notebook: `${label} Linked notebook`,
+    first: `${label} Start here`,
+    second: `${label} The destination`,
+  }
+  const files: { name: string; data: Buffer }[] = []
+  const item = (name: string, text: string) =>
+    files.push({ name: `${id(name)}.md`, data: Buffer.from(text, 'utf8') })
+  const fields = (pairs: [string, string][], type: number) =>
+    [...pairs, ['type_', String(type)]].map(([key, value]) => `${key}: ${value}`).join('\n')
+  const note = (name: string, title: string, body: string) =>
+    item(
+      name,
+      `${title}\n\n${body}\n\n${fields(
+        [
+          ['id', id(name)],
+          ['parent_id', id('notebook')],
+          ['user_created_time', '2026-01-02T03:04:05.000Z'],
+          ['user_updated_time', '2026-02-03T04:05:06.000Z'],
+          ['is_conflict', '0'],
+          ['is_todo', '0'],
+          ['todo_due', '0'],
+          ['todo_completed', '0'],
+          ['markup_language', '1'],
+          ['encryption_applied', '0'],
+          ['deleted_time', '0'],
+        ],
+        1,
+      )}`,
+    )
+
+  item(
+    'notebook',
+    `${titles.notebook}\n\n${fields(
+      [
+        ['id', id('notebook')],
+        ['parent_id', ''],
+      ],
+      2,
+    )}`,
+  )
+  note('first', titles.first, `Start of the trail. [Go to the destination](:/${id('second')})`)
+  note('second', titles.second, `Destination page text. [Back to the start](:/${id('first')})`)
+  return { file: tar(files), titles }
+}

@@ -1,7 +1,9 @@
 import { Node } from '@tiptap/core'
 import { NodeSelection, Plugin } from '@tiptap/pm/state'
+import { UUID } from './uuid'
 
-const ATTACHMENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// Any case: an id another client wrote is read as the same id (the address is made from it in lowercase).
+const ATTACHMENT_ID = new RegExp(`^${UUID}$`, 'i')
 
 export function isAttachmentId(value: unknown): value is string {
   return typeof value === 'string' && ATTACHMENT_ID.test(value)

@@ -214,6 +214,11 @@
       "moveUp": "Naar boven",
       "moveDown": "Naar beneden"
     },
+    "link": {
+      "label": "Link",
+      "open": "Link openen",
+      "openPage": "Pagina openen"
+    },
     "table": {
       "label": "Tabel",
       "addRowBefore": "Rij erboven toevoegen",
@@ -340,6 +345,8 @@
       "link_removed": "Een link is verwijderd omdat het adres ({detail}) niet is toegestaan. De tekst is bewaard.",
       "link_removed_relative": "Een link met een relatief adres is verwijderd. De tekst is bewaard.",
       "note_link_pending": "Een link naar een andere Joplin-notitie is gewone tekst geworden. Links tussen notities komen in een latere versie.",
+      "note_link_missing": "Een link verwijst naar een notitie die deze keer niet is geïmporteerd (hij zit niet in deze export, of is overgeslagen), of naar een bestand dat in de export ontbreekt. Een link naar een notitie werkt zodra die notitie is geïmporteerd; tot dan opent hij een pagina die niet wordt gevonden.",
+      "note_link_anchor_dropped": "Een link naar een plek in een andere notitie opent die notitie vanaf het begin.",
       "resource_missing": "Een afbeelding of bestand dat deze notitie gebruikt zit niet in de export. De tekst is bewaard.",
       "resource_link_text_lost": "De tekst van een link naar een bestand is vervangen door de naam van het bestand.",
       "external_image": "Een afbeelding van een andere site is een link naar het adres geworden.",

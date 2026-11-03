@@ -22,7 +22,10 @@ const serverCodes = [
   'unsupported_element',
   'removed_element',
   'link_removed',
+  // No longer written, but the report of an earlier import has it.
   'note_link_pending',
+  'note_link_missing',
+  'note_link_anchor_dropped',
   'resource_missing',
   'resource_link_text_lost',
   'external_image',

@@ -124,6 +124,9 @@ public sealed partial class ImportRunner(
         /// <summary>Notes and notebooks of an earlier import that Joplin has in its trash now and whose page is live here: see <see cref="TrashDeletedAsync"/>.</summary>
         public List<DeletedItem> Deleted { get; } = [];
 
+        /// <summary>Notes and notebooks of the export that this import skips (encrypted, in Joplin's trash, too large to read): a link to one gets no page now.</summary>
+        public HashSet<string> NotImported { get; set; } = new(StringComparer.Ordinal);
+
         public HashSet<string> ResourcesCounted { get; } = new(StringComparer.Ordinal);
 
         public int Total { get; set; }
@@ -235,6 +238,7 @@ public sealed partial class ImportRunner(
         run.Index = await JexArchive.ReadIndexAsync(run.Path, cancellationToken);
         run.Plan = ImportPlan.Build(run.Index);
         run.NoNotebook = [.. run.Plan.NotesWithoutNotebook];
+        run.NotImported = [.. run.Plan.Skipped.Select(s => s.Id), .. run.Index.Oversized.Select(o => o.Id)];
         await LoadExistingAsync(run, cancellationToken);
 
         run.Total = run.Index.Tags.Count + run.Plan.Steps.Count + run.Plan.Skipped.Count + run.Index.Oversized.Count;
@@ -503,6 +507,7 @@ public sealed partial class ImportRunner(
         var now = time.GetUtcNow();
         var page = new Page
         {
+            Id = await NewPageIdAsync(run, db, folder.Id, cancellationToken),
             WorkspaceId = run.WorkspaceId,
             ParentId = parentPage,
             Title = title,
@@ -639,7 +644,7 @@ public sealed partial class ImportRunner(
 
         // The page's own copy of each file the note uses, stored before the note is converted: the conversion only ever
         // refers to a file through these. The rows are written with the page.
-        var resources = new NoteResources();
+        var resources = new NoteResources(id => PageLinkTo(run, id));
         var added = new List<Attachment>();
         var retired = new List<Guid>();
         foreach (var id in ResourceReference().Matches(body).Select(m => m.Groups["id"].Value).Distinct(StringComparer.Ordinal))
@@ -804,7 +809,7 @@ public sealed partial class ImportRunner(
 
         var reasons = new ConversionNotes();
         var title = CleanTitle(note.Title, reasons);
-        var pageId = Guid.CreateVersion7();
+        var pageId = await NewPageIdAsync(run, db, note.Id, cancellationToken);
         var built = await BuildNoteAsync(run, scope, note, body, pageId, null, null, reasons, cancellationToken);
         var files = built.NewFiles;
 
@@ -1343,11 +1348,53 @@ public sealed partial class ImportRunner(
         return extension.Length > 0 && !Path.HasExtension(name) ? $"{name}.{extension}" : name;
     }
 
-    private sealed class NoteResources : IResourceResolver
+    private sealed class NoteResources(Func<string, PageLink?> pages) : IResourceResolver
     {
         public Dictionary<string, ImportedResource> Found { get; } = new(StringComparer.Ordinal);
 
         public ImportedResource? Find(string joplinResourceId) => Found.GetValueOrDefault(joplinResourceId);
+
+        public PageLink? FindPage(string joplinId) => pages(joplinId);
+    }
+
+    /// <summary>
+    /// The id of a new page: the one its Joplin id gives it (<see cref="PageIds"/>), so that links written before it was imported
+    /// reach it. Should a page already have that id (one made through the API, which refuses such ids, or a collision), the page
+    /// gets a new id of its own instead: the links to it then do not work, but the note is not lost.
+    /// </summary>
+    private async Task<Guid> NewPageIdAsync(Run run, InkpactDbContext db, string joplinId, CancellationToken cancellationToken)
+    {
+        var id = PageIds.For(run.WorkspaceId, joplinId);
+        if (!await db.Pages.AnyAsync(p => p.Id == id, cancellationToken))
+        {
+            return id;
+        }
+
+        logger.LogWarning("The page id of {ExternalId} is taken by another page; it gets a new one", joplinId);
+        return Guid.CreateVersion7();
+    }
+
+    /// <summary>
+    /// The page a link to a Joplin id points to: the page an earlier import made, else the page the note or notebook gets
+    /// (<see cref="PageIds"/>). Null for the id of a file or a tag, which is no page. An id the export does not have at all
+    /// is taken for a note that a later export brings (the decision of run 1.16c): a file that was deleted in Joplin looks
+    /// the same, and its link then never works. <see cref="PageLink.Known"/> only for what this import makes or made before.
+    /// </summary>
+    private static PageLink? PageLinkTo(Run run, string joplinId)
+    {
+        if (run.Existing.TryGetValue(joplinId, out var existing))
+        {
+            return existing.Kind == "tag" ? null : new PageLink(existing.InkpactId, Known: true);
+        }
+
+        if (run.Index.Resources.ContainsKey(joplinId) || run.Index.Tags.ContainsKey(joplinId))
+        {
+            return null;
+        }
+
+        // A note that is skipped (encrypted, in Joplin's trash, too large to read) gets no page from this import.
+        var imported = (run.Index.Notes.ContainsKey(joplinId) || run.Index.Folders.ContainsKey(joplinId)) && !run.NotImported.Contains(joplinId);
+        return new PageLink(PageIds.For(run.WorkspaceId, joplinId), Known: imported);
     }
 
     // ---- the tree ------------------------------------------------------------------------------------------------------

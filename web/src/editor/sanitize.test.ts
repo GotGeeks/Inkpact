@@ -115,6 +115,12 @@ describe('sanitizePastedHtml', () => {
     'vbscript:msgbox(1)',
     '//evil.example/x',
     '/relative/path',
+    '/p/../x',
+    '//p/8a1c4e52-3b7d-8f06-9e21-5d4c3b2a1f00',
+    '/p/8a1c4e52-3b7d-8f06-9e21-5d4c3b2a1f00?x=1',
+    '/p/8a1c4e52-3b7d-8f06-9e21-5d4c3b2a1f00#x',
+    '/p/8A1C4E52-3B7D-8F06-9E21-5D4C3B2A1F00',
+    '/p/not-an-id',
   ])('removes the address of a link to %s', (href) => {
     const result = document.createElement('div')
     result.innerHTML = sanitizePastedHtml(`<a href="${href}">link</a>`)
@@ -122,12 +128,14 @@ describe('sanitizePastedHtml', () => {
     expect(result.textContent).toBe('link')
   })
 
-  it.each(['https://example.com/a?b=c#d', 'http://example.com', 'mailto:someone@example.com'])(
-    'keeps a link to %s',
-    (href) => {
-      expect(sanitizePastedHtml(`<a href="${href}">link</a>`)).toContain(`href="${href}"`)
-    },
-  )
+  it.each([
+    'https://example.com/a?b=c#d',
+    'http://example.com',
+    'mailto:someone@example.com',
+    '/p/8a1c4e52-3b7d-8f06-9e21-5d4c3b2a1f00',
+  ])('keeps a link to %s', (href) => {
+    expect(sanitizePastedHtml(`<a href="${href}">link</a>`)).toContain(`href="${href}"`)
+  })
 
   it('keeps every tag and attribute the editor can hold', () => {
     const html = [
