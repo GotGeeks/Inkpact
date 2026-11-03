@@ -81,7 +81,20 @@ with the `traefik` network declared as external at the bottom of the file.
 
 ## Unraid
 
-Use the Docker Compose Manager plugin: add a stack, paste the compose file and the `.env`, and point the volumes at `/mnt/user/appdata/inkpact/...` if you prefer bind mounts (the folder for `/data` must be writable by UID 1654). A Community Apps template comes with the first release.
+Use the Docker Compose Manager plugin: add a stack, paste the compose file and the `.env`, and point the volumes at `/mnt/user/appdata/inkpact/...` if you prefer bind mounts (the folder for `/data` must be writable by UID 1654). A Community Apps template comes with the first release. If Unraid runs a PostgreSQL server already, use the next section instead.
+
+## With a PostgreSQL you already run
+
+`deploy/docker-compose.external-db.yml` runs the app alone against a PostgreSQL server you have (on Unraid, a NAS, another host), with an image built from a checkout of this repository, so a change on `main` is running as soon as it is built. `deploy/inkpact.sh` does the work; it needs bash, git, Docker with BuildKit and Docker Compose (on Unraid: the Docker Compose Manager plugin).
+
+1. **Settings:** copy `deploy/external-db.env.example` to `deploy/.env` and fill it in: where Postgres is (`DB_HOST`, the host's LAN address from a container, not `localhost`; or the Postgres container's name with `INKPACT_NETWORK` set to its network), the user and database to use, the port, and where the app's files go (`INKPACT_DATA`, for example `/mnt/user/appdata/inkpact`).
+2. **`deploy/inkpact.sh init`:** makes the data folder and gives it to UID 1654. With `PG_CONTAINER` set (the Postgres container's name), it also creates the user and the database in it, and says so when the server is not PostgreSQL 18. Without it, create them yourself: `CREATE ROLE inkpact LOGIN PASSWORD '...'; CREATE DATABASE inkpact OWNER inkpact;`.
+3. **`deploy/inkpact.sh build`**, then **`deploy/inkpact.sh up`**. The first build takes a few minutes; later ones reuse its layers.
+4. **`deploy/inkpact.sh setup-code`** shows the code for creating the administrator. Open `http://<host>:<INKPACT_PORT>` and create it.
+
+Afterwards, **`deploy/inkpact.sh update`** pulls `main`, builds and restarts. A migration writes a dump to the data folder's `backups` first. `status`, `logs` and `down` do what they say; `down` leaves the database and the data folder alone. Every build is also tagged with its commit (`inkpact:<commit>`), so setting `INKPACT_IMAGE` to an earlier one and running `up` goes back to it (a database that a newer version migrated stays migrated: restore its dump for that).
+
+**PostgreSQL:** Inkpact needs no extensions and makes its own tables. It is tested on PostgreSQL 18. An older server should work but is not tested; a newer one cannot be backed up by the image's `pg_dump` 18 before a migration, and the app then does not start. If the app cannot connect, check that the server accepts connections from the container's address (`pg_hba.conf`), or put both containers on one network with `INKPACT_NETWORK`. A password with a `;` in it does not fit the connection string: choose another.
 
 ## Building the image yourself
 
