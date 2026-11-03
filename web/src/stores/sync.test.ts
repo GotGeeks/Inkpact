@@ -41,7 +41,12 @@ describe('the sync store', () => {
     await flushPromises()
 
     expect(sync.display).toBe('live')
-    expect(sync.pages[page]).toEqual({ state: 'synced', readOnly: false, unsent: false })
+    expect(sync.pages[page]).toEqual({
+      state: 'synced',
+      readOnly: false,
+      unsent: false,
+      firstSyncBytes: expect.any(Number),
+    })
     sync.destroy()
   })
 

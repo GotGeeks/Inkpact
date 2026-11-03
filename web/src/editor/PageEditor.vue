@@ -6,7 +6,6 @@ import type { EditorView } from '@tiptap/pm/view'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { encodeStateAsUpdate } from 'yjs'
 import { ApiError } from '../api'
 import { useKeyboardInset } from '../composables/useKeyboardInset'
 import { useMediaQuery } from '../composables/useMediaQuery'
@@ -48,16 +47,8 @@ watch(
 )
 /** A page whose state is this large may be slow to open and to edit (run 1.16d): an imported note is where one comes from. */
 const LARGE_PAGE_BYTES = 5 * 1024 * 1024
-/** The size of the page when it first was in step with the server; 0 until then. Measured once, as encoding it is not free. */
-const pageBytes = ref(0)
-watch(
-  everSynced,
-  (synced) => {
-    if (synced && pageBytes.value === 0)
-      pageBytes.value = encodeStateAsUpdate(handle.doc).byteLength
-  },
-  { immediate: true },
-)
+/** The size of the page as the server sent it the first time (the sync client counts it), so the document is not encoded again. */
+const pageBytes = computed(() => info.value?.firstSyncBytes ?? 0)
 /** The page came from a newer version of the app than this tab runs. */
 const contentError = ref(false)
 

@@ -186,6 +186,96 @@ public sealed class ImportSizeTests : ReimportHarness
         (await UseDbAsync(db => db.Pages.CountAsync(p => p.ExternalId == JexBuilder.Id("big")))).ShouldBe(0);
     }
 
+    [Fact]
+    public async Task A_body_larger_than_a_file_may_be_leaves_none_of_its_files_in_the_store()
+    {
+        await StartWithLimitsAsync(attachment: 5000);
+        var body = $"![a picture](:/{JexBuilder.Id("pic")})\n\n{Text(6000)}";
+
+        var import = await ImportAsync(Library(body).Resource("pic", "picture.png", Png, "image/png"));
+
+        CountsOf(import).Skipped.ShouldBe(1);
+        (Directory.Exists(AttachmentsDirectory) ? Directory.EnumerateFiles(AttachmentsDirectory, "*", SearchOption.AllDirectories) : []).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task A_note_whose_page_of_files_would_still_be_too_large_to_open_is_skipped()
+    {
+        await StartWithLimitsAsync();
+        var jex = Library(string.Concat(Enumerable.Range(0, 60).Select(i => $"[f{i}](:/{JexBuilder.Id($"r{i}")})\n\n")) + Text(TextLimit));
+        for (var i = 0; i < 60; i++)
+        {
+            jex.Resource($"r{i}", $"file{i}.pdf", [.. "%PDF-1.4\n"u8, (byte)i], "application/pdf");
+        }
+
+        var import = await ImportAsync(jex);
+
+        EntryOf(import, "big").Reasons.Select(r => r.Code).ShouldBe([NoteCodes.ItemTooLarge]);
+        (await UseDbAsync(db => db.Pages.CountAsync(p => p.ExternalId == JexBuilder.Id("big")))).ShouldBe(0);
+    }
+
+    // ---- what is already on the page counts too --------------------------------------------------------------------------
+
+    [Fact]
+    public async Task A_replacement_whose_page_with_the_old_content_would_be_over_the_limit_is_a_file_though_each_alone_fits()
+    {
+        await StartWithLimitsAsync();
+        // Each about half the update limit: a client that opens the page before the compactor has run is sent both.
+        await ImportAsync(Library(Text(1500)));
+        var page = await PageOfAsync("big");
+
+        var import = await ImportAsync(Library(Text(1600)));
+
+        CountsOf(import).Updated.ShouldBe(1);
+        EntryOf(import, "big").Reasons.Select(r => r.Code).ShouldBe([NoteCodes.StoredAsFile]);
+        (await FilesOfAsync(page.Id)).Single().FileName.ShouldBe("Big.md");
+        var stored = await UseDbAsync(db => db.PageUpdates.Where(u => u.PageId == page.Id).SumAsync(u => (long)u.Data.Length));
+        stored.ShouldBeLessThanOrEqualTo(UpdateLimit);
+    }
+
+    [Fact]
+    public async Task A_note_converted_again_keeps_the_same_body_file_instead_of_adding_one()
+    {
+        await StartWithLimitsAsync();
+        await ImportAsync(Library(Text(TextLimit + 300)));
+        var page = await PageOfAsync("big");
+        await UseDbAsync(db => db.ImportItems.ExecuteUpdateAsync(set => set.SetProperty(i => i.ConverterVersion, 1)));
+
+        var import = await ImportAsync(Library(Text(TextLimit + 300)));
+
+        CountsOf(import).Reconverted.ShouldBe(1);
+        (await FilesOfAsync(page.Id)).Select(f => f.FileName).ShouldBe(["Big.md"]);
+        CountsOf(import).Files.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task A_note_renamed_in_Joplin_and_grown_past_what_a_file_may_be_takes_the_title_and_says_the_text_did_not_come()
+    {
+        await StartWithLimitsAsync(attachment: 5000);
+        await ImportAsync(Library("A short note"));
+        var page = await PageOfAsync("big");
+
+        var import = await ImportAsync(Library(Text(6000), title: "Renamed"));
+
+        var counts = CountsOf(import);
+        (counts.Updated, counts.Skipped).ShouldBe((1, 0));
+        var entry = EntryOf(import, "big");
+        entry.Status.ShouldBe(ReportStatus.Updated);
+        entry.Reasons.Select(r => r.Code).ShouldBe([NoteCodes.ItemTooLarge]);
+        (await PageOfAsync("big")).Title.ShouldBe("Renamed");
+        (await TextOfAsync(page.Id)).ShouldBe("A short note");
+    }
+
+    [Theory]
+    [InlineData("2024/05 Meeting\nnotes", false, "2024-05 Meeting notes.md")]
+    [InlineData(@"Ideas \ drafts", false, "Ideas - drafts.md")]
+    [InlineData("Clip\tfrom the web", true, "Clip from the web.html")]
+    [InlineData("  ", false, "note.md")]
+    public void The_body_file_is_named_after_the_title_as_the_page_shows_it(string title, bool html, string name)
+    {
+        ImportRunner.BodyFileName(title, html).ShouldBe(name);
+    }
+
     // ---- the start-up check ------------------------------------------------------------------------------------------------
 
     private const long HalfOfTheQueue = 8L * 1024 * 1024;

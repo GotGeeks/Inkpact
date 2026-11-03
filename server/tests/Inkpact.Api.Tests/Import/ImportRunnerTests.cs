@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using FsCheck;
 using FsCheck.Fluent;
 using Inkpact.Api.Crdt;
@@ -11,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
-using Xunit.Abstractions;
 
 namespace Inkpact.Api.Tests.Import;
 

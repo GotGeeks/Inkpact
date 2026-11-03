@@ -32,6 +32,9 @@ public abstract class ReimportHarness(PostgresFixture postgres) : IAsyncLifetime
 
     protected Guid UserId { get; private set; }
 
+    /// <summary>Where the app stores the files added to pages.</summary>
+    protected string AttachmentsDirectory => _factory.AttachmentsDirectory;
+
     public Task InitializeAsync() => Task.CompletedTask;
 
     public async Task DisposeAsync()

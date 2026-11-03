@@ -24,6 +24,14 @@ public sealed class SyncOptions
 
     public long MaxQueuedBytes { get; set; } = 16 * 1024 * 1024;
 
+    /// <summary>
+    /// A page whose stored updates are larger than this is sent as stored when a client subscribes, without asking the Yjs
+    /// sidecar for a diff: the diff of a large page can take longer than <c>Sidecar:DiffTimeout</c>, and a sidecar that does
+    /// not answer in time is restarted, which every page and import waits for. A client opening such a page has little of
+    /// it anyway, so the diff would save little. Run 1.16d.
+    /// </summary>
+    public long MaxDiffBytes { get; set; } = 2 * 1024 * 1024;
+
     /// <summary>The server pings an idle socket this often, so proxies keep it open and dead ones are noticed.</summary>
     public TimeSpan KeepAliveInterval { get; set; } = TimeSpan.FromSeconds(15);
 

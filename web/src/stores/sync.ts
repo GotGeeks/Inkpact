@@ -16,6 +16,8 @@ export interface PageSync {
   state: PageState
   readOnly: boolean
   unsent: boolean
+  /** About how large the page is, from its first Sync (see <code>PageHandle.firstSyncBytes</code>). */
+  firstSyncBytes: number
 }
 
 function without(pages: Record<string, PageSync>, pageId: string): Record<string, PageSync> {
@@ -60,7 +62,12 @@ export const useSyncStore = defineStore('sync', () => {
   )
 
   function snapshot(handle: PageHandle): PageSync {
-    return { state: handle.state, readOnly: handle.readOnly, unsent: handle.unsent }
+    return {
+      state: handle.state,
+      readOnly: handle.readOnly,
+      unsent: handle.unsent,
+      firstSyncBytes: handle.firstSyncBytes,
+    }
   }
 
   // Closing the tab with changes that have not reached the server loses them: nothing keeps them across a reload yet.
