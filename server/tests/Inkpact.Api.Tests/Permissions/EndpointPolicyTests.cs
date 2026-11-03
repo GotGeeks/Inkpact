@@ -16,8 +16,7 @@ namespace Inkpact.Api.Tests.Permissions;
 /// of the policies, or be on the list below that a person has looked at and agreed is public. A new endpoint that
 /// is neither makes this test fail, and the message names it.
 /// </summary>
-[Collection(PostgresCollection.Name)]
-public class EndpointPolicyTests(PostgresFixture postgres)
+public class EndpointPolicyTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>
 {
     /// <summary>Method and route pattern of every endpoint that anyone may call without signing in. Add to it only with a reason.</summary>
     internal static readonly IReadOnlyList<string> ReviewedAnonymousEndpoints =

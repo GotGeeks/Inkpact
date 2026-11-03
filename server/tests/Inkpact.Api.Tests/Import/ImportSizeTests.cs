@@ -10,7 +10,6 @@ namespace Inkpact.Api.Tests.Import;
 /// A note too large to open as a page's content (run 1.16d): the page keeps it whole as a file, with the files the note uses.
 /// The limits are set small, so a note of a few kilobytes stands for one of many megabytes.
 /// </summary>
-[Collection(PostgresCollection.Name)]
 public sealed class ImportSizeTests : ReimportHarness
 {
     private readonly PostgresFixture _postgres;

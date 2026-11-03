@@ -7,8 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Inkpact.Api.Tests;
 
-[Collection(PostgresCollection.Name)]
-public class HealthEndpointTests(PostgresFixture postgres) : IAsyncLifetime
+public class HealthEndpointTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private InkpactFactory _factory = null!;
     private HttpClient _client = null!;

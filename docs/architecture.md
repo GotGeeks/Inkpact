@@ -414,7 +414,7 @@ Nothing reaches users unless every check is green, and a release is a single mer
 
 **Every pull request**
 
-To keep waiting short on the free plan, the slow suites do not run on a pull request: the server tests (Testcontainers) and the Playwright run are run locally before every push (`pnpm check`) and by CI on every merge to main and on manual trigger. A pull request gets lint, types, unit tests, format and build, and the commit checks. The list below is the full set; the pull request runs the quick part and main runs all of it.
+To keep waiting short on the free plan, the slow suites do not run on a pull request: the server tests (Testcontainers) and the Playwright run are run locally (`pnpm check:push` before every push, `pnpm check` once per pull request) and by CI on every merge to main and on manual trigger. A pull request gets lint, types, unit tests, format and build, and the commit checks. The list below is the full set; the pull request runs the quick part and main runs all of it.
 
 - Server: dotnet format check, build, xUnit unit tests, Testcontainers integration tests, migration upgrade test; the tests start the real Yjs sidecar, so the job has Node and the workspace dependencies
 - Client: ESLint (including the vue-i18n rules), Prettier, vue-tsc type check, Vitest; the same checks for the Yjs sidecar package

@@ -5,6 +5,7 @@ using Inkpact.Api.Tests.Crdt;
 using Inkpact.Api.Tests.Testing;
 using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
@@ -284,16 +285,19 @@ public class CompactionWorkerTests(PostgresFixture postgres, YjsSidecarFixture y
             ["Compaction:Enabled"] = "True",
             ["Compaction:PollInterval"] = "00:00:00.200",
             ["Compaction:UpdateThreshold"] = "5",
+            // A first try that fails (the sidecar slow to start while other tests run) is tried again soon, not in an hour.
+            ["Compaction:FailureBackoff"] = "00:00:01",
         };
         await using var factory = new InkpactFactory(ConnectionString, sidecar: true, settings: settings);
         var page = await AddPageAsync();
         await AppendBulkAsync(page, Stream().Take(8));
+        // Starts the app, and with it the worker and the sidecar.
+        await factory.Services.GetRequiredService<YjsSidecar>().WaitUntilReadyAsync(new CancellationTokenSource(YjsSidecars.StartTimeout).Token);
 
         var clock = Stopwatch.StartNew();
         while ((await ReadStoredAsync(page)).Snapshot is null)
         {
             clock.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(60), "gave up waiting for the worker");
-            _ = factory.Services; // starts the app and with it the worker and the sidecar
             await Task.Delay(100);
         }
 

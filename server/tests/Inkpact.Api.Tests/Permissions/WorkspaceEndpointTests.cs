@@ -11,8 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Inkpact.Api.Tests.Permissions;
 
-[Collection(PostgresCollection.Name)]
-public class WorkspaceEndpointTests(PostgresFixture postgres) : IAsyncLifetime
+public class WorkspaceEndpointTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private InkpactFactory _factory = null!;
     private HttpClient _admin = null!;
@@ -152,8 +151,7 @@ public class WorkspaceEndpointTests(PostgresFixture postgres) : IAsyncLifetime
     }
 }
 
-[Collection(PostgresCollection.Name)]
-public class MembershipBackfillTests(PostgresFixture postgres)
+public class MembershipBackfillTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>
 {
     [Fact]
     public async Task The_migration_makes_every_existing_workspace_owner_a_member()

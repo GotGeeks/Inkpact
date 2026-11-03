@@ -8,8 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Inkpact.Api.Tests.Auth;
 
-[Collection(PostgresCollection.Name)]
-public class LoginThrottlingTests(PostgresFixture postgres) : IAsyncLifetime
+public class LoginThrottlingTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private readonly MutableTimeProvider _clock = new(DateTimeOffset.UtcNow);
     private InkpactFactory _factory = null!;
@@ -261,8 +260,7 @@ public class LoginThrottlingTests(PostgresFixture postgres) : IAsyncLifetime
     }
 }
 
-[Collection(PostgresCollection.Name)]
-public class AddressRateLimitTests(PostgresFixture postgres)
+public class AddressRateLimitTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>
 {
     private async Task<(InkpactFactory Factory, HttpClient Client)> StartAsync(int perMinute)
     {

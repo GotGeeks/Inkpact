@@ -17,7 +17,8 @@ concurrency:
 jobs:
   # A pull request gets the quick checks: lint, types, unit tests, format and build, commit messages. The slow suites
   # (the server's Testcontainers tests and the Playwright run, which downloads browsers) run on the contributor's machine
-  # before the push (`pnpm check`, see CONTRIBUTING) and again on main and on request, so a break there is found at once.
+  # before the push (`pnpm check:push`, and `pnpm check` once per pull request, see CONTRIBUTING) and again on main and on
+  # request, so a break there is found at once.
   #
   # Which jobs the change needs. A skipped job counts as passed for a required check, so a pull request that only touches
   # the web client does not wait for the server tests, and one that only touches documentation waits for neither.

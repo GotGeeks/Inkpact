@@ -14,8 +14,6 @@ namespace Inkpact.Api.Tests.Compaction;
 public class CompactionStressTests(PostgresFixture postgres, YjsSidecarFixture yjs, ITestOutputHelper output)
     : CompactionTestBase(postgres, yjs), IClassFixture<YjsSidecarFixture>
 {
-    protected override bool PooledConnections => true;
-
     [Fact]
     public async Task An_appender_and_a_compactor_at_once_never_lose_or_change_anything()
     {

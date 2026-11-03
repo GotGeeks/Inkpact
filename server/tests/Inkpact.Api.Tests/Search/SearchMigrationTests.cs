@@ -6,8 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Inkpact.Api.Tests.Search;
 
-[Collection(PostgresCollection.Name)]
-public class SearchMigrationTests(PostgresFixture postgres)
+public class SearchMigrationTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>
 {
     [Fact]
     public async Task The_migration_makes_a_vector_of_the_pages_that_are_already_there_even_when_one_has_a_huge_text()

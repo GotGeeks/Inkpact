@@ -10,8 +10,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace Inkpact.Api.Tests.Security;
 
-[Collection(PostgresCollection.Name)]
-public class SecurityHeadersTests(PostgresFixture postgres) : IAsyncLifetime
+public class SecurityHeadersTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private readonly FakeWebRoot _webRoot = new();
     private InkpactFactory _factory = null!;

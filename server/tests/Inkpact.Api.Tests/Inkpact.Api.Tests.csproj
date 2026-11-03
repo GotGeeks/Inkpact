@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Fixtures\yjs\*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Fixtures\import\*.json" CopyToOutputDirectory="PreserveNewest" />

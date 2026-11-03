@@ -10,7 +10,6 @@ namespace Inkpact.Api.Tests.Import;
 /// The import moves pages in the tree (run 1.16b): for any moves in Joplin and here, in any order, the tree stays whole and
 /// a move made here is never undone. The real database, hub and Yjs sidecar.
 /// </summary>
-[Collection(PostgresCollection.Name)]
 public sealed class ReimportMovePropertyTests(PostgresFixture postgres) : ReimportHarness(postgres)
 {
     private const int Notebooks = 4;

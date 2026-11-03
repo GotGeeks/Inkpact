@@ -10,7 +10,6 @@ namespace Inkpact.Api.Tests.Import;
 /// are compared three ways. What Joplin changed alone is taken, and what was changed here stays. The real database, hub and
 /// Yjs sidecar.
 /// </summary>
-[Collection(PostgresCollection.Name)]
 public sealed class ReimportFieldsTests(PostgresFixture postgres) : ReimportHarness(postgres)
 {
     private static JexBuilder Library(string title = "Plan", string body = "Original text", string parent = "work", bool todo = false, string? due = null, string? completed = null) =>

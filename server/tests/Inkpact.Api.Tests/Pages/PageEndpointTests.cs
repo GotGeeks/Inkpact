@@ -10,8 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Inkpact.Api.Tests.Pages;
 
-[Collection(PostgresCollection.Name)]
-public class PageEndpointTests(PostgresFixture postgres) : IAsyncLifetime
+public class PageEndpointTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private InkpactFactory _factory = null!;
     private HttpClient _owner = null!;

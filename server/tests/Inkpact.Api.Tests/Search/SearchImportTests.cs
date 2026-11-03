@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Inkpact.Api.Tests.Search;
 
 /// <summary>What the import leaves behind for search: the text, and the names of the tags, kept in step by every import path.</summary>
-[Collection(PostgresCollection.Name)]
 public sealed class SearchImportTests(PostgresFixture postgres) : ReimportHarness(postgres)
 {
     private static JexBuilder Library(string body = "The quarterly report is due on Friday.") =>

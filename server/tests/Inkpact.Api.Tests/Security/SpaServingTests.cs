@@ -4,8 +4,7 @@ using Inkpact.Api.Tests.Testing;
 
 namespace Inkpact.Api.Tests.Security;
 
-[Collection(PostgresCollection.Name)]
-public class SpaServingTests(PostgresFixture postgres)
+public class SpaServingTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>
 {
     private async Task<(InkpactFactory Factory, HttpClient Client, FakeWebRoot WebRoot)> StartAsync(bool withIndex = true)
     {

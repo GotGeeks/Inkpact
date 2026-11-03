@@ -43,7 +43,6 @@ public sealed class PageIdsTests
 }
 
 /// <summary>Links between notes through the whole import (run 1.16c): every page has the id its Joplin note gives it, whether or not the note it links to is there yet.</summary>
-[Collection(PostgresCollection.Name)]
 public sealed class NoteLinkTests(PostgresFixture postgres) : ReimportHarness(postgres)
 {
     private static string Link(string text, string note) => $"[{text}](:/{JexBuilder.Id(note)})";

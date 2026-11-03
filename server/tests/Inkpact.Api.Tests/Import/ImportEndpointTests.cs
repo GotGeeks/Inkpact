@@ -17,8 +17,7 @@ using Npgsql;
 
 namespace Inkpact.Api.Tests.Import;
 
-[Collection(PostgresCollection.Name)]
-public sealed class ImportEndpointTests(PostgresFixture postgres) : IAsyncLifetime
+public sealed class ImportEndpointTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private InkpactFactory _factory = null!;
     private HttpClient _owner = null!;

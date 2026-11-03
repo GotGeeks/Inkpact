@@ -8,8 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Inkpact.Api.Tests.Auth;
 
-[Collection(PostgresCollection.Name)]
-public class AuthEndpointTests(PostgresFixture postgres) : IAsyncLifetime
+public class AuthEndpointTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private InkpactFactory _factory = null!;
     private string _connectionString = "";
