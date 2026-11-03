@@ -120,6 +120,7 @@
     "checkboxDone": "Done",
     "checkboxNotDone": "Not done",
     "newerVersion": "This page was made with a newer version of Inkpact. Reload the page to keep editing.",
+    "largePage": "This page is large ({size}), so it may be slow to open and to edit.",
     "blocks": {
       "text": {
         "label": "Text",
@@ -362,6 +363,7 @@
       "truncated": "Something was too long and was cut off.",
       "encrypted": "It is encrypted in the export, so it was skipped. Export from Joplin desktop with the notes decrypted.",
       "item_too_large": "It is too large to import and was skipped.",
+      "stored_as_file": "This note is too large to open as text, so it is kept as a file on the page, with the files it uses. Download it to read it.",
       "resource_too_large": "The file “{detail}” is too large to attach and was left out.",
       "resource_empty": "The file “{detail}” is empty and was left out.",
       "notebook_missing": "Its notebook is not in the export, so it was put at the top level.",

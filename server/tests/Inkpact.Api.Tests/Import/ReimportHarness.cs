@@ -44,9 +44,9 @@ public abstract class ReimportHarness(PostgresFixture postgres) : IAsyncLifetime
         NpgsqlConnection.ClearAllPools();
     }
 
-    protected async Task StartAsync()
+    protected async Task StartAsync(IReadOnlyDictionary<string, string>? settings = null)
     {
-        _factory = new InkpactFactory(await postgres.CreateDatabaseAsync(pooled: true), sidecar: true);
+        _factory = new InkpactFactory(await postgres.CreateDatabaseAsync(pooled: true), settings: settings, sidecar: true);
         await SyncUser.SetUpAdministratorAsync(_factory);
         await _factory.Services.GetRequiredService<YjsSidecar>().WaitUntilReadyAsync(new CancellationTokenSource(YjsSidecars.StartTimeout).Token);
         (WorkspaceId, UserId) = await UseDbAsync(async db => (

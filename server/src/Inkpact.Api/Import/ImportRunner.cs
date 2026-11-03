@@ -383,6 +383,13 @@ public sealed partial class ImportRunner(
         {
             throw;
         }
+        catch (NoteTooLargeException)
+        {
+            // Larger than a file may be: there is nothing to keep it in. The item stays as it was, and says why.
+            run.Counts.Skipped++;
+            AddEntry(run, new ReportEntry(kind, id, ShortTitle(title), ReportStatus.Skipped, [new ConversionNote(NoteCodes.ItemTooLarge)]));
+            run.ConsecutiveFailures = 0;
+        }
         catch (YjsRejectedException e)
         {
             // The sidecar answered, so nothing is wrong around the item: it never counts towards stopping the import. Content
@@ -677,7 +684,28 @@ public sealed partial class ImportRunner(
             resources.Found[id] = new ImportedResource(file.Id, file.FileName, file.Size, AttachmentFiles.IsInline(file.ContentType));
         }
 
+        // A note too large to be a page's content is the page's file instead. Its text is not converted at all.
+        if (Encoding.UTF8.GetByteCount(body) > options.MaxNoteTextBytes)
+        {
+            return await BuildAsFileAsync(run, attachments, note, body, pageId, current, resources, added, retired, cancellationToken);
+        }
+
         var converted = JoplinContent.Convert(body, note.IsHtml, resources);
+        var built = await MakeUpdateAsync(note, converted, current, added, retired, cancellationToken);
+        return built.Update.Length > options.MaxNoteUpdateBytes
+            ? await BuildAsFileAsync(run, attachments, note, body, pageId, current, resources, added, retired, cancellationToken)
+            : built;
+    }
+
+    /// <summary>The sidecar's update for a converted note: a replacement of <paramref name="current"/>, or a new page's first update.</summary>
+    private async Task<BuiltNote> MakeUpdateAsync(
+        JexNote note,
+        ConvertedContent converted,
+        IReadOnlyList<byte[]>? current,
+        List<Attachment> added,
+        List<Guid> retired,
+        CancellationToken cancellationToken)
+    {
         var json = converted.Document.ToUtf8Json();
         if (current is not null)
         {
@@ -696,6 +724,58 @@ public sealed partial class ImportRunner(
 
         return new BuiltNote(converted, update, after.StateVector, after.ReplayFingerprint, after.Text, added, retired);
     }
+
+    /// <summary>
+    /// A note too large to open as a page's content (run 1.16d) is kept whole as a file on the page: the body as it came, named
+    /// after the note (<c>.md</c>, or <c>.html</c>), and then every file of the export that the note uses, since the body can no
+    /// longer show them. The body's file has no external id: it is not one of the export's resources. A body larger than an
+    /// attachment may be cannot be kept, and the note is skipped.
+    /// </summary>
+    private async Task<BuiltNote> BuildAsFileAsync(
+        Run run,
+        AttachmentService attachments,
+        JexNote note,
+        string body,
+        Guid pageId,
+        IReadOnlyList<byte[]>? current,
+        NoteResources resources,
+        List<Attachment> added,
+        List<Guid> retired,
+        CancellationToken cancellationToken)
+    {
+        var title = ContentRules.CleanText(note.Title).Replace('\t', ' ').Trim();
+        var name = $"{(title.Length > 0 ? title : "note")}{(note.IsHtml ? ".html" : ".md")}";
+        Attachment bodyFile;
+        try
+        {
+            await using var content = new MemoryStream(Encoding.UTF8.GetBytes(body), writable: false);
+            bodyFile = await attachments.StoreAsync(pageId, run.UserId, name, content, cancellationToken)
+                ?? throw new InvalidOperationException($"The body of note {note.Id} is empty and cannot be stored as a file.");
+        }
+        catch (FileTooLargeException)
+        {
+            throw new NoteTooLargeException();
+        }
+
+        bodyFile.ExternalSourceType = SourceType;
+        added.Add(bodyFile);
+
+        var context = new ConversionContext(resources, new ConversionNotes());
+        var blocks = new List<PmNode> { PmNode.Element("paragraph", [ConversionContext.File(new ImportedResource(bodyFile.Id, bodyFile.FileName, bodyFile.Size, IsInlineImage: false))]) };
+        foreach (var id in resources.Found.Keys.Order(StringComparer.Ordinal))
+        {
+            if (context.ResourceNode(id, null, out var isBlock) is { } node)
+            {
+                blocks.Add(isBlock ? node : PmNode.Element("paragraph", [node]));
+            }
+        }
+
+        var converted = new ConvertedContent(PmNode.Doc(blocks), [new ConversionNote(NoteCodes.StoredAsFile)]);
+        return await MakeUpdateAsync(note, converted, current, added, retired, cancellationToken);
+    }
+
+    /// <summary>The body of a note is larger than a file may be, so it cannot be kept either: the note is skipped.</summary>
+    private sealed class NoteTooLargeException : Exception;
 
     /// <summary>
     /// Whether a file of the export has the bytes of the page's earlier row for it: known when this run stored it already,
