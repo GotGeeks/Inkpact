@@ -38,3 +38,8 @@ if (typeof Range !== 'undefined') {
     }) as unknown as DOMRectList
   Range.prototype.getBoundingClientRect ??= () => new DOMRect()
 }
+
+/** jsdom does not lay anything out, so it has no scrollIntoView, which Reka's listbox calls on a keyboard move. */
+if (typeof Element.prototype.scrollIntoView !== 'function') {
+  Element.prototype.scrollIntoView = function scrollIntoView() {}
+}
