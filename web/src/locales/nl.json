@@ -120,6 +120,7 @@
     "checkboxDone": "Klaar",
     "checkboxNotDone": "Niet klaar",
     "newerVersion": "Deze pagina is gemaakt met een nieuwere versie van Inkpact. Herlaad de pagina om verder te werken.",
+    "largePage": "Deze pagina is groot ({size}), dus openen en bewerken kan traag zijn.",
     "blocks": {
       "text": {
         "label": "Tekst",
@@ -362,6 +363,7 @@
       "truncated": "Iets was te lang en is afgekapt.",
       "encrypted": "Het is versleuteld in de export en is daarom overgeslagen. Exporteer uit Joplin desktop met ontsleutelde notities.",
       "item_too_large": "Het is te groot om te importeren en is overgeslagen.",
+      "stored_as_file": "Deze notitie is te groot om als tekst te openen, dus hij staat als bestand op de pagina, samen met de bestanden die hij gebruikt. Download hem om hem te lezen.",
       "resource_too_large": "Het bestand “{detail}” is te groot om bij te voegen en is weggelaten.",
       "resource_empty": "Het bestand “{detail}” is leeg en is weggelaten.",
       "notebook_missing": "Het notitieboek zit niet in de export, dus het staat op het hoogste niveau.",

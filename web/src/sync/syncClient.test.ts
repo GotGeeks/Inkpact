@@ -113,6 +113,32 @@ describe('SyncClient', () => {
       client.destroy()
     })
 
+    it('counts the bytes of its first Sync, in log mode and in diff mode, and nothing before it', async () => {
+      const { hub, client } = start()
+      hub.mode = 'log'
+      const author = new Y.Doc()
+      hub.store(page, textEdit(author, 'one '))
+      hub.store(page, textEdit(author, 'two'))
+      await tick()
+
+      const handle = client.subscribe(page)
+      expect(handle.firstSyncBytes).toBe(0)
+      await tick()
+
+      const stored = hub.log(page).reduce((sum, update) => sum + update.byteLength, 0)
+      expect(handle.firstSyncBytes).toBe(stored)
+
+      const other = 'another-page'
+      hub.mode = 'diff'
+      hub.store(other, textEdit(new Y.Doc(), 'hello'))
+      await tick()
+      const diffed = client.subscribe(other)
+      await tick()
+
+      expect(diffed.firstSyncBytes).toBeGreaterThan(0)
+      client.destroy()
+    })
+
     it('sends what the server lacks, in diff mode', async () => {
       const { hub, client } = start()
       hub.store(page, textEdit(new Y.Doc(), 'server '))

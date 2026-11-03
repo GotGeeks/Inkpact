@@ -63,6 +63,8 @@ export function useImportMessages() {
         return t('import.reasons.encrypted')
       case 'item_too_large':
         return t('import.reasons.item_too_large')
+      case 'stored_as_file':
+        return t('import.reasons.stored_as_file')
       case 'resource_too_large':
         return t('import.reasons.resource_too_large', { detail })
       case 'resource_empty':

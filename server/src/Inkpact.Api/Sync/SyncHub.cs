@@ -331,8 +331,8 @@ public sealed class SyncHub(
     private async Task<byte[]> EncodeSyncAsync(
         Guid pageId, ReadOnlyMemory<byte> clientStateVector, IReadOnlyList<byte[]> log, CancellationToken cancellationToken)
     {
-        // A page nobody has written to has nothing to diff.
-        if (log.Count == 0)
+        // A page nobody has written to has nothing to diff. A large one is sent as stored (see SyncOptions.MaxDiffBytes).
+        if (log.Count == 0 || log.Sum(update => (long)update.Length) > options.MaxDiffBytes)
         {
             return Frame.EncodeSync(pageId, [], log);
         }

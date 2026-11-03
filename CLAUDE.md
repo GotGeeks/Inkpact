@@ -38,6 +38,7 @@ pnpm --filter sidecar lint      # Prettier
 pnpm install --frozen-lockfile  # before dotnet test: the tests start the real sidecar, which needs Node 24 and its dependencies
 dotnet build server
 dotnet test server              # unit + Testcontainers integration (needs Docker)
+dotnet test server --filter "Category!=Slow"   # while working: leaves out the 5,000-note timing tests, which `pnpm check` runs
 dotnet format server --verify-no-changes
 dotnet ef migrations add <Name> --project server/src/Inkpact.Data
 

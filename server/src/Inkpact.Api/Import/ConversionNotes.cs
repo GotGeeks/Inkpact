@@ -28,6 +28,9 @@ public static class NoteCodes
     /// <summary>A link to a place inside another note (<c>#anchor</c>): it opens the page, not that place.</summary>
     public const string NoteLinkAnchorDropped = "note_link_anchor_dropped";
 
+    /// <summary>The note is too large to be a page's content: the page holds it as a file (and the files it uses) instead.</summary>
+    public const string StoredAsFile = "stored_as_file";
+
     /// <summary>A link or image that refers to a resource that is not in the export. Its text stayed.</summary>
     public const string ResourceMissing = "resource_missing";
 
@@ -61,7 +64,7 @@ public static class NoteCodes
     /// <summary>The item is encrypted in the export; it was skipped. Export from Joplin desktop with encryption off.</summary>
     public const string Encrypted = "encrypted";
 
-    /// <summary>The item is larger than the importer reads (<see cref="JexArchive.MaxItemSize"/>); it was skipped.</summary>
+    /// <summary>The item is larger than the importer reads (<see cref="JexArchive.MaxItemSize"/>), or a note whose text is larger than a file may be (so it cannot be kept as one either); it was skipped.</summary>
     public const string ItemTooLarge = "item_too_large";
 
     /// <summary>A file the note uses is larger than an attachment may be; it is not in the note. Detail: its name.</summary>

@@ -264,3 +264,36 @@ function wireUpdate(page: string, update: Uint8Array): Uint8Array {
   length.push(value)
   return new Uint8Array([2, id.length, ...id, ...length, ...update])
 }
+
+describe('a large page', () => {
+  it.each([
+    ['en', 'This page is large (6 MB), so it may be slow to open and to edit.'],
+    ['nl', 'Deze pagina is groot (6 MB), dus openen en bewerken kan traag zijn.'],
+  ] as const)('says so once its state is over 5 MiB, in %s', async (locale, message) => {
+    hub.store(pageId, pageWithText('x'.repeat(6 * 1000 * 1000)))
+
+    await mountEditor({}, locale)
+
+    const notice = document.querySelector('[data-testid="large-page"]')
+    expect(notice?.getAttribute('role')).toBe('status')
+    expect(notice?.textContent?.trim()).toBe(message)
+  })
+
+  it('says nothing for a page under that, or before the page has been in step with the server', async () => {
+    hub.store(pageId, pageWithText('x'.repeat(4 * 1000 * 1000)))
+
+    await mountEditor()
+
+    expect(document.querySelector('[data-testid="large-page"]')).toBeNull()
+  })
+
+  it('measures the page once: text typed afterwards does not make it large', async () => {
+    hub.store(pageId, pageWithText('hello'))
+    const w = await mountEditor()
+
+    type(editorOf(w), 'x'.repeat(1000))
+    await flushPromises()
+
+    expect(document.querySelector('[data-testid="large-page"]')).toBeNull()
+  })
+})

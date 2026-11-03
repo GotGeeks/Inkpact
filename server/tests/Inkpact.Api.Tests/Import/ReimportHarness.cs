@@ -32,6 +32,9 @@ public abstract class ReimportHarness(PostgresFixture postgres) : IAsyncLifetime
 
     protected Guid UserId { get; private set; }
 
+    /// <summary>Where the app stores the files added to pages.</summary>
+    protected string AttachmentsDirectory => _factory.AttachmentsDirectory;
+
     public Task InitializeAsync() => Task.CompletedTask;
 
     public async Task DisposeAsync()
@@ -44,9 +47,9 @@ public abstract class ReimportHarness(PostgresFixture postgres) : IAsyncLifetime
         NpgsqlConnection.ClearAllPools();
     }
 
-    protected async Task StartAsync()
+    protected async Task StartAsync(IReadOnlyDictionary<string, string>? settings = null)
     {
-        _factory = new InkpactFactory(await postgres.CreateDatabaseAsync(pooled: true), sidecar: true);
+        _factory = new InkpactFactory(await postgres.CreateDatabaseAsync(pooled: true), settings: settings, sidecar: true);
         await SyncUser.SetUpAdministratorAsync(_factory);
         await _factory.Services.GetRequiredService<YjsSidecar>().WaitUntilReadyAsync(new CancellationTokenSource(YjsSidecars.StartTimeout).Token);
         (WorkspaceId, UserId) = await UseDbAsync(async db => (

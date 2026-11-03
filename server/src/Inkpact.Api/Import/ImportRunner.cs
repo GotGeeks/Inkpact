@@ -383,6 +383,13 @@ public sealed partial class ImportRunner(
         {
             throw;
         }
+        catch (NoteTooLargeException)
+        {
+            // Larger than a file may be: there is nothing to keep it in. The item stays as it was, and says why.
+            run.Counts.Skipped++;
+            AddEntry(run, new ReportEntry(kind, id, ShortTitle(title), ReportStatus.Skipped, [new ConversionNote(NoteCodes.ItemTooLarge)]));
+            run.ConsecutiveFailures = 0;
+        }
         catch (YjsRejectedException e)
         {
             // The sidecar answered, so nothing is wrong around the item: it never counts towards stopping the import. Content
@@ -641,6 +648,14 @@ public sealed partial class ImportRunner(
         CancellationToken cancellationToken)
     {
         var attachments = scope.ServiceProvider.GetRequiredService<AttachmentService>();
+        var bodyBytes = Encoding.UTF8.GetByteCount(body);
+
+        // A body larger than a file may be cannot be kept even as a file: skipped before any of its files are stored, so none
+        // is left in the store without a row.
+        if (bodyBytes > options.MaxNoteTextBytes && bodyBytes > scope.ServiceProvider.GetRequiredService<AttachmentOptions>().MaxFileSize)
+        {
+            throw new NoteTooLargeException();
+        }
 
         // The page's own copy of each file the note uses, stored before the note is converted: the conversion only ever
         // refers to a file through these. The rows are written with the page.
@@ -677,17 +692,48 @@ public sealed partial class ImportRunner(
             resources.Found[id] = new ImportedResource(file.Id, file.FileName, file.Size, AttachmentFiles.IsInline(file.ContentType));
         }
 
+        // A note too large to be a page's content is the page's file instead. Its text is not converted at all.
+        if (bodyBytes > options.MaxNoteTextBytes)
+        {
+            return await BuildAsFileAsync(run, scope, attachments, note, body, pageId, current, resources, added, retired, cancellationToken);
+        }
+
         var converted = JoplinContent.Convert(body, note.IsHtml, resources);
+        return await MakeUpdateAsync(note, converted, current, added, retired, cancellationToken)
+            ?? await BuildAsFileAsync(run, scope, attachments, note, body, pageId, current, resources, added, retired, cancellationToken);
+    }
+
+    /// <summary>
+    /// The sidecar's update for a converted note: a replacement of <paramref name="current"/>, or a new page's first update.
+    /// Null when the page it makes is larger than <see cref="ImportOptions.MaxNoteUpdateBytes"/>: for a replacement, what is
+    /// stored of the page with the update added, since a client that opens it before the compactor has run is sent all of it.
+    /// The size is looked at before the new page is read back, which for a large one is the slow part.
+    /// </summary>
+    private async Task<BuiltNote?> MakeUpdateAsync(
+        JexNote note,
+        ConvertedContent converted,
+        IReadOnlyList<byte[]>? current,
+        List<Attachment> added,
+        List<Guid> retired,
+        CancellationToken cancellationToken)
+    {
         var json = converted.Document.ToUtf8Json();
         if (current is not null)
         {
             // The sidecar checks a replacement itself, and answers with the page before and after it.
             var replacement = await yjs.ReplaceAsync(current, json, cancellationToken);
-            return new BuiltNote(
-                converted, replacement.Update, replacement.StateVector, replacement.Fingerprint, replacement.Text, added, retired, replacement.Before);
+            return current.Sum(input => (long)input.Length) + replacement.Update.Length > options.MaxNoteUpdateBytes
+                ? null
+                : new BuiltNote(
+                    converted, replacement.Update, replacement.StateVector, replacement.Fingerprint, replacement.Text, added, retired, replacement.Before);
         }
 
         var update = await yjs.BuildAsync(json, cancellationToken);
+        if (update.Length > options.MaxNoteUpdateBytes)
+        {
+            return null;
+        }
+
         var after = await yjs.CompactAsync([update], cancellationToken);
         if (!after.StateFingerprint.AsSpan().SequenceEqual(after.ReplayFingerprint))
         {
@@ -696,6 +742,89 @@ public sealed partial class ImportRunner(
 
         return new BuiltNote(converted, update, after.StateVector, after.ReplayFingerprint, after.Text, added, retired);
     }
+
+    /// <summary>
+    /// The name of the file a note is kept in: its title as the page shows it, with what a file name cannot hold (a line
+    /// break, a slash, which would cut the name at the folder it seems to name) made a space or a dash.
+    /// </summary>
+    internal static string BodyFileName(string title, bool isHtml)
+    {
+        var name = new StringBuilder(title.Length);
+        foreach (var c in title)
+        {
+            name.Append(c switch
+            {
+                '/' or '\\' => '-',
+                _ when char.IsControl(c) => ' ',
+                _ => c,
+            });
+        }
+
+        var clean = ContentRules.CleanText(name.ToString()).Trim();
+        return $"{(clean.Length > 0 ? clean : "note")}{(isHtml ? ".html" : ".md")}";
+    }
+
+    /// <summary>
+    /// A note too large to open as a page's content (run 1.16d) is kept whole as a file on the page: the body as it came, named
+    /// after the note (<c>.md</c>, or <c>.html</c>), and then every file of the export that the note uses, since the body can no
+    /// longer show them. The body's file has no external id: it is not one of the export's resources. A body file the page
+    /// already has with the same name and bytes (the same note again, or converted again) is used instead of a new one. When
+    /// even this page would be too large to open (a note that uses thousands of files), the note is skipped.
+    /// </summary>
+    private async Task<BuiltNote> BuildAsFileAsync(
+        Run run,
+        IServiceScope scope,
+        AttachmentService attachments,
+        JexNote note,
+        string body,
+        Guid pageId,
+        IReadOnlyList<byte[]>? current,
+        NoteResources resources,
+        List<Attachment> added,
+        List<Guid> retired,
+        CancellationToken cancellationToken)
+    {
+        var name = AttachmentFiles.CleanFileName(BodyFileName(note.Title, note.IsHtml));
+        var bytes = Encoding.UTF8.GetBytes(body);
+        var sha = Convert.ToHexStringLower(SHA256.HashData(bytes));
+        var db = scope.ServiceProvider.GetRequiredService<InkpactDbContext>();
+        var bodyFile = await db.Attachments.AsNoTracking().FirstOrDefaultAsync(
+            a => a.PageId == pageId && a.ExternalSourceType == SourceType && a.ExternalId == null && a.FileName == name && a.Sha256 == sha && a.Size == bytes.Length,
+            cancellationToken);
+        if (bodyFile is null)
+        {
+            try
+            {
+                await using var content = new MemoryStream(bytes, writable: false);
+                bodyFile = await attachments.StoreAsync(pageId, run.UserId, name, content, cancellationToken)
+                    ?? throw new InvalidOperationException($"The body of note {note.Id} is empty and cannot be stored as a file.");
+            }
+            catch (FileTooLargeException)
+            {
+                throw new NoteTooLargeException();
+            }
+
+            bodyFile.ExternalSourceType = SourceType;
+            added.Add(bodyFile);
+        }
+
+        var context = new ConversionContext(resources, new ConversionNotes());
+        var blocks = new List<PmNode> { PmNode.Element("paragraph", [ConversionContext.File(new ImportedResource(bodyFile.Id, bodyFile.FileName, bodyFile.Size, IsInlineImage: false))]) };
+        foreach (var id in resources.Found.Keys.Order(StringComparer.Ordinal))
+        {
+            if (context.ResourceNode(id, null, out var isBlock) is { } node)
+            {
+                blocks.Add(isBlock ? node : PmNode.Element("paragraph", [node]));
+            }
+        }
+
+        var converted = new ConvertedContent(PmNode.Doc(blocks), [new ConversionNote(NoteCodes.StoredAsFile)]);
+        return await MakeUpdateAsync(note, converted, current, added, retired, cancellationToken)
+            ?? throw new NoteTooLargeException();
+    }
+
+    /// <summary>A note that cannot be kept even as a file (its body is larger than a file may be, or the page of files would be too large to open): skipped.</summary>
+    private sealed class NoteTooLargeException : Exception;
 
     /// <summary>
     /// Whether a file of the export has the bytes of the page's earlier row for it: known when this run stored it already,
@@ -720,7 +849,7 @@ public sealed partial class ImportRunner(
     /// <summary>Counts the files a note brought, once per file of the export.</summary>
     private static void CountFiles(Run run, IEnumerable<Attachment> files)
     {
-        foreach (var file in files.Where(f => run.ResourcesCounted.Add(f.ExternalId!)))
+        foreach (var file in files.Where(f => f.ExternalId is not null && run.ResourcesCounted.Add(f.ExternalId)))
         {
             if (AttachmentFiles.IsInline(file.ContentType))
             {
@@ -970,6 +1099,46 @@ public sealed partial class ImportRunner(
         // A move that was refused leaves the old hash, so the item is looked at again next time.
         var hashToStore = fields.Retry ? existing.ContentHash : hash;
 
+        try
+        {
+            await ReplaceContentAsync(run, note, item.Body, existing, row, fields, baseInfo, contentKey, hashToStore, changedInJoplin, cancellationToken);
+        }
+        catch (NoteTooLargeException)
+        {
+            // Too large to keep even as a file: the page's content stays, what the field step took stays taken, and the line
+            // says both. The hash does not move, so the next import tries the content again.
+            if (fields.Taken)
+            {
+                run.Counts.Updated++;
+            }
+            else
+            {
+                run.Counts.Skipped++;
+            }
+
+            AddEntry(
+                run,
+                new ReportEntry("note", note.Id, ShortTitle(note.Title), fields.Taken ? ReportStatus.Updated : ReportStatus.Skipped, [.. fields.Reasons, new ConversionNote(NoteCodes.ItemTooLarge)], existing.InkpactId));
+        }
+    }
+
+    /// <summary>
+    /// The content step of a note imported before: compared with the page, then replaced, or a conflict copy made, or left as
+    /// it is. Tried again when someone writes to the page meanwhile.
+    /// </summary>
+    private async Task ReplaceContentAsync(
+        Run run,
+        JexNote note,
+        string body,
+        ExistingItem existing,
+        ImportItem row,
+        FieldResult fields,
+        ImportBase? baseInfo,
+        string contentKey,
+        string hashToStore,
+        bool changedInJoplin,
+        CancellationToken cancellationToken)
+    {
         for (var attempt = 1; ; attempt++)
         {
             await using var scope = scopes.CreateAsyncScope();
@@ -990,14 +1159,14 @@ public sealed partial class ImportRunner(
             BuiltNote? replacement = null;
             if (!changedHere)
             {
-                replacement = await PrepareReplacementAsync(run, scope, note, item.Body, existing, content, reasons, cancellationToken);
+                replacement = await PrepareReplacementAsync(run, scope, note, body, existing, content, reasons, cancellationToken);
                 // The page as the replacement found it, from the same replay: what the log said is checked once more.
                 changedHere = ChangedHere(row, replacement.Before!);
             }
 
             if (changedInJoplin && changedHere)
             {
-                await MakeConflictCopyAsync(run, note, item.Body, hashToStore, contentKey, existing, baseInfo, cancellationToken);
+                await MakeConflictCopyAsync(run, note, body, hashToStore, contentKey, existing, baseInfo, cancellationToken);
                 return;
             }
 

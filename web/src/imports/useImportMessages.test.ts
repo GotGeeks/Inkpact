@@ -41,6 +41,7 @@ const serverCodes = [
   'truncated',
   'encrypted',
   'item_too_large',
+  'stored_as_file',
   'resource_too_large',
   'resource_empty',
   'notebook_missing',

@@ -26,4 +26,17 @@ public sealed class ImportOptions
 
     /// <summary>How many items in a row may fail for a reason that is not the item's (a database that is gone, say) before the job gives up.</summary>
     public int MaxConsecutiveFailures { get; set; } = 10;
+
+    /// <summary>
+    /// The longest note body (UTF-8 bytes) that is converted. A longer one becomes a page that holds the note as a file. Set by
+    /// what the sync hub can send to a client that opens the page (see <see cref="MaxNoteUpdateBytes"/>).
+    /// </summary>
+    public long MaxNoteTextBytes { get; set; } = 8_000_000;
+
+    /// <summary>
+    /// The largest first update (or replacement) a converted note may make. A page opens by sending its whole state in one reply,
+    /// and a client whose queue goes over <c>Sync:MaxQueuedBytes</c> is dropped, so this and <see cref="MaxNoteTextBytes"/> may be
+    /// at most half of that (checked at start-up): the reply plus the traffic around it fits.
+    /// </summary>
+    public long MaxNoteUpdateBytes { get; set; } = 8L * 1024 * 1024;
 }

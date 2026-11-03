@@ -218,6 +218,27 @@ public class SyncHubDiffTests(PostgresFixture postgres) : IAsyncLifetime
 
     // ---- log mode ----------------------------------------------------------------------------------------------------
 
+    [Fact]
+    public async Task A_page_whose_stored_updates_are_over_the_diff_limit_is_sent_as_stored_without_asking_the_sidecar()
+    {
+        var codec = Substitute.For<IYjsCodec>();
+        await StartAsync(sidecar: false, codec, new() { ["Sync:MaxDiffBytes"] = "6" });
+        var large = await CreatePageAsync();
+        var small = await CreatePageAsync();
+        var log = new List<byte[]> { Bytes("four"), Bytes("more") };
+        await StoreAsync(large, log);
+        await StoreAsync(small, [Bytes("one")]);
+        codec.DiffAsync(default, default!, default).ReturnsForAnyArgs(new YjsDiff(Bytes("diff"), Bytes("sv")));
+        var client = await ConnectAsync();
+
+        ShouldBeTheLog(await client.SyncAsync(large), log);
+        _ = codec.DidNotReceiveWithAnyArgs().DiffAsync(default, default!, default);
+
+        // At or under the limit, the sidecar is asked as before.
+        await client.SyncAsync(small);
+        _ = codec.ReceivedWithAnyArgs(1).DiffAsync(default, default!, default);
+    }
+
     public static TheoryData<string> CodecFailures => ["unavailable", "rejected"];
 
     [Theory]

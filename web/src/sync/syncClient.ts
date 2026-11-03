@@ -38,6 +38,11 @@ export interface PageHandle {
   readonly readOnly: boolean
   /** Local changes the server has not got yet. */
   readonly unsent: boolean
+  /**
+   * The bytes the server sent with the first Sync of this page (its state, or its stored updates): about how large the page
+   * is, known without encoding the document again. 0 until the first Sync.
+   */
+  readonly firstSyncBytes: number
 }
 
 export interface SyncClientOptions {
@@ -81,6 +86,7 @@ interface Page extends PageHandle {
   state: PageState
   readOnly: boolean
   unsent: boolean
+  firstSyncBytes: number
   /** The editor left, but local changes are still on their way: keep the subscription until they are sent. */
   leaving: boolean
   /**
@@ -205,6 +211,7 @@ export class SyncClient {
       state: 'syncing',
       readOnly: options.readOnly ?? false,
       unsent: false,
+      firstSyncBytes: 0,
       leaving: false,
       confirmAt: null,
       detach() {
@@ -472,6 +479,8 @@ export class SyncClient {
   }
 
   private handleSync(page: Page, serverStateVector: Uint8Array, updates: Uint8Array[]) {
+    if (page.firstSyncBytes === 0)
+      page.firstSyncBytes = updates.reduce((sum, update) => sum + update.byteLength, 0)
     let serverVector = serverStateVector
     if (serverStateVector.length === 0) {
       // Log mode: the server's state vector is what a scratch document holding the stored updates has. The first one may

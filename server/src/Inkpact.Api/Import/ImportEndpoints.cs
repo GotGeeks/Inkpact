@@ -45,11 +45,31 @@ public static class ImportEndpoints
     {
         var options = new ImportOptions();
         config.GetSection(ImportOptions.SectionName).Bind(options);
+        CheckNoteLimits(options, config);
         services.AddSingleton(options);
         services.AddSingleton<ImportQueue>();
         services.AddSingleton<ImportRunner>();
         services.AddHostedService<ImportWorker>();
         return services;
+    }
+
+    /// <summary>
+    /// A note that is converted is sent whole to whoever opens its page, in one reply that has to fit the sync hub's queue with
+    /// the traffic around it: a limit above half of <c>Sync:MaxQueuedBytes</c> would let a page be made that nobody can open.
+    /// </summary>
+    internal static void CheckNoteLimits(ImportOptions options, IConfiguration config)
+    {
+        var sync = new Sync.SyncOptions();
+        config.GetSection(Sync.SyncOptions.SectionName).Bind(sync);
+        var ceiling = sync.MaxQueuedBytes / 2;
+        foreach (var (name, value) in (ValueTuple<string, long>[])[(nameof(ImportOptions.MaxNoteTextBytes), options.MaxNoteTextBytes), (nameof(ImportOptions.MaxNoteUpdateBytes), options.MaxNoteUpdateBytes)])
+        {
+            if (value < 1 || value > ceiling)
+            {
+                throw new InvalidOperationException(
+                    $"Import:{name} is {value}, but must be at least 1 and at most half of Sync:MaxQueuedBytes ({ceiling}), or a page made from a note this large could not be opened.");
+            }
+        }
     }
 
     public static IEndpointRouteBuilder MapImportEndpoints(this IEndpointRouteBuilder app)

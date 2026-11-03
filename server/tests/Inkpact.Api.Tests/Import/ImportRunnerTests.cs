@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using FsCheck;
 using FsCheck.Fluent;
 using Inkpact.Api.Crdt;
@@ -11,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
-using Xunit.Abstractions;
 
 namespace Inkpact.Api.Tests.Import;
 
@@ -20,7 +18,7 @@ namespace Inkpact.Api.Tests.Import;
 /// it, and what happens when the job is run again, stopped half way, or cannot reach the sidecar.
 /// </summary>
 [Collection(PostgresCollection.Name)]
-public sealed class ImportRunnerTests(PostgresFixture postgres, ITestOutputHelper output) : IAsyncLifetime
+public sealed class ImportRunnerTests(PostgresFixture postgres) : IAsyncLifetime
 {
     private static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52];
     private static readonly byte[] Pdf = "%PDF-1.4\n%fake\n"u8.ToArray();
@@ -617,35 +615,6 @@ public sealed class ImportRunnerTests(PostgresFixture postgres, ITestOutputHelpe
         var import = await GetImportAsync(id);
         (import.State, import.ErrorCode).ShouldBe((ImportStates.Failed, "import_failed"));
         File.Exists(ImportFiles.PathOf(options, id)).ShouldBeFalse();
-    }
-
-    // ---- size ----------------------------------------------------------------------------------------------------------
-
-    [Fact]
-    public async Task A_thousand_notes_are_imported_and_how_long_it_takes_is_written_down()
-    {
-        await StartAsync();
-        var jex = new JexBuilder();
-        for (var folder = 0; folder < 20; folder++)
-        {
-            jex.Folder($"f{folder}", folder % 4 == 0 ? null : $"f{folder - folder % 4}");
-            for (var note = 0; note < 50; note++)
-            {
-                jex.Note($"n{folder}-{note}", $"f{folder}", body: $"# Note {note}\n\nSome **text** with a [link](https://example.com/{note}).\n\n- one\n- two", title: $"Note {note:00}");
-            }
-        }
-
-        var clock = Stopwatch.StartNew();
-        var import = await ImportAsync(jex);
-        clock.Stop();
-
-        output.WriteLine($"1,000 notes and 20 notebooks: {clock.Elapsed.TotalSeconds:0.0} s");
-        import.State.ShouldBe(ImportStates.Completed);
-        CountsOf(import).Failed.ShouldBe(0, import.Report);
-        CountsOf(import).Notes.ShouldBe(1000);
-        clock.Elapsed.ShouldBeLessThan(TimeSpan.FromMinutes(3));
-        (await UseDbAsync(db => db.PageUpdates.CountAsync())).ShouldBe(1000);
-        (await TreeAsync()).Pages.Count.ShouldBe(1020);
     }
 
     // ---- the tree, for any export --------------------------------------------------------------------------------------

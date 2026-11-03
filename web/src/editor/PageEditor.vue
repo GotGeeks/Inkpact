@@ -45,6 +45,10 @@ watch(
     if (state === 'synced') everSynced.value = true
   },
 )
+/** A page whose state is this large may be slow to open and to edit (run 1.16d): an imported note is where one comes from. */
+const LARGE_PAGE_BYTES = 5 * 1024 * 1024
+/** The size of the page as the server sent it the first time (the sync client counts it), so the document is not encoded again. */
+const pageBytes = computed(() => info.value?.firstSyncBytes ?? 0)
 /** The page came from a newer version of the app than this tab runs. */
 const contentError = ref(false)
 
@@ -230,6 +234,14 @@ defineExpose({ focus: () => editor.value?.commands.focus('start') })
       class="rounded border border-error p-space-md text-body-sm text-error"
     >
       {{ t('editor.newerVersion') }}
+    </p>
+    <p
+      v-if="pageBytes > LARGE_PAGE_BYTES"
+      role="status"
+      data-testid="large-page"
+      class="rounded border border-border-subtle bg-surface-subtle p-space-md text-body-sm text-on-surface-variant"
+    >
+      {{ t('editor.largePage', { size: formatFileSize(pageBytes, locale) }) }}
     </p>
     <EditorContent :editor="editor" data-testid="editor" />
     <BlockHandle

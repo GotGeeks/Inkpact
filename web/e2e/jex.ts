@@ -236,3 +236,71 @@ export function generateLinkedJex(label: string, ids = randomBytes(8).toString('
   note('second', titles.second, `Destination page text. [Back to the start](:/${id('first')})`)
   return { file: tar(files), titles }
 }
+
+export interface LargeJex {
+  file: Buffer
+  titles: { notebook: string; note: string }
+  /** The first line of the note, to find the page open. */
+  firstLine: string
+}
+
+/**
+ * One note of about `bytes` of text, in short paragraphs, as a person's longest note would be: still content as far as the
+ * server's limits go, but past the size where the editor says a page may be slow.
+ */
+export function generateLargeJex(
+  label: string,
+  bytes: number,
+  ids = randomBytes(8).toString('hex'),
+): LargeJex {
+  const id = (name: string) =>
+    createHash('sha256').update(`${ids}:${name}`).digest('hex').slice(0, 32)
+  const titles = { notebook: `${label} Archive`, note: `${label} Giant page` }
+  const paragraph = (n: number) => `Line ${n}: ${'lorem ipsum dolor sit amet '.repeat(7)}`
+  const lines: string[] = []
+  for (let size = 0, n = 0; size < bytes; n++) {
+    const line = paragraph(n)
+    lines.push(line)
+    size += line.length + 2
+  }
+  const fields = (pairs: [string, string][], type: number) =>
+    [...pairs, ['type_', String(type)]].map(([key, value]) => `${key}: ${value}`).join('\n')
+  const files = [
+    {
+      name: `${id('notebook')}.md`,
+      data: Buffer.from(
+        `${titles.notebook}\n\n${fields(
+          [
+            ['id', id('notebook')],
+            ['parent_id', ''],
+          ],
+          2,
+        )}`,
+        'utf8',
+      ),
+    },
+    {
+      name: `${id('note')}.md`,
+      data: Buffer.from(
+        `${titles.note}\n\n${lines.join('\n\n')}\n\n${fields(
+          [
+            ['id', id('note')],
+            ['parent_id', id('notebook')],
+            ['user_created_time', '2026-01-02T03:04:05.000Z'],
+            ['user_updated_time', '2026-02-03T04:05:06.000Z'],
+            ['is_conflict', '0'],
+            ['is_todo', '0'],
+            ['todo_due', '0'],
+            ['todo_completed', '0'],
+            ['markup_language', '1'],
+            ['encryption_applied', '0'],
+            ['deleted_time', '0'],
+          ],
+          1,
+        )}`,
+        'utf8',
+      ),
+    },
+  ]
+  return { file: tar(files), titles, firstLine: paragraph(0).slice(0, 40) }
+}

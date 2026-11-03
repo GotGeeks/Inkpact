@@ -2,7 +2,14 @@ import { Buffer } from 'node:buffer'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures'
 import { chooseLanguage, closeDrawer, openSidebar, openUserMenu, rowFor } from './helpers'
-import { generateJex, generateLinkedJex, type GeneratedJex, type LinkedJex } from './jex'
+import {
+  generateJex,
+  generateLargeJex,
+  generateLinkedJex,
+  type GeneratedJex,
+  type LargeJex,
+  type LinkedJex,
+} from './jex'
 
 const editorBody = (page: Page) => page.getByTestId('editor').locator('.ProseMirror')
 
@@ -21,7 +28,7 @@ async function openImportPage(page: Page, menuItem = 'Import from Joplin') {
  * Picks the file and waits for the report. The devices of the suite share one workspace, and a workspace takes one
  * import at a time: when another device's import is running, the server says so and this tries again a moment later.
  */
-async function importJex(page: Page, jex: GeneratedJex | LinkedJex) {
+async function importJex(page: Page, jex: GeneratedJex | LinkedJex | LargeJex) {
   await expect(async () => {
     await page.getByTestId('import-file').setInputFiles({
       name: 'export.jex',
@@ -212,4 +219,42 @@ test('a link between two imported notes opens the other note, and back', async (
   await expect(editorBody(page)).toContainText('Start of the trail.')
   // One tab: opening a page did not open another.
   expect(page.context().pages()).toHaveLength(1)
+})
+
+test('a note of about 6 MB imports as content, opens with a notice, and stays in step with the server', async ({
+  page,
+}, testInfo) => {
+  // A phone adds a minute of upload for nothing more: the page, the notice and the sync are the same.
+  test.skip(testInfo.project.name !== 'desktop', 'checked on the desktop')
+  test.setTimeout(240_000)
+  const jex = generateLargeJex(unique(testInfo.project.name), 6_000_000)
+  await openImportPage(page)
+  await importJex(page, jex)
+  // Content, not a file: nothing in the report says it was stored as one.
+  await expect(page.getByTestId('import-report')).toHaveCount(0)
+
+  await openSidebar(page)
+  await rowFor(page, jex.titles.notebook)
+    .getByRole('button', { name: `Expand ${jex.titles.notebook}` })
+    .click()
+  await rowFor(page, jex.titles.note).click()
+  await closeDrawer(page)
+
+  await expect(page.getByTestId('large-page')).toContainText('This page is large', {
+    timeout: 60_000,
+  })
+  await expect(editorBody(page)).toContainText(jex.firstLine, { timeout: 60_000 })
+  const status = page.getByTestId('sync-status')
+  await expect(status).toHaveAttribute('data-state', 'live')
+
+  // Not dropped and reconnecting: the connection stays live for a while, and a small edit reaches the server.
+  await page.waitForTimeout(20_000)
+  await expect(status).toHaveAttribute('data-state', 'live')
+  await editorBody(page).click()
+  await page.keyboard.press('Control+Home')
+  await page.keyboard.type('Saved: ')
+  await expect(status).toHaveAttribute('data-state', 'live')
+  await page.waitForTimeout(2_000)
+  await page.reload()
+  await expect(editorBody(page)).toContainText('Saved: Line 0', { timeout: 60_000 })
 })
