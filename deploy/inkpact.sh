@@ -3,9 +3,9 @@
 # deploy/external-db.env.example). See docs/self-hosting.md, "With a PostgreSQL you already run".
 #
 #   deploy/inkpact.sh init         make the data folder, and the database user and database when PG_CONTAINER is set
-#   deploy/inkpact.sh build        build the image from this checkout
-#   deploy/inkpact.sh up           start the app, or restart it with the image last built
-#   deploy/inkpact.sh update       git pull, build, restart
+#   deploy/inkpact.sh build        build the image from this checkout, without starting it
+#   deploy/inkpact.sh up           build what changed, and start or restart the app
+#   deploy/inkpact.sh update       git pull, then up
 #   deploy/inkpact.sh setup-code   the code for creating the administrator, while there is no account yet
 #   deploy/inkpact.sh status       the container, and whether the app answers
 #   deploy/inkpact.sh logs         follow the app's log
@@ -93,28 +93,18 @@ SQL
 }
 
 cmd_build() {
-  local commit
-  commit="$(git -C "$root" rev-parse --short HEAD 2>/dev/null || echo unknown)"
-  # Also tagged with the commit, so an earlier build can be run again by setting INKPACT_IMAGE to it.
-  local tags=(-t "$image" -t "${image%%:*}:$commit")
-  # The Dockerfile uses BuildKit's cache mounts.
-  if docker buildx version >/dev/null 2>&1; then
-    docker buildx build --load "${tags[@]}" "$root"
-  else
-    DOCKER_BUILDKIT=1 docker build "${tags[@]}" "$root"
-  fi
-  echo "Built $image (${image%%:*}:$commit)."
+  # From this checkout (or INKPACT_SOURCE), with BuildKit, reusing every layer that did not change.
+  compose build
 }
 
 cmd_up() {
-  # Recreated every time, so a new build with the same tag is what runs.
-  compose up -d --force-recreate
+  # The compose file builds on every up (pull_policy: build), and a new image recreates the container.
+  compose up -d
   echo "Inkpact: http://<this host>:${INKPACT_PORT:-8080}"
 }
 
 cmd_update() {
   git -C "$root" pull --ff-only
-  cmd_build
   cmd_up
 }
 

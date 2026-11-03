@@ -1,20 +1,28 @@
 # Inkpact on its own, for a PostgreSQL server you already run (on Unraid, a NAS, another host), with the image built from
-# this checkout. deploy/inkpact.sh runs it; its settings are in deploy/.env (copy external-db.env.example).
+# the source on every `up`. Either deploy/inkpact.sh runs it from a checkout (settings in deploy/.env), or it is pasted
+# into a stack of its own (Unraid's Docker Compose Manager) with the settings in that stack's env file and INKPACT_SOURCE
+# set. See external-db.env.example and docs/self-hosting.md.
 name: inkpact
 
 services:
   app:
     image: ${INKPACT_IMAGE:-inkpact:local}
+    build:
+      # A checkout of this repository (the default is the one this file is in), or straight from GitHub:
+      # https://github.com/GotGeeks/Inkpact.git#main
+      context: ${INKPACT_SOURCE:-..}
+    # Built on every `up`, reusing every layer that did not change: a new commit runs after one `up`.
+    pull_policy: build
     container_name: ${INKPACT_CONTAINER:-inkpact}
     restart: unless-stopped
     environment:
-      ConnectionStrings__Inkpact: Host=${DB_HOST:?Set DB_HOST in deploy/.env};Port=${DB_PORT:-5432};Database=${DB_NAME:-inkpact};Username=${DB_USER:-inkpact};Password=${DB_PASSWORD:?Set DB_PASSWORD in deploy/.env}
-      # Empty: the app makes a code and writes it to its log until the first account exists (inkpact.sh setup-code).
+      ConnectionStrings__Inkpact: Host=${DB_HOST:?Set DB_HOST};Port=${DB_PORT:-5432};Database=${DB_NAME:-inkpact};Username=${DB_USER:-inkpact};Password=${DB_PASSWORD:?Set DB_PASSWORD}
+      # Empty: the app makes a code and writes it to its log until the first account exists.
       Auth__SetupCode: ${AUTH_SETUP_CODE:-}
     ports:
       - '${INKPACT_PORT:-8080}:8080'
     volumes:
-      # A folder on the host (writable by UID 1654; inkpact.sh init makes it so), or the name of a Docker volume.
+      # A folder on the host (writable by UID 1654), or the name of a Docker volume.
       - ${INKPACT_DATA:-inkpact-data}:/data
     # Hardening: nothing is written outside /data and /tmp, no extra privileges.
     read_only: true

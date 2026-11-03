@@ -92,7 +92,23 @@ Use the Docker Compose Manager plugin: add a stack, paste the compose file and t
 3. **`deploy/inkpact.sh build`**, then **`deploy/inkpact.sh up`**. The first build takes a few minutes; later ones reuse its layers.
 4. **`deploy/inkpact.sh setup-code`** shows the code for creating the administrator. Open `http://<host>:<INKPACT_PORT>` and create it.
 
-Afterwards, **`deploy/inkpact.sh update`** pulls `main`, builds and restarts. A migration writes a dump to the data folder's `backups` first. `status`, `logs` and `down` do what they say; `down` leaves the database and the data folder alone. Every build is also tagged with its commit (`inkpact:<commit>`), so setting `INKPACT_IMAGE` to an earlier one and running `up` goes back to it (a database that a newer version migrated stays migrated: restore its dump for that).
+Afterwards, **`deploy/inkpact.sh update`** pulls `main` and runs `up`, which builds what changed (every `up` does, `pull_policy: build`) and restarts the app. A migration writes a dump to the data folder's `backups` first. `status`, `logs` and `down` do what they say; `down` leaves the database and the data folder alone. To go back to an earlier version, check out that commit and run `up` (a database that a newer version migrated stays migrated: restore its dump for that).
+
+**Unraid, with the Docker Compose Manager plugin** (no script):
+
+1. Once, in the terminal: the data folder (`mkdir -p /mnt/user/appdata/inkpact && chown -R 1654:1654 /mnt/user/appdata/inkpact`), and the user and database in your Postgres container (`docker exec -it <postgres container> psql -U postgres`, then the two statements above).
+2. **Docker → Add New Stack**, name it `inkpact`. Edit its compose file: paste `deploy/docker-compose.external-db.yml`. Edit its env file: paste `deploy/external-db.env.example` and fill it in, with `INKPACT_SOURCE` set to your checkout (for example `/mnt/user/appdata/inkpact-src`) or to `https://github.com/GotGeeks/Inkpact.git#main`, which needs no checkout.
+3. **Compose Up** builds the image (a few minutes the first time) and starts the app. The first-run setup code is in the stack's log.
+4. **To update:** with a checkout, `git pull` in it first; then **Compose Up** again. With the GitHub address, Compose Up alone builds the newest `main`. Only what changed is built again.
+
+To join the network your Postgres container is on (and use its name as `DB_HOST`), add this to the stack's compose file:
+
+```yaml
+networks:
+  default:
+    name: proxynet # the Postgres container's network
+    external: true
+```
 
 **PostgreSQL:** Inkpact needs no extensions and makes its own tables. It is tested on PostgreSQL 18. An older server should work but is not tested; a newer one cannot be backed up by the image's `pg_dump` 18 before a migration, and the app then does not start. If the app cannot connect, check that the server accepts connections from the container's address (`pg_hba.conf`), or put both containers on one network with `INKPACT_NETWORK`. A password with a `;` in it does not fit the connection string: choose another.
 
