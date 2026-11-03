@@ -11,8 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Inkpact.Api.Tests.Search;
 
 /// <summary>Search over HTTP against the real database: what is found, in what order, and what never is.</summary>
-[Collection(PostgresCollection.Name)]
-public class SearchEndpointTests(PostgresFixture postgres) : IAsyncLifetime
+public class SearchEndpointTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 3, 12, 0, 0, TimeSpan.Zero);
 

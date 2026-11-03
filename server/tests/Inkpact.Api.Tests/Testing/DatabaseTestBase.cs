@@ -7,27 +7,15 @@ namespace Inkpact.Api.Tests.Testing;
 /// <summary>
 /// Base class for integration tests that need the real schema: a fresh, fully migrated database per test.
 /// </summary>
-[Collection(PostgresCollection.Name)]
-public abstract class DatabaseTestBase(PostgresFixture postgres) : IAsyncLifetime
+public abstract class DatabaseTestBase(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     protected PostgresFixture Postgres { get; } = postgres;
 
     protected string ConnectionString { get; private set; } = "";
 
-    /// <summary>
-    /// Connections are not pooled by default, so a test never leaves connections open on the shared server. A test that
-    /// makes many short calls (the property tests) can ask for a small pool.
-    /// </summary>
-    protected virtual bool PooledConnections => false;
-
     public virtual async Task InitializeAsync()
     {
         ConnectionString = await Postgres.CreateDatabaseAsync();
-        if (PooledConnections)
-        {
-            ConnectionString = new Npgsql.NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = true, MaxPoolSize = 8 }.ConnectionString;
-        }
-
         await using var db = CreateContext();
         await db.Database.MigrateAsync();
     }

@@ -22,8 +22,7 @@ namespace Inkpact.Api.Tests.Import;
 /// last imported, what it has now and what the page is now. The real database, hub and Yjs sidecar, with people editing the
 /// pages the way a client does: by appending a Yjs update.
 /// </summary>
-[Collection(PostgresCollection.Name)]
-public sealed class ReimportContentTests(PostgresFixture postgres) : IAsyncLifetime
+public sealed class ReimportContentTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52];
     private static readonly byte[] OtherPng = [.. Png, 0x01];

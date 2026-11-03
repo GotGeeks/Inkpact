@@ -16,7 +16,7 @@ namespace Inkpact.Api.Tests.Import;
 /// What the tests of a second import need: the real app (database, hub, Yjs sidecar), an export to import as many times as a
 /// test likes, and a way to do to the pages what a person does.
 /// </summary>
-public abstract class ReimportHarness(PostgresFixture postgres) : IAsyncLifetime
+public abstract class ReimportHarness(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     /// <summary>Milliseconds since 1970 as Joplin writes a due or a completed date.</summary>
     protected const string DueOne = "1790000000000";

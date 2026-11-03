@@ -37,8 +37,9 @@ pnpm --filter sidecar lint      # Prettier
 # Server
 pnpm install --frozen-lockfile  # before dotnet test: the tests start the real sidecar, which needs Node 24 and its dependencies
 dotnet build server
-dotnet test server              # unit + Testcontainers integration (needs Docker)
-dotnet test server --filter "Category!=Slow"   # while working: leaves out the 5,000-note timing tests, which `pnpm check` runs
+dotnet test server              # unit + Testcontainers integration (needs Docker); the timing tests run last, alone
+dotnet test server --filter "Category!=Slow"   # leaves out the timing tests (5,000-note import, 10,000-page search)
+dotnet test server --filter "FullyQualifiedName~Inkpact.Api.Tests.Search"   # one area while working
 dotnet format server --verify-no-changes
 dotnet ef migrations add <Name> --project server/src/Inkpact.Data
 
@@ -47,9 +48,21 @@ docker compose -f deploy/docker-compose.dev.yml up -d --wait
 
 # Everything
 docker compose -f deploy/docker-compose.yml up
+
+# Checks, from quick to complete
+pnpm check:fast                 # ~1 min: lint, types and unit tests of web and sidecar
+pnpm check:push                 # ~4 min: check:fast, dotnet format and the server tests without the timing tests
+pnpm check                      # ~8 min, Postgres up: everything, with the timing tests and Playwright
 ```
 
-Run the relevant tests, lint and typecheck before saying a task is done, and **always run `pnpm check` (Postgres up) before pushing**: a PR's CI only runs the quick checks, so the server tests and Playwright run locally first and then on main. `pnpm check:fast` is the quick part. Say so if a part could not be run.
+**Which tests when.** The full suite is long and grows, so it runs once per PR, not after every change:
+
+- **While working:** the tests of what you change: its server test classes (`--filter "FullyQualifiedName~..."`), `pnpm --filter web exec vitest related <files>`, the Playwright spec of the screen. Run them before saying a task is done.
+- **Before every push** (also the pushes of review fixes): `pnpm check:push`, plus the Playwright spec of any screen you changed.
+- **Before the last push of a PR** (the review done, the fixes in): `pnpm check` with Postgres up, once.
+- **On main:** CI runs everything again after the merge. A PR's CI only runs the quick checks.
+
+Say so if a part could not be run.
 
 ## Non-negotiables
 
@@ -66,9 +79,10 @@ These hold for every change. Never weaken one to make something pass; stop and a
 ## Backend conventions
 
 - .NET 10, minimal APIs, nullable reference types on, warnings as errors.
-- EF Core with Npgsql. Migrations are the only way to change the schema. Raw SQL only for recursive tree queries (also the search query, which reads the visible tree through the `live_pages` function and needs `ts_headline`) and for the compaction's advisory lock and its `for update` read of the snapshot row.
+- EF Core with Npgsql. Migrations are the only way to change the schema. Raw SQL only for recursive tree queries (also the search query, which reads the visible tree through the `live_pages` function) and for the compaction's advisory lock and its `for update` read of the snapshot row.
 - Every endpoint declares an authorisation policy; the single permission service resolves roles (rules in architecture → "Permission resolution").
 - Tests: xUnit, NSubstitute, Shouldly (not FluentAssertions), Testcontainers with real Postgres. No in-memory database provider.
+- Test classes run in parallel (6 at a time, `xunit.runner.json`). A class that needs Postgres takes `IClassFixture<PostgresFixture>` (one shared container, a database of its own per test); never a shared collection, which would run its classes one after another. A test that measures time gets `[Trait("Category", "Slow")]` and `[Collection(SlowCollection.Name)]`, so it runs after the rest, alone.
 - The sync hub treats Yjs updates as opaque blobs. Decode them only for compaction, diffs and text extraction, in the Yjs Node sidecar (YDotNet was rejected in the spike, see `docs/spike-findings.md`).
 - One multiplexed WebSocket per client session; every message carries its page id.
 

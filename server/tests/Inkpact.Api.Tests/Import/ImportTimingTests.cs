@@ -11,7 +11,7 @@ namespace Inkpact.Api.Tests.Import;
 /// How long a large library takes (run 1.16d), as the app runs it: pooled database connections, the real hub and Yjs sidecar.
 /// Slow on purpose, so <c>dotnet test server --filter "Category!=Slow"</c> leaves them out while working; <c>pnpm check</c> runs them.
 /// </summary>
-[Collection(PostgresCollection.Name)]
+[Collection(SlowCollection.Name)]
 [Trait("Category", "Slow")]
 public sealed class ImportTimingTests(PostgresFixture postgres, ITestOutputHelper output) : ReimportHarness(postgres)
 {

@@ -44,8 +44,7 @@ public class SyncOriginTests
 }
 
 /// <summary>Behind a TLS proxy the app sees plain HTTP, but the browser's origin is https: the forwarded scheme decides.</summary>
-[Collection(PostgresCollection.Name)]
-public class SyncBehindProxyTests(PostgresFixture postgres)
+public class SyncBehindProxyTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>
 {
     [Fact]
     public async Task Behind_a_trusted_proxy_the_https_origin_is_the_apps_own()
@@ -71,8 +70,7 @@ public class SyncBehindProxyTests(PostgresFixture postgres)
 /// Traefik forwards a WebSocket upgrade with <c>X-Forwarded-Proto: wss</c> (or <c>ws</c>), not <c>https</c>: the same
 /// browser on the same page, so the same session cookie and the same origin must count.
 /// </summary>
-[Collection(PostgresCollection.Name)]
-public class SyncBehindTraefikTests(PostgresFixture postgres)
+public class SyncBehindTraefikTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>
 {
     [Theory]
     [InlineData("wss", "https://localhost")]

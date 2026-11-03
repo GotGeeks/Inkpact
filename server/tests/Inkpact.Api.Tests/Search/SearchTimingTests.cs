@@ -17,9 +17,9 @@ namespace Inkpact.Api.Tests.Search;
 /// 200 ms), asked over HTTP as the app runs it, with pooled connections. Slow on purpose, so
 /// <c>dotnet test server --filter "Category!=Slow"</c> leaves it out while working; <c>pnpm check</c> runs it.
 /// </summary>
-[Collection(PostgresCollection.Name)]
+[Collection(SlowCollection.Name)]
 [Trait("Category", "Slow")]
-public sealed class SearchTimingTests(PostgresFixture postgres, ITestOutputHelper output) : IAsyncLifetime
+public sealed class SearchTimingTests(PostgresFixture postgres, ITestOutputHelper output) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private const int Notebooks = 100;
     private const int NotesPerNotebook = 99;

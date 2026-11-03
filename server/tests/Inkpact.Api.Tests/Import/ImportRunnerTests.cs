@@ -17,8 +17,7 @@ namespace Inkpact.Api.Tests.Import;
 /// The import job against a real database and the real Yjs sidecar: the tree, what each page holds, what is stored beside
 /// it, and what happens when the job is run again, stopped half way, or cannot reach the sidecar.
 /// </summary>
-[Collection(PostgresCollection.Name)]
-public sealed class ImportRunnerTests(PostgresFixture postgres) : IAsyncLifetime
+public sealed class ImportRunnerTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52];
     private static readonly byte[] Pdf = "%PDF-1.4\n%fake\n"u8.ToArray();

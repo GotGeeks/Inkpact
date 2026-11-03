@@ -23,8 +23,6 @@ public class TreeModelTests(PostgresFixture postgres, ITestOutputHelper output) 
     // refusal, or a restore into the top level, would make this test pass without proving anything.
     private readonly Dictionary<string, int> _outcomes = [];
 
-    protected override bool PooledConnections => true;
-
     private static int Runs =>
         int.TryParse(Environment.GetEnvironmentVariable("INKPACT_PROPERTY_RUNS"), out var runs) && runs > 0 ? runs : 100;
 

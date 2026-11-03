@@ -5,8 +5,7 @@ using Inkpact.Api.Tests.Testing;
 
 namespace Inkpact.Api.Tests.Auth;
 
-[Collection(PostgresCollection.Name)]
-public class AuthCookieTests(PostgresFixture postgres)
+public class AuthCookieTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>
 {
     private async Task<(InkpactFactory Factory, HttpClient Client)> StartAsync(
         string? cookieSecure = null, string[]? trustedProxies = null, string? remoteIp = null, bool https = false)

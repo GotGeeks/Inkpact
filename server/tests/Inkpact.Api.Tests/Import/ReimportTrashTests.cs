@@ -9,7 +9,6 @@ namespace Inkpact.Api.Tests.Import;
 /// A note or notebook that Joplin has put in its trash since the last import (run 1.16b): its page follows into the trash
 /// here only when nothing was changed here, and the person can restore it from there.
 /// </summary>
-[Collection(PostgresCollection.Name)]
 public sealed class ReimportTrashTests(PostgresFixture postgres) : ReimportHarness(postgres)
 {
     private const string Deleted = "1795000000000";

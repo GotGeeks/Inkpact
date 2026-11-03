@@ -17,8 +17,7 @@ namespace Inkpact.Api.Tests.Sync;
 /// are to the hub, so the Yjs sidecar is off and every subscribe is answered with the stored log (log mode); the diff
 /// is tested with real updates in SyncHubDiffTests, and what Yjs makes of them in the browser with the editor (run 1.11).
 /// </summary>
-[Collection(PostgresCollection.Name)]
-public class SyncHubTests(PostgresFixture postgres) : IAsyncLifetime
+public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private string _connectionString = "";
     private InkpactFactory _factory = null!;

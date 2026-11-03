@@ -21,8 +21,7 @@ namespace Inkpact.Api.Tests.Sync;
 /// stored log when it is not. The real sidecar and real Yjs updates from the fixtures; the tests of the hub's other
 /// behaviour (SyncHubTests) run with the sidecar off, which is the log mode, and send opaque bytes.
 /// </summary>
-[Collection(PostgresCollection.Name)]
-public class SyncHubDiffTests(PostgresFixture postgres) : IAsyncLifetime
+public class SyncHubDiffTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private InkpactFactory _factory = null!;
     private SyncUser _jos = null!;

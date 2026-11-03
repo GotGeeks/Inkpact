@@ -8,8 +8,7 @@ using NSubstitute;
 
 namespace Inkpact.Api.Tests.Data;
 
-[Collection(PostgresCollection.Name)]
-public class MigrationIntegrationTests(PostgresFixture postgres)
+public class MigrationIntegrationTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>
 {
     private static DatabaseMigrator CreateMigrator(InkpactDbContextHolder holder, IDatabaseBackup backup) =>
         new(new EfMigrationStore(holder.Db), backup, Options.Create(new DatabaseOptions()), NullLogger<DatabaseMigrator>.Instance);

@@ -4,8 +4,7 @@ using Inkpact.Api.Tests.Testing;
 namespace Inkpact.Api.Tests.Auth;
 
 /// <summary>A second factory on the same database and keys behaves like the app after a restart.</summary>
-[Collection(PostgresCollection.Name)]
-public class RestartTests(PostgresFixture postgres) : IAsyncLifetime
+public class RestartTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private readonly string _keys = Path.Combine(Path.GetTempPath(), $"inkpact-keys-{Guid.NewGuid():N}");
     private string _connectionString = "";

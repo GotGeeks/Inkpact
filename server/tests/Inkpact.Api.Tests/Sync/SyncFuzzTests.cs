@@ -16,8 +16,7 @@ namespace Inkpact.Api.Tests.Sync;
 /// Whatever bytes a client sends, the hub either answers within the protocol or closes that one socket with a policy
 /// violation. It never fails with a server error, never hangs, and stays usable for everyone else.
 /// </summary>
-[Collection(PostgresCollection.Name)]
-public class SyncFuzzTests(PostgresFixture postgres, ITestOutputHelper output) : IAsyncLifetime
+public class SyncFuzzTests(PostgresFixture postgres, ITestOutputHelper output) : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private InkpactFactory _factory = null!;
     private SyncUser _jos = null!;
