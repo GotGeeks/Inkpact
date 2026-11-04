@@ -46,6 +46,7 @@
     "too_many_pages": "Er zijn te veel pagina's tegelijk open. Sluit er een en probeer het opnieuw.",
     "forbidden": "Dat mag je niet doen.",
     "not_found": "Dat is niet gevonden.",
+    "export_unavailable": "De export kan nu niet worden gemaakt, omdat het deel van de server dat de pagina’s leest niet beschikbaar is. Probeer het zo opnieuw.",
     "csrf_invalid": "De pagina was verouderd. Laad hem opnieuw en probeer het nog eens.",
     "title_invalid": "De titel mag hooguit 500 tekens hebben.",
     "parent_invalid": "Die pagina kan niet als bovenliggende pagina dienen.",
@@ -414,6 +415,21 @@
     "signedInAs": "Ingelogd als {email}",
     "logout": "Uitloggen",
     "logoutEverywhere": "Overal uitloggen"
+  },
+  "export": {
+    "menu": "Alles exporteren",
+    "hint": "Een zip met je notities als Markdown-bestanden, en hun bestanden. Een grote bibliotheek kan een minuut duren.",
+    "readme": {
+      "title": "Inkpact-export",
+      "intro": "Alles uit de werkruimte “{workspace}” zoals het was op {date}, als gewone Markdown-bestanden. Je hebt Inkpact niet nodig om het te lezen.",
+      "counts": "Notities: {pages}. Bestanden: {files}.",
+      "pages": "Elke notitie is een Markdown-bestand met de titel als naam. De notities in een notitieboek staan in een map met de naam van het notitieboek, naast het eigen bestand van dat notitieboek. Tussen de twee regels met streepjes bovenaan een bestand staat wat Inkpact van de notitie weet: titel, data, labels en to-dostatus.",
+      "files": "Afbeeldingen en bestanden staan in de map _attachments, één keer per verschillend bestand. Notities verwijzen ernaar met een relatief pad.",
+      "links": "Ook de links tussen notities zijn relatieve paden, dus ze blijven werken als je de map verplaatst.",
+      "left": "Niet meegenomen: de prullenbak, de bewerkingsgeschiedenis en accounts.",
+      "missingFiles": "Deze bestanden horen bij notities, maar konden niet uit de opslag van de server worden gelezen, dus ze staan niet in deze export:",
+      "unreadablePages": "De tekst van deze notities kon niet worden gelezen, dus alleen hun titel en data staan hier:"
+    }
   },
   "notices": {
     "trashed": "“{title}” is naar de prullenbak verplaatst.",

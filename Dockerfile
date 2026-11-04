@@ -41,8 +41,9 @@ COPY server/src/Inkpact.Api/Inkpact.Api.csproj server/src/Inkpact.Api/
 COPY server/src/Inkpact.Data/Inkpact.Data.csproj server/src/Inkpact.Data/
 RUN dotnet restore server/src/Inkpact.Api/Inkpact.Api.csproj
 COPY server/src server/src
-# The import's allow-list is the client's, built into the server.
+# The import's allow-list and the words of the export's README are the client's, built into the server.
 COPY web/src/editor/allowList.json web/src/editor/
+COPY web/src/locales/en.json web/src/locales/nl.json web/src/locales/
 RUN dotnet publish server/src/Inkpact.Api/Inkpact.Api.csproj -c Release -o /out --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:de0ee358cdd672f7017a003bed21e9ac9ed48a27c922a59b18175b6e82fa7fee AS final

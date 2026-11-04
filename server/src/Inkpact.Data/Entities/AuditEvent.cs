@@ -19,6 +19,9 @@ public class AuditEvent
     public string? Ip { get; set; }
 
     public string? UserAgent { get; set; }
+
+    /// <summary>The workspace it concerned, for events about one (an export). Kept when the workspace is deleted, without the link.</summary>
+    public Guid? WorkspaceId { get; set; }
 }
 
 public static class AuditEventTypes
@@ -29,4 +32,7 @@ public static class AuditEventTypes
     public const string LoginLocked = "login_locked";
     public const string Logout = "logout";
     public const string LogoutEverywhere = "logout_everywhere";
+
+    /// <summary>Someone took the export of a workspace: all of its pages and files.</summary>
+    public const string WorkspaceExported = "workspace_exported";
 }

@@ -46,6 +46,8 @@ export function useErrorMessage() {
         return t('errors.forbidden')
       case 'not_found':
         return t('errors.not_found')
+      case 'export_unavailable':
+        return t('errors.export_unavailable')
       case 'title_invalid':
         return t('errors.title_invalid')
       case 'parent_invalid':

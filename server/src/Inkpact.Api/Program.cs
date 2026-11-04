@@ -2,6 +2,7 @@ using Inkpact.Api.Attachments;
 using Inkpact.Api.Auth;
 using Inkpact.Api.Compaction;
 using Inkpact.Api.Crdt;
+using Inkpact.Api.Export;
 using Inkpact.Api.Import;
 using Inkpact.Api.Pages;
 using Inkpact.Api.Permissions;
@@ -28,6 +29,7 @@ builder.Services.AddCompaction(builder.Configuration);
 builder.Services.AddSync(builder.Configuration);
 builder.Services.AddAttachments(builder.Configuration);
 builder.Services.AddImport(builder.Configuration);
+builder.Services.AddExport();
 
 var app = builder.Build();
 
@@ -98,6 +100,7 @@ app.MapPageEndpoints();
 app.MapSearchEndpoints();
 app.MapAttachmentEndpoints();
 app.MapImportEndpoints();
+app.MapExportEndpoints();
 app.MapSyncEndpoints();
 
 // An unknown API path is a JSON 404 with an error code, never the HTML shell.

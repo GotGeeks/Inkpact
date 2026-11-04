@@ -24,6 +24,14 @@ Back up the database and `/data` together: a page refers to its files by id, and
 
 A file added to a page is stored once per content (by its SHA-256), however often it is added, under `/data/attachments`. One file may be 50 MB; set `Attachments__MaxFileSize` (in bytes) in the compose file's `environment` to change that. To keep attachments on another disk, mount a second volume at `/data/attachments`, writable by UID 1654. If you change the limit and run behind a proxy, check that the proxy allows request bodies of that size too.
 
+## Exporting everything
+
+**Account menu → Export everything** downloads a zip of every note you can read in the workspace, as Markdown files, with their pictures and files. It needs no Inkpact to read: open it in a text editor, Obsidian, or any tool that reads Markdown folders. A note is `Title.md` and the notes under it are in a folder with the same name beside it; pictures and files are in `_attachments`; links between notes are relative paths; and the title, dates, tags and to-do state of each note are at the top of its file. The `README.md` inside says the same.
+
+This is a copy you can read, **not a replacement for the backup** above: it leaves out the trash, the edit history and accounts, and a note's tags and to-do state are text in its file, not something you can restore from it. Take one now and then, so that your notes are never only in a form that needs Inkpact.
+
+The zip is made while it downloads, so a large library takes a minute and nothing is kept on the server. If the download stops half way it shows as failed in the browser; start it again. A reverse proxy that holds a response back until it is complete, or ends it after a time, needs to let this one through (for Traefik, the default is fine).
+
 ## Importing from Joplin
 
 In Joplin desktop, choose File → Export all → JEX (leave encryption off; an encrypted note cannot be imported, and the report lists it). Then use the import page of Inkpact and pick the file.
