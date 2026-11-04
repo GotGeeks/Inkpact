@@ -166,69 +166,75 @@ public sealed class SearchFileNoteTests(PostgresFixture postgres) : ReimportHarn
         (await FindAsync("alpha")).ShouldBe([page.Id]);
     }
 
-    // ---- pages that were stored as files before ------------------------------------------------------------------------
+
+    // ---- notes kept as files before run 1.17c ---------------------------------------------------------------------------
+
+    /// <summary>What a note imported before run 1.17c is like after the migration: no file text, its item from an older converter.</summary>
+    private Task AsBeforeAsync(Guid pageId) => UseDbAsync(async db =>
+    {
+        await db.Pages.Where(p => p.Id == pageId).ExecuteUpdateAsync(s => s.SetProperty(p => p.FileText, ""));
+        return await db.ImportItems.Where(i => i.InkpactId == pageId).ExecuteUpdateAsync(s => s.SetProperty(i => i.ConverterVersion, 1));
+    });
 
     [Fact]
-    public async Task Start_up_gives_a_page_stored_as_a_file_before_its_text_once()
+    public async Task A_note_kept_as_a_file_before_gets_its_text_at_the_next_import_of_the_same_export()
     {
         await StartAsync();
-        await ImportAsync(Library(Body(TextLimit + 500, "the quarterly budget review")));
+        var jex = Library(Body(TextLimit + 500, "the quarterly budget review"));
+        await ImportAsync(jex);
         var page = await PageOfAsync("big");
-        await ForgetFileTextAsync(page.Id);
+        await AsBeforeAsync(page.Id);
         (await FindAsync("quarterly")).ShouldBeEmpty();
 
-        var first = await Service<FileTextBackfill>().RunAsync(default);
-        var again = await Service<FileTextBackfill>().RunAsync(default);
+        await ImportAsync(jex);
 
-        first.ShouldBe(1);
-        again.ShouldBe(0);
         (await FindAsync("quarterly")).ShouldBe([page.Id]);
+        (await ItemOfAsync("big")).ConverterVersion.ShouldBe(ImportOptions.ConverterVersion);
     }
 
     [Fact]
-    public async Task Start_up_takes_the_newest_file_of_a_note_that_changed_and_skips_pages_that_are_not_files()
-    {
-        await StartAsync();
-        await ImportAsync(Library(Body(TextLimit + 500, "alpha bravo")).Note("small", "work", body: "just a small note", title: "Small"));
-        await ImportAsync(Library(Body(TextLimit + 600, "charlie delta")).Note("small", "work", body: "just a small note", title: "Small"));
-        var page = await PageOfAsync("big");
-        await ForgetFileTextAsync(page.Id);
-
-        (await Service<FileTextBackfill>().RunAsync(default)).ShouldBe(1);
-
-        (await FileTextAsync(page.Id)).ShouldContain("charlie delta");
-        (await FileTextAsync(page.Id)).ShouldNotContain("alpha");
-        (await FileTextAsync((await PageOfAsync("small")).Id)).ShouldBe("");
-    }
-
-    [Fact]
-    public async Task Start_up_leaves_a_page_whose_file_is_gone_from_the_store_and_does_not_fail()
+    public async Task It_gets_the_text_of_the_note_as_Joplin_has_it_then_not_of_an_older_file()
     {
         await StartAsync();
         await ImportAsync(Library(Body(TextLimit + 500, "alpha bravo")));
+        await ImportAsync(Library(Body(TextLimit + 600, "charlie delta")));
         var page = await PageOfAsync("big");
-        await ForgetFileTextAsync(page.Id);
-        foreach (var file in Directory.EnumerateFiles(AttachmentsDirectory, "*", SearchOption.AllDirectories))
-        {
-            File.Delete(file);
-        }
+        await AsBeforeAsync(page.Id);
 
-        (await Service<FileTextBackfill>().RunAsync(default)).ShouldBe(0);
+        await ImportAsync(Library(Body(TextLimit + 500, "alpha bravo")));
 
-        (await FileTextAsync(page.Id)).ShouldBe("");
+        (await FindAsync("alpha")).ShouldBe([page.Id]);
+        (await FindAsync("charlie")).ShouldBeEmpty();
     }
 
     [Fact]
-    public async Task Start_up_leaves_a_page_with_text_of_its_own_whose_old_file_is_from_before_the_note_became_content_again()
+    public async Task A_page_someone_changed_here_is_left_alone_and_not_converted_again()
     {
         await StartAsync();
-        await ImportAsync(Library(Body(TextLimit + 500, "alpha bravo")));
+        var jex = Library(Body(TextLimit + 500, "alpha bravo"));
+        await ImportAsync(jex);
         var page = await PageOfAsync("big");
-        await UseDbAsync(db => db.Pages.Where(p => p.Id == page.Id).ExecuteUpdateAsync(
-            s => s.SetProperty(p => p.FileText, "").SetProperty(p => p.ContentText, "Something a person wrote instead")));
+        await AsBeforeAsync(page.Id);
+        await PersonEditsAsync(page.Id, "Written here");
 
-        (await Service<FileTextBackfill>().RunAsync(default)).ShouldBe(0);
+        await ImportAsync(jex);
 
         (await FileTextAsync(page.Id)).ShouldBe("");
+        (await ItemOfAsync("big")).ConverterVersion.ShouldBe(ImportOptions.ConverterVersion);
+    }
+
+    [Fact]
+    public async Task A_note_that_is_content_and_marked_by_mistake_is_converted_again_unchanged()
+    {
+        await StartAsync();
+        var jex = Library("Just a [file](:/readme)").Resource("readme", "readme.md", "# Read me"u8.ToArray(), "text/markdown");
+        await ImportAsync(jex);
+        var page = await PageOfAsync("big");
+        await AsBeforeAsync(page.Id);
+
+        await ImportAsync(jex);
+
+        (await FileTextAsync(page.Id)).ShouldBe("");
+        (await FindAsync("just")).ShouldBe([page.Id]);
     }
 }

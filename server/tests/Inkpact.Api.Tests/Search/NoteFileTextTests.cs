@@ -1,4 +1,5 @@
 using Inkpact.Api.Import;
+using Inkpact.Api.Search;
 using Inkpact.Api.Tests.Testing;
 using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +36,7 @@ public class NoteFileTextTests
     {
         var text = NoteFileText.Of("<style>p { color: red }</style><p>Fish &amp; chips <b>today</b></p><script>alert(1)</script>", isHtml: true);
 
-        System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").ShouldBe("Fish & chips today");
+        text.ShouldBe("Fish & chips today");
     }
 
     [Fact]
@@ -45,13 +46,65 @@ public class NoteFileTextTests
     }
 
     [Fact]
-    public void A_long_text_is_cut_at_the_most_that_is_indexed_without_splitting_a_character()
+    public void A_long_text_is_cut_at_the_most_that_is_indexed_without_splitting_a_character_or_leaving_half_of_one()
     {
-        var text = NoteFileText.Of(string.Concat(Enumerable.Repeat("a\U00020000 ", 150_000)), isHtml: false);
+        // The pair falls on the cut: half of it is not kept, and nothing is put in its place.
+        var text = NoteFileText.Of(new string('a', SearchService.IndexedText - 1) + "\U00020000 tail", isHtml: false);
 
-        text.Length.ShouldBeLessThanOrEqualTo(NoteFileText.MaxLength);
-        text.Length.ShouldBeGreaterThan(NoteFileText.MaxLength - 2);
-        char.IsHighSurrogate(text[^1]).ShouldBeFalse();
+        text.Length.ShouldBe(SearchService.IndexedText - 1);
+        text.ShouldNotContain('�');
+        char.IsSurrogate(text[^1]).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void A_picture_in_the_note_as_a_data_address_is_no_text_and_the_words_after_it_are_kept()
+    {
+        var picture = "data:image/png;base64," + new string('A', 5_000_000);
+        var markdown = NoteFileText.Of($"Before ![a picture]({picture}) after\n\nThe quarterly budget review.", isHtml: false);
+        var html = NoteFileText.Of($"<p>Before <img src=\"{picture}\"> after</p><p>The quarterly budget review.</p>", isHtml: true);
+
+        markdown.ShouldContain("The quarterly budget review.");
+        markdown.ShouldNotContain("AAAA");
+        html.ShouldContain("The quarterly budget review.");
+        html.ShouldNotContain("AAAA");
+    }
+
+    [Fact]
+    public void Markup_inside_a_word_leaves_the_word_whole_and_a_block_never_runs_into_the_next()
+    {
+        NoteFileText.Of("an ex**am**ple", isHtml: false).ShouldBe("an example");
+        NoteFileText.Of("<p>an ex<b>am</b>ple</p><p>next</p><ul><li>one</li><li>two</li></ul>", isHtml: true)
+            .ShouldBe("an example\n\nnext\n\none\n\ntwo");
+    }
+
+    [Fact]
+    public void The_html_in_a_markdown_note_keeps_its_words()
+    {
+        var text = NoteFileText.Of("Clipped:\n\n<table><tr><td>invoice 4711</td></tr></table>\n\n<div>\nmeeting notes\n</div>\n", isHtml: false);
+
+        text.ShouldContain("invoice 4711");
+        text.ShouldContain("meeting notes");
+        text.ShouldNotContain("<");
+    }
+
+    [Fact]
+    public void Task_lists_footnotes_and_maths_are_read_as_the_converter_reads_them()
+    {
+        var text = NoteFileText.Of("- [x] pay the rent\n- [ ] call home\n\nA claim[^1].\n\n[^1]: The source.\n\n$$x^2$$\n", isHtml: false);
+
+        text.ShouldContain("pay the rent");
+        text.ShouldContain("call home");
+        text.ShouldContain("The source.");
+        text.ShouldNotContain("[x]");
+        text.ShouldNotContain("[^1]");
+    }
+
+    [Fact]
+    public void The_white_space_of_markup_is_made_small_so_it_does_not_use_up_what_is_kept()
+    {
+        var text = NoteFileText.Of("<div>\n        <p>\n            one     two\n        </p>\n\n\n\n        <p>three</p>\n</div>", isHtml: true);
+
+        text.ShouldBe("one two\n\nthree");
     }
 
     [Fact]

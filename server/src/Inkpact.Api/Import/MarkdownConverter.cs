@@ -19,7 +19,8 @@ namespace Inkpact.Api.Import;
 /// </summary>
 internal sealed partial class MarkdownConverter(ConversionContext context, HtmlConverter html)
 {
-    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
+    /// <summary>The Markdown Joplin writes, as the converter reads it; also for the text of a note kept as a file (<see cref="NoteFileText"/>).</summary>
+    internal static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .UsePipeTables()
         .UseTaskLists()
         .UseEmphasisExtras()

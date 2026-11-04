@@ -27,6 +27,22 @@ namespace Inkpact.Data.Migrations
                 defaultValue: "");
 
             RemakeSearchVector(migrationBuilder, withFileText: true);
+
+            // The notes an earlier import kept as files have no text here yet. Which file a page shows is in its document, which
+            // only the sidecar reads, so their items are marked as converted by an older converter: the next import converts
+            // such a note again when nobody changed its page here (the rule of ImportOptions.ConverterVersion), and writes the
+            // text of the note as Joplin has it then. A page kept as a file has no text of its own and a Joplin file of
+            // the note's (no external id, .md or .html). One that is not a file after all is only converted again, unchanged.
+            migrationBuilder.Sql("""
+                UPDATE import_items i SET converter_version = 1
+                FROM pages p
+                WHERE i.kind = 'note' AND i.inkpact_id = p.id AND i.converter_version > 1
+                  AND p.file_text = '' AND btrim(p.content_text, E' \t\r\n') = ''
+                  AND EXISTS (
+                    SELECT 1 FROM attachments a
+                    WHERE a.page_id = p.id AND a.external_source_type = 'joplin' AND a.external_id IS NULL
+                      AND (a.file_name LIKE '%.md' OR a.file_name LIKE '%.html'));
+                """);
         }
 
         /// <inheritdoc />

@@ -20,7 +20,7 @@ public sealed class SearchService(InkpactDbContext db)
     /// <summary>How many of the pages that match in their text only are ranked, newest edit first. See <see cref="SearchAsync"/>.</summary>
     public const int TextCandidates = 1_000;
 
-    /// <summary>What is indexed of a page's text (migration AddSearch); a match further on cannot be found.</summary>
+    /// <summary>What is indexed of a page's text, its content and the text of a note it keeps as a file together (migrations AddSearch and AddFileText, which write the number out); a match further on cannot be found. NoteFileText keeps no more.</summary>
     public const int IndexedText = 200_000;
 
     // Where the first matching word is looked for first, before the whole indexed text.
@@ -103,7 +103,7 @@ public sealed class SearchService(InkpactDbContext db)
             ORDER BY h.part, h.rank DESC, h.updated_at DESC, h.id
             """).ToListAsync(cancellationToken);
 
-        await AddSnippetsFromFilesAsync(rows, pattern, cancellationToken);
+        await AddSnippetsFromFilesAsync(rows, inText, pattern, cancellationToken);
 
         return new SearchResponse(
             [
@@ -117,10 +117,11 @@ public sealed class SearchService(InkpactDbContext db)
 
     /// <summary>
     /// A page that keeps a note as a file has the note's words in <c>file_text</c> (migration AddFileText), after its content in the text
-    /// the vector is made from. The snippet of such a page comes from there when the content has no match. A query of its own, for
+    /// the vector is made from. The snippet of such a page comes from there when the content has no match, under the same rules as for content: only where
+    /// a word is in the text, not only in the title or a tag. A query of its own, for
     /// those pages only: reading a second text for every result would cost every search, and few pages are files.
     /// </summary>
-    private async Task AddSnippetsFromFilesAsync(List<HitRow> rows, string pattern, CancellationToken cancellationToken)
+    private async Task AddSnippetsFromFilesAsync(List<HitRow> rows, string inText, string pattern, CancellationToken cancellationToken)
     {
         var ids = rows.Where(r => r.Snippet is null && r.HasFileText).Select(r => r.Id).ToArray();
         if (ids.Length == 0)
@@ -133,13 +134,16 @@ public sealed class SearchService(InkpactDbContext db)
                    m.at <= {SnippetLead} + 1 AS "SnippetAtStart",
                    char_length(e.snippet) < {SnippetLength} AS "SnippetAtEnd",
                    true AS "HasFileText", 0 AS "Total"
-            FROM pages p
+            FROM pages p CROSS JOIN (SELECT to_tsquery('inkpact_search', {inText}) AS in_text) q
             CROSS JOIN LATERAL (
                 SELECT left(left(p.content_text, {IndexedText}) || E'\n' || p.file_text, {IndexedText}) AS text
             ) t
-            CROSS JOIN LATERAL (SELECT regexp_instr(t.text, {pattern}) AS at) m
+            -- As for content: the start looked at first, and the whole only where it is not there.
+            CROSS JOIN LATERAL (
+                SELECT COALESCE(NULLIF(regexp_instr(left(t.text, {FirstLook}), {pattern}), 0), regexp_instr(t.text, {pattern})) AS at
+            ) m
             CROSS JOIN LATERAL (SELECT substr(t.text, greatest(m.at - {SnippetLead}, 1), {SnippetLength}) AS snippet) e
-            WHERE p.id = ANY({ids}) AND m.at > 0
+            WHERE p.id = ANY({ids}) AND p.search_vector @@ q.in_text AND m.at > 0
             """).ToListAsync(cancellationToken);
 
         foreach (var snippet in found)
