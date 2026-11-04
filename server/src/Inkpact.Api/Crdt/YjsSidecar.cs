@@ -83,6 +83,14 @@ public sealed class YjsSidecar(SidecarOptions options, string contentRoot, TimeP
             : throw Unexpected(answer);
     }
 
+    public async Task<YjsRead> ReadAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken)
+    {
+        var answer = await CallAsync(SidecarOp.Read, Parts(inputs), options.RequestTimeout, cancellationToken);
+        return answer is [var json, var skipped] && int.TryParse(Encoding.UTF8.GetString(skipped), out var count)
+            ? new YjsRead(json, count)
+            : throw Unexpected(answer);
+    }
+
     /// <summary>The updates as the parts of a request, after <paramref name="first"/> when an operation takes one more part before them.</summary>
     private static ReadOnlyMemory<byte>[] Parts(IReadOnlyList<byte[]> updates, ReadOnlyMemory<byte>? first = null)
     {

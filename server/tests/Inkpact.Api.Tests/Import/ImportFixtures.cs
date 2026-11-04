@@ -37,6 +37,14 @@ internal sealed record ConversionCase(string Name, string? Markdown, string? Htm
             page!["id"]!.GetValue<string>(),
             new PageLink(Guid.Parse(page["pageId"]!.GetValue<string>()), page["known"]!.GetValue<bool>()))));
 
+    /// <summary>The id a resource has in the fixtures (as Joplin writes it in <c>:/id</c>), for the attachment a document refers to.</summary>
+    public static string? ResourceIdOf(Guid attachmentId) =>
+        File.Value["resources"]!.AsArray().FirstOrDefault(r => Guid.Parse(r!["attachmentId"]!.GetValue<string>()) == attachmentId)?["id"]?.GetValue<string>();
+
+    /// <summary>The id a page has in the fixtures, for the page a link in a document points to.</summary>
+    public static string? PageIdOf(Guid pageId) =>
+        File.Value["pages"]!.AsArray().FirstOrDefault(p => Guid.Parse(p!["pageId"]!.GetValue<string>()) == pageId)?["id"]?.GetValue<string>();
+
     public static TheoryData<string> MarkdownNames => Names("markdown");
 
     public static TheoryData<string> HtmlNames => Names("html");

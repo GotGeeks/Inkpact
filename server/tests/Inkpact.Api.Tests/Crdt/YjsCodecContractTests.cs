@@ -254,6 +254,95 @@ public sealed class YjsCodecContractTests(YjsSidecarFixture yjs, ITestOutputHelp
         (await Codec.DiffAsync(ReadOnlyMemory<byte>.Empty, [], default)).StateVector.ShouldBe(compaction.StateVector);
     }
 
+    // ---- reading a page as the editor's document (run 1.18a) ----------------------------------------------------------
+
+    private const string EveryKind = """
+        {"type":"doc","content":[
+          {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Title"}]},
+          {"type":"paragraph","content":[{"type":"text","text":"plain "},{"type":"text","text":"bold","marks":[{"type":"bold"}]},{"type":"hardBreak"},{"type":"text","text":"site","marks":[{"type":"link","attrs":{"href":"https://example.com/","title":"Example"}}]}]},
+          {"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"item"}]}]}]},
+          {"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":true},"content":[{"type":"paragraph","content":[{"type":"text","text":"done"}]}]}]},
+          {"type":"codeBlock","attrs":{"language":"ts"},"content":[{"type":"text","text":"const x = 1"}]},
+          {"type":"table","content":[{"type":"tableRow","content":[{"type":"tableHeader","attrs":{"colspan":2,"align":"center"},"content":[{"type":"paragraph","content":[{"type":"text","text":"head"}]}]}]}]},
+          {"type":"image","attrs":{"attachmentId":"3f2b8c1e-9d4a-4e6b-8a57-0c1d2e3f4a5b","alt":"A picture"}},
+          {"type":"paragraph","content":[{"type":"attachment","attrs":{"attachmentId":"7c9e6679-7425-40de-944b-e07fc1f90ae7","fileName":"manual.pdf","size":123}},{"type":"text","text":" end"}]}
+        ]}
+        """;
+
+    [Fact]
+    public async Task Reading_a_page_that_was_built_gives_the_content_it_was_built_from_back()
+    {
+        var content = System.Text.Encoding.UTF8.GetBytes(EveryKind);
+
+        var read = await Codec.ReadAsync([await Codec.BuildAsync(content, default)], default);
+
+        read.Skipped.ShouldBe(0);
+        System.Text.Json.Nodes.JsonNode.DeepEquals(System.Text.Json.Nodes.JsonNode.Parse(read.Json), System.Text.Json.Nodes.JsonNode.Parse(EveryKind)).ShouldBeTrue(
+            System.Text.Encoding.UTF8.GetString(read.Json));
+    }
+
+    [Fact]
+    public async Task Reading_a_page_made_of_a_snapshot_and_updates_is_the_page_after_all_of_them()
+    {
+        var first = await Codec.BuildAsync(System.Text.Encoding.UTF8.GetBytes("""{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Old"}]}]}"""), default);
+        var replacement = await Codec.ReplaceAsync([first], System.Text.Encoding.UTF8.GetBytes("""{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"New"}]}]}"""), default);
+        var snapshot = (await Codec.CompactAsync([first], default)).State;
+
+        var read = await Codec.ReadAsync([snapshot, replacement.Update], default);
+
+        System.Text.Encoding.UTF8.GetString(read.Json).ShouldBe("""{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"New"}]}]}""");
+    }
+
+    [Theory]
+    [MemberData(nameof(YjsFixture.Names), MemberType = typeof(YjsFixture))]
+    public async Task A_page_the_editor_wrote_reads_as_a_document_with_the_text_the_compaction_finds(string name)
+    {
+        var updates = YjsFixture.Load(name).UpdateBytes;
+
+        var read = await Codec.ReadAsync(updates, default);
+        var text = (await Codec.CompactAsync(updates, default)).Text;
+
+        var document = System.Text.Json.Nodes.JsonNode.Parse(read.Json)!;
+        document["type"]!.GetValue<string>().ShouldBe("doc");
+        // Every word of the page's text is in the document's text (the walks differ in the line breaks they put between blocks).
+        var documentText = new System.Text.StringBuilder();
+        void Collect(System.Text.Json.Nodes.JsonNode? node)
+        {
+            if (node is System.Text.Json.Nodes.JsonObject obj)
+            {
+                documentText.Append(obj["text"]?.GetValue<string>());
+                Collect(obj["content"]);
+                // A block ends a line; pieces of text in a block are one run of text.
+                if (obj["type"]?.GetValue<string>() != "text")
+                {
+                    documentText.Append('\n');
+                }
+            }
+            else if (node is System.Text.Json.Nodes.JsonArray array)
+            {
+                foreach (var child in array)
+                {
+                    Collect(child);
+                }
+            }
+        }
+
+        Collect(document);
+        var flat = documentText.ToString();
+        foreach (var word in text.Split([' ', '\n'], StringSplitOptions.RemoveEmptyEntries).Take(200))
+        {
+            flat.ShouldContain(word);
+        }
+    }
+
+    [Fact]
+    public async Task Reading_no_updates_is_an_empty_document_and_an_update_that_is_not_one_is_refused()
+    {
+        System.Text.Encoding.UTF8.GetString((await Codec.ReadAsync([], default)).Json).ShouldBe("""{"type":"doc"}""");
+
+        await Should.ThrowAsync<YjsRejectedException>(() => Codec.ReadAsync([[1, 2, 3]], default));
+    }
+
     [Fact]
     public async Task Ten_thousand_updates_compact_quickly()
     {
