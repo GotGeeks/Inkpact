@@ -46,6 +46,7 @@
     "too_many_pages": "Too many pages are open at once. Close one and try again.",
     "forbidden": "You are not allowed to do that.",
     "not_found": "That could not be found.",
+    "export_unavailable": "The export cannot be made right now, because the part of the server that reads the pages is not available. Try again in a moment.",
     "csrf_invalid": "The page was out of date. Reload it and try again.",
     "title_invalid": "The title can be at most 500 characters.",
     "parent_invalid": "That page cannot be used as a parent.",
@@ -414,6 +415,21 @@
     "signedInAs": "Signed in as {email}",
     "logout": "Sign out",
     "logoutEverywhere": "Sign out everywhere"
+  },
+  "export": {
+    "menu": "Export everything",
+    "hint": "A zip of your notes as Markdown files, and their files. A large library can take a minute.",
+    "readme": {
+      "title": "Inkpact export",
+      "intro": "Everything from the workspace “{workspace}” as it was on {date}, as plain Markdown files. You do not need Inkpact to read it.",
+      "counts": "Notes: {pages}. Files: {files}.",
+      "pages": "Each note is a Markdown file named after its title. The notes inside a notebook are in a folder with the notebook's name, beside the notebook's own file. Between the two lines of dashes at the top of a file is what Inkpact knows about the note: its title, dates, tags and to-do state.",
+      "files": "Pictures and files are in the folder _attachments, once for each different file. Notes link to them with a relative path.",
+      "links": "Links between notes are relative paths too, so they keep working when you move the folder.",
+      "left": "Left out: the trash, the edit history and accounts.",
+      "missingFiles": "These files belong to notes but could not be read from the server's storage, so they are not in this export:",
+      "unreadablePages": "The text of these notes could not be read, so only their title and dates are here:"
+    }
   },
   "notices": {
     "trashed": "“{title}” was moved to the trash.",

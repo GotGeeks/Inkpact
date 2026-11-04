@@ -14,8 +14,10 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
+import { api, ApiError } from '../api'
 import { applyLocale, locales, type Locale } from '../i18n'
 import { useAuthStore } from '../stores/auth'
+import { useNotificationsStore } from '../stores/notifications'
 import { useSettingsStore } from '../stores/settings'
 import { useTreeStore } from '../stores/tree'
 
@@ -25,6 +27,7 @@ const { t, locale } = useI18n()
 const auth = useAuthStore()
 const settings = useSettingsStore()
 const tree = useTreeStore()
+const notifications = useNotificationsStore()
 const router = useRouter()
 
 // Static keys, so the unused-keys lint rule can see them.
@@ -51,6 +54,30 @@ async function leave(everywhere: boolean) {
   } finally {
     await router.replace({ name: 'login' })
   }
+}
+
+/**
+ * The zip is a download the browser makes itself (with the session cookie; a GET needs no CSRF token), so the app never
+ * sees its answer. The server is asked first whether it can be made, so that an ended session or a server that cannot read
+ * pages right now is a message in the person's language and not a failed download. The README inside is in the language
+ * shown here.
+ */
+async function exportEverything() {
+  const workspaceId = tree.workspace?.id
+  if (!workspaceId) return
+  try {
+    await api('GET', `/api/workspaces/${workspaceId}/export/check`)
+  } catch (error) {
+    notifications.post({ type: 'error', code: error instanceof ApiError ? error.code : 'unknown' })
+    return
+  }
+
+  const link = document.createElement('a')
+  link.href = `/api/workspaces/${workspaceId}/export?lang=${locale.value}`
+  link.download = ''
+  document.body.append(link)
+  link.click()
+  link.remove()
 }
 
 const item =
@@ -102,6 +129,22 @@ const item =
           t('import.menu')
         }}</DropdownMenuItem>
         <DropdownMenuSeparator v-if="tree.canEdit" class="my-space-xs h-px bg-border-subtle" />
+        <template v-if="tree.workspace">
+          <!-- The hint is inside the item (a menu holds only items), named apart from it so the item's name stays short. -->
+          <DropdownMenuItem
+            aria-labelledby="export-label"
+            aria-describedby="export-hint"
+            data-testid="export-item"
+            :class="[item, 'flex-col items-start gap-space-xs py-space-xs']"
+            @select="exportEverything"
+          >
+            <span id="export-label">{{ t('export.menu') }}</span>
+            <span id="export-hint" class="text-label-xs text-on-surface-variant">{{
+              t('export.hint')
+            }}</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator class="my-space-xs h-px bg-border-subtle" />
+        </template>
         <DropdownMenuItem :class="item" @select="leave(false)">{{
           t('user.logout')
         }}</DropdownMenuItem>

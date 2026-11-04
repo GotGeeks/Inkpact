@@ -120,6 +120,7 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             audit.HasOne<User>().WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.SetNull);
             audit.HasIndex(a => a.OccurredAt);
             audit.HasIndex(a => new { a.UserId, a.OccurredAt });
+            audit.HasOne<Workspace>().WithMany().HasForeignKey(a => a.WorkspaceId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<LoginThrottle>(throttle =>

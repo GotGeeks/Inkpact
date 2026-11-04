@@ -23,7 +23,11 @@ export default tseslint.config(
       // Hard-coded user-facing strings are not allowed: everything goes through vue-i18n.
       '@intlify/vue-i18n/no-raw-text': 'error',
       '@intlify/vue-i18n/no-missing-keys': 'error',
-      '@intlify/vue-i18n/no-unused-keys': ['error', { extensions: ['.ts', '.vue'] }],
+      // export.readme.* is read by the server (built into it), which writes the README of an export in the person's language.
+      '@intlify/vue-i18n/no-unused-keys': [
+        'error',
+        { extensions: ['.ts', '.vue'], ignores: ['/^export\\.readme\\./'] },
+      ],
       '@intlify/vue-i18n/no-missing-keys-in-other-locales': 'error',
       '@intlify/vue-i18n/no-v-html': 'error',
     },

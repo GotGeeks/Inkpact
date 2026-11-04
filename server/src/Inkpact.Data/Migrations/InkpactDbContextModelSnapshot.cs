@@ -173,11 +173,18 @@ namespace Inkpact.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
+                    b.Property<Guid?>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
                     b.HasKey("Id")
                         .HasName("pk_audit_events");
 
                     b.HasIndex("OccurredAt")
                         .HasDatabaseName("ix_audit_events_occurred_at");
+
+                    b.HasIndex("WorkspaceId")
+                        .HasDatabaseName("ix_audit_events_workspace_id");
 
                     b.HasIndex("UserId", "OccurredAt")
                         .HasDatabaseName("ix_audit_events_user_id_occurred_at");
@@ -898,6 +905,12 @@ namespace Inkpact.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_audit_events_user_id");
+
+                    b.HasOne("Inkpact.Data.Entities.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_audit_events_workspace_id");
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.ImportItem", b =>

@@ -17,6 +17,9 @@
   <ItemGroup>
     <!-- The tags imported HTML may keep: the same file the client's paste sanitiser reads. -->
     <EmbeddedResource Include="..\..\..\web\src\editor\allowList.json" LogicalName="Inkpact.Api.Import.allowList.json" Link="Import\allowList.json" />
+    <!-- The words of the export's README are the client's (export.readme.* in each language), so the server writes no language of its own. -->
+    <EmbeddedResource Include="..\..\..\web\src\locales\en.json" LogicalName="Inkpact.Api.Export.en.json" Link="Export\locales\en.json" />
+    <EmbeddedResource Include="..\..\..\web\src\locales\nl.json" LogicalName="Inkpact.Api.Export.nl.json" Link="Export\locales\nl.json" />
   </ItemGroup>
 
 </Project>

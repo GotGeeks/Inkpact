@@ -54,6 +54,8 @@ export function fakeTree(
       query: string,
       signal: AbortSignal | undefined,
     ) => SearchResponse | Response | Promise<SearchResponse | Response>
+    /** Answers the check before an export; a 204 without it. */
+    exportCheck?: () => Response
   } = {},
 ): FakeTree {
   let pages = initial.pages ?? []
@@ -98,6 +100,9 @@ export function fakeTree(
               workspaceId: workspace.id,
             })
           : jsonResponse(404, { code: 'not_found' })
+      }
+      if (path === `/api/workspaces/${workspace.id}/export/check`) {
+        return initial.exportCheck?.() ?? new Response(null, { status: 204 })
       }
       throw new Error(`Unexpected read: ${path}`)
     }

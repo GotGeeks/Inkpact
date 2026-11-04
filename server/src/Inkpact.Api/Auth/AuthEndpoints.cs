@@ -167,7 +167,7 @@ public static class AuthEndpoints
             }
 
             await throttle.RecordFailureAsync(key, cancellationToken);
-            await audit.WriteAsync(http, AuditEventTypes.LoginFailed, user?.Id, Typed(request.Email), cancellationToken);
+            await audit.WriteAsync(http, AuditEventTypes.LoginFailed, user?.Id, Typed(request.Email), cancellationToken: cancellationToken);
             return Error(StatusCodes.Status401Unauthorized, "invalid_credentials");
         }
 

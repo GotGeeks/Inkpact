@@ -109,28 +109,9 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
         return (ToDto(page), inTrash, page.WorkspaceId);
     }
 
-    /// <summary>Parents before children, and siblings by key, compared as bytes the way the database sorts them.</summary>
-    internal static List<PageDto> InTreeOrder(IEnumerable<PageDto> pages)
-    {
-        var all = pages.ToList();
-        var byParent = all.ToLookup(p => p.ParentId);
-        var ids = all.Select(p => p.Id).ToHashSet();
-        var ordered = new List<PageDto>(all.Count);
-
-        void Walk(Guid? parent)
-        {
-            foreach (var page in byParent[parent].OrderBy(p => p.SortKey, StringComparer.Ordinal))
-            {
-                ordered.Add(page);
-                Walk(page.Id);
-            }
-        }
-
-        Walk(null);
-        // A page whose parent is not in the list cannot be reached from the top; none should exist.
-        ordered.AddRange(all.Where(p => p.ParentId is not null && !ids.Contains(p.ParentId.Value)));
-        return ordered;
-    }
+    /// <summary>Parents before children, and siblings by key, compared as bytes the way the database sorts them (<see cref="TreeOrder"/>).</summary>
+    internal static List<PageDto> InTreeOrder(IEnumerable<PageDto> pages) =>
+        TreeOrder.Of(pages, p => p.Id, p => p.ParentId, p => p.SortKey);
 
     // ---- changing ----------------------------------------------------------------------------------------------------
 

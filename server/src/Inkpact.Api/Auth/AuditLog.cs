@@ -9,19 +9,19 @@ namespace Inkpact.Api.Auth;
 /// </summary>
 public interface IAuditLog
 {
-    Task WriteAsync(HttpContext http, string type, Guid? userId = null, string? email = null, CancellationToken cancellationToken = default);
+    Task WriteAsync(HttpContext http, string type, Guid? userId = null, string? email = null, Guid? workspaceId = null, CancellationToken cancellationToken = default);
 }
 
 public sealed class AuditLog(InkpactDbContext db, TimeProvider time) : IAuditLog
 {
-    public async Task WriteAsync(HttpContext http, string type, Guid? userId = null, string? email = null, CancellationToken cancellationToken = default)
+    public async Task WriteAsync(HttpContext http, string type, Guid? userId = null, string? email = null, Guid? workspaceId = null, CancellationToken cancellationToken = default)
     {
-        db.AuditEvents.Add(Create(http, time, type, userId, email));
+        db.AuditEvents.Add(Create(http, time, type, userId, email, workspaceId));
         await db.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>Builds the row without saving it, for events that belong in a transaction that is already open.</summary>
-    internal static AuditEvent Create(HttpContext http, TimeProvider time, string type, Guid? userId, string? email)
+    internal static AuditEvent Create(HttpContext http, TimeProvider time, string type, Guid? userId, string? email, Guid? workspaceId = null)
     {
         var userAgent = http.Request.Headers.UserAgent.ToString();
         return new AuditEvent
@@ -32,6 +32,7 @@ public sealed class AuditLog(InkpactDbContext db, TimeProvider time) : IAuditLog
             Email = email is { Length: > 320 } ? email[..320] : email,
             Ip = http.Connection.RemoteIpAddress?.ToString(),
             UserAgent = userAgent.Length == 0 ? null : userAgent.Length > 256 ? userAgent[..256] : userAgent,
+            WorkspaceId = workspaceId,
         };
     }
 }
