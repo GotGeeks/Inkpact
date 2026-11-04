@@ -626,7 +626,9 @@ public sealed partial class ImportRunner(
         string Text,
         IReadOnlyList<Attachment> NewFiles,
         IReadOnlyList<Guid> RetiredFiles,
-        byte[]? Before = null);
+        byte[]? Before = null,
+        /// <summary>The note's text when the page keeps it as a file; null when the page holds it as content.</summary>
+        string? FileText = null);
 
     /// <summary>
     /// The slow part of writing a note's content, done outside any transaction: the files are stored, the content is
@@ -819,8 +821,9 @@ public sealed partial class ImportRunner(
         }
 
         var converted = new ConvertedContent(PmNode.Doc(blocks), [new ConversionNote(NoteCodes.StoredAsFile)]);
-        return await MakeUpdateAsync(note, converted, current, added, retired, cancellationToken)
+        var built = await MakeUpdateAsync(note, converted, current, added, retired, cancellationToken)
             ?? throw new NoteTooLargeException();
+        return built with { FileText = NoteFileText.Of(body, note.IsHtml) };
     }
 
     /// <summary>A note that cannot be kept even as a file (its body is larger than a file may be, or the page of files would be too large to open): skipped.</summary>
@@ -961,6 +964,7 @@ public sealed partial class ImportRunner(
             ExternalSourceType = SourceType,
             ExternalId = note.Id,
             ContentText = built.Text.Replace("\0", ""),
+            FileText = built.FileText ?? "",
         });
         db.Attachments.AddRange(files);
         var first = new PageUpdate { PageId = pageId, UserId = run.UserId, Data = built.Update, CreatedAt = now };
@@ -1277,6 +1281,7 @@ public sealed partial class ImportRunner(
         var next = ((baseInfo ?? new ImportBase()) with { ContentKey = contentKey }).ToJson();
         var fingerprint = HashBytes(built.Fingerprint);
         var text = built.Text.Replace("\0", "");
+        var fileText = built.FileText ?? "";
         var now = time.GetUtcNow();
         var updatedAt = note.Updated ?? now;
         Guid[] retired = [.. built.RetiredFiles];
@@ -1317,7 +1322,9 @@ public sealed partial class ImportRunner(
 
             await db.Pages.Where(p => p.Id == pageId).ExecuteUpdateAsync(
                 // Joplin's time, but never back: the field step may have set the time of the import, or a person a later one.
-                set => set.SetProperty(p => p.ContentText, text).SetProperty(p => p.UpdatedAt, p => p.UpdatedAt > updatedAt ? p.UpdatedAt : updatedAt), token);
+                set => set.SetProperty(p => p.ContentText, text)
+                    .SetProperty(p => p.FileText, fileText)
+                    .SetProperty(p => p.UpdatedAt, p => p.UpdatedAt > updatedAt ? p.UpdatedAt : updatedAt), token);
             await db.ImportItems.Where(i => i.Id == existing.Id).ExecuteUpdateAsync(
                 set => set.SetProperty(i => i.ContentHash, hash)
                     .SetProperty(i => i.Base, next)
@@ -1428,6 +1435,7 @@ public sealed partial class ImportRunner(
             CompletedAt = note.IsTodo ? note.Completed : null,
             DueAt = note.IsTodo ? note.Due : null,
             ContentText = built.Text.Replace("\0", ""),
+            FileText = built.FileText ?? "",
         });
         db.Attachments.AddRange(built.NewFiles);
         db.PageUpdates.Add(new PageUpdate { PageId = copyId, UserId = run.UserId, Data = built.Update, CreatedAt = now });

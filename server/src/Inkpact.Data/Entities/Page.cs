@@ -47,4 +47,7 @@ public class Page
 
     /// <summary>The names of the page's tags, one space between them, kept by the code that changes a page's tags. Feeds search (run 1.17).</summary>
     public string TagText { get; set; } = "";
+
+    /// <summary>The text of the note a page keeps as a file (an imported note too large to open as content), at most 200,000 characters. Written by the import, never by the compactor. Feeds search (run 1.17c).</summary>
+    public string FileText { get; set; } = "";
 }

@@ -68,9 +68,11 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             page.Property(p => p.ExternalId).HasMaxLength(200);
             page.Property(p => p.ContentText).HasDefaultValue("").IsRequired();
             page.Property(p => p.TagText).HasDefaultValue("").IsRequired();
-            // The search vector (a generated column over title, tag_text and content_text), its GIN index, the unaccent
-            // extension and the inkpact_search configuration are in the AddSearch migration and not in this model: EF would
-            // ask the database for the vector, up to a megabyte, after every write of a page.
+            page.Property(p => p.FileText).HasDefaultValue("").IsRequired();
+            // The search vectors (generated columns: search_vector over title, tag_text, content_text and file_text, and
+            // title_vector over title and tag_text), their GIN indexes, the unaccent extension, the inkpact_search
+            // configuration and the tag_text triggers are in the AddSearch and AddFileText migrations and not in this
+            // model: EF would ask the database for a vector, up to a megabyte, after every write of a page.
             page.HasOne(p => p.Workspace).WithMany().HasForeignKey(p => p.WorkspaceId).OnDelete(DeleteBehavior.Restrict);
             page.HasOne(p => p.Parent).WithMany().HasForeignKey(p => p.ParentId).OnDelete(DeleteBehavior.Restrict);
             // Two live siblings never share a key, also at the top level (where the parent is null).

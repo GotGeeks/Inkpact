@@ -430,6 +430,13 @@ namespace Inkpact.Data.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("external_source_type");
 
+                    b.Property<string>("FileText")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("")
+                        .HasColumnName("file_text");
+
                     b.Property<bool>("IsTodo")
                         .HasColumnType("boolean")
                         .HasColumnName("is_todo");
