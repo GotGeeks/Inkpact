@@ -5,13 +5,14 @@ namespace Inkpact.Api.Tests.Export;
 /// <summary>
 /// A document in the one shape that two documents with the same meaning share, for comparing a page with what its Markdown
 /// is read back as. Only what Markdown cannot carry or what is the same said two ways is made equal: defaults and nulls,
-/// the order of marks, text split in pieces, empty paragraphs (Markdown has no blank line to keep one with), two lists of one
-/// kind that touch (Markdown makes them one), the space at the ends of a paragraph, and what the import does not read back
+/// the order of marks, text split in pieces, empty paragraphs (Markdown has no blank line to keep one with), the space at the
+/// ends of a paragraph, and what the import does not read back
 /// of a table (a column's alignment and width) or of a link (its target and rel).
 /// </summary>
 internal static class DocumentNormal
 {
-    private static readonly string[] MarkOrder = ["underline", "bold", "italic", "strike", "link", "code"];
+    /// <summary>The writer's order: where white space between two runs is in their marks follows it (see <see cref="Split"/>).</summary>
+    private static readonly string[] MarkOrder = Inkpact.Api.Export.MarkdownInline.MarkOrder;
 
     /// <summary>Where two documents first differ, for a failure message: the path, and what each has there.</summary>
     public static string FirstDifference(JsonNode? a, JsonNode? b, string path = "$")
@@ -73,18 +74,6 @@ internal static class DocumentNormal
             var type = child["type"]!.GetValue<string>();
             if (type is "paragraph" or "heading" && child["content"] is not JsonArray { Count: > 0 })
             {
-                continue;
-            }
-
-            if (kept.Count > 0 && type is "bulletList" or "orderedList" or "taskList" && kept[^1]["type"]!.GetValue<string>() == type)
-            {
-                var into = (JsonArray)kept[^1]["content"]!;
-                foreach (var item in ((JsonArray)child["content"]!).ToList())
-                {
-                    ((JsonArray)child["content"]!).Remove(item);
-                    into.Add(item);
-                }
-
                 continue;
             }
 

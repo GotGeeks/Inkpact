@@ -22,7 +22,9 @@ public class MarkdownWriterTests
         ("an empty paragraph says nothing", Doc(P(), P(T("Text")), P()), "Text\n"),
         ("an empty document", Doc(), ""),
         ("headings of every level", Doc(H(1, T("A")), H(2, T("B")), H(6, T("F"))), "# A\n\n## B\n\n###### F\n"),
-        ("a heading that ends in a hash", Doc(H(2, T("C#"))), "## C\\#\n"),
+        ("a heading that ends in a hash after a letter", Doc(H(2, T("C#"))), "## C#\n"),
+        ("a heading that ends in hashes after a space", Doc(H(2, T("a ##"))), "## a \\##\n"),
+        ("a heading that is a hash", Doc(H(1, T("#"))), "# \\#\n"),
         ("a heading with a break is one line", Doc(H(1, T("a"), Br(), T("b"))), "# a b\n"),
         ("bold, italic, strike and code", Doc(P(T("b", "bold"), T(" "), T("i", "italic"), T(" "), T("s", "strike"), T(" "), T("c", "code"))), "**b** *i* ~~s~~ `c`\n"),
         ("underline is HTML", Doc(P(T("under", "underline"))), "<u>under</u>\n"),
@@ -50,6 +52,10 @@ public class MarkdownWriterTests
         ("a numbered list with a wide marker", Doc(Ol(9, Li(P(T("a")), P(T("more"))), Li(P(T("b"))))), "9. a\n\n   more\n\n10. b\n"),
         ("a list item with nothing in it", Doc(Ul(Li(), Li(P(T("a"))))), "-\n- a\n"),
         ("a task list", Doc(Node("taskList", null, Task(true, P(T("done"))), Task(false, P(T("todo"))))), "- [x] done\n- [ ] todo\n"),
+        ("an empty task item", Doc(Node("taskList", null, Task(true), Task(false, P(T("b"))))), "- [x] &nbsp;\n- [ ] b\n"),
+        ("lists that touch have the other marker", Doc(Ul(Li(P(T("a")))), Node("taskList", null, Task(false, P(T("b")))), Ul(Li(P(T("c"))))), "- a\n\n* [ ] b\n\n- c\n"),
+        ("numbered lists that touch have the other marker", Doc(Ol(1, Li(P(T("a")))), Ol(1, Li(P(T("b"))))), "1. a\n\n1) b\n"),
+        ("lists with a paragraph between them have one marker", Doc(Ul(Li(P(T("a")))), P(T("x")), Ul(Li(P(T("b"))))), "- a\n\nx\n\n- b\n"),
         ("a code block with a language", Doc(Code("ts", "const x = 1\nconst y = 2")), "```ts\nconst x = 1\nconst y = 2\n```\n"),
         ("a code block with fences in it", Doc(Code(null, "a\n```\nb")), "````\na\n```\nb\n````\n"),
         ("an empty code block", Doc(Code(null, "")), "```\n```\n"),
@@ -60,6 +66,12 @@ public class MarkdownWriterTests
         ("a table's alignment", Doc(Table(Row(Cell(true, P(T("a")), align: "left"), Cell(true, P(T("b")), align: "center"), Cell(true, P(T("c")), align: "right")), Row(Cell(false), Cell(false), Cell(false)))), "| a | b | c |\n| :--- | :---: | ---: |\n|  |  |  |\n"),
         ("a table with a merged cell is HTML", Doc(Table(Row(Cell(true, P(T("a")), colspan: 2)), Row(Cell(false, P(T("1"))), Cell(false, P(T("2")))))), "<table>\n<tr>\n<th colspan=\"2\"><p>a</p></th>\n</tr>\n<tr>\n<td><p>1</p></td>\n<td><p>2</p></td>\n</tr>\n</table>\n"),
         ("a table without a header row is HTML", Doc(Table(Row(Cell(false, P(T("a")))))), "<table>\n<tr>\n<td><p>a</p></td>\n</tr>\n</table>\n"),
+        ("a pipe in a link's address and title in a table has a backslash", Doc(Table(Row(Cell(true, P(Link("x", "https://x.org/?q=a|b", "c|d")))))), "| [x](https://x.org/?q=a\\|b \"c\\|d\") |\n| --- |\n"),
+        ("a table with a pipe in code is HTML", Doc(Table(Row(Cell(true, P(T("a|b", "code")))))), "<table>\n<tr>\n<th><p><code>a|b</code></p></th>\n</tr>\n</table>\n"),
+        ("code in an HTML table has no blank line", Doc(Table(Row(Cell(false, Code(null, "a\n\n \nb"))))), "<table>\n<tr>\n<td><pre><code>a&#10;&#10; \nb</code></pre></td>\n</tr>\n</table>\n"),
+        ("a table in a table keeps the lines of its code", Doc(Table(Row(Cell(false, Table(Row(Cell(false, Code(null, "x\ny")))))))), "<table>\n<tr>\n<td><table>\n<tr>\n<td><pre><code>x\ny</code></pre></td>\n</tr>\n</table></td>\n</tr>\n</table>\n"),
+        ("a file after a bang", Doc(P(T("Look!"), File(FileId, "my manual (1).pdf"))), "Look\\![my manual (1).pdf](<_attachments/my manual (1).pdf>)\n"),
+        ("a link after a bang", Doc(P(T("Look!"), Link("site", "https://example.com/"))), "Look\\![site](https://example.com/)\n"),
         ("a table cell with a list is HTML", Doc(Table(Row(Cell(true, P(T("a")))), Row(Cell(false, Ul(Li(P(T("x")))))))), "<table>\n<tr>\n<th><p>a</p></th>\n</tr>\n<tr>\n<td><ul><li><p>x</p></li></ul></td>\n</tr>\n</table>\n"),
     ];
 
@@ -89,6 +101,7 @@ public class MarkdownWriterTests
     [InlineData("costs $5 and $6", "costs \\$5 and \\$6")]
     [InlineData("AT&T and &amp; and &#169;", "AT&T and \\&amp; and \\&#169;")]
     [InlineData("see https://example.com and www.example.com", "see https\\://example.com and www\\.example.com")]
+    [InlineData("mail mailto:me@example.com, call tel:+3112 at the hotel:", "mail mailto\\:me@example.com, call tel\\:+3112 at the hotel:")]
     public void Text_is_escaped_where_markdown_would_read_it_as_markup_and_only_there(string text, string expected) =>
         Markdown(Doc(P(T(text)))).ShouldBe(expected + "\n");
 
@@ -112,6 +125,13 @@ public class MarkdownWriterTests
     public void A_line_after_a_hard_break_is_a_line_start_too()
     {
         Markdown(Doc(P(T("one"), Br(), T("# two"), Br(), T("- three")))).ShouldBe("one\\\n\\# two\\\n\\- three\n");
+    }
+
+    [Fact]
+    public void A_line_start_after_white_space_or_with_a_tab_is_a_line_start_too()
+    {
+        Markdown(Doc(P(T("one"), Br(), T("  # two"), Br(), T("   > three"), Br(), T("-\tfour"), Br(), T("1.\tfive"))))
+            .ShouldBe("one\\\n  \\# two\\\n   \\> three\\\n\\-\tfour\\\n1\\.\tfive\n");
     }
 
     [Fact]

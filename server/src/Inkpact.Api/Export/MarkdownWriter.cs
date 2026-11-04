@@ -22,18 +22,27 @@ public sealed class MarkdownWriter(ExportLinks links)
     private List<string> Blocks(IEnumerable<DocNode> nodes)
     {
         var blocks = new List<string>();
+        // Two lists that touch are one list in Markdown, unless the second has the other marker: "-" and "*", "." and ")".
+        var lastMarker = '\0';
         foreach (var node in nodes)
         {
-            if (Block(node) is { Length: > 0 } block)
+            var marker = node.Type switch
+            {
+                "bulletList" or "taskList" => lastMarker == '-' ? '*' : '-',
+                "orderedList" => lastMarker == '.' ? ')' : '.',
+                _ => '\0',
+            };
+            if (Block(node, marker) is { Length: > 0 } block)
             {
                 blocks.Add(block);
+                lastMarker = marker;
             }
         }
 
         return blocks;
     }
 
-    private string? Block(DocNode node)
+    private string? Block(DocNode node, char marker)
     {
         switch (node.Type)
         {
@@ -43,10 +52,11 @@ public sealed class MarkdownWriter(ExportLinks links)
                 {
                     var level = Math.Clamp(node.Int("level", 1), 1, 6);
                     var text = MarkdownInline.Write(node.Content, InlineContext.Heading, links);
-                    // The closing sequence of a heading ("## a #") is not text.
-                    if (text.EndsWith('#'))
+                    // Hashes at the end after a space ("## a #") are the heading's closing sequence, not text.
+                    var hashes = text.Length - text.TrimEnd('#').Length;
+                    if (hashes > 0 && (hashes == text.Length || text[^(hashes + 1)] is ' ' or '\t'))
                     {
-                        text = text[..^1] + "\\#";
+                        text = text[..^hashes] + "\\" + text[^hashes..];
                     }
 
                     return new string('#', level) + (text.Length > 0 ? " " + text : "");
@@ -54,14 +64,14 @@ public sealed class MarkdownWriter(ExportLinks links)
             case "blockquote":
                 return Prefixed(Blocks(node.Content), "> ", ">");
             case "bulletList":
-                return List(node, _ => "- ");
+                return List(node, _ => $"{marker} ");
             case "orderedList":
                 {
                     var start = Math.Max(0, node.Int("start", 1));
-                    return List(node, index => $"{start + index}. ");
+                    return List(node, index => $"{start + index}{marker} ");
                 }
             case "taskList":
-                return List(node, _ => "- ", task: true);
+                return List(node, _ => $"{marker} ", task: true);
             case "codeBlock":
                 return CodeBlock(node);
             case "horizontalRule":
@@ -91,7 +101,8 @@ public sealed class MarkdownWriter(ExportLinks links)
             var body = string.Join("\n\n", rendered[i]);
             if (body.Length == 0)
             {
-                text.Add(prefix.TrimEnd());
+                // A checkbox with nothing after it is text to GitHub: a space it keeps makes it a checkbox again.
+                text.Add(task ? prefix + "&nbsp;" : prefix.TrimEnd());
                 continue;
             }
 
@@ -116,20 +127,17 @@ public sealed class MarkdownWriter(ExportLinks links)
 
     private static string CodeBlock(DocNode node)
     {
-        var code = string.Concat(node.Content.Where(n => n.Type == "text").Select(n => n.Text));
-        var longest = 0;
-        var run = 0;
-        foreach (var c in code)
-        {
-            run = c == '`' ? run + 1 : 0;
-            longest = Math.Max(longest, run);
-        }
-
-        var fence = new string('`', Math.Max(3, longest + 1));
-        // The language is a word: anything else would end the fence's line or mean something else.
-        var language = node.String("language") is { Length: > 0 } l && l.All(c => char.IsLetterOrDigit(c) || c is '_' or '+' or '#' or '.' or '-') ? l : "";
+        var code = CodeOf(node);
+        var fence = new string('`', Math.Max(3, MarkdownInline.LongestBacktickRun(code) + 1));
+        var language = LanguageOf(node);
         return code.Length == 0 ? $"{fence}{language}\n{fence}" : $"{fence}{language}\n{code}\n{fence}";
     }
+
+    private static string CodeOf(DocNode codeBlock) => string.Concat(codeBlock.Content.Where(n => n.Type == "text").Select(n => n.Text));
+
+    /// <summary>A code block's language if it is a word, otherwise none: anything else would end the fence's line or mean something else.</summary>
+    private static string LanguageOf(DocNode codeBlock) =>
+        codeBlock.String("language") is { Length: > 0 } l && l.All(c => char.IsLetterOrDigit(c) || c is '_' or '+' or '#' or '.' or '-') ? l : "";
 
     // ---- tables --------------------------------------------------------------------------------------------------------
 
@@ -139,7 +147,11 @@ public sealed class MarkdownWriter(ExportLinks links)
         return rows.Count == 0 ? "" : FitsPipeTable(rows) ? PipeTable(rows) : HtmlTable(table);
     }
 
-    /// <summary>A pipe table has a header row and nothing but cells of one inline paragraph, one to a column, none merged.</summary>
+    /// <summary>
+    /// A pipe table has a header row and nothing but cells of one inline paragraph, one to a column, none merged, and no "|"
+    /// in code: GitHub ends a cell at every "|" without a backslash, also in code, where the import would keep the backslash.
+    /// (Elsewhere a "|" has one: in text, and in a link's address and title, where a backslash is read the same way.)
+    /// </summary>
     private static bool FitsPipeTable(List<DocNode> rows)
     {
         var width = rows[0].Content.Count;
@@ -149,7 +161,8 @@ public sealed class MarkdownWriter(ExportLinks links)
         }
 
         return rows.All(r => r.Content.Count == width && r.Content.All(c =>
-            c.Int("colspan", 1) == 1 && c.Int("rowspan", 1) == 1 && c.Content.Count <= 1 && c.Content.All(b => b.Type == "paragraph")));
+            c.Int("colspan", 1) == 1 && c.Int("rowspan", 1) == 1 && c.Content.Count <= 1 && c.Content.All(b => b.Type == "paragraph"
+                && !b.Content.Any(n => n.Type == "text" && n.Marks.Any(m => m.Type == "code") && (n.Text ?? "").Contains('|')))));
     }
 
     private string PipeTable(List<DocNode> rows)
@@ -223,10 +236,16 @@ public sealed class MarkdownWriter(ExportLinks links)
                 return $"<ol start=\"{Math.Max(0, node.Int("start", 1))}\">" + string.Concat(node.Content.Select(HtmlItem)) + "</ol>";
             case "codeBlock":
                 {
-                    var code = string.Concat(node.Content.Where(n => n.Type == "text").Select(n => n.Text));
-                    var language = node.String("language") is { Length: > 0 } l && l.All(c => char.IsLetterOrDigit(c) || c is '_' or '+' or '#' or '.' or '-') ? $" class=\"language-{l}\"" : "";
-                    // A blank line would end the HTML block; a line with one space in it does not.
-                    return $"<pre><code{language}>" + WebUtility.HtmlEncode(code).Replace("\n\n", "\n \n", StringComparison.Ordinal) + "</code></pre>";
+                    var language = LanguageOf(node) is { Length: > 0 } l ? $" class=\"language-{l}\"" : "";
+                    // A blank line (also one of spaces) would end the HTML block: the line break before it is written as a character reference.
+                    var lines = WebUtility.HtmlEncode(CodeOf(node)).Split('\n');
+                    var code = new StringBuilder(lines[0]);
+                    foreach (var line in lines.Skip(1))
+                    {
+                        code.Append(string.IsNullOrWhiteSpace(line) ? "&#10;" : "\n").Append(line);
+                    }
+
+                    return $"<pre><code{language}>{code}</code></pre>";
                 }
             case "horizontalRule":
                 return "<hr>";
@@ -235,7 +254,7 @@ public sealed class MarkdownWriter(ExportLinks links)
                     ? $"<img src=\"{HtmlAttribute(links.PathOfAttachment(id) ?? $"attachment:{id:D}")}\" alt=\"{HtmlAttribute(node.String("alt") ?? "")}\">"
                     : "";
             case "table":
-                return HtmlTable(node).Replace("\n", "", StringComparison.Ordinal);
+                return HtmlTable(node);
             default:
                 return "";
         }
@@ -257,8 +276,8 @@ public sealed class MarkdownWriter(ExportLinks links)
                 case "text" when !string.IsNullOrEmpty(node.Text):
                     {
                         var piece = WebUtility.HtmlEncode(node.Text.Replace('\n', ' '));
-                        // Outermost first, as the Markdown writer orders marks, so that equal marks are written equally.
-                        foreach (var mark in node.Marks.OrderByDescending(m => Array.IndexOf(["link", "underline", "bold", "italic", "strike", "code"], m.Type)))
+                        // From the inside out, in the order the Markdown is written in.
+                        foreach (var mark in node.Marks.OrderByDescending(m => Array.IndexOf(MarkdownInline.MarkOrder, m.Type)))
                         {
                             piece = mark.Type switch
                             {

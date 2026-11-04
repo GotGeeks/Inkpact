@@ -28,14 +28,17 @@ internal enum InlineContext
 /// </summary>
 internal static partial class MarkdownInline
 {
-    /// <summary>Outermost first: the order the sidecar reads marks in, so equal marks are written equally.</summary>
-    private static readonly string[] MarkOrder = ["underline", "bold", "italic", "strike", "link", "code"];
+    /// <summary>
+    /// The order marks are opened in, outermost first, whatever order the document has them in, so that equal marks are
+    /// written equally (the HTML of a table too). A link is inside emphasis, and code innermost: Markdown reads nothing inside it.
+    /// </summary>
+    internal static readonly string[] MarkOrder = ["underline", "bold", "italic", "strike", "link", "code"];
 
     private sealed record MarkKey(string Type, string? Href = null, string? Title = null);
 
     private sealed record Token(string Text, IReadOnlyList<MarkKey> Marks, bool IsBreak = false, bool IsAtom = false);
 
-    [GeneratedRegex(@"^(\d{1,9})([.)])( |$)", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^(\d{1,9})([.)])([ \t]|$)", RegexOptions.CultureInvariant)]
     private static partial Regex NumberedLine();
 
     [GeneratedRegex(@"^([-+=:#>])", RegexOptions.CultureInvariant)]
@@ -50,6 +53,10 @@ internal static partial class MarkdownInline
 
     [GeneratedRegex(@"www\.", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex AutoLinkWww();
+
+    // The import's autolinks also make a link of these, but not inside a word ("hotel:").
+    [GeneratedRegex(@"(?<![\p{L}\p{N}])(mailto|tel):", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex AutoLinkMailOrPhone();
 
     public static string Write(IReadOnlyList<DocNode> nodes, InlineContext context, ExportLinks links)
     {
@@ -99,11 +106,15 @@ internal static partial class MarkdownInline
         var escaped = result.ToString();
         // An address in text is not a link unless it was one: the editor made it one with a mark, which is written as a link.
         escaped = AutoLinkScheme().Replace(escaped, m => m.Value.Replace("://", "\\://", StringComparison.Ordinal));
+        escaped = AutoLinkMailOrPhone().Replace(escaped, m => m.Groups[1].Value + "\\:");
         return AutoLinkWww().Replace(escaped, m => m.Value[..3] + "\\.");
     }
 
-    /// <summary>Markdown reads some lines by how they start: a heading, a quote, a list, a rule, a definition. Text that starts a line so gets a backslash.</summary>
-    internal static string EscapeLineStarts(string text)
+    /// <summary>
+    /// Markdown reads some lines by how they start: a heading, a quote, a list, a rule, a definition, also after up to three
+    /// spaces (and a line after a break keeps its spaces). Text that starts a line so gets a backslash.
+    /// </summary>
+    private static string EscapeLineStarts(string text)
     {
         if (text.Length == 0)
         {
@@ -114,26 +125,42 @@ internal static partial class MarkdownInline
         for (var i = 0; i < lines.Length; i++)
         {
             var line = lines[i];
-            if (NumberedLine().Match(line) is { Success: true } numbered)
+            var indent = line[..(line.Length - line.TrimStart(' ', '\t').Length)];
+            var start = line[indent.Length..];
+            if (NumberedLine().Match(start) is { Success: true } numbered)
             {
-                lines[i] = numbered.Groups[1].Value + "\\" + numbered.Groups[2].Value + line[(numbered.Length - numbered.Groups[3].Length)..];
+                lines[i] = indent + numbered.Groups[1].Value + "\\" + numbered.Groups[2].Value + start[(numbered.Length - numbered.Groups[3].Length)..];
                 continue;
             }
 
-            if (LineStart().IsMatch(line))
+            if (LineStart().IsMatch(start))
             {
                 // A list marker or a quote or a heading or a rule or a setext line or a definition: escaped at its first character.
-                var first = line[0];
-                var rest = line[1..];
-                var risky = first is '#' or '>' or ':' || rest.Length == 0 || rest[0] == ' ' || rest.All(c => c == first || c == ' ');
+                var first = start[0];
+                var rest = start[1..];
+                var risky = first is '#' or '>' or ':' || rest.Length == 0 || rest[0] is ' ' or '\t' || rest.All(c => c == first || c is ' ' or '\t');
                 if (risky)
                 {
-                    lines[i] = "\\" + line;
+                    lines[i] = indent + "\\" + start;
                 }
             }
         }
 
         return string.Join('\n', lines);
+    }
+
+    /// <summary>The longest run of backticks in <paramref name="text"/>: a fence around it must be longer.</summary>
+    internal static int LongestBacktickRun(string text)
+    {
+        var longest = 0;
+        var run = 0;
+        foreach (var c in text)
+        {
+            run = c == '`' ? run + 1 : 0;
+            longest = Math.Max(longest, run);
+        }
+
+        return longest;
     }
 
     // ---- tokens --------------------------------------------------------------------------------------------------------
@@ -254,6 +281,15 @@ internal static partial class MarkdownInline
             }
         }
 
+        // A bang right before a link (a file's too) would make it a picture.
+        void NoBangBefore(string link)
+        {
+            if (link.StartsWith('[') && output.Length > 0 && output[^1] == '!')
+            {
+                output.Insert(output.Length - 1, '\\');
+            }
+        }
+
         for (var i = 0; i < tokens.Count; i++)
         {
             var token = tokens[i];
@@ -271,6 +307,7 @@ internal static partial class MarkdownInline
                 CloseDownTo(0);
                 output.Append(pending);
                 pending.Clear();
+                NoBangBefore(token.Text);
                 output.Append(token.Text);
                 continue;
             }
@@ -305,6 +342,7 @@ internal static partial class MarkdownInline
             for (var m = common; m < target.Count; m++)
             {
                 var (opener, closer) = Markers(target[m], core, output.Length > 0 && output.Length == closedAt ? output[^1] : (char?)null, output.Length > 0 ? output[^1] : (char?)null, html.Contains((i, m)));
+                NoBangBefore(opener);
                 output.Append(opener);
                 open.Add(new Open(target[m], closer));
             }
@@ -394,7 +432,7 @@ internal static partial class MarkdownInline
                 {
                     // Marks inside this one that end together with it put their own marker against it.
                     var innerAtEnd = tokens[last].Marks.Count > position + 1 && !tokens[last].IsAtom;
-                    if (Unsafe(tokens, start, last, key, tokens[start].Marks.Count > position + 1, innerAtEnd))
+                    if (Unsafe(tokens, start, last, tokens[start].Marks.Count > position + 1, innerAtEnd))
                     {
                         html.Add((start, position));
                     }
@@ -407,9 +445,8 @@ internal static partial class MarkdownInline
     /// A marker next to a letter, when the text inside it starts or ends with punctuation (or another marker), is not one
     /// Markdown opens or closes: <c>word**(s)**</c>. Whether it is next to a letter is looked at in the text on either side.
     /// </summary>
-    private static bool Unsafe(List<Token> tokens, int start, int end, MarkKey key, bool innerAtStart, bool innerAtEnd)
+    private static bool Unsafe(List<Token> tokens, int start, int end, bool innerAtStart, bool innerAtEnd)
     {
-        _ = key;
         var first = SplitWhiteSpace(tokens[start].Text);
         var last = SplitWhiteSpace(tokens[end].Text);
         if (first.Core.Length == 0 || last.Core.Length == 0)
@@ -438,23 +475,12 @@ internal static partial class MarkdownInline
                         return ("<code>", "</code>");
                     }
 
-                    var longest = 0;
-                    var run = 0;
-                    foreach (var c in core)
-                    {
-                        run = c == '`' ? run + 1 : 0;
-                        longest = Math.Max(longest, run);
-                    }
-
-                    var fence = new string('`', longest + 1);
+                    var fence = new string('`', LongestBacktickRun(core) + 1);
                     var pad = core.StartsWith('`') || core.EndsWith('`') || (core.StartsWith(' ') && core.EndsWith(' ') && core.Trim().Length > 0) ? " " : "";
                     return (fence + pad, pad + fence);
                 }
-            case "link" when last == '!':
-                // A bang right before a link would make it a picture.
-                return ($"<a href=\"{System.Net.WebUtility.HtmlEncode(key.Href ?? "")}\"{(key.Title is { Length: > 0 } t ? $" title=\"{System.Net.WebUtility.HtmlEncode(t)}\"" : "")}>", "</a>");
             case "link":
-                return ("[", $"]({Destination(key.Href ?? "")}{(key.Title is { Length: > 0 } title ? $" \"{title.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal)}\"" : "")})");
+                return ("[", $"]({Destination(key.Href ?? "")}{(key.Title is { Length: > 0 } title ? $" \"{title.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal).Replace("|", "\\|", StringComparison.Ordinal)}\"" : "")})");
         }
 
         var (markdown, tag) = key.Type switch
@@ -472,9 +498,15 @@ internal static partial class MarkdownInline
     internal static string PageOrOwn(string href, ExportLinks links) =>
         ExportPageLinks.PageIdOf(href) is { } id && links.PathOfPage(id) is { } path ? path : href;
 
-    /// <summary>A link's address as Markdown writes it: as it is, or in angle brackets when it has white space or brackets.</summary>
-    internal static string Destination(string address) =>
-        address.Length == 0 || address.Any(c => char.IsWhiteSpace(c) || c is '(' or ')' or '<' or '>')
-            ? "<" + address.Replace("<", "%3C", StringComparison.Ordinal).Replace(">", "%3E", StringComparison.Ordinal).Replace("\n", "%0A", StringComparison.Ordinal) + ">"
-            : address;
+    /// <summary>
+    /// A link's address as Markdown writes it: as it is, or in angle brackets when it has white space or brackets. A "|" has
+    /// a backslash, which reads the same, so that a table cell does not end at it.
+    /// </summary>
+    internal static string Destination(string address)
+    {
+        var piped = address.Replace("|", "\\|", StringComparison.Ordinal);
+        return address.Length == 0 || address.Any(c => char.IsWhiteSpace(c) || c is '(' or ')' or '<' or '>')
+            ? "<" + piped.Replace("<", "%3C", StringComparison.Ordinal).Replace(">", "%3E", StringComparison.Ordinal).Replace("\n", "%0A", StringComparison.Ordinal) + ">"
+            : piped;
+    }
 }
