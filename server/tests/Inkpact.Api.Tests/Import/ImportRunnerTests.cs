@@ -353,6 +353,9 @@ public sealed class ImportRunnerTests(PostgresFixture postgres) : IClassFixture<
         public Task<YjsCompaction> CompactAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken) =>
             inner.CompactAsync(inputs, cancellationToken);
 
+        public Task<YjsRead> ReadAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken) =>
+            inner.ReadAsync(inputs, cancellationToken);
+
         public Task<byte[]> FingerprintAsync(IReadOnlyList<byte[]> updates, CancellationToken cancellationToken) =>
             inner.FingerprintAsync(updates, cancellationToken);
 

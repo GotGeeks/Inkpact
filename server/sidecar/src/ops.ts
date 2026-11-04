@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import { buildDocument, replaceDocument } from './build.ts'
+import { readDocument } from './read.ts'
 import { plainText } from './text.ts'
 import yjsPackage from 'yjs/package.json' with { type: 'json' }
 
@@ -12,6 +13,7 @@ export const OP_COMPACT = 2
 export const OP_FINGERPRINT = 3
 export const OP_BUILD = 4
 export const OP_REPLACE = 5
+export const OP_READ = 6
 
 const utf8 = (value: string) => Buffer.from(value, 'utf8')
 
@@ -105,6 +107,17 @@ function replace([json, ...inputs]: Uint8Array[]): Uint8Array[] {
   })
 }
 
+/**
+ * The inputs (snapshot first, if any, then the updates) -> [the page as ProseMirror JSON in UTF-8, how many things the editor's
+ * schema does not have were left out, as decimal text]. Nothing is changed or stored: the inverse of `build`, for exporting.
+ */
+function read(inputs: Uint8Array[]): Uint8Array[] {
+  return withReplay(inputs, (doc) => {
+    const { document, skipped } = readDocument(doc)
+    return [utf8(JSON.stringify(document)), utf8(String(skipped))]
+  })
+}
+
 /** Answers one request. Anything it throws becomes an error response; the sidecar keeps serving. */
 export function handle(op: number, parts: Uint8Array[]): Uint8Array[] {
   switch (op) {
@@ -120,6 +133,8 @@ export function handle(op: number, parts: Uint8Array[]): Uint8Array[] {
       return build(parts)
     case OP_REPLACE:
       return replace(parts)
+    case OP_READ:
+      return read(parts)
     default:
       throw new Error(`Unknown operation ${op}`)
   }

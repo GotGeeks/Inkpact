@@ -16,6 +16,7 @@ internal enum SidecarOp : byte
     Fingerprint = 3,
     Build = 4,
     Replace = 5,
+    Read = 6,
 }
 
 /// <summary>

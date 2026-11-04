@@ -10,6 +10,9 @@ public sealed record YjsDiff(byte[] Update, byte[] StateVector);
 /// </summary>
 public sealed record YjsReplacement(byte[] Update, byte[] StateVector, byte[] Fingerprint, string Text, byte[] Before);
 
+/// <summary>A page as the editor's document: ProseMirror JSON (UTF-8), and how many things the editor's schema does not have were left out of it.</summary>
+public sealed record YjsRead(byte[] Json, int Skipped);
+
 /// <summary>
 /// The result of replaying a page's snapshot and updates. The two fingerprints are those of the inputs replayed and of
 /// <see cref="State"/> decoded on its own fresh document; equal fingerprints mean the encoding lost nothing.
@@ -54,6 +57,13 @@ public interface IYjsCodec
     /// it, and answers with the page after it as well.
     /// </summary>
     Task<YjsReplacement> ReplaceAsync(IReadOnlyList<byte[]> inputs, ReadOnlyMemory<byte> content, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// A page, made of <paramref name="inputs"/> (its snapshot first, if any, then its updates), as the editor's document: ProseMirror
+    /// JSON in the names and attributes of the editor's schema, the inverse of <see cref="BuildAsync"/>. What the schema does not have
+    /// is left out and counted. Nothing is changed or stored.
+    /// </summary>
+    Task<YjsRead> ReadAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken);
 }
 
 /// <summary>
