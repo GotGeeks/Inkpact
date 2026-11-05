@@ -105,6 +105,12 @@ updates:
     commit-message:
       prefix: build(deps)
       prefix-development: chore(deps)
+    ignore:
+      # Design is design-time tooling (PrivateAssets=all, never shipped). A newer one pulls a newer EF Core into
+      # Inkpact.Data only, while the Npgsql provider pins the older one for Inkpact.Api, so the build fails with CS1705.
+      # Remove this when Npgsql.EntityFrameworkCore.PostgreSQL ships a version on the same EF Core. A security advisory
+      # in EF Core overrides it: the `audit` job fails and a security update is opened.
+      - dependency-name: Microsoft.EntityFrameworkCore.Design
     groups:
       dotnet-platform:
         patterns:
