@@ -62,6 +62,8 @@ updates:
           - vite
           - '@tailwindcss/vite'
           - tailwindcss
+      # Never merged by itself. The e2e job runs in mcr.microsoft.com/playwright, whose tag in ci.yml Dependabot does
+      # not move: change it to the new version in the same pull request (the e2e job says so when they differ).
       playwright:
         patterns:
           - '@playwright/test'

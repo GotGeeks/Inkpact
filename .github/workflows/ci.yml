@@ -20,6 +20,9 @@ jobs:
   # before the push (`pnpm check:push`, and `pnpm check` once per pull request, see CONTRIBUTING) and again on main and on
   # request, so a break there is found at once.
   #
+  # A Dependabot pull request runs the slow suites too: nobody runs `pnpm check` for it, nobody waits on it, and an update
+  # that breaks the server or the editor (Markdig 1.5.1 did) is then stopped before it reaches main.
+  #
   # Which jobs the change needs. A skipped job counts as passed for a required check, so a pull request that only touches
   # the web client does not wait for the server tests, and one that only touches documentation waits for neither.
   changes:
@@ -58,7 +61,7 @@ jobs:
       - name: Build
         run: dotnet build server --configuration Release
       - name: Test
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login == 'dependabot[bot]'
         run: dotnet test server --configuration Release --no-build
 
   web:
@@ -86,22 +89,33 @@ jobs:
   e2e:
     name: e2e
     needs: changes
-    if: github.event_name != 'pull_request' && needs.changes.outputs.e2e == 'true'
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.user.login == 'dependabot[bot]') &&
+      needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Playwright's own image: the browsers and every system library they need are in it, so nothing is downloaded from
+    # an Ubuntu mirror (one that hung held the job for its whole install timeout). Its version must be the one of
+    # @playwright/test in the lockfile; the first step checks that. Dependabot does not move this tag: when its
+    # `playwright` group moves the package, that pull request fails here until the tag below is changed to match.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      # As Playwright's Docker guide advises for Chromium: a shared memory the size of the host's, and an init process.
+      options: --ipc=host --init
     services:
       postgres:
         image: postgres:18-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 2s
           --health-timeout 3s
           --health-retries 30
+    env:
+      # In a container job a service is reached by its name, not on localhost.
+      E2E_DATABASE: Host=postgres;Port=5432;Database=inkpact_e2e;Username=postgres;Password=postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
@@ -109,17 +123,16 @@ jobs:
           global-json-file: global.json
       - uses: ./.github/actions/setup-web
 
-      - name: Cache the Playwright browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
-      # Also installs the system libraries, which a cache hit does not restore.
-      # A runner whose package mirror hangs would otherwise hold the job until its 20 minutes are up.
-      - name: Install the browsers
-        timeout-minutes: 5
-        run: pnpm --filter web e2e:install
+      - name: The image matches @playwright/test
+        working-directory: web
+        run: |
+          set -euo pipefail
+          package="$(node -p "require('@playwright/test/package.json').version")"
+          image="$(grep -oE 'mcr\.microsoft\.com/playwright:v[0-9.]+' ../.github/workflows/ci.yml | head -1 | sed 's/.*:v//')"
+          if [ "$package" != "$image" ]; then
+            echo "::error file=.github/workflows/ci.yml::@playwright/test is $package but the e2e image is v$image: change the image tag in ci.yml to v$package-noble"
+            exit 1
+          fi
 
       # Builds the bundle and the server, starts the server on :5090 and runs every project against it.
       - name: End-to-end tests
