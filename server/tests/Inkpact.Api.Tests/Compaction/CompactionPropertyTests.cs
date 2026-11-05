@@ -44,6 +44,9 @@ public class CompactionPropertyTests(PostgresFixture postgres, YjsSidecarFixture
         _outcomes.GetValueOrDefault("compact NothingToDo").ShouldBeGreaterThan(5);
         _outcomes.GetValueOrDefault("crash").ShouldBeGreaterThan(20);
         _outcomes.GetValueOrDefault("twice Compacted+Skipped").ShouldBeGreaterThan(5);
+        // The interleaving of issue #64, held on purpose: the second compaction runs after the first has committed and
+        // folds the next batch. Under a batch limit below the backlog both compact.
+        _outcomes.GetValueOrDefault("twice held Compacted+Compacted").ShouldBeGreaterThan(2);
         _outcomes.GetValueOrDefault("load").ShouldBeGreaterThan(20);
     }
 
@@ -161,10 +164,68 @@ public class CompactionPropertyTests(PostgresFixture postgres, YjsSidecarFixture
 
                 case 6:
                     {
-                        var results = await Task.WhenAll(compactor.CompactAsync(pageId, default), compactor.CompactAsync(pageId, default));
+                        // Two compactions of the page started together. The lock lets one in at a time; it does not make
+                        // them overlap. When the first has committed before the second asks for the lock, the second runs
+                        // and folds the next batch of what is still live (issue #64). Half the time the two race as they
+                        // will; the other half the second is held after it has begun and before it asks for the lock until
+                        // the first has committed, so that this interleaving is tested on purpose and not left to timing.
+                        var forced = a % 2 == 1;
+                        if (forced)
+                        {
+                            // Held, the second only has work under a batch limit below the backlog: always set one here.
+                            Options.MaxUpdatesPerCompaction = 3 + b % 20;
+                        }
+
+                        var limit = Options.MaxUpdatesPerCompaction;
+                        var before = await ReadStoredAsync(pageId);
+                        CompactionResult[] results;
+                        if (forced)
+                        {
+                            var held = new TaskCompletionSource();
+                            var release = new TaskCompletionSource();
+                            var secondHooks = new TestHooks
+                            {
+                                OnStage = async stage =>
+                                {
+                                    if (stage == CompactionStage.Begun)
+                                    {
+                                        held.TrySetResult();
+                                        await release.Task;
+                                    }
+                                },
+                            };
+                            var second = CreateCompactor(hooks: secondHooks).CompactAsync(pageId, default);
+                            await held.Task;
+                            var first = await compactor.CompactAsync(pageId, default);
+                            var between = await ReadStoredAsync(pageId);
+                            release.SetResult();
+                            results = [first, await second];
+
+                            // Each one on its own: a batch of at most the limit, of updates the other did not take.
+                            CheckOneCompaction(before, between, first, limit);
+                            CheckOneCompaction(between, await ReadStoredAsync(pageId), results[1], limit);
+                        }
+                        else
+                        {
+                            results = await Task.WhenAll(compactor.CompactAsync(pageId, default), compactor.CompactAsync(pageId, default));
+                        }
+
+                        // Both together, raced or held. Which updates each took cannot be told apart in a free race, so this
+                        // checks the totals: one version and one batch per compaction, and every merged update counted once.
+                        var after = await ReadStoredAsync(pageId);
                         results.ShouldAllBe(r => r == CompactionResult.Compacted || r == CompactionResult.Skipped || r == CompactionResult.NothingToDo);
-                        results.Count(r => r == CompactionResult.Compacted).ShouldBeLessThanOrEqualTo(1);
-                        Count($"twice {string.Join("+", results.Order())}");
+                        var compacted = results.Count(r => r == CompactionResult.Compacted);
+                        var merged = before.LiveSeqs.Length - after.LiveSeqs.Length;
+                        (after.Snapshot?.Version ?? 0).ShouldBe((before.Snapshot?.Version ?? 0) + compacted);
+                        ((after.Snapshot?.UpdateCount ?? 0) - (before.Snapshot?.UpdateCount ?? 0)).ShouldBe(merged);
+                        merged.ShouldBe(Math.Min(before.LiveSeqs.Length, compacted * limit));
+                        if (compacted == 2)
+                        {
+                            // Only a batch limit leaves anything for a second compaction.
+                            before.LiveSeqs.Length.ShouldBeGreaterThan(limit);
+                        }
+
+                        Count($"twice {(forced ? "held " : "")}{string.Join("+", results.Order())}");
                         break;
                     }
 
@@ -181,6 +242,30 @@ public class CompactionPropertyTests(PostgresFixture postgres, YjsSidecarFixture
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// One compaction between two readings of the page: compacted, it took at most the limit, raised the version by one
+    /// and counted what it took once; otherwise it changed nothing.
+    /// </summary>
+    private static void CheckOneCompaction(StoredPage from, StoredPage to, CompactionResult result, int limit)
+    {
+        var merged = from.LiveSeqs.Length - to.LiveSeqs.Length;
+        var versions = (to.Snapshot?.Version ?? 0) - (from.Snapshot?.Version ?? 0);
+        var counted = (to.Snapshot?.UpdateCount ?? 0) - (from.Snapshot?.UpdateCount ?? 0);
+        if (result == CompactionResult.Compacted)
+        {
+            merged.ShouldBe(Math.Min(from.LiveSeqs.Length, limit));
+            merged.ShouldBeGreaterThan(0);
+            versions.ShouldBe(1);
+            counted.ShouldBe(merged);
+        }
+        else
+        {
+            result.ShouldBe(CompactionResult.NothingToDo);
+            merged.ShouldBe(0);
+            versions.ShouldBe(0);
+        }
     }
 
     private void Count(string outcome, int by = 1) => _outcomes[outcome] = _outcomes.GetValueOrDefault(outcome) + by;

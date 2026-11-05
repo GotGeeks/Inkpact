@@ -316,8 +316,8 @@ A page's content is always its snapshot plus the updates after it, and compactio
 
 - **Transactional:** the new snapshot and the removal of merged updates commit in one Postgres transaction, so a crash leaves the old state or the new one, never a mix
 - **Watermark:** a snapshot records the highest update sequence number it contains, and never lowers it. Exactly the rows the compaction read are removed, not "every row up to the watermark": sequence numbers are handed out before commit, so a row with a lower number can commit after the read, and deleting by number would lose it. Updates arriving during compaction are untouched
-- **One at a time:** a Postgres advisory lock per page prevents two compactions on the same page
-- **Idempotent:** running compaction twice gives the same result as running it once
+- **One at a time:** a Postgres advisory lock per page prevents two compactions on the same page at the same time; a second one that asks while the lock is held skips. One that asks after the first has committed runs, and takes the next batch of what is still live, so no update is merged twice
+- **Idempotent:** running compaction again once nothing is live changes nothing, and the page (snapshot plus live updates) is the same however many runs there were. Under a batch limit a second run is not a no-op: it folds the next batch, as the line above says
 - **Verified:** before committing, the new snapshot is decoded and compared with a full replay of the old snapshot plus its updates; a mismatch aborts and logs an error
 - **Safety net:** in phase 1A, merged updates move to an archive table and are kept for 30 days instead of being deleted
 - **Tested:** property-based tests with random edits, concurrent clients and injected crashes must always end in identical documents

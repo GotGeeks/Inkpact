@@ -69,6 +69,7 @@ public sealed class Compactor(
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await hooks.AfterStageAsync(pageId, CompactionStage.Begun, cancellationToken);
 
         // Held until this transaction ends. A second compaction of the page does not wait, it skips. Two pages whose ids
         // hash alike only cause a skip.
