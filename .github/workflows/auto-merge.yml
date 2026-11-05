@@ -25,14 +25,19 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      # fetch-metadata refuses a pull request whose commits are not signed by Dependabot (after someone rebased it or
+      # merged main into it) and fails the step. That is not an error here: the pull request is then simply left to the
+      # maintainer, so the run stays green and sends no failure notification.
       - name: Fetch Dependabot metadata
         id: meta
+        continue-on-error: true
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The script comes from the default branch, not from the pull request.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: steps.meta.outcome == 'success'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
@@ -40,6 +45,7 @@ jobs:
 
       - name: Decide
         id: rule
+        if: steps.meta.outcome == 'success'
         run: node .github/scripts/automerge.mjs
         env:
           ECOSYSTEM: ${{ steps.meta.outputs.package-ecosystem }}
@@ -47,7 +53,7 @@ jobs:
           GROUP: ${{ steps.meta.outputs.dependency-group }}
 
       - name: Enable auto-merge
-        if: steps.rule.outputs.merge == 'true'
+        if: steps.meta.outcome == 'success' && steps.rule.outputs.merge == 'true'
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
