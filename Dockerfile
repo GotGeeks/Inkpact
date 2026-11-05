@@ -6,11 +6,12 @@
 # Tags are pinned with their digest; Dependabot's docker ecosystem moves them.
 
 # The web bundle.
-FROM node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS web
+FROM node:26-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68 AS web
 WORKDIR /src
-RUN corepack enable
-# Manifests first, so the dependency layer is only rebuilt when they change.
+# Node 25 and later no longer ship Corepack: pnpm comes from npm, at the version packageManager names.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN npm install --global "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
+# Manifests first, so the dependency layer is only rebuilt when they change.
 COPY web/package.json web/
 COPY server/sidecar/package.json server/sidecar/
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
@@ -22,10 +23,10 @@ RUN pnpm --filter web build
 
 # The sidecar with its production dependencies. `pnpm deploy` puts the store inside the folder, so the sidecar's
 # permission model needs no path outside it.
-FROM node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS sidecar
+FROM node:26-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68 AS sidecar
 WORKDIR /src
-RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN npm install --global "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")"
 COPY web/package.json web/
 COPY server/sidecar server/sidecar
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
@@ -49,9 +50,9 @@ RUN dotnet publish server/src/Inkpact.Api/Inkpact.Api.csproj -c Release -o /out 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:de0ee358cdd672f7017a003bed21e9ac9ed48a27c922a59b18175b6e82fa7fee AS final
 
 # pg_dump 18: a migration backs the database up first and refuses to run without it, and a dump of a Postgres 18
-# server needs a client of the same major version, which the distribution does not have. curl is for the health check.
+# server needs a client of the same major version, which the distribution does not have. curl is for the health check, libatomic1 for the Node binary.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+ && apt-get install -y --no-install-recommends ca-certificates curl gnupg libatomic1 \
  && install -d /usr/share/postgresql-common/pgdg \
  && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
  && . /etc/os-release \
