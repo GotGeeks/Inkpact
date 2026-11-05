@@ -1,0 +1,6 @@
+# What CodeQL must not read as ours: the Stitch design exports (CDN scripts and inline styles on purpose, reference
+# only), the phase 0 spike (throwaway) and build output.
+paths-ignore:
+  - docs/design/**
+  - spike/**
+  - '**/dist/**'

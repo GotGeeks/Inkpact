@@ -1,32 +1,208 @@
 version: 2
 
+# Dependabot is part of GitHub: nothing to install. Every entry runs on Monday at 07:00 Amsterdam time, waits 3 days
+# after a release (longer than pnpm's one-day `minimumReleaseAge` in pnpm-workspace.yaml, so it never proposes a version
+# pnpm would refuse to install), labels its pull requests `dependencies` and writes conventional commit messages.
+# Security updates (on in the repository settings) use this file too, so they come grouped and labelled the same way.
+#
+# Only patch updates of the four tooling groups under npm are merged without the maintainer: see
+# .github/workflows/auto-merge.yml and .github/scripts/automerge.mjs. A group named here and there must match.
+#
+# A dependency goes to the first group whose pattern matches, so the order of the groups matters.
 updates:
-  # global.json pins the .NET SDK exactly (see the note in CONTRIBUTING.md), so someone has to move it when a
-  # patch comes out. This does it: a pull request every week there is a newer SDK, and CI then proves the build
-  # works with it before it is merged. The rest of the dependencies (NuGet, pnpm, the GitHub Actions) get their
-  # tooling in run 1.20.
+  # ── npm: the pnpm workspace (web and the Yjs sidecar) ───────────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:00'
+      timezone: Europe/Amsterdam
+    cooldown:
+      default-days: 3
+    labels:
+      - dependencies
+    commit-message:
+      prefix: build(deps)
+      prefix-development: chore(deps)
+    ignore:
+      # TypeScript 7 ships a native compiler without the JavaScript API. vue-tsc still needs the TypeScript 6 API and
+      # typescript-eslint caps its peer range below it. Stay on 6.x until both accept TypeScript 7.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+    groups:
+      # yjs and lib0 are pinned to exact versions in web and in the sidecar: two copies would split the document model.
+      # One pull request, never merged by itself.
+      yjs:
+        patterns:
+          - yjs
+          - lib0
+          - y-protocols
+          - '@tiptap/y-tiptap'
+      tiptap:
+        patterns:
+          - '@tiptap/*'
+        exclude-patterns:
+          - '@tiptap/y-tiptap'
+      vue:
+        patterns:
+          - vue
+          - vue-router
+          - vue-i18n
+          - pinia
+          - reka-ui
+          - '@vitejs/plugin-vue'
+      vite:
+        patterns:
+          - vite
+          - '@tailwindcss/vite'
+          - tailwindcss
+      playwright:
+        patterns:
+          - '@playwright/test'
+          - '@axe-core/playwright'
+      # The four groups below are tooling whose whole effect a pull request's checks test: their patches are merged
+      # automatically.
+      web-lint:
+        patterns:
+          - eslint
+          - '@eslint/*'
+          - 'eslint-*'
+          - typescript-eslint
+          - '@intlify/eslint-plugin-vue-i18n'
+          - prettier
+      web-types:
+        patterns:
+          - '@types/*'
+          - vue-tsc
+      web-unit-tests:
+        patterns:
+          - vitest
+          - '@vue/test-utils'
+          - jsdom
+      commitlint:
+        patterns:
+          - '@commitlint/*'
+
+  # ── NuGet: central versions in server/Directory.Packages.props ──────────────────────────────────────────────────
+  # Never merged by itself: a pull request does not run the server tests.
+  - package-ecosystem: nuget
+    directory: /server
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:00'
+      timezone: Europe/Amsterdam
+    cooldown:
+      default-days: 3
+    labels:
+      - dependencies
+    commit-message:
+      prefix: build(deps)
+      prefix-development: chore(deps)
+    groups:
+      dotnet-platform:
+        patterns:
+          - 'Microsoft.AspNetCore.*'
+          - 'Microsoft.EntityFrameworkCore*'
+          - 'Npgsql*'
+      test-framework:
+        patterns:
+          - 'xunit*'
+          - Microsoft.NET.Test.Sdk
+      test-libraries:
+        patterns:
+          - Shouldly
+          - NSubstitute
+          - 'FsCheck*'
+          - 'Testcontainers*'
+
+  # ── GitHub Actions ────────────────────────────────────────────────────────────────────────────────────────────
+  # Every action is pinned to a commit digest with its version in a trailing comment; Dependabot moves both. Never
+  # merged by itself: actions run with the repository's token.
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/*
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:00'
+      timezone: Europe/Amsterdam
+    cooldown:
+      default-days: 3
+    labels:
+      - dependencies
+    commit-message:
+      prefix: build(deps)
+    groups:
+      actions:
+        patterns:
+          - 'actions/*'
+      docker-actions:
+        patterns:
+          - 'docker/*'
+      # Every github/codeql-action step must run the same version, or CodeQL fails with "Loaded a configuration file
+      # for version X, but running version Y". Dependabot treats each subpath as its own dependency.
+      codeql-action:
+        patterns:
+          - 'github/codeql-action*'
+
+  # ── Docker: the base images in the Dockerfile, pinned by tag and digest ─────────────────────────────────────────
+  # The `dotnet/sdk` image here and `global.json` (the dotnet-sdk entry below) must hold the same version. Dependabot
+  # cannot group across two ecosystems, so it opens two pull requests; CI (image.yml, Inspect) fails until both are in.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:00'
+      timezone: Europe/Amsterdam
+    cooldown:
+      default-days: 3
+    labels:
+      - dependencies
+    commit-message:
+      prefix: build(deps)
+    ignore:
+      # Node stays on 24, the version in `engines`, CI and the sidecar. The images from 25 on no longer ship Corepack,
+      # which the Dockerfile uses for pnpm. Patch and minor updates still come; a new major is a deliberate change.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
+
+  # ── docker-compose: Postgres and friends in deploy/ ─────────────────────────────────────────────────────────────
+  - package-ecosystem: docker-compose
+    directory: /deploy
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:00'
+      timezone: Europe/Amsterdam
+    cooldown:
+      default-days: 3
+    labels:
+      - dependencies
+    commit-message:
+      prefix: build(deps)
+    ignore:
+      # A Postgres major cannot open an older major's data directory: a new one needs a dump and restore
+      # (deploy/inkpact.sh). Move to it by hand.
+      - dependency-name: postgres
+        update-types: ['version-update:semver-major']
+
+  # ── The .NET SDK pinned in global.json ──────────────────────────────────────────────────────────────────────────
+  # Moves together with the `dotnet/sdk` image in the Dockerfile (see the docker entry above). CI proves the build
+  # works with it before it is merged.
   - package-ecosystem: dotnet-sdk
     directory: /
     schedule:
       interval: weekly
       day: monday
-    commit-message:
-      prefix: ci
+      time: '07:00'
+      timezone: Europe/Amsterdam
+    cooldown:
+      default-days: 3
     labels:
       - dependencies
-
-  # The base images in the Dockerfile are pinned by tag and digest; this moves them.
-  - package-ecosystem: docker
-    directory: /
-    # Node stays on 24, the version in `engines`, CI and the sidecar. The images from 25 on no longer ship Corepack,
-    # which the Dockerfile uses for pnpm. Patch and minor updates still come; a new major is a deliberate change.
-    ignore:
-      - dependency-name: node
-        update-types: ['version-update:semver-major']
-    schedule:
-      interval: weekly
-      day: monday
     commit-message:
-      prefix: ci
-    labels:
-      - dependencies
+      prefix: build(deps)

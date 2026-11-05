@@ -196,7 +196,7 @@ The smallest version you can use daily instead of Joplin. Build login, tree, edi
 | 1.17 | Full-text search: `tsvector` with weights, unaccent, prefix matching; search UI with search-as-you-type | S·high |
 | 1.18 | Export of everything to Markdown plus attachments as a zip, readable without Inkpact; round-trip test with the import (1.18a the Markdown writer and its round trip, 1.18b the zip, the endpoint and the menu item) | S·med |
 | 1.19 | Responsive and accessibility pass: phone layout of every screen, keyboard navigation, labels, contrast; Playwright checks on the phone viewport | S·med |
-| 1.20 | CI security: CodeQL, dependency review, `pnpm audit`, vulnerable NuGet check, Trivy image scan, licence check, Renovate configuration | S·low |
+| 1.20 | CI security: CodeQL, dependency review, `pnpm audit`, vulnerable NuGet check, Trivy image scan, licence check, Dependabot for every ecosystem with auto-merge of web dev-tooling patches | S·low |
 | 1.21+ | Bug-fix runs from the trial, one bug or small group per run | S·med; O·high for anything that loses or corrupts data |
 
 **Gate:** you use it daily on phone and laptop next to Joplin for two weeks, re-importing as needed, and no note is lost or broken. Then Joplin is retired.
@@ -424,7 +424,7 @@ Nothing reaches users unless every check is green, and a release is a single mer
 - Branch protection on main: pull requests only, required checks, linear history
 - Conventional commits enforced by commitlint; release-please turns them into versions and changelogs
 - Issue forms, Discussions, CODEOWNERS, CONTRIBUTING, SECURITY.md with private vulnerability reporting, and a DCO sign-off check on every commit
-- Renovate, with automerge only for patch updates of build and dev tooling on an allow-list; runtime dependencies (auth, database, crypto, security libraries) always get a manual review
+- Dependabot (part of GitHub, no app to install, as in GarageStack) for npm, NuGet, GitHub Actions, the Docker images and the .NET SDK, grouped, with a 3-day cooldown so it never proposes a version pnpm's `minimumReleaseAge` refuses. Only patch updates of web dev tooling (lint, types, unit-test tooling, commitlint) are merged automatically, since a pull request's checks test all of their effect; runtime dependencies (auth, database, crypto, security libraries), NuGet, Playwright and GitHub Actions always get a manual review
 
 **Every pull request**
 
@@ -433,7 +433,12 @@ To keep waiting short on the free plan, the slow suites do not run on a pull req
 - Server: dotnet format check, build, xUnit unit tests, Testcontainers integration tests, migration upgrade test; the tests start the real Yjs sidecar, so the job has Node and the workspace dependencies
 - Client: ESLint (including the vue-i18n rules), Prettier, vue-tsc type check, Vitest; the same checks for the Yjs sidecar package
 - End-to-end: Playwright on desktop and phone viewports (and WebKit) against the real server and the built bundle (the container from 1.13); any CSP violation fails the run
-- Security: CodeQL for C# and TypeScript, GitHub dependency review, `pnpm audit`, the vulnerable NuGet package check, a Trivy image scan, and a licence check of all dependencies
+- Security (from 1.20): runs on every pull request, on main, daily at 05:00 UTC (`security.yml`: advisories appear without any change) and, for CodeQL and the Trivy rescan of `edge`, weekly
+  - `audit`: `pnpm audit` fails on high or worse anywhere and on moderate or worse in what ships; the NuGet check (`.github/scripts/nuget-audit.mjs`) fails on moderate or worse in the shipped projects and high or worse in the test project. NuGetAudit in the build only warns, so a new advisory never turns an unrelated pull request red
+  - `licenses`: every npm and NuGet package against `.github/license-policy.json` (AGPL-3.0 compatible licences, per-package entries with a reason for what has no SPDX expression); `pnpm check:licenses` runs it locally
+  - `dependency-review`: fails a pull request that adds a dependency with a moderate or worse advisory
+  - CodeQL (`security-extended`) for C#, TypeScript and the workflows, and Trivy for the image (all findings to the Security tab, HIGH and CRITICAL with a fix fail the run, plus a Dockerfile misconfiguration scan). CodeQL is not a required job; the ruleset's code scanning rule blocks a merge that adds a high or critical alert
+  - `audit`, `licenses` and `dependency-review` are required checks
 - Reports posted on the PR: coverage, and bundle size compared with main, with a warning on regressions
 
 **Main and releases**
@@ -499,7 +504,7 @@ These are in place in phase 1A, because each is painful to add once code and dat
 - **ASP.NET Data Protection keys:** persisted to the data volume, so restarts don't log everyone out. They are not encrypted by default: under the trusted-administrator model anyone who can read the volume can read every note, so a certificate kept next to the keys would add nothing. `DataProtection:CertificatePath` encrypts them for installs that keep the certificate elsewhere
 - **First-run setup:** the first account is created on the setup page and becomes the administrator, but only with a setup code that the server writes to its log at startup (or `Auth:SetupCode`), so whoever reaches a fresh internet-facing install first cannot take it over. Setup is closed for good once an account exists
 - **Security audit log:** setup, logins (succeeded, failed, locked), logout and logout everywhere, and (from phase 2) shares, in the `audit_events` table: time, type, user, the address that was typed for failed logins, IP address and user agent. Each event is written when it happens and a failing write fails the request. There is no way to read it yet (admin page, run 2.9) and no retention yet (run B.7)
-- **Supply chain:** Renovate for dependency updates (until then Dependabot moves the exact .NET SDK pin in `global.json`, and its pull requests skip the commit-message and sign-off checks, which a bot cannot satisfy); `dotnet list package --vulnerable`, `pnpm audit`, CodeQL and a Trivy scan of the container image in CI; the container runs as a non-root user with a read-only root filesystem
+- **Supply chain:** Dependabot for dependency updates (its pull requests skip the commit-message and sign-off checks, which a bot cannot satisfy and nobody can fake, since GitHub sets a pull request's author); `dotnet list package --vulnerable`, `pnpm audit`, CodeQL and a Trivy scan of the container image in CI; the container runs as a non-root user with a read-only root filesystem
 
 **Encryption at rest** is left to the host (disk or volume encryption); Inkpact does not encrypt its database or files itself, and end-to-end encryption remains a non-goal.
 

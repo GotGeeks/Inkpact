@@ -1,0 +1,54 @@
+name: Auto-merge Dependabot
+
+# Turns on auto-merge for a Dependabot pull request that is a patch update of web dev tooling (lint, types, unit-test
+# tooling, commitlint), whose whole effect the checks of a pull request test. The rule is in
+# .github/scripts/automerge.mjs and is tested there. Everything else (runtime dependencies, NuGet, Playwright, GitHub
+# Actions, the Yjs group, minors and majors) waits for the maintainer. Auto-merge still waits for every required check.
+#
+# pull_request_target runs with write access, so this workflow never checks out or runs the pull request's code: it
+# reads the metadata GitHub and Dependabot provide and runs the script from the default branch.
+on:
+  pull_request_target:
+
+permissions: {}
+
+jobs:
+  auto-merge:
+    name: auto-merge
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # The pull request's author (not whoever triggered the run), on a branch of this repository and not a fork.
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The script comes from the default branch, not from the pull request.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Decide
+        id: rule
+        run: node .github/scripts/automerge.mjs
+        env:
+          ECOSYSTEM: ${{ steps.meta.outputs.package-ecosystem }}
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+          GROUP: ${{ steps.meta.outputs.dependency-group }}
+
+      - name: Enable auto-merge
+        if: steps.rule.outputs.merge == 'true'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

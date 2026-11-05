@@ -17,9 +17,13 @@ dotnet build server
 
 Run `pnpm install` before `dotnet test`: the server tests start the real Yjs sidecar (`server/sidecar`), a Node process that needs its dependencies.
 
-The .NET SDK is pinned to an exact version in `global.json`, so every machine and CI build the same way (and so a broken new release cannot stop the build). Dependabot opens a pull request when a newer SDK is out; CI checks that the build works with it, then you merge it.
+The .NET SDK is pinned to an exact version in `global.json`, so every machine and CI build the same way (and so a broken new release cannot stop the build). Dependabot opens a pull request when a newer SDK is out; CI checks that the build works with it, then you merge it. The `dotnet/sdk` image in the `Dockerfile` must hold the same version: Dependabot opens a second pull request for it (it cannot group two ecosystems), and the image check fails until both are merged.
 
 Use pnpm only, never npm or yarn. Ask in the issue before adding a dependency, and say why it is needed.
+
+A new dependency must pass `pnpm check:licenses`. If it fails because the package has no SPDX licence expression (a NuGet package with only a licence URL, say), check the licence yourself and add an entry under `packages` in `.github/license-policy.json` with the real licence and the reason. A licence that is not on the `allowed` list needs a discussion first: it must be compatible with AGPL-3.0.
+
+Dependabot keeps dependencies current in small grouped pull requests (Mondays, with a 3-day wait after a release). It merges only patch updates of web dev tooling by itself (lint, types, unit-test tooling, commitlint), after their checks pass. Runtime dependencies, NuGet, Playwright, GitHub Actions and the Yjs group are reviewed and merged by hand.
 
 ## Before you open a pull request
 
