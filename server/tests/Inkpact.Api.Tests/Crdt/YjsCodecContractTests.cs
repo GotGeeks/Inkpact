@@ -8,7 +8,10 @@ namespace Inkpact.Api.Tests.Crdt;
 /// <summary>One real sidecar process for every test class that uses <see cref="YjsCollection"/>.</summary>
 public sealed class YjsSidecarFixture : IAsyncLifetime
 {
-    public YjsSidecar Sidecar { get; } = YjsSidecars.Create();
+    // These classes check what Yjs answers, not how fast: the shuffled 10,000-update case alone takes about 20 s on a
+    // fast machine and went past the 60 s default on a busy CI runner. A timeout kills the shared process, and every
+    // test after it then fails while it restarts. The speed is checked by Ten_thousand_updates_compact_quickly.
+    public YjsSidecar Sidecar { get; } = YjsSidecars.Create(options => options.RequestTimeout = TimeSpan.FromMinutes(5));
 
     public Task InitializeAsync() => YjsSidecars.StartAsync(Sidecar);
 
