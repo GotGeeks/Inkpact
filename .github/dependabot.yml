@@ -170,8 +170,8 @@ updates:
     commit-message:
       prefix: build(deps)
     ignore:
-      # Node stays on 24, the version in `engines`, CI and the sidecar. The images from 25 on no longer ship Corepack,
-      # which the Dockerfile uses for pnpm. Patch and minor updates still come; a new major is a deliberate change.
+      # Node stays on 26, the LTS line in `engines`, CI and the sidecar (LTS from 2026-10-28, supported to 2029-04-30).
+      # Patch and minor updates still come; a new major is a deliberate change.
       - dependency-name: node
         update-types: ['version-update:semver-major']
 

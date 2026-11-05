@@ -10,7 +10,7 @@ Self-hosted, multi-user notes app with real-time collaborative editing. Replaces
 
 ```
 server/    ASP.NET Core (.NET 10): REST API, WebSocket sync hub, compaction worker
-  sidecar/ Node process running Yjs, the only decoder of Yjs updates (pnpm package, TypeScript run by Node 24, no build)
+  sidecar/ Node process running Yjs, the only decoder of Yjs updates (pnpm package, TypeScript run by Node 26, no build)
 web/       Vue 3 + TypeScript client (Vite, Pinia, TipTap, Tailwind v4, Reka UI)
 desktop/   Electron shell around web/ (phase 3, not yet)
 deploy/    docker-compose.yml, Unraid template
@@ -35,7 +35,7 @@ pnpm --filter sidecar typecheck # tsc
 pnpm --filter sidecar lint      # Prettier
 
 # Server
-pnpm install --frozen-lockfile  # before dotnet test: the tests start the real sidecar, which needs Node 24 and its dependencies
+pnpm install --frozen-lockfile  # before dotnet test: the tests start the real sidecar, which needs Node 26 and its dependencies
 dotnet build server
 dotnet test server              # unit + Testcontainers integration (needs Docker); the timing tests run last, alone
 dotnet test server --filter "Category!=Slow"   # leaves out the timing tests (5,000-note import, 10,000-page search)

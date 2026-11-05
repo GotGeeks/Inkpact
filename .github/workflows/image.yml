@@ -57,7 +57,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(docker run --rm --entrypoint id "$LOCAL_IMAGE" -u)" != 0
-          docker run --rm --entrypoint node "$LOCAL_IMAGE" --version | grep -E '^v24\.'
+          docker run --rm --entrypoint node "$LOCAL_IMAGE" --version | grep -E '^v26\.'
           docker run --rm --entrypoint pg_dump "$LOCAL_IMAGE" --version | grep -E ' 1[89]\.| [2-9][0-9]\.'
           docker run --rm --entrypoint test "$LOCAL_IMAGE" -d /app/sidecar/node_modules/yjs
           docker run --rm --entrypoint test "$LOCAL_IMAGE" -f /app/wwwroot/index.html

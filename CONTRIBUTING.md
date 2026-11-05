@@ -6,7 +6,7 @@ Read `docs/architecture.md` for the design and `CLAUDE.md` for the conventions; 
 
 ## Setup
 
-You need .NET 10, Node 24 with Corepack enabled (`corepack enable`), and Docker for the server integration tests.
+You need .NET 10, Node 26 (Corepack no longer ships with it: install pnpm with `npm install --global pnpm`; the version in `packageManager` is then used automatically), and Docker for the server integration tests.
 
 ```bash
 pnpm install --frozen-lockfile
