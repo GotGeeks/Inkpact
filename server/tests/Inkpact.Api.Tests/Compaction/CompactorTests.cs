@@ -167,28 +167,42 @@ public class CompactorTests(PostgresFixture postgres, YjsSidecarFixture yjs) : C
     }
 
     [Fact]
-    public async Task A_second_compaction_that_asks_for_the_lock_after_the_first_committed_takes_the_next_batch_not_the_same()
+    public async Task A_compaction_that_asks_for_the_lock_after_another_committed_folds_the_next_batch_not_the_same()
     {
-        // Issue #64: two compactions started together both compacted when the first had committed before the second asked
-        // for the lock. With a batch limit below the backlog that is right, as long as no update is merged twice.
+        // Issue #64: two compactions started together, the second held after its transaction has begun and before it asks
+        // for the lock, until the first has committed. The second then runs, and must read only what is still live.
         Options.MaxUpdatesPerCompaction = 20;
         var stream = Stream(130, 5);
         var pageId = await PageWithAsync(stream);
-        var start = await ReadStoredAsync(pageId);
+        var held = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+        var secondHooks = new TestHooks
+        {
+            OnStage = async stage =>
+            {
+                if (stage == CompactionStage.Begun)
+                {
+                    held.TrySetResult();
+                    await release.Task;
+                }
+            },
+        };
 
+        var second = CreateCompactor(hooks: secondHooks).CompactAsync(pageId, default);
+        await held.Task;
         (await CreateCompactor().CompactAsync(pageId, default)).ShouldBe(CompactionResult.Compacted);
         var between = await ReadStoredAsync(pageId);
-        (await CreateCompactor().CompactAsync(pageId, default)).ShouldBe(CompactionResult.Compacted);
+        release.SetResult();
+        (await second).ShouldBe(CompactionResult.Compacted);
         var end = await ReadStoredAsync(pageId);
 
-        var firstBatch = start.LiveSeqs.Except(between.LiveSeqs).ToArray();
-        var secondBatch = between.LiveSeqs.Except(end.LiveSeqs).ToArray();
-        firstBatch.Length.ShouldBe(20);
-        secondBatch.Length.ShouldBe(20);
-        firstBatch.Intersect(secondBatch).ShouldBeEmpty();
-        end.ArchivedSeqs.Order().ShouldBe(firstBatch.Concat(secondBatch).Order());
+        // One batch each, counted once: a second merge of the first batch would raise the count by 40 for 20 updates.
+        between.Snapshot!.Version.ShouldBe(1);
+        between.Snapshot.UpdateCount.ShouldBe(20);
         end.Snapshot!.Version.ShouldBe(2);
         end.Snapshot.UpdateCount.ShouldBe(40);
+        end.LiveSeqs.Length.ShouldBe(stream.Count - 40);
+        end.ArchivedSeqs.Length.ShouldBe(40);
         (await StoredFingerprintAsync(pageId)).ShouldBe(await Codec.FingerprintAsync(stream, default));
     }
 
