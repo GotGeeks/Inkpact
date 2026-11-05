@@ -167,6 +167,32 @@ public class CompactorTests(PostgresFixture postgres, YjsSidecarFixture yjs) : C
     }
 
     [Fact]
+    public async Task A_second_compaction_that_asks_for_the_lock_after_the_first_committed_takes_the_next_batch_not_the_same()
+    {
+        // Issue #64: two compactions started together both compacted when the first had committed before the second asked
+        // for the lock. With a batch limit below the backlog that is right, as long as no update is merged twice.
+        Options.MaxUpdatesPerCompaction = 20;
+        var stream = Stream(130, 5);
+        var pageId = await PageWithAsync(stream);
+        var start = await ReadStoredAsync(pageId);
+
+        (await CreateCompactor().CompactAsync(pageId, default)).ShouldBe(CompactionResult.Compacted);
+        var between = await ReadStoredAsync(pageId);
+        (await CreateCompactor().CompactAsync(pageId, default)).ShouldBe(CompactionResult.Compacted);
+        var end = await ReadStoredAsync(pageId);
+
+        var firstBatch = start.LiveSeqs.Except(between.LiveSeqs).ToArray();
+        var secondBatch = between.LiveSeqs.Except(end.LiveSeqs).ToArray();
+        firstBatch.Length.ShouldBe(20);
+        secondBatch.Length.ShouldBe(20);
+        firstBatch.Intersect(secondBatch).ShouldBeEmpty();
+        end.ArchivedSeqs.Order().ShouldBe(firstBatch.Concat(secondBatch).Order());
+        end.Snapshot!.Version.ShouldBe(2);
+        end.Snapshot.UpdateCount.ShouldBe(40);
+        (await StoredFingerprintAsync(pageId)).ShouldBe(await Codec.FingerprintAsync(stream, default));
+    }
+
+    [Fact]
     public async Task Pages_do_not_block_each_other()
     {
         var first = await PageWithAsync(Stream());

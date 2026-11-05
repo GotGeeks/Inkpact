@@ -161,9 +161,27 @@ public class CompactionPropertyTests(PostgresFixture postgres, YjsSidecarFixture
 
                 case 6:
                     {
+                        var before = await ReadStoredAsync(pageId);
                         var results = await Task.WhenAll(compactor.CompactAsync(pageId, default), compactor.CompactAsync(pageId, default));
+                        var after = await ReadStoredAsync(pageId);
                         results.ShouldAllBe(r => r == CompactionResult.Compacted || r == CompactionResult.Skipped || r == CompactionResult.NothingToDo);
-                        results.Count(r => r == CompactionResult.Compacted).ShouldBeLessThanOrEqualTo(1);
+
+                        // The lock lets one compaction in at a time; it does not make the two overlap. When the first has
+                        // committed before the second asks for the lock, the second takes the next batch of what is still
+                        // live: two compactions, of different updates (issue #64). So the guarantee is that every merged
+                        // update was merged once: each compaction raised the version by one and took a batch of its own.
+                        var compacted = results.Count(r => r == CompactionResult.Compacted);
+                        var limit = Options.MaxUpdatesPerCompaction;
+                        var merged = before.LiveSeqs.Length - after.LiveSeqs.Length;
+                        (after.Snapshot?.Version ?? 0).ShouldBe((before.Snapshot?.Version ?? 0) + compacted);
+                        merged.ShouldBe(Math.Min(before.LiveSeqs.Length, compacted * limit));
+                        after.ArchivedSeqs.Except(before.ArchivedSeqs).Order().ShouldBe(before.LiveSeqs.Except(after.LiveSeqs).Order());
+                        if (compacted == 2)
+                        {
+                            // Only a batch limit leaves anything for a second compaction.
+                            before.LiveSeqs.Length.ShouldBeGreaterThan(limit);
+                        }
+
                         Count($"twice {string.Join("+", results.Order())}");
                         break;
                     }
