@@ -30,6 +30,11 @@ updates:
       # typescript-eslint caps its peer range below it. Stay on 6.x until both accept TypeScript 7.
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
+      # @tiptap/y-tiptap 3.0.12 deletes shared content the editor schema cannot display (a block from a newer version
+      # of the app), where 3.0.10 stops writing and reports `binding.projectionError`, which PageEditor.vue relies on
+      # to keep such a page intact. Take a later version only after checking that it protects the page again.
+      - dependency-name: '@tiptap/y-tiptap'
+        versions: ['3.0.12']
     groups:
       # yjs and lib0 are pinned to exact versions in web and in the sidecar: two copies would split the document model.
       # One pull request, never merged by itself.
