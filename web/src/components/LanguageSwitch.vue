@@ -32,7 +32,7 @@ function select(next: unknown) {
       v-for="code in locales"
       :key="code"
       :value="code"
-      class="min-h-11 rounded px-space-lg text-label-md text-on-surface-variant hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container data-[state=on]:bg-primary-container data-[state=on]:text-on-primary-container md:min-h-9"
+      class="min-h-11 rounded px-space-lg text-label-md text-on-surface-variant hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary data-[state=on]:bg-primary-container data-[state=on]:text-on-primary-container md:min-h-9"
     >
       {{ names[code] }}
     </ToggleGroupItem>

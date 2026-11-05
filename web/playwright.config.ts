@@ -74,6 +74,17 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
+      // The narrowest screen reflow is judged at (WCAG 1.4.10, 320 CSS pixels), which is also a phone with large text.
+      name: 'narrow',
+      testMatch: /a11y\.spec\.ts$/,
+      use: {
+        ...devices['Pixel 7'],
+        viewport: { width: 320, height: 640 },
+        storageState: AUTH_STATE_FILE,
+      },
+      dependencies: ['setup'],
+    },
+    {
       name: 'plain-http',
       testMatch: /plain-http\.spec\.ts/,
       use: {
@@ -92,7 +103,7 @@ export default defineConfig({
       name: 'lifecycle',
       testMatch: /logout-everywhere\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['desktop', 'phone', 'iphone', 'plain-http'],
+      dependencies: ['desktop', 'phone', 'iphone', 'narrow', 'plain-http'],
     },
   ],
   webServer: externalURL

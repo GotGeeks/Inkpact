@@ -33,8 +33,8 @@ const lists = [
   '[&_li[data-checked]>label]:mt-space-xs [&_li[data-checked]>label]:flex [&_li[data-checked]>label]:h-6.5',
   '[&_li[data-checked]>label]:items-center [&_li[data-checked]>label]:select-none',
   '[&_li[data-checked]>div]:flex-1 [&_li[data-checked]>div>p]:my-space-xs',
-  '[&_input[type=checkbox]]:size-4.5 [&_input[type=checkbox]]:accent-primary-container',
-  '[&_li[data-checked=true]>div]:line-through [&_li[data-checked=true]>div]:opacity-40',
+  '[&_input[type=checkbox]]:size-6 [&_input[type=checkbox]]:accent-primary-container',
+  '[&_li[data-checked=true]>div]:line-through [&_li[data-checked=true]>div]:text-outline',
 ]
 
 const blocks = [

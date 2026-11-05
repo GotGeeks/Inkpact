@@ -8,7 +8,7 @@ test.use({ storageState: SIGNED_OUT })
 test('the login page renders in English', async ({ page }) => {
   await page.goto('/login')
 
-  await expect(page).toHaveTitle('Inkpact')
+  await expect(page).toHaveTitle('Sign in – Inkpact')
   await expectLoginPage(page)
   await expect(page.getByText('Notes that sync, without limits.')).toBeVisible()
   await expect(page.locator('html')).toHaveAttribute('lang', 'en')

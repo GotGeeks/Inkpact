@@ -62,7 +62,7 @@ function turnInto(command: BlockCommand) {
 }
 
 const item =
-  'flex min-h-9 cursor-pointer items-center rounded-sm px-space-md text-body-sm outline-none data-[highlighted]:bg-surface-container-high data-[highlighted]:text-primary'
+  'flex min-h-9 pointer-coarse:min-h-11 cursor-pointer items-center rounded-sm px-space-md text-body-sm outline-none data-[highlighted]:bg-surface-container-high data-[highlighted]:text-primary'
 const panel =
   'z-50 min-w-48 rounded-md border border-border-subtle bg-surface-elevated p-space-xs text-on-surface shadow-lg'
 </script>

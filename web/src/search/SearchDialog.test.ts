@@ -394,6 +394,21 @@ describe('choosing a page', () => {
     expect(active()).toBe(0)
   })
 
+  it('points the field at no result once nothing is found, not at one of the list before', async () => {
+    await shell((query) =>
+      query.includes('zebra') ? answer() : answer(meeting, hit('Ideas', plain('Ideas'))),
+    )
+    await openByShortcut()
+    await typeAndSearch('id')
+    expect(input().getAttribute('aria-activedescendant')).toBe(options()[0]!.id)
+
+    await typeAndSearch('zebra')
+
+    expect(options()).toEqual([])
+    // A reference to an element that is gone is an error to assistive technology (WCAG 4.1.2).
+    expect(input().hasAttribute('aria-activedescendant')).toBe(false)
+  })
+
   it('points the field at the list also before there is a result', async () => {
     await shell(() => answer())
     await openByShortcut()

@@ -322,7 +322,10 @@ test.describe('on a desktop, with a mouse (1.12b)', () => {
     // The caret is at the end of "three".
     await page.keyboard.press('Alt+ArrowUp')
     await expect(texts(page).nth(1)).toHaveText('three')
-    await expect(page.locator('[aria-live="polite"]')).toHaveText('Block moved up')
+    // The editor's own live region, which a screen reader reads out.
+    const announcer = page.getByTestId('editor-announcer')
+    await expect(announcer).toHaveAttribute('aria-live', 'polite')
+    await expect(announcer).toHaveText('Block moved up')
     await page.keyboard.press('Alt+ArrowUp')
     await expect(texts(page).nth(0)).toHaveText('three')
     await page.keyboard.press('Alt+ArrowDown')

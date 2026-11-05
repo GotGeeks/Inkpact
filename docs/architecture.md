@@ -460,6 +460,13 @@ Every feature ships with unit tests, every user-facing string goes through i18n,
 - CI gate: all tests pass. Every feature ships with tests, and the critical paths (sync, compaction, tree operations, permissions, import, sanitising) need thorough ones; coverage is reported on every PR but is not a gate, so tests follow risk rather than a percentage
 - Phase 0 code is throwaway; its sync scenarios become the first integration tests in phase 1A. Compaction and tree operations also get property-based tests with FsCheck: random edit, move and crash sequences must always converge without data loss
 
+**Accessibility and responsive layout** (run 1.19; a screen added later is added to these)
+
+- `web/e2e/a11y.spec.ts` opens every screen and state on the desktop, a Pixel 7, an iPhone 15 and a 320-pixel phone (the `narrow` project) and fails on any WCAG 2.2 A or AA violation by axe, on sideways scrolling, and, on a touch screen, on a control under 44 by 44 pixels. An exception is written beside the element it is for, with its reason, and never as a rule off for a file
+- `web/e2e/keyboard.spec.ts` runs a session without the mouse (sign in and out, the skip link, a new page, rename, move, search, typing, export, trash, restore) and checks where the focus is and that it shows
+- `web/src/contrast.test.ts` checks the colour pairs the app uses (text 4.5:1, focus rings and field edges 3:1) and fails on the classes that failed before: a focus ring in `primary-container`, a field edge in `border-subtle`, a to-do faded with opacity, and `outline-none` on an element with a focus ring (Tailwind 4 sets the outline style to none and `outline-2` keeps it)
+- The tab's title names the page or screen, a polite live region says which page opened, and a skip link leads past the sidebar
+
 **Internationalisation**
 
 - English and Dutch from the first commit; English is the fallback language

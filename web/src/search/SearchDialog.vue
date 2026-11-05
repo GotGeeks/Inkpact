@@ -146,6 +146,7 @@ const markClass = 'rounded-sm bg-primary-container/30 text-inherit'
               :placeholder="t('search.placeholder')"
               :aria-expanded="hasHits"
               :aria-controls="listId"
+              v-bind="hasHits ? {} : { 'aria-activedescendant': undefined }"
               aria-autocomplete="list"
               autocomplete="off"
               autocapitalize="off"
@@ -158,7 +159,7 @@ const markClass = 'rounded-sm bg-primary-container/30 text-inherit'
             <button
               type="button"
               :aria-label="t('search.close')"
-              class="flex size-11 shrink-0 items-center justify-center rounded text-on-surface hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-primary-container md:size-9"
+              class="flex size-11 shrink-0 items-center justify-center rounded text-on-surface hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-primary md:size-9"
               @click="search.hide()"
             >
               <AppIcon name="close" class="size-5" />
@@ -179,7 +180,7 @@ const markClass = 'rounded-sm bg-primary-container/30 text-inherit'
                 :key="hit.id"
                 :value="hit.id"
                 :data-page-id="hit.id"
-                class="flex cursor-pointer flex-col gap-space-xs rounded px-space-md py-space-sm text-start text-on-surface outline-none data-highlighted:bg-surface-container-high"
+                class="flex min-h-11 cursor-pointer flex-col gap-space-xs rounded px-space-md py-space-sm text-start text-on-surface outline-none data-highlighted:bg-surface-container-high"
                 @select="choose(hit.id)"
               >
                 <span class="text-body-lg">

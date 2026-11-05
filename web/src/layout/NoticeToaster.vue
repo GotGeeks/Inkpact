@@ -93,7 +93,7 @@ function openCopy(notice: PostedNotice) {
       </ToastAction>
       <ToastClose
         :aria-label="t('notices.dismiss')"
-        class="flex size-8 items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-high focus-visible:outline-2 focus-visible:outline-primary"
+        class="flex size-8 pointer-coarse:size-11 items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-high focus-visible:outline-2 focus-visible:outline-primary"
       >
         <AppIcon name="close" />
       </ToastClose>

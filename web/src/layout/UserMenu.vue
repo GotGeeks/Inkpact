@@ -89,8 +89,8 @@ const item =
     <DropdownMenuTrigger as-child>
       <button
         type="button"
-        :aria-label="t('user.menu')"
-        class="flex min-h-11 w-full items-center gap-space-sm rounded px-space-md text-start text-body-sm text-on-surface hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container md:min-h-9"
+        :aria-label="t('user.menu', { name: auth.user?.displayName })"
+        class="flex min-h-11 w-full items-center gap-space-sm rounded px-space-md text-start text-body-sm text-on-surface hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:min-h-9"
       >
         <AppIcon name="user" />
         <span class="min-w-0 flex-1 truncate" data-testid="user-name">{{
@@ -130,19 +130,19 @@ const item =
         }}</DropdownMenuItem>
         <DropdownMenuSeparator v-if="tree.canEdit" class="my-space-xs h-px bg-border-subtle" />
         <template v-if="tree.workspace">
-          <!-- The hint is inside the item (a menu holds only items), named apart from it so the item's name stays short. -->
+          <!-- The item's name is its visible text; the hint under it is a label of the menu and describes the item. -->
           <DropdownMenuItem
-            aria-labelledby="export-label"
             aria-describedby="export-hint"
             data-testid="export-item"
-            :class="[item, 'flex-col items-start gap-space-xs py-space-xs']"
+            :class="item"
             @select="exportEverything"
+            >{{ t('export.menu') }}</DropdownMenuItem
           >
-            <span id="export-label">{{ t('export.menu') }}</span>
-            <span id="export-hint" class="text-label-xs text-on-surface-variant">{{
-              t('export.hint')
-            }}</span>
-          </DropdownMenuItem>
+          <DropdownMenuLabel
+            id="export-hint"
+            class="px-space-md pb-space-xs text-label-xs text-on-surface-variant"
+            >{{ t('export.hint') }}</DropdownMenuLabel
+          >
           <DropdownMenuSeparator class="my-space-xs h-px bg-border-subtle" />
         </template>
         <DropdownMenuItem :class="item" @select="leave(false)">{{

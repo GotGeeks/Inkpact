@@ -255,7 +255,7 @@ defineExpose({ newPage })
       <button
         v-if="tree.canEdit"
         type="button"
-        class="flex min-h-11 items-center gap-space-xs rounded border border-border-subtle px-space-md text-label-md text-on-surface hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container md:min-h-8"
+        class="flex min-h-11 items-center gap-space-xs rounded border border-border-subtle px-space-md text-label-md text-on-surface hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:min-h-8"
         @click="newPage(null)"
       >
         <AppIcon name="plus" />

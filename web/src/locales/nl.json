@@ -76,6 +76,11 @@
     "loadFailed": "De pagina’s konden niet worden geladen.",
     "retry": "Opnieuw proberen"
   },
+  "a11y": {
+    "skip": "Ga naar de pagina",
+    "opened": "Geopend: {title}",
+    "documentTitle": "{screen} – {app}"
+  },
   "search": {
     "link": "Zoeken",
     "open": "Zoeken",
@@ -411,7 +416,7 @@
     "toPages": "Naar je pagina’s"
   },
   "user": {
-    "menu": "Accountmenu",
+    "menu": "{name}, accountmenu",
     "signedInAs": "Ingelogd als {email}",
     "logout": "Uitloggen",
     "logoutEverywhere": "Overal uitloggen"
