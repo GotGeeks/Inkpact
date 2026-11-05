@@ -1,0 +1,30 @@
+{
+  "_comment": "Licences Inkpact (AGPL-3.0) may depend on, checked by scripts/check-licenses.mjs (pnpm check:licenses). An OR expression passes when one side is allowed, AND when both are. A package without an SPDX expression gets an entry under `packages`, keyed `npm:<name>` or `nuget:<id>`, with the licence it really has and the reason. Add to `allowed` only after checking the licence is compatible with AGPL-3.0.",
+  "allowed": [
+    "MIT",
+    "MIT-0",
+    "ISC",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "0BSD",
+    "Apache-2.0",
+    "MPL-2.0",
+    "BlueOak-1.0.0",
+    "CC0-1.0",
+    "CC-BY-4.0",
+    "Unlicense",
+    "Zlib",
+    "Python-2.0",
+    "PostgreSQL",
+    "LGPL-2.1-or-later",
+    "LGPL-3.0",
+    "GPL-3.0",
+    "AGPL-3.0"
+  ],
+  "packages": {
+    "nuget:xunit.abstractions": {
+      "license": "Apache-2.0",
+      "reason": "The nuspec has only a licence URL (the Apache-2.0 text in the xunit repository)."
+    }
+  }
+}
