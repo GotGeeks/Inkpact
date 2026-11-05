@@ -113,6 +113,10 @@ jobs:
           --health-interval 2s
           --health-timeout 3s
           --health-retries 30
+    # In a container job a `run:` step uses sh unless told otherwise.
+    defaults:
+      run:
+        shell: bash
     env:
       # In a container job a service is reached by its name, not on localhost.
       E2E_DATABASE: Host=postgres;Port=5432;Database=inkpact_e2e;Username=postgres;Password=postgres
