@@ -58,7 +58,7 @@ jobs:
 
       # The scripts that decide the other checks are tested where they run.
       - name: Test the CI scripts
-        run: node --test .github/scripts
+        run: node --test ".github/scripts/*.test.mjs"
 
       - name: Restore
         run: dotnet restore server
