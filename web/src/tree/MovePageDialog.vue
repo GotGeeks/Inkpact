@@ -45,7 +45,7 @@ async function moveTo(parentId: string | null) {
 }
 
 const option =
-  'flex min-h-11 w-full items-center rounded px-space-md text-start text-body-sm text-on-surface outline-none hover:bg-surface-container-high focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary md:min-h-8'
+  'flex min-h-11 w-full items-center rounded px-space-md text-start text-body-sm text-on-surface hover:bg-surface-container-high focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary md:min-h-8'
 </script>
 
 <template>
@@ -89,7 +89,7 @@ const option =
 
         <button
           type="button"
-          class="min-h-11 self-end rounded border border-border-subtle px-space-lg text-label-md hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container md:min-h-9"
+          class="min-h-11 self-end rounded border border-border-subtle px-space-lg text-label-md hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:min-h-9"
           @click="emit('close')"
         >
           {{ t('tree.moveDialog.cancel') }}

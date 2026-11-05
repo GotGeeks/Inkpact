@@ -38,18 +38,20 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-// Deeper levels are indented with classes that exist in the stylesheet; no style attribute is set.
+// Deeper levels are indented with classes that exist in the stylesheet; no style attribute is set. On a touch screen
+// the steps are smaller (12 instead of 16 px), since the expand and actions buttons are 44 px wide there and a deep
+// row on a narrow phone would otherwise keep no room for its title.
 const indent = [
   'ps-2',
-  'ps-6',
-  'ps-10',
-  'ps-14',
-  'ps-18',
-  'ps-22',
-  'ps-26',
-  'ps-30',
-  'ps-34',
-  'ps-38',
+  'ps-6 pointer-coarse:ps-5',
+  'ps-10 pointer-coarse:ps-8',
+  'ps-14 pointer-coarse:ps-11',
+  'ps-18 pointer-coarse:ps-14',
+  'ps-22 pointer-coarse:ps-17',
+  'ps-26 pointer-coarse:ps-20',
+  'ps-30 pointer-coarse:ps-23',
+  'ps-34 pointer-coarse:ps-26',
+  'ps-38 pointer-coarse:ps-29',
 ] as const
 const indentClass = () => indent[Math.min(props.row.level - 1, indent.length - 1)]
 
@@ -102,7 +104,7 @@ function cancel() {
     :draggable="draggable && !renaming"
     :data-page-id="row.page.id"
     :class="[
-      'group relative flex min-h-11 cursor-pointer items-center gap-space-xs rounded pe-space-xs text-body-sm outline-none md:min-h-8',
+      'group relative flex min-h-11 cursor-pointer items-center gap-space-xs rounded pe-space-xs text-body-sm md:min-h-8',
       indentClass(),
       selected
         ? 'bg-primary-container text-on-primary-container'
@@ -110,7 +112,7 @@ function cancel() {
       'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary',
       dragging ? 'opacity-40' : '',
       dropZone === 'inside'
-        ? 'bg-primary-container/30 outline-2 -outline-offset-2 outline-primary-container'
+        ? 'bg-primary-container/30 outline-2 -outline-offset-2 outline-primary'
         : '',
       dropZone === 'before' ? 'border-t-2 border-primary' : '',
       dropZone === 'after' ? 'border-b-2 border-primary' : '',
@@ -125,12 +127,12 @@ function cancel() {
       :aria-label="
         row.expanded ? t('tree.collapse', { title: label() }) : t('tree.expand', { title: label() })
       "
-      class="flex size-7 shrink-0 items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-high md:size-6"
+      class="flex size-6 pointer-coarse:size-11 shrink-0 items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-high"
       @click.stop="emit('toggle')"
     >
       <AppIcon name="chevron" :class="row.expanded ? 'rotate-90' : ''" />
     </button>
-    <span v-else class="size-7 shrink-0 md:size-6" aria-hidden="true" />
+    <span v-else class="size-6 pointer-coarse:size-11 shrink-0" aria-hidden="true" />
 
     <input
       v-if="renaming"
@@ -140,7 +142,7 @@ function cancel() {
       maxlength="500"
       :aria-label="t('tree.renameLabel')"
       :placeholder="t('tree.untitled')"
-      class="min-w-0 flex-1 rounded border border-primary-container bg-surface-canvas px-space-sm py-space-xs text-body-sm text-on-surface outline-none"
+      class="min-w-0 flex-1 rounded border border-primary bg-surface-canvas px-space-sm py-space-xs text-body-sm text-on-surface outline-none"
       @click.stop
       @dblclick.stop
       @keydown.enter.prevent.stop="commit"
@@ -166,7 +168,7 @@ function cancel() {
           tabindex="-1"
           :aria-label="t('tree.actions', { title: label() })"
           :class="[
-            'flex size-7 shrink-0 items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-high focus-visible:opacity-100 md:size-6',
+            'flex size-6 pointer-coarse:size-11 shrink-0 items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-high focus-visible:opacity-100',
             menuOpen || selected
               ? 'opacity-100'
               : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100',

@@ -462,7 +462,7 @@ describe('SidebarTree: dragging with a mouse', () => {
     await row('C').trigger('dragstart')
     await row('B').trigger('dragover')
 
-    expect(row('B').classes().join(' ')).toContain('outline-primary-container')
+    expect(row('B').classes()).toContain('outline-primary')
     expect(row('C').classes()).toContain('opacity-40')
   })
 
@@ -477,7 +477,7 @@ describe('SidebarTree: dragging with a mouse', () => {
     await flushPromises()
 
     expect(server.writes()).toEqual([])
-    expect(row('A1a').classes().join(' ')).not.toContain('outline-primary-container')
+    expect(row('A1a').classes()).not.toContain('outline-primary')
   })
 
   it('forgets the drag when it ends without a drop', async () => {

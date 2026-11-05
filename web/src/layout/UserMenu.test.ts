@@ -46,7 +46,7 @@ async function menu(
     attachTo: document.body,
   })
 
-  const trigger = wrapper.get('button[aria-label="Account menu"]')
+  const trigger = wrapper.get('button[aria-label$="account menu"]')
   const button = trigger.element as HTMLElement
   // The menu opens from the keyboard, as it does for anyone who cannot use a pointer.
   button.focus()
@@ -145,17 +145,17 @@ describe('UserMenu', () => {
     ])
   })
 
-  it('names the export item by its label and describes it with the hint inside it', async () => {
+  it('names the export item by its visible text and describes it with the hint under it', async () => {
     const { item } = await menu()
 
     const entry = item('Export everything')
-    const label = document.getElementById(entry.getAttribute('aria-labelledby')!)
     const hint = document.getElementById(entry.getAttribute('aria-describedby')!)
 
-    expect(label?.textContent?.trim()).toBe('Export everything')
+    // The name is the text on the screen (WCAG 2.5.3), so the hint is not part of it.
+    expect(entry.textContent?.trim()).toBe('Export everything')
+    expect(entry.getAttribute('aria-labelledby')).toBeNull()
     expect(hint?.textContent).toContain('A zip of your notes as Markdown files')
-    expect(entry.contains(hint)).toBe(true)
-    // Nothing but items and separators in the menu: the hint is no stray paragraph.
+    // Nothing but items, labels and separators in the menu: the hint is no stray paragraph.
     expect(document.querySelector('[role="menu"] > p')).toBeNull()
   })
 

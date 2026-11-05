@@ -7,7 +7,7 @@ import {
   DialogRoot,
   DialogTitle,
 } from 'reka-ui'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
@@ -15,6 +15,7 @@ import SearchDialog from '../search/SearchDialog.vue'
 import { isSearchShortcut } from '../search/shortcut'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useAuthStore } from '../stores/auth'
+import { useCurrentPageStore } from '../stores/currentPage'
 import { useNotificationsStore } from '../stores/notifications'
 import { useSearchStore } from '../stores/search'
 import { useSyncStore } from '../stores/sync'
@@ -39,6 +40,27 @@ const drawerOpen = ref(false)
 const failed = ref(false)
 
 const selectedId = computed(() => (route.name === 'page' ? String(route.params.pageId) : null))
+
+const main = useTemplateRef<HTMLElement>('main')
+// Said once when a page opens, with the focus left where it was: a keyboard user walking the tree keeps their place. The
+// page is the one the view fetched, so a page in the trash is said too. The text is cleared first, so that opening a
+// second page with the same title ("Untitled") changes the region and is said again.
+const current = useCurrentPageStore()
+const announcement = ref('')
+watch(
+  () => (current.id && !current.missing ? current.id : null),
+  async (id) => {
+    announcement.value = ''
+    if (!id) return
+    await nextTick()
+    announcement.value = t('a11y.opened', { title: current.title || t('tree.untitled') })
+  },
+)
+
+/** The skip link: past the sidebar to the page, without an address change. */
+function skipToPage() {
+  main.value?.focus()
+}
 
 async function start() {
   failed.value = false
@@ -129,6 +151,16 @@ function open(id: string) {
 
 <template>
   <div class="flex h-dvh bg-surface-canvas text-on-surface">
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:fixed focus:start-space-md focus:top-space-md focus:z-[70] focus:rounded focus:bg-primary-container focus:px-space-lg focus:py-space-sm focus:text-label-md focus:text-on-primary-container focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      data-testid="skip-link"
+      @click.prevent="skipToPage"
+      >{{ t('a11y.skip') }}</a
+    >
+    <p class="sr-only" aria-live="polite" aria-atomic="true" data-testid="announcer">
+      {{ announcement }}
+    </p>
     <aside
       v-if="wide"
       class="w-80 shrink-0 border-e border-border-subtle"
@@ -145,7 +177,7 @@ function open(id: string) {
         <button
           type="button"
           :aria-label="t('shell.openMenu')"
-          class="flex size-11 items-center justify-center rounded text-on-surface hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-primary-container"
+          class="flex size-11 items-center justify-center rounded text-on-surface hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-primary"
           @click="drawerOpen = true"
         >
           <AppIcon name="menu" class="size-6" />
@@ -154,7 +186,7 @@ function open(id: string) {
         <button
           type="button"
           :aria-label="t('search.open')"
-          class="flex size-11 items-center justify-center rounded text-on-surface hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-primary-container"
+          class="flex size-11 items-center justify-center rounded text-on-surface hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-primary"
           data-testid="search-open"
           @click="search.show()"
         >
@@ -162,7 +194,7 @@ function open(id: string) {
         </button>
       </header>
 
-      <main class="min-h-0 flex-1 overflow-y-auto" tabindex="-1">
+      <main id="main" ref="main" class="min-h-0 flex-1 overflow-y-auto outline-none" tabindex="-1">
         <div
           v-if="failed"
           role="alert"

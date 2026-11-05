@@ -148,6 +148,7 @@ The palette is rooted in an ultra-deep charcoal slate (`#090A0F`) that minimizes
 - **Primary (`#4F46E5`)**: Reserved strictly for high-priority user actions, active keyboard navigation focus rings, and primary selection states within command dialogs.
 - **Secondary (`#0EA5E9`)**: Utilized for live collaborator identification, link highlights, and contextual mentions.
 - **Surfaces**: Four structured elevation tiers (`surface-canvas` through `surface-elevated`) separate note canvas, collapsible sidebars, floating slash popovers, and elevated modals without introducing visual weight.
+- **Focus rings** are drawn in the `primary` token (`#c3c0ff`), 8.8:1 or more on every surface, and never in `primary-container` (`#4F46E5`, 3.15:1 on the canvas and 2.4:1 on a raised surface, under the 3:1 that WCAG 1.4.11 asks). The prose above says `#4F46E5` for "keyboard navigation focus rings"; that was the first draft's, and `web/src/contrast.test.ts` fails on it. The edge of a text field is `outline` (`#918fa1`, 6.3:1), not `border-subtle` (1.35:1), which stays for dividers that carry no meaning of their own.
 - **Named Status Tokens**:
   - `sync-active` (`#10B981`): Conveys real-time, non-blocking operational synchronization.
   - `sync-offline` (`#F59E0B`): Flags disconnected, local-cache fallback operations.
@@ -193,6 +194,7 @@ The system uses `roundedness: 2` (base 0.5rem / 8px radius) to maintain modern, 
 ## Components
 
 ### Buttons & Interactive Controls
+- **Touch targets**: on a touch screen (`pointer-coarse:`) every button, link, field and menu item is at least 44x44px, also the small icon buttons of a tree row or a menu; the desktop keeps its density.
 - **Primary Button**: Solid fill with `primary` (`#4F46E5`), white text, 8px corner radius (`rounded`), height of 36px on desktop and 44px on mobile touch targets. Focus state shows a 2px offset ring in `primary`.
 - **Secondary / Ghost Button**: Transparent background, `border-subtle` stroke, subtle hover shift to `surface-elevated`. Active tap states provide instantaneous 98% scale feedback.
 
@@ -209,4 +211,4 @@ The system uses `roundedness: 2` (base 0.5rem / 8px radius) to maintain modern, 
 - **Collaborator Presence**: Real-time peer avatars rendered as 24px circles with overlapping negative horizontal margins (`-space-xs`). Live cursors in the editor render a 1.5px vertical line in their designated presence token alongside a floating collaborator name pill in `label-xs`.
 
 ### Lists & Checkboxes
-- **Checklists**: Custom 18x18px square inputs with `rounded-sm` corners. When checked, surface transforms to `primary` with a crisp white tick mark, and adjacent prose text automatically applies strikethrough with a 40% opacity fade.
+- **Checklists**: Custom 24x24px square inputs (WCAG 2.2's smallest target; the first draft said 18x18) with `rounded-sm` corners. When checked, surface transforms to `primary` with a crisp white tick mark, and adjacent prose text applies strikethrough in `outline` (a fade of 40% opacity is about 3:1, under the 4.5:1 text needs).

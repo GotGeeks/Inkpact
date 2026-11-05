@@ -221,3 +221,75 @@ describe('AppShell on a narrow screen', () => {
     expect(dialog.textContent).toContain('Navigation')
   })
 })
+
+describe('AppShell for keyboards and screen readers', () => {
+  it('has a skip link first, which takes the focus to the page', async () => {
+    screen(true)
+    await shell()
+
+    const link = wrapper!.get('[data-testid="skip-link"]')
+    expect(wrapper!.element.firstElementChild).toBe(link.element)
+    expect(link.text()).toBe('Skip to the page')
+    const main = wrapper!.get('main').element as HTMLElement
+    const focus = vi.spyOn(main, 'focus')
+
+    await link.trigger('click')
+
+    expect(focus).toHaveBeenCalled()
+  })
+
+  it('says which page opened, once, and nothing on other screens', async () => {
+    screen(true)
+    const { router } = await shell()
+    const announcer = () => wrapper!.get('[data-testid="announcer"]')
+    expect(announcer().text()).toBe('')
+
+    await router.push('/p/Work')
+    await flushPromises()
+    expect(announcer().text()).toBe('Opened: Work')
+
+    await router.push('/trash')
+    await flushPromises()
+    expect(announcer().text()).toBe('')
+  })
+
+  it('says a page in the trash too, which the live tree does not hold', async () => {
+    screen(true)
+    const old = { ...pages[2]!, id: 'Old', title: 'Old plans', parentId: null }
+    const { router } = await shell('/', { pages, trash: [old] })
+
+    await router.push('/p/Old')
+    await flushPromises()
+
+    expect(wrapper!.get('[data-testid="announcer"]').text()).toBe('Opened: Old plans')
+  })
+
+  it('says a second page with the same title again: the text is cleared first, so it changes', async () => {
+    screen(true)
+    const blank = (id: string) => ({ ...pages[2]!, id, title: '', parentId: null })
+    const { router } = await shell('/', { pages: [...pages, blank('A'), blank('B')] })
+    await router.push('/p/A')
+    await flushPromises()
+    const announcer = wrapper!.get('[data-testid="announcer"]').element
+    expect(announcer.textContent).toBe('Opened: Untitled')
+
+    const said: string[] = []
+    const observer = new MutationObserver(() => said.push(announcer.textContent ?? ''))
+    observer.observe(announcer, { childList: true, characterData: true, subtree: true })
+    await router.push('/p/B')
+    await flushPromises()
+    observer.disconnect()
+
+    expect(said).toEqual(['', 'Opened: Untitled'])
+  })
+
+  it('says it in Dutch', async () => {
+    screen(true)
+    const { router } = await shell('/', { pages }, 'nl')
+
+    expect(wrapper!.get('[data-testid="skip-link"]').text()).toBe('Ga naar de pagina')
+    await router.push('/p/Notes')
+    await flushPromises()
+    expect(wrapper!.get('[data-testid="announcer"]').text()).toBe('Geopend: Notes')
+  })
+})

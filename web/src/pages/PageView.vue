@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, h, ref, useTemplateRef, watch } from 'vue'
+import { computed, defineAsyncComponent, h, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute } from 'vue-router'
+import { useCurrentPageStore } from '../stores/currentPage'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import SyncStatus from '../sync/SyncStatus.vue'
@@ -51,6 +52,18 @@ watch(syncState, (state) => {
   if (state === 'missing') missingOnSocket.value = true
 })
 const notFound = computed(() => missing.value || missingOnSocket.value)
+
+// What is on the screen, for the tab's title and the announcement: the page as fetched, in the trash or not.
+const current = useCurrentPageStore()
+watch(
+  [pageId, detail, notFound],
+  ([id, found, isNotFound]) => {
+    if (isNotFound) current.show(id, '', true)
+    else if (found && found.page.id === id) current.show(id, found.page.title, false)
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => current.clear())
 
 const ownTrash = computed(() => detail.value?.page.deletedAt !== undefined)
 const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')

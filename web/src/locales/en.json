@@ -76,6 +76,11 @@
     "loadFailed": "The pages could not be loaded.",
     "retry": "Try again"
   },
+  "a11y": {
+    "skip": "Skip to the page",
+    "opened": "Opened: {title}",
+    "documentTitle": "{screen} – {app}"
+  },
   "search": {
     "link": "Search",
     "open": "Search",
@@ -411,7 +416,7 @@
     "toPages": "Go to your pages"
   },
   "user": {
-    "menu": "Account menu",
+    "menu": "{name}, account menu",
     "signedInAs": "Signed in as {email}",
     "logout": "Sign out",
     "logoutEverywhere": "Sign out everywhere"

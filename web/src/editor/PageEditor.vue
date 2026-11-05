@@ -250,7 +250,9 @@ defineExpose({ focus: () => editor.value?.commands.focus('start') })
       :element="handleElement"
       :hovered="() => hoveredBlock"
     />
-    <p aria-live="polite" aria-atomic="true" class="sr-only">{{ announcement }}</p>
+    <p aria-live="polite" aria-atomic="true" class="sr-only" data-testid="editor-announcer">
+      {{ announcement }}
+    </p>
     <p
       v-if="uploading > 0"
       role="status"

@@ -25,7 +25,7 @@ const model = defineModel<string>({ required: true })
       :aria-describedby="error ? `${id}-error` : hint ? `${id}-hint` : undefined"
       spellcheck="false"
       autocapitalize="none"
-      class="min-h-11 rounded border border-border-subtle bg-surface-canvas px-space-md text-body-lg text-on-surface outline-none focus:border-primary-container focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-container aria-[invalid=true]:border-error md:min-h-9"
+      class="min-h-11 rounded border border-outline bg-surface-canvas px-space-md text-body-lg text-on-surface focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-[invalid=true]:border-error md:min-h-9"
     />
     <p v-if="error" :id="`${id}-error`" class="text-body-sm text-error">{{ error }}</p>
     <p v-else-if="hint" :id="`${id}-hint`" class="text-body-sm text-on-surface-variant">
