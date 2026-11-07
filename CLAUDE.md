@@ -4,7 +4,7 @@ Self-hosted, multi-user notes app with real-time collaborative editing. Replaces
 
 - Architecture and decisions: `docs/architecture.md` (frozen v1; change it only when implementation proves it wrong, in the same PR)
 - Designs: `docs/design/` (screenshots + `DESIGN.md` with the design tokens)
-- Current phase: **Phase 0 (sync spike)**, then **Phase 1A (Joplin escape velocity)**. Do not build features from later phases unless the issue says so.
+- Current phase: **Phase 1B (daily-use polish)**. Phase 1A's runs are done. Manual testing (phone, Unraid behind Traefik, the phase gates) is deferred to one test pass before the first public release (run 2.10b, `docs/test-pass.md`): don't block a run on it; put such checks in the card's "For the test pass" section and add them to `docs/test-pass.md`. Do not build features from later phases unless the issue says so.
 
 ## Repository layout
 

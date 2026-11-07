@@ -130,11 +130,11 @@ Rules that keep the budget healthy:
 
 ### Run budget
 
-About 60 runs to the first public release, of which about 18 need Opus for planning or the whole run. At four to six runs a week that is roughly three to four months to phase 2's gate, with phase 1A (the point where Joplin can be retired) after about 25 runs.
+About 60 runs to the first public release, of which about 18 need Opus for planning or the whole run. At four to six runs a week that is roughly three to four months to phase 2's gate, with phase 1A's code after about 25 runs. Joplin is retired after the manual test pass before the first public release (run 2.10b).
 
 ## Phased roadmap
 
-Four phases, each closed by a gate you can test yourself; the web UI is the only interface until phase 3, and mobile apps are explicitly out of scope until after that. Each phase is a list of runs in the order they should be done; each run lists what it delivers and its model and effort.
+Four phases, each closed by a gate you can test yourself. **Changed on 2026-11-07:** the hands-on testing (the checks that need the maintainer, a phone or the Unraid box, and the gates of phases 1A, 1B and 2) is done once, in a manual test pass just before the first public release (run 2.10b), not at the end of each phase. Implementation goes on from phase to phase without waiting for it. Nothing about the automated tests changes: every run still ships its tests and passes them. The checks that pile up meanwhile are listed in `docs/test-pass.md`, and every run card's "For the test pass" section adds to it. The web UI is the only interface until phase 3, and mobile apps are explicitly out of scope until after that. Each phase is a list of runs in the order they should be done; each run lists what it delivers and its model and effort.
 
 Phase 1A, Joplin escape velocity, is the main milestone: the point where you can stop using Joplin.
 
@@ -187,7 +187,7 @@ The smallest version you can use daily instead of Joplin. Build login, tree, edi
 | 1.15 | Joplin import part 1: JEX reading, notebooks, notes, tags, resources, timestamps, to-do and alarm fields; Markdown to editor content with server-side sanitising; import report | O·high → S·high |
 | 1.16 | Joplin import part 2: repeatable re-import with the three-way comparison and conflict copies, internal `:/noteId` links, large-note handling; 5,000-note timing check | O·high → S·high |
 
-**Trial starts:** import your Joplin notes and use Inkpact next to Joplin.
+**Trial starts:** import your Joplin notes and use Inkpact next to Joplin. *(Since 2026-11-07 the trial is informal: Joplin stays the main app, Inkpact is used when convenient, and the hands-on checks wait for the test pass, run 2.10b.)*
 
 **Before Joplin is retired**
 
@@ -197,9 +197,9 @@ The smallest version you can use daily instead of Joplin. Build login, tree, edi
 | 1.18 | Export of everything to Markdown plus attachments as a zip, readable without Inkpact; round-trip test with the import (1.18a the Markdown writer and its round trip, 1.18b the zip, the endpoint and the menu item) | S·med |
 | 1.19 | Responsive and accessibility pass: phone layout of every screen, keyboard navigation, labels, contrast; Playwright checks on the phone viewport | S·med |
 | 1.20 | CI security: CodeQL, dependency review, `pnpm audit`, vulnerable NuGet check, Trivy image scan, licence check, Dependabot for every ecosystem with auto-merge of web dev-tooling patches | S·low |
-| 1.21+ | Bug-fix runs from the trial, one bug or small group per run | S·med; O·high for anything that loses or corrupts data |
+| 1.21+ | Bug-fix runs for what use turns up, one bug or small group per run (1.21 and 1.22 done); a bug found later gets a run where it is found, in whatever phase | S·med; O·high for anything that loses or corrupts data |
 
-**Gate:** you use it daily on phone and laptop next to Joplin for two weeks, re-importing as needed, and no note is lost or broken. Then Joplin is retired.
+**Gate** (tested in the test pass, run 2.10b; phase 1B starts without it): you use it daily on phone and laptop next to Joplin for two weeks, re-importing as needed, and no note is lost or broken. Then Joplin is retired.
 
 ### Phase 1B — Daily-use polish
 
@@ -214,7 +214,7 @@ The smallest version you can use daily instead of Joplin. Build login, tree, edi
 | B.7 | Health endpoint, structured logging, documented backup and restore (pg\_dump plus the attachments volume), admin password reset via CLI | S·low |
 | B.8 | Release pipeline: release-please, versioned and signed images with SBOM and provenance, Unraid template and its automatic update, update check, migration upgrade test in CI | S·med |
 
-**Gate:** nothing in daily use makes you miss Joplin.
+**Gate** (tested in the test pass, run 2.10b; phase 2 starts without it): nothing in daily use makes you miss Joplin.
 
 ### Phase 2 — Multi-user and sharing
 
@@ -230,9 +230,10 @@ The smallest version you can use daily instead of Joplin. Build login, tree, edi
 | 2.8 | Optional OIDC login (Authentik, Authelia, Keycloak) | O·high → S·med |
 | 2.9 | Admin page: users, storage use, backups; per-user quotas and storage reports | S·med |
 | 2.10 | Before the first release: metrics endpoint, password reset by email, threat model document | O·high (threat model), S·med (rest) |
+| 2.10b | Manual test pass: every check in `docs/test-pass.md` and the gates of phases 1A, 1B and 2, on the Unraid box behind Traefik, a phone and the laptop; what it finds becomes bug-fix runs before 2.11. Then Joplin is retired | S·low to plan the pass; the fixes as 1.21+ |
 | 2.11 | First public release (v0.x): self-hosting docs, demo mode with screenshots, performance targets checked against the seeded data set | S·med |
 
-**Gate:** a second person in your household uses a shared workspace without help.
+**Gate** (tested in the test pass, run 2.10b): a second person in your household uses a shared workspace without help.
 
 ### After the first public release — Feature bounties
 
