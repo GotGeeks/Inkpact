@@ -25,6 +25,23 @@ public sealed class SyncOptions
     public long MaxQueuedBytes { get; set; } = 16 * 1024 * 1024;
 
     /// <summary>
+    /// The largest page that can be opened: half of <see cref="MaxQueuedBytes"/>, since a client that opens a page is sent
+    /// its whole state in one reply that has to fit the queue with the traffic around it. Exactly half, also when that is
+    /// less than a sync message: a larger page could not be opened. The Joplin import limits the notes it converts to it. Worked out, not configured, so that what the import makes and
+    /// what a copy may be (<see cref="MaxCopyBytes"/>) cannot drift apart. Run 1.21.
+    /// </summary>
+    public long MaxPageBytes => MaxQueuedBytes / 2;
+
+    /// <summary>
+    /// The largest content the server takes when a client makes a page with it, which is the copy of edits that a Sync would
+    /// delete (<c>POST /api/workspaces/{id}/pages</c> with content): <see cref="MaxPageBytes"/> and an eighth more. The copy
+    /// is written again from the blocks of the page, which can come out a little larger than the update the page was made
+    /// from (a few bytes a block, 0.14 % in a test with 3,000 blocks); without the eighth, a page right at the limit would
+    /// get no copy. A page of this size still opens: the queue has twice the room of <see cref="MaxPageBytes"/>.
+    /// </summary>
+    public long MaxCopyBytes => MaxPageBytes + MaxPageBytes / 8;
+
+    /// <summary>
     /// A page whose stored updates are larger than this is sent as stored when a client subscribes, without asking the Yjs
     /// sidecar for a diff: the diff of a large page can take longer than <c>Sidecar:DiffTimeout</c>, and a sidecar that does
     /// not answer in time is restarted, which every page and import waits for. A client opening such a page has little of

@@ -177,6 +177,25 @@ describe('the sync pill', () => {
     sync.destroy()
   })
 
+  it('says whether changes are still on their way to the server, for tests that must wait until they are there', async () => {
+    const sync = useSyncStore()
+    wrapper = mount(SyncStatus, { global: { plugins: [createAppI18n('en')] } })
+    const pill = wrapper.get('[role="status"]')
+    const handle = sync.open(page)
+    await flushPromises()
+    expect(pill.attributes('data-unsent')).toBe('false')
+
+    hub.current.serverClose(1006)
+    handle.doc.getText('t').insert(0, 'x')
+    await flushPromises()
+    expect(pill.attributes('data-unsent')).toBe('true')
+
+    window.dispatchEvent(new Event('online'))
+    await vi.waitFor(() => expect(pill.attributes('data-unsent')).toBe('false'), { timeout: 3000 })
+    expect(pill.attributes('data-state')).toBe('live')
+    sync.destroy()
+  })
+
   it('speaks Dutch', () => {
     wrapper = mount(SyncStatus, { global: { plugins: [createAppI18n('nl')] } })
     expect(wrapper.text()).toBe('Verbinden…')

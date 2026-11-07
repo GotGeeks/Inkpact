@@ -2,9 +2,12 @@ using System.Net;
 using System.Net.Http.Json;
 using Inkpact.Api.Auth;
 using Inkpact.Api.Pages;
+using Inkpact.Api.Sync;
 using Inkpact.Api.Tests.Testing;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
+using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -270,16 +273,82 @@ public class PageEndpointTests(PostgresFixture postgres) : IClassFixture<Postgre
     }
 
     [Fact]
-    public async Task Content_without_an_id_content_that_is_not_base64_and_content_over_a_sync_message_are_refused()
+    public async Task Content_without_an_id_and_content_that_is_not_base64_are_refused()
     {
         var noId = await _owner.PostJsonAsync($"/api/workspaces/{_workspaceId}/pages", new { title = "A", content = "AQID" });
         var notBase64 = await _owner.PostJsonAsync($"/api/workspaces/{_workspaceId}/pages", new { id = Guid.NewGuid(), title = "A", content = "not base64!" });
-        var tooLarge = await CreateWithContentAsync(Guid.NewGuid(), new byte[3 * 1024 * 1024]);
 
         (await noId.ReadErrorAsync()).ShouldBe(new ApiError("id_invalid", "id"));
         (await notBase64.ReadErrorAsync()).ShouldBe(new ApiError("content_invalid", "content"));
-        tooLarge.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
         (await UseDbAsync(db => db.Pages.CountAsync())).ShouldBe(0);
+    }
+
+    // The copy of offline edits is the whole page, which since run 1.16d can be larger than a sync message (run 1.21).
+
+    private long MaxCopyBytes => _factory.Services.GetRequiredService<SyncOptions>().MaxCopyBytes;
+
+    [Fact]
+    public async Task Content_larger_than_a_sync_message_but_not_than_a_page_is_stored_whole()
+    {
+        var id = Guid.NewGuid();
+        var content = new byte[6 * 1024 * 1024];
+        Random.Shared.NextBytes(content);
+
+        var response = await CreateWithContentAsync(id, content);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var stored = await UseDbAsync(db => db.PageUpdates.Where(u => u.PageId == id).Select(u => u.Data).ToListAsync());
+        stored.Count.ShouldBe(1);
+        stored[0].SequenceEqual(content).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Content_of_exactly_the_most_a_copy_may_be_is_accepted_and_one_byte_more_is_refused()
+    {
+        // A page may be 8 MiB, and its copy an eighth more (it is written again from the page's blocks).
+        MaxCopyBytes.ShouldBe(9L * 1024 * 1024);
+        var atLimit = new byte[MaxCopyBytes];
+        var over = new byte[MaxCopyBytes + 1];
+        var id = Guid.NewGuid();
+
+        var accepted = await CreateWithContentAsync(id, atLimit);
+        var refused = await CreateWithContentAsync(Guid.NewGuid(), over);
+
+        accepted.StatusCode.ShouldBe(HttpStatusCode.Created);
+        (await UseDbAsync(db => db.PageUpdates.Where(u => u.PageId == id).Select(u => u.Data.Length).SingleAsync())).ShouldBe(atLimit.Length);
+        refused.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
+        (await refused.ReadErrorAsync()).ShouldBe(new ApiError("content_too_large", "content"));
+        (await UseDbAsync(db => db.Pages.CountAsync())).ShouldBe(1);
+    }
+
+    [Fact]
+    public void The_create_route_limits_its_body_to_a_copy_in_base64_and_a_little_for_the_rest()
+    {
+        // The test server does not enforce a body limit, so what is checked is the limit Kestrel is told to enforce.
+        var endpoint = _factory.Services.GetRequiredService<EndpointDataSource>().Endpoints
+            .OfType<RouteEndpoint>()
+            .Single(e => e.RoutePattern.RawText == "/api/workspaces/{workspaceId}/pages" && e.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods.Contains("POST"));
+
+        var limit = endpoint.Metadata.GetMetadata<IRequestSizeLimitMetadata>();
+
+        limit.ShouldNotBeNull();
+        limit.MaxRequestBodySize.ShouldBe(PageEndpoints.MaxCreateBodyBytes(_factory.Services.GetRequiredService<SyncOptions>()));
+    }
+
+    [Fact]
+    public async Task A_large_copy_sent_again_with_the_same_id_gives_the_page_it_made()
+    {
+        var id = Guid.NewGuid();
+        var content = new byte[5 * 1024 * 1024];
+        Random.Shared.NextBytes(content);
+
+        var first = await CreateWithContentAsync(id, content);
+        var again = await CreateWithContentAsync(id, content);
+
+        first.StatusCode.ShouldBe(HttpStatusCode.Created);
+        again.IsSuccessStatusCode.ShouldBeTrue();
+        (await UseDbAsync(db => db.Pages.CountAsync(p => p.Id == id))).ShouldBe(1);
+        (await UseDbAsync(db => db.PageUpdates.CountAsync(u => u.PageId == id))).ShouldBe(1);
     }
 
     [Fact]

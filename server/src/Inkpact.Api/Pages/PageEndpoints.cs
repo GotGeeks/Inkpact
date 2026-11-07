@@ -1,8 +1,10 @@
+using System.Buffers.Text;
 using System.Security.Claims;
 using Inkpact.Api.Auth;
 using Inkpact.Api.Permissions;
 using Inkpact.Api.Sync;
 using Inkpact.Data.Entities;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Inkpact.Api.Pages;
 
@@ -31,7 +33,12 @@ public static class PageEndpoints
     {
         app.MapGet("/api/workspaces/{workspaceId}/pages", GetTree).RequireWorkspaceRole(WorkspaceRole.Viewer);
         app.MapGet("/api/workspaces/{workspaceId}/trash", GetTrash).RequireWorkspaceRole(WorkspaceRole.Viewer);
-        app.MapPost("/api/workspaces/{workspaceId}/pages", Create).RequireWorkspaceRole(WorkspaceRole.Editor);
+        // Content may be as large as a page. The limit is set here and not in the handler: the JSON body is read while the
+        // parameters are bound, before the handler runs. A little over the content, for the rest of the JSON.
+        var sync = app.ServiceProvider.GetRequiredService<SyncOptions>();
+        app.MapPost("/api/workspaces/{workspaceId}/pages", Create)
+            .RequireWorkspaceRole(WorkspaceRole.Editor)
+            .WithMetadata(new RequestSizeLimitAttribute(MaxCreateBodyBytes(sync)));
 
         app.MapGet("/api/pages/{pageId}", GetPage).RequirePageRole(WorkspaceRole.Viewer);
         app.MapPatch("/api/pages/{pageId}", Rename).RequirePageRole(WorkspaceRole.Editor);
@@ -40,6 +47,53 @@ public static class PageEndpoints
         app.MapPost("/api/pages/{pageId}/restore", Restore).RequirePageRole(WorkspaceRole.Editor);
 
         return app;
+    }
+
+    /// <summary>What the rest of a create request (title, ids, JSON) may add to its content.</summary>
+    internal const long RequestOverhead = 64 * 1024;
+
+    /// <summary>
+    /// The route's limit for the body of a create request: a coarse cap that Kestrel enforces before the body is read, so a
+    /// body far too large is never bound. The exact limit on the content is <see cref="ReadContent"/>'s.
+    /// </summary>
+    internal static long MaxCreateBodyBytes(SyncOptions sync) =>
+        Base64.GetMaxEncodedToUtf8Length(checked((int)sync.MaxCopyBytes)) + RequestOverhead;
+
+    /// <summary>
+    /// The content of a create request, decoded: an error when it is not base64, empty, or larger than <paramref name="max"/>
+    /// bytes. The length of the text is checked first, so content far too large is never decoded; it is checked again after
+    /// decoding, because base64 rounds up to whole groups of three bytes and up to two bytes more would pass the first check.
+    /// </summary>
+    internal static TreeError? ReadContent(string encoded, long max, out byte[]? content)
+    {
+        content = null;
+        if (encoded.Length > Base64.GetMaxEncodedToUtf8Length(checked((int)max)))
+        {
+            return new TreeError(StatusCodes.Status413PayloadTooLarge, "content_too_large", "content");
+        }
+
+        try
+        {
+            content = Convert.FromBase64String(encoded);
+        }
+        catch (FormatException)
+        {
+            return new TreeError(StatusCodes.Status400BadRequest, "content_invalid", "content");
+        }
+
+        if (content.Length == 0)
+        {
+            content = null;
+            return new TreeError(StatusCodes.Status400BadRequest, "content_invalid", "content");
+        }
+
+        if (content.Length > max)
+        {
+            content = null;
+            return new TreeError(StatusCodes.Status413PayloadTooLarge, "content_too_large", "content");
+        }
+
+        return null;
     }
 
     private static async Task<IResult> GetTree(Guid workspaceId, TreeService tree, CancellationToken cancellationToken) =>
@@ -69,24 +123,10 @@ public static class PageEndpoints
             byte[]? content = null;
             if (request.Content is { } encoded)
             {
-                // Content larger than a sync message could not reach the page the other way either.
-                if (encoded.Length > (sync.MaxMessageBytes + 2) / 3 * 4)
+                // Content larger than a page that can be opened could not be used anyway (SyncOptions.MaxCopyBytes).
+                if (ReadContent(encoded, sync.MaxCopyBytes, out content) is { } error)
                 {
-                    return Respond(new TreeError(StatusCodes.Status413PayloadTooLarge, "content_too_large", "content"));
-                }
-
-                try
-                {
-                    content = Convert.FromBase64String(encoded);
-                }
-                catch (FormatException)
-                {
-                    return Respond(new TreeError(StatusCodes.Status400BadRequest, "content_invalid", "content"));
-                }
-
-                if (content.Length == 0)
-                {
-                    return Respond(new TreeError(StatusCodes.Status400BadRequest, "content_invalid", "content"));
+                    return Respond(error);
                 }
             }
 

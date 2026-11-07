@@ -61,7 +61,7 @@ public static class ImportEndpoints
     {
         var sync = new Sync.SyncOptions();
         config.GetSection(Sync.SyncOptions.SectionName).Bind(sync);
-        var ceiling = sync.MaxQueuedBytes / 2;
+        var ceiling = sync.MaxPageBytes;
         foreach (var (name, value) in (ValueTuple<string, long>[])[(nameof(ImportOptions.MaxNoteTextBytes), options.MaxNoteTextBytes), (nameof(ImportOptions.MaxNoteUpdateBytes), options.MaxNoteUpdateBytes)])
         {
             if (value < 1 || value > ceiling)
