@@ -25,6 +25,12 @@ export function outline(lines: string[]): PageNode[] {
   })
 }
 
+/** What the server answers for the pages that link to a page. */
+export interface BacklinksAnswer {
+  items: { id: string; title: string; parentTitle: string | null }[]
+  more: boolean
+}
+
 export interface FakeTree {
   fetch: Mock
   /** The texts that were searched for, in order. */
@@ -33,6 +39,10 @@ export interface FakeTree {
   writes: () => { method: string; path: string; body: Record<string, unknown> }[]
   setPages: (pages: PageNode[]) => void
   setTrash: (pages: PageNode[]) => void
+  /** What the server says links to a page, from now on. */
+  setBacklinks: (pageId: string, answer: BacklinksAnswer | Response) => void
+  /** The pages whose backlinks were asked for, in order. */
+  backlinkReads: () => string[]
   /** Makes the next write fail with this status and code. */
   failNext: (status: number, code: string) => void
 }
@@ -56,6 +66,8 @@ export function fakeTree(
     ) => SearchResponse | Response | Promise<SearchResponse | Response>
     /** Answers the check before an export; a 204 without it. */
     exportCheck?: () => Response
+    /** The pages that link to a page, by its id; none without it. */
+    backlinks?: Record<string, BacklinksAnswer>
   } = {},
 ): FakeTree {
   let pages = initial.pages ?? []
@@ -63,6 +75,10 @@ export function fakeTree(
   let failure: { status: number; code: string } | null = null
   const writes: { method: string; path: string; body: Record<string, unknown> }[] = []
   const searches: string[] = []
+  const backlinks = new Map<string, BacklinksAnswer | Response>(
+    Object.entries(initial.backlinks ?? {}),
+  )
+  const backlinkReads: string[] = []
 
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const method = init?.method ?? 'GET'
@@ -88,6 +104,12 @@ export function fakeTree(
         const answer = await initial.search(query, init?.signal ?? undefined)
         if (init?.signal?.aborted) throw new DOMException('Aborted', 'AbortError')
         return answer instanceof Response ? answer : jsonResponse(200, answer)
+      }
+      const linked = /^\/api\/pages\/([^/]+)\/backlinks$/.exec(path)
+      if (linked) {
+        backlinkReads.push(decodeURIComponent(linked[1]!))
+        const answer = backlinks.get(decodeURIComponent(linked[1]!)) ?? { items: [], more: false }
+        return answer instanceof Response ? answer.clone() : jsonResponse(200, answer)
       }
       const single = /^\/api\/pages\/(.+)$/.exec(path)
       if (single) {
@@ -145,6 +167,10 @@ export function fakeTree(
     setTrash: (next) => {
       trash = next
     },
+    setBacklinks: (pageId, answer) => {
+      backlinks.set(pageId, answer)
+    },
+    backlinkReads: () => backlinkReads,
     failNext: (status, code) => {
       failure = { status, code }
     },

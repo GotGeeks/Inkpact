@@ -25,6 +25,8 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
 
     public DbSet<ArchivedPageUpdate> ArchivedPageUpdates => Set<ArchivedPageUpdate>();
 
+    public DbSet<PageLink> PageLinks => Set<PageLink>();
+
     public DbSet<Attachment> Attachments => Set<Attachment>();
 
     public DbSet<Tag> Tags => Set<Tag>();
@@ -69,6 +71,7 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             page.Property(p => p.ContentText).HasDefaultValue("").IsRequired();
             page.Property(p => p.TagText).HasDefaultValue("").IsRequired();
             page.Property(p => p.FileText).HasDefaultValue("").IsRequired();
+            page.Property(p => p.LinksIndexed).HasDefaultValue(0);
             // The search vectors (generated columns: search_vector over title, tag_text, content_text and file_text, and
             // title_vector over title and tag_text), their GIN indexes, the unaccent extension, the inkpact_search
             // configuration and the tag_text triggers are in the AddSearch and AddFileText migrations and not in this
@@ -150,6 +153,15 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             snapshot.Property(s => s.StateVector).IsRequired();
             snapshot.Property(s => s.HistoryComplete).HasDefaultValue(true);
             snapshot.HasOne<Page>().WithOne().HasForeignKey<PageSnapshot>(s => s.PageId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PageLink>(link =>
+        {
+            link.ToTable("page_links");
+            link.HasKey(l => new { l.SourcePageId, l.TargetPageId });
+            link.HasOne<Page>().WithMany().HasForeignKey(l => l.SourcePageId).OnDelete(DeleteBehavior.Cascade);
+            // The pages that link to a page: its backlinks. No foreign key on the target: see PageLink.
+            link.HasIndex(l => l.TargetPageId);
         });
 
         modelBuilder.Entity<ArchivedPageUpdate>(archived =>

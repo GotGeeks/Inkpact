@@ -16,9 +16,11 @@ public sealed record YjsRead(byte[] Json, int Skipped);
 /// <summary>
 /// The result of replaying a page's snapshot and updates. The two fingerprints are those of the inputs replayed and of
 /// <see cref="State"/> decoded on its own fresh document; equal fingerprints mean the encoding lost nothing.
+/// <see cref="Links"/> are the pages the content links to (sorted, once each): the targets of its link marks whose address is
+/// <c>/p/&lt;id&gt;</c>, on this origin or any other (run B.1).
 /// </summary>
 public sealed record YjsCompaction(
-    byte[] State, byte[] StateVector, byte[] ReplayFingerprint, byte[] StateFingerprint, string Text);
+    byte[] State, byte[] StateVector, byte[] ReplayFingerprint, byte[] StateFingerprint, string Text, IReadOnlyList<Guid> Links);
 
 /// <summary>
 /// Everything the server does with the inside of a Yjs update. Updates are opaque to the rest of the app: this is the

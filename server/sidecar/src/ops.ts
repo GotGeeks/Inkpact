@@ -1,11 +1,12 @@
 import * as Y from 'yjs'
 import { buildDocument, replaceDocument } from './build.ts'
+import { pageLinks } from './links.ts'
 import { readDocument } from './read.ts'
 import { plainText } from './text.ts'
 import yjsPackage from 'yjs/package.json' with { type: 'json' }
 
 /** Bumped when the frames or the operations change in a way an old server could not follow. */
-export const PROTOCOL_VERSION = '1'
+export const PROTOCOL_VERSION = '2'
 
 export const OP_PING = 0
 export const OP_DIFF = 1
@@ -63,7 +64,10 @@ function diff([clientStateVector, ...updates]: Uint8Array[]): Uint8Array[] {
   ])
 }
 
-/** The inputs (snapshot first, if any, then the updates) -> [state, its state vector, both fingerprints, text] */
+/**
+ * The inputs (snapshot first, if any, then the updates) -> [state, its state vector, both fingerprints, text, the pages it
+ * links to: their ids, one on each line]. The links are protocol 2 (run B.1).
+ */
 function compact(inputs: Uint8Array[]): Uint8Array[] {
   return withReplay(inputs, (doc) => {
     const state = Y.encodeStateAsUpdate(doc)
@@ -71,7 +75,8 @@ function compact(inputs: Uint8Array[]): Uint8Array[] {
     const replayFingerprint = fingerprint(doc)
     // The state read back on its own fresh document: catches an encoding that does not round-trip.
     const stateFingerprint = withReplay([state], fingerprint)
-    return [state, stateVector, replayFingerprint, stateFingerprint, utf8(plainText(doc))]
+    const links = utf8(pageLinks(doc).join('\n'))
+    return [state, stateVector, replayFingerprint, stateFingerprint, utf8(plainText(doc)), links]
   })
 }
 

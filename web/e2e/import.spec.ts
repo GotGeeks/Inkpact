@@ -2,45 +2,12 @@ import { Buffer } from 'node:buffer'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures'
 import { chooseLanguage, closeDrawer, openSidebar, openUserMenu, rowFor } from './helpers'
-import {
-  generateJex,
-  generateLargeJex,
-  generateLinkedJex,
-  type GeneratedJex,
-  type LargeJex,
-  type LinkedJex,
-} from './jex'
+import { importJex, openImportPage } from './importHelpers'
+import { generateJex, generateLargeJex, generateLinkedJex } from './jex'
 
 const editorBody = (page: Page) => page.getByTestId('editor').locator('.ProseMirror')
 
 const unique = (project: string) => `${project}-${Date.now().toString(36)}`
-
-/** From the account menu, the way a person gets there. On a phone the menu is in the drawer, which closes behind it. */
-async function openImportPage(page: Page, menuItem = 'Import from Joplin') {
-  await page.goto('/')
-  await openUserMenu(page)
-  await page.getByRole('menuitem', { name: menuItem, exact: true }).click()
-  await expect(page).toHaveURL(/\/import\/joplin$/)
-  await expect(page.getByTestId('import-choose')).toBeVisible()
-}
-
-/**
- * Picks the file and waits for the report. The devices of the suite share one workspace, and a workspace takes one
- * import at a time: when another device's import is running, the server says so and this tries again a moment later.
- */
-async function importJex(page: Page, jex: GeneratedJex | LinkedJex | LargeJex) {
-  await expect(async () => {
-    await page.getByTestId('import-file').setInputFiles({
-      name: 'export.jex',
-      mimeType: 'application/octet-stream',
-      buffer: jex.file,
-    })
-    const result = page.getByTestId('import-result')
-    const error = page.getByTestId('import-error')
-    await expect(result.or(error)).toBeVisible({ timeout: 60_000 })
-    await expect(error).toBeHidden({ timeout: 1_000 })
-  }).toPass({ timeout: 180_000, intervals: [1_000, 2_000, 4_000] })
-}
 
 const countOf = (page: Page, kind: string) => page.getByTestId(`import-count-${kind}`)
 

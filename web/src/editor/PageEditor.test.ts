@@ -108,6 +108,47 @@ describe('PageEditor', () => {
     expect(root().getAttribute('contenteditable')).toBe('true')
   })
 
+  it('takes the focus it was asked for before the page arrived as soon as it can be typed into, and not long after', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    hub.holding = true
+    const w = await mountEditor()
+    ;(w.vm as unknown as { focus: () => void }).focus()
+    expect(document.activeElement).not.toBe(root())
+
+    hub.release()
+    await flushPromises()
+
+    expect(root().getAttribute('contenteditable')).toBe('true')
+    // TipTap focuses on the next animation frame.
+    await vi.waitFor(() => expect(document.activeElement).toBe(root()))
+    vi.useRealTimers()
+  })
+
+  it('does not take a focus that was asked for long ago', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    hub.holding = true
+    const w = await mountEditor()
+    ;(w.vm as unknown as { focus: () => void }).focus()
+    vi.setSystemTime(Date.now() + 6000)
+
+    hub.release()
+    await flushPromises()
+
+    expect(root().getAttribute('contenteditable')).toBe('true')
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(document.activeElement).not.toBe(root())
+    vi.useRealTimers()
+  })
+
+  it('takes the focus at once when it can already be typed into', async () => {
+    const w = await mountEditor()
+    expect(root().getAttribute('contenteditable')).toBe('true')
+
+    ;(w.vm as unknown as { focus: () => void }).focus()
+
+    await vi.waitFor(() => expect(document.activeElement).toBe(root()))
+  })
+
   it('can be typed into at once when there is plainly no server', async () => {
     hub.refusing = true
     await mountEditor()

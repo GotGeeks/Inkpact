@@ -1,7 +1,16 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Page, TestInfo } from '@playwright/test'
 import { expect, test } from './fixtures'
-import { closeDrawer, createPageNamed, openSidebar, openUserMenu, pageIdOf } from './helpers'
+import {
+  closeDrawer,
+  createPageNamed,
+  openSidebar,
+  openUserMenu,
+  pageIdOf,
+  rowFor,
+} from './helpers'
+import { importJex, openImportPage } from './importHelpers'
+import { generateLinkedJex } from './jex'
 
 /**
  * Every screen and state, on every device (desktop, Pixel 7, iPhone 15 and a 320-pixel phone): no WCAG 2.2 A or AA
@@ -305,6 +314,38 @@ test('the account menu and the import page', async ({ page }, testInfo) => {
   await page.getByRole('menuitem', { name: 'Import from Joplin', exact: true }).click()
   await expect(page.getByTestId('import-choose')).toBeVisible()
   await scan(page, testInfo, 'import page')
+})
+
+test('a page with the pages that link to it, and a link to a page in the trash', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000)
+  const jex = generateLinkedJex(unique(testInfo, 'Links').replaceAll(' ', '-'))
+  await openImportPage(page)
+  await importJex(page, jex)
+  await openSidebar(page)
+  await rowFor(page, jex.titles.notebook)
+    .getByRole('button', { name: `Expand ${jex.titles.notebook}` })
+    .click()
+  await rowFor(page, jex.titles.second).click()
+  await closeDrawer(page)
+  await expect(page.getByTestId('page-title')).toHaveValue(jex.titles.second)
+
+  // The server indexes the links when it compacts the page, a few seconds after the import (see playwright.config.ts).
+  await expect(async () => {
+    await page.reload()
+    await expect(page.getByTestId('backlinks')).toContainText(jex.titles.first, { timeout: 4_000 })
+  }).toPass({ timeout: 90_000, intervals: [2_000] })
+  await scan(page, testInfo, 'a page with backlinks')
+
+  // The page it links to goes to the trash: its link is struck through, with the reason for a screen reader.
+  await openSidebar(page)
+  const row = rowFor(page, jex.titles.first)
+  await row.getByRole('button', { name: /^Actions for / }).click()
+  await page.getByRole('menuitem', { name: 'Move to trash', exact: true }).click()
+  await closeDrawer(page)
+  await expect(page.locator('[data-broken-link="trash"]')).toBeVisible()
+  await scan(page, testInfo, 'a page with a link to a page in the trash')
 })
 
 test('the same screens in Dutch have names too', async ({ page }, testInfo) => {

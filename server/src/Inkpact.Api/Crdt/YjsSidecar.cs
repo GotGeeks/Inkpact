@@ -14,7 +14,7 @@ namespace Inkpact.Api.Crdt;
 public sealed class YjsSidecar(SidecarOptions options, string contentRoot, TimeProvider time, ILogger<YjsSidecar> logger)
     : BackgroundService, IYjsCodec
 {
-    private const string ProtocolVersion = "1";
+    private const string ProtocolVersion = "2";
 
     private static readonly TimeSpan MinBackoff = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan MaxBackoff = TimeSpan.FromMinutes(1);
@@ -58,10 +58,17 @@ public sealed class YjsSidecar(SidecarOptions options, string contentRoot, TimeP
     public async Task<YjsCompaction> CompactAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken)
     {
         var answer = await CallAsync(SidecarOp.Compact, Parts(inputs), options.RequestTimeout, cancellationToken);
-        return answer is [var state, var stateVector, var replayFingerprint, var stateFingerprint, var text]
-            ? new YjsCompaction(state, stateVector, replayFingerprint, stateFingerprint, Encoding.UTF8.GetString(text))
+        return answer is [var state, var stateVector, var replayFingerprint, var stateFingerprint, var text, var links]
+            ? new YjsCompaction(
+                state, stateVector, replayFingerprint, stateFingerprint, Encoding.UTF8.GetString(text), ParseLinks(links))
             : throw Unexpected(answer);
     }
+
+    /// <summary>The page ids of the sidecar's links part, one on each line (empty for a page with no links).</summary>
+    private static Guid[] ParseLinks(byte[] part) =>
+        part.Length == 0
+            ? []
+            : [.. Encoding.UTF8.GetString(part).Split('\n').Select(Guid.Parse)];
 
     public async Task<byte[]> FingerprintAsync(IReadOnlyList<byte[]> updates, CancellationToken cancellationToken)
     {

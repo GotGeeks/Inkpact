@@ -448,6 +448,12 @@ namespace Inkpact.Data.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_todo");
 
+                    b.Property<int>("LinksIndexed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("links_indexed");
+
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid")
                         .HasColumnName("parent_id");
@@ -503,6 +509,25 @@ namespace Inkpact.Data.Migrations
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("WorkspaceId", "ParentId", "SortKey"), false);
 
                     b.ToTable("pages", (string)null);
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.PageLink", b =>
+                {
+                    b.Property<Guid>("SourcePageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_page_id");
+
+                    b.Property<Guid>("TargetPageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_page_id");
+
+                    b.HasKey("SourcePageId", "TargetPageId")
+                        .HasName("pk_page_links");
+
+                    b.HasIndex("TargetPageId")
+                        .HasDatabaseName("ix_page_links_target_page_id");
+
+                    b.ToTable("page_links", (string)null);
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.PageSnapshot", b =>
@@ -964,6 +989,16 @@ namespace Inkpact.Data.Migrations
                     b.Navigation("Parent");
 
                     b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.PageLink", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.Page", null)
+                        .WithMany()
+                        .HasForeignKey("SourcePageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_page_links_source_page_id");
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.PageSnapshot", b =>

@@ -13,6 +13,7 @@ public enum CompactionStage
     Archived,
     Deleted,
     TextWritten,
+    LinksWritten,
 }
 
 /// <summary>
