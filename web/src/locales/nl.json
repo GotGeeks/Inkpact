@@ -444,6 +444,7 @@
     "restoredToTopLevel": "“{title}” is teruggezet op het bovenste niveau, omdat de pagina waar hij onder stond weg is.",
     "editsKept": "Wat je offline in “{title}” typte, is intussen elders weggehaald. Het staat in een kopie ernaast.",
     "editsWaiting": "Wat je offline in “{title}” typte, is elders weggehaald, en er kon nog geen kopie van worden gemaakt. Houd dit tabblad open: het wordt opnieuw geprobeerd zodra de verbinding terug is.",
+    "editsTooLarge": "Wat je offline in “{title}” typte, is elders weggehaald, en de pagina is te groot om er een kopie van te bewaren.",
     "openCopy": "Open de kopie",
     "openCopyAlt": "Open de kopie van je offline wijzigingen aan “{title}”",
     "dismiss": "Sluiten"

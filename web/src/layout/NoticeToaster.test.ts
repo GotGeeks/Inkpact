@@ -87,6 +87,18 @@ describe('NoticeToaster', () => {
     ).not.toContain('Open the copy')
   })
 
+  it('says when a copy of offline edits is larger than the server takes, without asking to keep the tab open', async () => {
+    const { notices, shown } = await toaster()
+
+    notices.post({ type: 'editsTooLarge', title: 'Plan' })
+    const text = (await shown()).join(' ')
+
+    expect(text).toContain(
+      'What you typed offline in “Plan” was removed by a change made elsewhere, and the page is too large to keep a copy of it.',
+    )
+    expect(text).not.toContain('Keep this tab open')
+  })
+
   it('says it in Dutch', async () => {
     const { notices, shown } = await toaster('nl')
 

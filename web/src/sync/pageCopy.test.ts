@@ -45,11 +45,34 @@ describe('copyUpdate', () => {
   })
 })
 
+describe('copyUpdate of a large page', () => {
+  it('is only a little larger than the page it copies, within the eighth more that the server takes', () => {
+    // Several MiB of text in many blocks, like an imported note of a few thousand paragraphs.
+    const paragraph = 'The quick brown fox jumps over the lazy dog. '.repeat(40)
+    const original = page(...Array.from({ length: 3000 }, (_, i) => `${i} ${paragraph}`))
+    expect(original.length).toBeGreaterThan(3 * 1024 * 1024)
+
+    const copy = copyUpdate(original)
+
+    // Written again from the blocks, so not the same size (here 0.14 % more); the server takes a copy up to an eighth above
+    // the limit of a page (SyncOptions.MaxCopyBytes), so a page right at the limit still gets its copy.
+    expect(copy.length).toBeLessThan(original.length * 1.02)
+    expect(blocksOf(copy)).toEqual(blocksOf(original))
+  })
+})
+
 describe('toBase64', () => {
   it('encodes bytes, also more than fit in one argument list', () => {
     const bytes = Uint8Array.from({ length: 100_000 }, (_, i) => i % 256)
 
     expect(Uint8Array.from(atob(toBase64(bytes)), (c) => c.charCodeAt(0))).toEqual(bytes)
+  })
+
+  it('encodes a page of several MiB', () => {
+    const bytes = new Uint8Array(9 * 1024 * 1024)
+    for (let i = 0; i < bytes.length; i++) bytes[i] = (i * 31) % 256
+
+    expect(toBase64(bytes)).toBe(Buffer.from(bytes).toString('base64'))
   })
 })
 

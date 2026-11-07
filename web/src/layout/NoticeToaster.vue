@@ -36,6 +36,8 @@ function text(notice: PostedNotice): string {
       return t('notices.editsKept', { title })
     case 'editsWaiting':
       return t('notices.editsWaiting', { title })
+    case 'editsTooLarge':
+      return t('notices.editsTooLarge', { title })
   }
 }
 
@@ -43,9 +45,14 @@ async function undo(notice: PostedNotice) {
   if (notice.type === 'trashed') await tree.restore(notice.pageId)
 }
 
-/** A notice that must not slip by: it says where the person's own words went. */
-const important = (notice: PostedNotice) =>
-  notice.type === 'error' || notice.type === 'editsKept' || notice.type === 'editsWaiting'
+/** Notices that must not slip by: they say where the person's own words went. */
+const IMPORTANT = new Set<PostedNotice['type']>([
+  'error',
+  'editsKept',
+  'editsWaiting',
+  'editsTooLarge',
+])
+const important = (notice: PostedNotice) => IMPORTANT.has(notice.type)
 
 function openCopy(notice: PostedNotice) {
   if (notice.type === 'editsKept')

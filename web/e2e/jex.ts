@@ -242,6 +242,8 @@ export interface LargeJex {
   titles: { notebook: string; note: string }
   /** The first line of the note, to find the page open. */
   firstLine: string
+  /** The last line of the note: short, so that the start of its paragraph is one Home key away from the end of the page. */
+  lastLine: string
 }
 
 /**
@@ -263,6 +265,8 @@ export function generateLargeJex(
     lines.push(line)
     size += line.length + 2
   }
+  const lastLine = 'End of the giant page.'
+  lines.push(lastLine)
   const fields = (pairs: [string, string][], type: number) =>
     [...pairs, ['type_', String(type)]].map(([key, value]) => `${key}: ${value}`).join('\n')
   const files = [
@@ -302,5 +306,5 @@ export function generateLargeJex(
       ),
     },
   ]
-  return { file: tar(files), titles, firstLine: paragraph(0).slice(0, 40) }
+  return { file: tar(files), titles, firstLine: paragraph(0).slice(0, 40), lastLine }
 }

@@ -57,6 +57,8 @@ export const useSyncStore = defineStore('sync', () => {
       connection.value === 'open' &&
       Object.values(pages.value).every((page) => page.state !== 'syncing'),
   )
+  /** Some open page has changes the server has not confirmed yet. */
+  const unsent = computed(() => Object.values(pages.value).some((page) => page.unsent))
   const display = computed<SyncDisplay>(() =>
     live.value ? 'live' : connection.value === 'offline' ? 'offline' : 'connecting',
   )
@@ -147,6 +149,7 @@ export const useSyncStore = defineStore('sync', () => {
     pages,
     live,
     display,
+    unsent,
     sessionEnded,
     lostEdits,
     open,

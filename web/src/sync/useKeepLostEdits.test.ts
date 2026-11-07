@@ -295,6 +295,70 @@ describe('useKeepLostEdits', () => {
     expect(sync.lostEdits).toHaveLength(1)
   })
 
+  it('says once that the copy is too large when the server refuses it for its size, and does not try it again', async () => {
+    const { sync } = await typedOfflineIntoAReplacedPage()
+    const refused = refuseCreates(413, 'content_too_large')
+
+    await reconnect()
+    await vi.waitFor(() => expect(refused).toHaveLength(1))
+    hub.current.serverClose(1006)
+    await vi.waitFor(() => expect(useSyncStore().display).toBe('live'), { timeout: 3000 })
+    await flushPromises()
+
+    // Not at the top level either (a copy too large at one place is too large everywhere), and not after reconnecting:
+    // it would send megabytes for the same answer.
+    expect(refused).toHaveLength(1)
+    expect(useNotificationsStore().notices).toEqual([
+      expect.objectContaining({ type: 'editsTooLarge', title: 'Plan' }),
+    ])
+    // The edits still wait in the tab; they go when the person signs out, as every waiting copy.
+    expect(sync.lostEdits).toHaveLength(1)
+  })
+
+  it('takes a 413 of a proxy in front of the server for a copy that is waiting, not one that is too large', async () => {
+    await typedOfflineIntoAReplacedPage()
+    const answer = server.fetch.getMockImplementation()!
+    const refused: Record<string, unknown>[] = []
+    server.fetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method !== 'POST') return answer(input, init)
+      refused.push(JSON.parse(String(init.body)) as Record<string, unknown>)
+      return new Response('<html><body>413 Request Entity Too Large</body></html>', {
+        status: 413,
+        headers: { 'Content-Type': 'text/html' },
+      })
+    })
+
+    await reconnect()
+    await vi.waitFor(() => expect(refused).toHaveLength(1))
+    await flushPromises()
+
+    expect(useNotificationsStore().notices.map((notice) => notice.type)).toEqual(['editsWaiting'])
+    // Refused for its size all the same: not sent again to the top level.
+    expect(refused).toHaveLength(1)
+    hub.current.serverClose(1006)
+    await vi.waitFor(() => expect(refused).toHaveLength(2), { timeout: 3000 })
+  })
+
+  it('says that the copy is too large after having said it was waiting, and sends the same content each time', async () => {
+    await typedOfflineIntoAReplacedPage()
+    const failed = refuseCreates(500, 'server_error')
+    await reconnect()
+    await vi.waitFor(() => expect(failed).toHaveLength(2))
+    await flushPromises()
+
+    const refused = refuseCreates(413, 'content_too_large')
+    hub.current.serverClose(1006)
+    await vi.waitFor(() => expect(refused).toHaveLength(1), { timeout: 3000 })
+    await flushPromises()
+
+    expect(useNotificationsStore().notices.map((notice) => notice.type)).toEqual([
+      'editsWaiting',
+      'editsTooLarge',
+    ])
+    expect(refused[0]!.content).toBe(failed[0]!.content)
+    expect(refused[0]!.id).toBe(failed[0]!.id)
+  })
+
   it('tries again when the server could not be reached, once the connection is back', async () => {
     const { sync } = await typedOfflineIntoAReplacedPage()
     server.failNext(503, 'network_error')

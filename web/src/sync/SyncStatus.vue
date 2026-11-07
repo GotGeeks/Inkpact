@@ -25,6 +25,7 @@ const dot = computed(() => (sync.display === 'live' ? 'bg-sync-active' : 'bg-syn
     role="status"
     data-testid="sync-status"
     :data-state="sync.display"
+    :data-unsent="sync.unsent"
     class="inline-flex items-center gap-space-sm rounded-full border border-border-subtle bg-surface-subtle px-space-md py-space-xs text-label-xs text-on-surface-variant"
   >
     <span class="size-1.5 rounded-full" :class="dot" aria-hidden="true" />

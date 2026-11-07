@@ -22,6 +22,15 @@ function cut(text: string, max: number): string {
 
 const unreachable = (error: unknown) => error instanceof ApiError && error.code === 'network_error'
 
+/** Refused for its size, by the server or a proxy in front of it: where the copy goes makes no difference to that. */
+const refusedForSize = (error: unknown) => error instanceof ApiError && error.status === 413
+
+/**
+ * The server itself says the copy is larger than a page may be (`content_too_large`, SyncOptions.MaxCopyBytes): it never
+ * will be made. A 413 from a proxy (its own body limit) has no such code, and is a failure like any other.
+ */
+const tooLarge = (error: unknown) => error instanceof ApiError && error.code === 'content_too_large'
+
 /**
  * Keeps edits that a Sync deleted (see `onEditsLost` in the sync client) as a new page right after the page they were
  * made on, in that page's workspace, titled after it, and tells the person where they are.
@@ -29,8 +38,10 @@ const unreachable = (error: unknown) => error instanceof ApiError && error.code 
  * The page and its content are made by one request, with an id chosen here: when its answer is lost and it is sent again,
  * the server gives the page it made rather than a second one, and there is never a page without its content. When the
  * place beside the page is gone (it or its parent is in the trash), the copy goes to the top level. A copy that cannot be
- * made now is tried again when the connection is back or the workspace has been read; the person is told once that it is
- * waiting. Until then the edits wait in the tab, and they go when the person signs out.
+ * made now is tried again when the connection is back or the workspace has been read, and the person is told once that it
+ * is waiting. A copy the server says is too large is not tried again (it would send megabytes for the same answer), and the
+ * person is told that once, also after having been told it was waiting. Either way the edits wait in the tab, and they go
+ * when the person signs out.
  */
 export function useKeepLostEdits() {
   const { t } = useI18n()
@@ -38,10 +49,29 @@ export function useKeepLostEdits() {
   const tree = useTreeStore()
   const notifications = useNotificationsStore()
   const busy = new Set<number>()
-  /** Lost edits the person was told could not be kept yet, so a failure that comes back is not said again. */
-  const told = new Set<number>()
+  /** What the person was told about which lost edits (`id:type`), so that a failure that comes back is not said again. */
+  const told = new Set<string>()
   /** The id each copy gets: every try for the same edits asks for the same page. */
   const copyIds = new Map<number, string>()
+  /** The content of each copy, in base64: written once, not again for every try (it can be megabytes). */
+  const contents = new Map<number, string>()
+  /** Lost edits whose copy the server said is too large: never tried again. */
+  const tooLargeIds = new Set<number>()
+
+  function tell(lost: LostEdits, type: 'editsWaiting' | 'editsTooLarge', title: string) {
+    const key = `${lost.id}:${type}`
+    if (told.has(key)) return
+    told.add(key)
+    notifications.post({ type, title })
+  }
+
+  /** What is kept for lost edits that are no longer waiting: kept as a copy, or gone with the session. */
+  function forget(id: number) {
+    copyIds.delete(id)
+    contents.delete(id)
+    tooLargeIds.delete(id)
+    for (const key of [...told]) if (key.startsWith(`${id}:`)) told.delete(key)
+  }
 
   const stillWaiting = (lost: LostEdits) => sync.lostEdits.some((other) => other.id === lost.id)
 
@@ -56,7 +86,7 @@ export function useKeepLostEdits() {
   }
 
   async function keep(lost: LostEdits) {
-    if (busy.has(lost.id)) return
+    if (busy.has(lost.id) || tooLargeIds.has(lost.id)) return
     busy.add(lost.id)
     let title = t('tree.untitled')
     try {
@@ -70,10 +100,12 @@ export function useKeepLostEdits() {
       const room = MAX_TITLE_LENGTH - t('sync.offlineCopyTitle', { title: '' }).length
       const id = copyIds.get(lost.id) ?? newPageId()
       copyIds.set(lost.id, id)
+      const content = contents.get(lost.id) ?? toBase64(copyUpdate(lost.before))
+      contents.set(lost.id, content)
       const body = {
         id,
         title: t('sync.offlineCopyTitle', { title: cut(title, room) }),
-        content: toBase64(copyUpdate(lost.before)),
+        content,
         beforeId: null,
       }
       const create = (parentId: string | null, afterId: string | null) =>
@@ -88,21 +120,23 @@ export function useKeepLostEdits() {
       try {
         made = await create(beside?.parentId ?? null, beside?.id ?? null)
       } catch (error) {
-        if (!beside || unreachable(error)) throw error
+        if (!beside || unreachable(error) || refusedForSize(error)) throw error
         made = await create(null, null)
       }
 
       // The page is made with the edits in it. A person who left meanwhile has their copy, and nobody else is told.
       if (!stillWaiting(lost)) return
       sync.forgetLostEdits(lost.id)
-      copyIds.delete(lost.id)
-      told.delete(lost.id)
+      forget(lost.id)
       notifications.post({ type: 'editsKept', pageId: made.page.id, title })
       await tree.load().catch(() => undefined)
-    } catch {
-      if (stillWaiting(lost) && !told.has(lost.id)) {
-        told.add(lost.id)
-        notifications.post({ type: 'editsWaiting', title })
+    } catch (error) {
+      if (!stillWaiting(lost)) return
+      if (tooLarge(error)) {
+        tooLargeIds.add(lost.id)
+        tell(lost, 'editsTooLarge', title)
+      } else {
+        tell(lost, 'editsWaiting', title)
       }
     } finally {
       busy.delete(lost.id)
@@ -112,6 +146,9 @@ export function useKeepLostEdits() {
   watch(
     [() => sync.lostEdits, () => sync.display, () => tree.workspace],
     ([all, display]) => {
+      // Lost edits that are gone (the person signed out) take what was kept for them along, the content above all.
+      for (const id of new Set([...copyIds.keys(), ...contents.keys(), ...tooLargeIds]))
+        if (!all.some((lost) => lost.id === id)) forget(id)
       if (display !== 'live') return
       for (const lost of all) void keep(lost)
     },
