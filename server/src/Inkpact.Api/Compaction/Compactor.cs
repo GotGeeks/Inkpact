@@ -39,8 +39,11 @@ public sealed class Compactor(
     TimeProvider time,
     ILogger<Compactor> logger)
 {
-    /// <summary>The first key of the advisory lock; the second is the page. Fixed, so it never meets another use of the locks.</summary>
-    private const int LockClass = 0x434F4D50;
+    /// <summary>
+    /// The first key of the advisory lock; the second is <c>hashtext(page id)</c>. Fixed, so it never meets another use of the
+    /// locks. Internal for the tests that hold a page as a running compaction does.
+    /// </summary>
+    internal const int LockClass = 0x434F4D50;
 
     public async Task<CompactionResult> CompactAsync(Guid pageId, CancellationToken cancellationToken)
     {

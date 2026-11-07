@@ -65,6 +65,22 @@ public class CompactionWorkerTests(PostgresFixture postgres, YjsSidecarFixture y
     }
 
     [Fact]
+    public async Task A_page_whose_live_updates_are_as_large_as_the_byte_threshold_is_compacted_at_once_though_they_are_few_and_recent()
+    {
+        var updates = Stream(20, 7).Take(10).ToList();
+        Options.LiveBytesThreshold = updates.Sum(update => (long)update.Length);
+        var large = await AddPageAsync();
+        var small = await AddPageAsync();
+        await AppendBulkAsync(large, updates);
+        await AppendBulkAsync(small, updates.Take(9));
+        var worker = CreateWorker();
+
+        (await worker.RunRoundAsync(default)).ShouldBe(new CompactionRound(1, 0, 0, 0, false));
+        (await ReadStoredAsync(large)).Snapshot.ShouldNotBeNull();
+        (await ReadStoredAsync(small)).Snapshot.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task A_compacted_page_is_not_looked_at_again_until_it_gets_new_updates()
     {
         var page = await AddPageAsync();

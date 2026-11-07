@@ -111,19 +111,20 @@ public sealed class CompactionWorker(
         return new CompactionRound(compacted, skipped, nothingToDo, failed, unavailable);
     }
 
-    /// <summary>Pages with enough live updates, or whose newest one is old, the one waiting longest first.</summary>
+    /// <summary>Pages with enough live updates, or enough bytes of them, or whose newest one is old, the one waiting longest first.</summary>
     private async Task<List<Guid>> FindCandidatesAsync(CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
         var idleBefore = now - options.IdleAfter;
         var threshold = options.UpdateThreshold;
+        var bytes = options.LiveBytesThreshold;
         var resting = _backoff.Where(b => b.Value.Until > now).Select(b => b.Key).ToList();
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         return await db.PageUpdates.AsNoTracking()
             .GroupBy(u => u.PageId)
-            .Select(g => new { PageId = g.Key, Count = g.Count(), Newest = g.Max(u => u.CreatedAt) })
-            .Where(g => (g.Count >= threshold || g.Newest < idleBefore) && !resting.Contains(g.PageId))
+            .Select(g => new { PageId = g.Key, Count = g.Count(), Bytes = g.Sum(u => (long)u.Data.Length), Newest = g.Max(u => u.CreatedAt) })
+            .Where(g => (g.Count >= threshold || g.Bytes >= bytes || g.Newest < idleBefore) && !resting.Contains(g.PageId))
             .OrderBy(g => g.Newest)
             .Select(g => g.PageId)
             .Take(options.PagesPerRound)

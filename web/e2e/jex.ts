@@ -254,11 +254,14 @@ export function generateLargeJex(
   label: string,
   bytes: number,
   ids = randomBytes(8).toString('hex'),
+  /** Starts every line after its number, so that an export with the same ids and another revision is a changed note. */
+  revision = '',
 ): LargeJex {
   const id = (name: string) =>
     createHash('sha256').update(`${ids}:${name}`).digest('hex').slice(0, 32)
   const titles = { notebook: `${label} Archive`, note: `${label} Giant page` }
-  const paragraph = (n: number) => `Line ${n}: ${'lorem ipsum dolor sit amet '.repeat(7)}`
+  const paragraph = (n: number) =>
+    `Line ${n}: ${revision}${'lorem ipsum dolor sit amet '.repeat(7)}`
   const lines: string[] = []
   for (let size = 0, n = 0; size < bytes; n++) {
     const line = paragraph(n)

@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using Inkpact.Api.Attachments;
+using Inkpact.Api.Compaction;
 using Inkpact.Api.Crdt;
 using Inkpact.Api.Pages;
 using Inkpact.Api.Sync;
@@ -35,6 +36,8 @@ public sealed partial class ImportRunner(
     IYjsCodec yjs,
     SyncHub hub,
     PageUpdateStore pages,
+    Compactor compactor,
+    SyncOptions syncOptions,
     ImportOptions options,
     TimeProvider time,
     ILogger<ImportRunner> logger)
@@ -628,7 +631,12 @@ public sealed partial class ImportRunner(
         IReadOnlyList<Guid> RetiredFiles,
         byte[]? Before = null,
         /// <summary>The note's text when the page keeps it as a file; null when the page holds it as content.</summary>
-        string? FileText = null);
+        string? FileText = null,
+        /// <summary>
+        /// A replacement of a large page: the page is compacted right after the replacement is written (run 1.22), so a client
+        /// that opens it meanwhile is never sent the old content with the new.
+        /// </summary>
+        bool CompactAtOnce = false);
 
     /// <summary>
     /// The slow part of writing a note's content, done outside any transaction: the files are stored, the content is
@@ -707,9 +715,12 @@ public sealed partial class ImportRunner(
 
     /// <summary>
     /// The sidecar's update for a converted note: a replacement of <paramref name="current"/>, or a new page's first update.
-    /// Null when the page it makes is larger than <see cref="ImportOptions.MaxNoteUpdateBytes"/>: for a replacement, what is
-    /// stored of the page with the update added, since a client that opens it before the compactor has run is sent all of it.
-    /// The size is looked at before the new page is read back, which for a large one is the slow part.
+    /// Null when the page it makes is larger than <see cref="ImportOptions.MaxNoteUpdateBytes"/>. For a replacement that is the
+    /// update alone. What is stored of the page with the update added may be more than that: such a page is compacted right
+    /// after the write (run 1.22), and the compacted page is never larger than its inputs. Until it is compacted, a client that
+    /// opens the page is sent all of it, so the stored updates and the new one must fit three quarters of
+    /// <c>Sync:MaxQueuedBytes</c>: the reply and the traffic around it fit the queue. The size is looked at before the new page
+    /// is read back, which for a large one is the slow part.
     /// </summary>
     private async Task<BuiltNote?> MakeUpdateAsync(
         JexNote note,
@@ -724,10 +735,16 @@ public sealed partial class ImportRunner(
         {
             // The sidecar checks a replacement itself, and answers with the page before and after it.
             var replacement = await yjs.ReplaceAsync(current, json, cancellationToken);
-            return current.Sum(input => (long)input.Length) + replacement.Update.Length > options.MaxNoteUpdateBytes
-                ? null
-                : new BuiltNote(
-                    converted, replacement.Update, replacement.StateVector, replacement.Fingerprint, replacement.Text, added, retired, replacement.Before);
+            var together = current.Sum(input => (long)input.Length) + replacement.Update.Length;
+            var compactAtOnce = together > options.MaxNoteUpdateBytes;
+            if (replacement.Update.Length > options.MaxNoteUpdateBytes || together > MaxOldAndNewBytes)
+            {
+                return null;
+            }
+
+            return new BuiltNote(
+                converted, replacement.Update, replacement.StateVector, replacement.Fingerprint, replacement.Text, added, retired, replacement.Before,
+                CompactAtOnce: compactAtOnce);
         }
 
         var update = await yjs.BuildAsync(json, cancellationToken);
@@ -744,6 +761,12 @@ public sealed partial class ImportRunner(
 
         return new BuiltNote(converted, update, after.StateVector, after.ReplayFingerprint, after.Text, added, retired);
     }
+
+    /// <summary>
+    /// The most a page's stored updates and a replacement may be together: three quarters of the sync queue. A client that
+    /// opens the page before it is compacted is sent all of it, and the reply and the traffic around it fit the queue.
+    /// </summary>
+    private long MaxOldAndNewBytes => syncOptions.MaxQueuedBytes / 4 * 3;
 
     /// <summary>
     /// The name of the file a note is kept in: its title as the page shows it, with what a file name cannot hold (a line
@@ -1148,6 +1171,14 @@ public sealed partial class ImportRunner(
             await using var scope = scopes.CreateAsyncScope();
             var content = await pages.LoadAsync(existing.InkpactId, cancellationToken);
 
+            // A page whose stored updates are more than a page may be (its last compaction could not run, or clients wrote a lot
+            // since) is compacted first, so the replacement is measured against the page and not against its history.
+            if (content.Updates.Count > 0 && content.Inputs.Sum(input => (long)input.Length) > options.MaxNoteUpdateBytes)
+            {
+                await CompactNowAsync(existing.InkpactId, cancellationToken);
+                content = await pages.LoadAsync(existing.InkpactId, cancellationToken);
+            }
+
             // Nothing in the page's log after the import's own update: nobody wrote to it, which needs no look at the page.
             // Otherwise the page is read for its fingerprint.
             var changedHere = row.PageSeq is not { } seq || seq != content.LastSeq
@@ -1235,6 +1266,46 @@ public sealed partial class ImportRunner(
         return item.StateVector is null
             || StateVectors.OfFingerprint(current) is not { } stateVector
             || StateVectors.HasGonePast(stateVector, item.StateVector);
+    }
+
+    /// <summary>The most compactions in a row for one page (each folds up to <c>Compaction:MaxUpdatesPerCompaction</c> updates).</summary>
+    private const int MaxCompactionRounds = 5;
+
+    /// <summary>
+    /// Compacts a page now, until nothing is live, with the compactor's own guarantees (it is called as the worker calls it):
+    /// a page whose content was just replaced, or one whose stored updates are too large to replace. It never fails the
+    /// import, and never waits: a page it does not compact (the worker has it at this moment, the sidecar is down, the merge
+    /// did not verify) is compacted by the worker, which takes a page with a large log at its next round
+    /// (<c>Compaction:LiveBytesThreshold</c>). Run 1.22.
+    /// </summary>
+    private async Task CompactNowAsync(Guid pageId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            for (var round = 0; round < MaxCompactionRounds; round++)
+            {
+                switch (await compactor.CompactAsync(pageId, cancellationToken))
+                {
+                    case CompactionResult.NothingToDo:
+                        return;
+                    case CompactionResult.Compacted:
+                        break;
+                    case CompactionResult.Skipped:
+                        // The worker is compacting the page right now.
+                        return;
+                    default:
+                        logger.LogWarning(
+                            "Page {PageId} was not compacted by the import; the compaction worker does it later", pageId);
+                        return;
+                }
+            }
+
+            logger.LogWarning("Page {PageId} still has live updates after {Rounds} compactions; the compaction worker does the rest", pageId, MaxCompactionRounds);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Compacting page {PageId} for the import failed; the compaction worker does it later", pageId);
+        }
     }
 
     /// <summary>The page's new content, made from <paramref name="content"/> (its files stored, the update made), not yet written.</summary>
@@ -1373,6 +1444,13 @@ public sealed partial class ImportRunner(
         {
             // The field step said how the title was cleaned when it took it (it is in the reasons); here it only names the line.
             AddEntry(run, new ReportEntry("note", note.Id, ShortTitle(CleanTitle(note.Title, new ConversionNotes())), ReportStatus.Updated, reasons.ToList(), pageId));
+        }
+
+        // After the page's lock is let go, which every client of the page waits for: a compaction takes seconds for a large
+        // page. Until it has run, a client that opens the page is sent the old content and the new (MaxOldAndNewBytes).
+        if (built.CompactAtOnce)
+        {
+            await CompactNowAsync(pageId, cancellationToken);
         }
 
         return Replaced.Written;

@@ -216,20 +216,76 @@ public sealed class ImportSizeTests : ReimportHarness
     // ---- what is already on the page counts too --------------------------------------------------------------------------
 
     [Fact]
-    public async Task A_replacement_whose_page_with_the_old_content_would_be_over_the_limit_is_a_file_though_each_alone_fits()
+    public async Task A_replacement_whose_page_with_the_old_content_is_over_the_limit_though_each_alone_fits_is_text_and_compacted()
     {
+        // Before run 1.22 this note became a file: a client that opened the page before the compactor had run was sent both.
+        // Now the import compacts the page right after the write, and both together only have to fit three quarters of the
+        // queue (16 MiB here, the app's).
         await StartWithLimitsAsync();
-        // Each about half the update limit: a client that opens the page before the compactor has run is sent both.
         await ImportAsync(Library(Text(1500)));
         var page = await PageOfAsync("big");
 
-        var import = await ImportAsync(Library(Text(1600)));
+        var import = await ImportAsync(Library("new " + Text(1600)));
+
+        CountsOf(import).Updated.ShouldBe(1);
+        EntriesOf(import).ShouldBeEmpty();
+        (await FilesOfAsync(page.Id)).ShouldBeEmpty();
+        (await TextOfAsync(page.Id)).ShouldStartWith("new ");
+        (await LiveUpdatesAsync(page.Id)).ShouldBe(0);
+        (await SnapshotOfAsync(page.Id)).ShouldNotBeNull().State.Length.ShouldBeLessThanOrEqualTo(UpdateLimit);
+    }
+
+    [Fact]
+    public async Task A_replacement_of_a_large_page_that_is_too_large_with_the_old_content_is_text_and_the_page_is_compacted_at_once()
+    {
+        await StartAsync(LargePages.Settings());
+        await ImportAsync(Library(LargePages.Words("old ", 2500)));
+        var page = await PageOfAsync("big");
+
+        var import = await ImportAsync(Library(LargePages.Words("new ", 2600)));
+
+        // The old content and the new one together are over the update limit, the new one alone is not.
+        CountsOf(import).Updated.ShouldBe(1);
+        EntriesOf(import).ShouldBeEmpty();
+        (await FilesOfAsync(page.Id)).ShouldBeEmpty();
+        (await TextOfAsync(page.Id)).ShouldStartWith("new ");
+        (await PageOfAsync("big")).ContentText.ShouldStartWith("new ");
+        // Compacted before the import was done (after the page's lock, see ImportRunner.CompactNowAsync): a snapshot that is
+        // the page, and nothing live. What was folded is archived.
+        (await LiveUpdatesAsync(page.Id)).ShouldBe(0);
+        var snapshot = (await SnapshotOfAsync(page.Id)).ShouldNotBeNull();
+        snapshot.State.Length.ShouldBeLessThanOrEqualTo(LargePages.UpdateLimit);
+        (await UseDbAsync(db => db.ArchivedPageUpdates.CountAsync(a => a.PageId == page.Id))).ShouldBeGreaterThan(1);
+    }
+
+    [Fact]
+    public async Task A_replacement_whose_old_and_new_content_together_would_not_fit_the_queue_if_the_compaction_failed_is_a_file()
+    {
+        await StartAsync(LargePages.Settings());
+        await ImportAsync(Library(LargePages.Words("old ", 3000)));
+        var page = await PageOfAsync("big");
+
+        // Each alone fits, but both are over three quarters of the queue.
+        var import = await ImportAsync(Library(LargePages.Words("new ", 3300)));
 
         CountsOf(import).Updated.ShouldBe(1);
         EntryOf(import, "big").Reasons.Select(r => r.Code).ShouldBe([NoteCodes.StoredAsFile]);
         (await FilesOfAsync(page.Id)).Single().FileName.ShouldBe("Big.md");
-        var stored = await UseDbAsync(db => db.PageUpdates.Where(u => u.PageId == page.Id).SumAsync(u => (long)u.Data.Length));
-        stored.ShouldBeLessThanOrEqualTo(UpdateLimit);
+    }
+
+    [Fact]
+    public async Task A_replacement_of_a_page_that_is_not_large_is_not_compacted_by_the_import()
+    {
+        await StartAsync();
+        await ImportAsync(Library("A short note"));
+        var page = await PageOfAsync("big");
+
+        var import = await ImportAsync(Library("A changed note"));
+
+        CountsOf(import).Updated.ShouldBe(1);
+        (await TextOfAsync(page.Id)).ShouldBe("A changed note");
+        (await SnapshotOfAsync(page.Id)).ShouldBeNull();
+        (await LiveUpdatesAsync(page.Id)).ShouldBeGreaterThan(1);
     }
 
     [Fact]
