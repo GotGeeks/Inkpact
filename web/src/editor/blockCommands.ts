@@ -1,5 +1,6 @@
 import type { ChainedCommands, Editor, Range } from '@tiptap/core'
 import type AppIcon from '../components/AppIcon.vue'
+import { inCode } from './linkRange'
 
 type IconName = InstanceType<typeof AppIcon>['$props']['name']
 /** vue-i18n's `t`. Every call below spells its key out, so the lint rule that finds unused translations can see it. */
@@ -167,13 +168,18 @@ export const blockCommands: readonly BlockCommand[] = [
 /**
  * Types `[[`, which opens the menu of pages (`pageLinkExtension.ts`). The menu only opens at the start of a line or after a space,
  * so one is added when the caret follows text. The slash menu's "Link to page" and the toolbar's link button both come here:
- * one way in, one code path. With `range` (what was typed to find the command) that is removed first.
+ * one way in, one code path. With `range` (what was typed to find the command) that is removed first. In code, where a link
+ * cannot go and the menu does not open, nothing is typed: the brackets would be left in the code.
  */
 export function openPageMenu(editor: Editor, range?: Range) {
   const chain = begin(editor, range)
   const { $from } = editor.state.selection
   // What is before the caret once the range is gone: the range starts where the caret goes.
   const at = range ? range.from : $from.pos
+  if (inCode(editor.state, at)) {
+    chain.run()
+    return
+  }
   const before = editor.state.doc.textBetween(Math.max($from.start(), at - 1), at)
   chain.insertContent(before && before !== ' ' ? ' [[' : '[[').run()
 }

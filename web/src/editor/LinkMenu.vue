@@ -3,6 +3,7 @@ import { autoUpdate, computePosition, flip, offset, shift } from '@floating-ui/d
 import type { Editor } from '@tiptap/core'
 import { computed, nextTick, onBeforeUnmount, reactive, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { linkableRange } from './linkRange'
 import { isAllowedLink, pageIdOfLink } from './links'
 
 const props = defineProps<{
@@ -16,9 +17,21 @@ const emit = defineEmits<{
   change: []
 }>()
 
-/** Takes the link away from the whole link; the text stays and the caret stays in it. */
+/**
+ * Takes the link away from the whole link, also when only a part of it is selected (which would otherwise split it in two); the
+ * text stays, and so does the selection.
+ */
 function remove() {
-  props.editor.chain().focus().unsetLink().run()
+  const { from, to } = props.editor.state.selection
+  const range = linkableRange(props.editor.state, from < to ? { from, to } : null)
+  if (!range) return
+  props.editor
+    .chain()
+    .focus()
+    .setTextSelection(range)
+    .unsetLink()
+    .setTextSelection({ from, to })
+    .run()
 }
 
 const { t } = useI18n()

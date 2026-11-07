@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, useTemplateRef, watch } from 'vue'
+import { computed, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppIcon from '../components/AppIcon.vue'
 import type { BlockCategory, BlockCommand } from './blockCommands'
 import { SLASH_LISTBOX_ID, slashOptionId, type SlashState } from './slashExtension'
-import { useMenuPlacement } from './useMenuPlacement'
+import { useChosenInView, useMenuPlacement } from './useMenuPlacement'
 
 const props = defineProps<{
   state: SlashState
@@ -12,7 +12,7 @@ const props = defineProps<{
   reserveBottom: number
 }>()
 
-const { t } = useI18n()
+const { t, n } = useI18n()
 const menu = useTemplateRef<HTMLElement>('menu')
 const { placed, position } = useMenuPlacement({
   menu,
@@ -43,16 +43,10 @@ function indexOf(item: BlockCommand): number {
   return props.state.items.indexOf(item)
 }
 
-// The chosen option stays in view while the arrow keys move through a long list.
-watch(
-  () => props.state.selected,
-  async () => {
-    await nextTick()
-    const chosen = props.state.items[props.state.selected]
-    if (chosen)
-      menu.value?.querySelector(`#${slashOptionId(chosen)}`)?.scrollIntoView?.({ block: 'nearest' })
-  },
-)
+useChosenInView(menu, () => {
+  const chosen = props.state.items[props.state.selected]
+  return chosen ? slashOptionId(chosen) : null
+})
 </script>
 
 <template>
@@ -72,7 +66,7 @@ watch(
     <p role="status" class="sr-only">
       {{
         state.items.length
-          ? t('editor.slash.results', { count: state.items.length }, state.items.length)
+          ? t('editor.slash.results', { count: n(state.items.length) }, state.items.length)
           : t('editor.slash.empty')
       }}
     </p>

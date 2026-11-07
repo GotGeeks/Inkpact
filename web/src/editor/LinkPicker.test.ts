@@ -145,6 +145,25 @@ describe('the link picker', () => {
     expect(w.emitted('choose')).toEqual([[`/p/${ID_PLAN_2}`]])
   })
 
+  it('leaves Enter to the option the person moved to after a key that left the text as it was', async () => {
+    const w = await mountPicker()
+    await type('plan')
+    // The same text typed over itself (select all, the same letters): an input, with nothing changed.
+    await type('plan')
+    await press('ArrowDown')
+
+    await press('Enter')
+
+    expect(w.emitted('choose')).toEqual([[`/p/${ID_PLAN_2}`]])
+  })
+
+  it('is a dialog, which the app does not open search over (Ctrl+K in the field)', async () => {
+    await mountPicker()
+
+    // The app shell opens nothing over an open `[role="dialog"]` (see "leaves another open dialog alone" in the search's tests).
+    expect(input().closest('[role="dialog"]')).not.toBeNull()
+  })
+
   it('chooses the first page with Enter, giving /p/<id>', async () => {
     const w = await mountPicker()
     await type('caf')

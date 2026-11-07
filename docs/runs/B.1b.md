@@ -123,7 +123,7 @@ A person can make a link from the editor: to another page by typing `[[` or by c
 
 ## Handoff
 
-Built on branch `feat/b1b-make-links`, on Sonnet 5.5. **Not committed, not pushed.**
+Built on branch `feat/b1b-make-links`, on Sonnet 5.5 (PR #99); the review fixes on Opus 5.5.
 
 **Done**
 - **`[[` page menu** (`pageLinkExtension.ts`, `PageLinkMenu.vue`, `pageSearch.ts`): a TipTap `Suggestion` like the slash menu, over the tree's live pages (case and accents ignored, titles that start with it first, at most 8, never the page itself, the parent named when titles are shared). Enter or a click makes a link to `/p/<id>`. Escape keeps the text, `]` closes it, Enter with no match is left to the text.
@@ -148,6 +148,19 @@ Built on branch `feat/b1b-make-links`, on Sonnet 5.5. **Not committed, not pushe
 - **Found by the tests, fixed here:** `PageEditor.refreshFocus` ran after the editor was destroyed (a blur just before leaving a page). The existing slash-menu e2e counted 13 blocks.
 - Typing right after a link edits that link, so a link that is extended by typing is normalised as a whole.
 - **A cost found by the full run, not by any test:** the picker is always mounted, and a watcher on its list searched the whole workspace on every change of the tree even while it was closed. On the shared e2e workspace (hundreds of pages) that was enough to make an existing iPhone spec fail in two full runs out of two, while it passed ten times alone and `main` passed the same run: the spec types straight after an Enter that ProseMirror applies late on iOS, and the extra work on the main thread widened the gap. The picker now works nothing out until it is open (a test counts the pages it looks at; it fails without the fix).
+
+**Review fixes** (`/code-review` at high, on Opus 5.5; each mutation-checked):
+- **The picker's text is kept as Yjs relative positions** (`place.ts`, moved out of the attachment upload, which keeps them the same way). It saved ProseMirror positions when it opened, and a change from another client while it was open (which replaces the blocks it touches) put the link on other text. Text deleted meanwhile gets no link; the focus still goes back.
+- **One rule for the text a link command acts on** (`linkRange.ts`): the whole link when the caret or all of the selection is in one, so "Change link", "Remove link" and Ctrl+K never split a link in two; otherwise the selection; nothing in code (a code block or inline code, where a link cannot go). The picker and the Ctrl+K question both ask it, so they can no longer disagree. If they did, neither would take the key and the browser's own Ctrl+K would run.
+- **No `[[` typed into code** by the toolbar's Link button or "Link to page", and the menu of pages does not open in inline code.
+- **The picker's Enter** now compares the field with what the list was made for. The old flag stayed set after a key that left the text as it was, and Enter then took the first option instead of the one the person moved to.
+- **A page that stops being editable while the picker is open** gets no link: the picker closes.
+- **One menu at the caret** (`suggestionMenu.ts`): the slash menu and the menu of pages share their state, keys and combobox wiring, and `useChosenInView`. They were copies.
+- **The titles are folded once per tree**, not on every key (thousands of imported pages).
+- **The menus' spoken result counts go through `n()`** (Intl), the slash menu's too.
+- Checked, not changed: a second Ctrl+K in the picker does not open search over it. The shell opens nothing over an open dialog, and a test now says the picker is one.
+- The flaky `ImportEndpointTests` test seen in the full run is unrelated to this run: it is run B.1c in `docs/architecture.md`.
+- **The full run after the fixes failed one spec once:** `editor-blocks.spec.ts` "closes with Escape and a space" on the iPhone. It passed 41 of 41 alone. The spec typed straight after an Enter, which ProseMirror applies late on iOS; under the load of a full run the late Enter split the typed address and started a line with `/`. The spec now waits for the new line (`newLine`) before it types. The CSP report next to the failure was WebKit's own `<style>` element (see `press` in the same spec), from the screenshot it takes on a failure.
 
 **Left for later:** "Create page" in the page menu (question 3), mentions that follow a title, links to a heading.
 

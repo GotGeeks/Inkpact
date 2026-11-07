@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { PageNode } from '../tree/types'
 import { findPages, fold, sharedTitles } from './pageSearch'
 
@@ -80,5 +80,28 @@ describe('sharedTitles', () => {
     ]
 
     expect([...sharedTitles(found)].sort()).toEqual(['a', 'b'])
+  })
+})
+
+describe('searching on every key', () => {
+  it('folds the titles of a list once, and again only for a new list (the tree gives one when anything changes)', () => {
+    const list = pages.map((p) => ({ ...p }))
+    const normalize = vi.spyOn(String.prototype, 'normalize')
+    try {
+      findPages(list, 'pl', null)
+      const first = normalize.mock.calls.length
+      expect(first).toBeGreaterThanOrEqual(list.length)
+
+      normalize.mockClear()
+      findPages(list, 'pla', null)
+      findPages(list, 'plan', null)
+      // Only what was typed is folded: once per search.
+      expect(normalize.mock.calls.length).toBe(2)
+
+      const renamed = list.map((p) => (p.id === 'cafe' ? { ...p, title: 'Planning café' } : p))
+      expect(findPages(renamed, 'planning caf', null).map((c) => c.id)).toEqual(['cafe'])
+    } finally {
+      normalize.mockRestore()
+    }
   })
 })

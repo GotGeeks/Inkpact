@@ -98,6 +98,16 @@ describe('the page menu', () => {
     expect(readOnly.state.open).toBe(false)
   })
 
+  it('does not open in inline code, where a link cannot go', async () => {
+    const { editor, state } = setup()
+    editor.commands.insertContent('<p>run <code>ls -l x</code>now</p>')
+    editor.commands.setTextSelection(inlineCodeEnd(editor))
+
+    await typed(editor, '[[')
+
+    expect(state.open).toBe(false)
+  })
+
   it('filters while typing, across spaces, titles that start with it first', async () => {
     const { editor, state } = setup()
 
@@ -283,4 +293,44 @@ describe('opening the menu from a command', () => {
     expect(editor.getText()).toBe('see [[')
     expect(state.open).toBe(true)
   })
+
+  it('types nothing in code, where the menu does not open: the brackets would be left in the code', async () => {
+    const block = setup()
+    await typed(block.editor, '``` ')
+    await typed(block.editor, 'ls')
+    openPageMenu(block.editor)
+    await flushPromises()
+    expect(block.editor.state.doc.textContent).toBe('ls')
+    expect(block.state.open).toBe(false)
+
+    const inline = setup()
+    inline.editor.commands.insertContent('<p>run <code>ls -l x</code>now</p>')
+    inline.editor.commands.setTextSelection(inlineCodeEnd(inline.editor))
+    openPageMenu(inline.editor)
+    await flushPromises()
+    expect(inline.editor.getText()).toBe('run ls -l xnow')
+    expect(inline.state.open).toBe(false)
+  })
+
+  it('in code still takes away what was typed to find the command', async () => {
+    const { editor } = setup()
+    await typed(editor, '``` ')
+    await typed(editor, 'ls /link')
+    const from = editor.state.selection.from - '/link'.length
+
+    openPageMenu(editor, { from, to: editor.state.selection.from })
+    await flushPromises()
+
+    expect(editor.state.doc.textContent).toBe('ls ')
+  })
 })
+
+/** The position just before the last character of the inline code (after its space): inside it, where typing gets the code mark too. */
+function inlineCodeEnd(editor: Editor): number {
+  let end = 0
+  editor.state.doc.descendants((node, pos) => {
+    if (node.isText && node.marks.some((mark) => mark.type.name === 'code'))
+      end = pos + node.nodeSize - 1
+  })
+  return end
+}

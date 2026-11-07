@@ -17,6 +17,35 @@ export function fold(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase()
 }
 
+/** A page as the search looks at it: its choice, and its title folded. */
+interface Indexed {
+  choice: PageChoice
+  folded: string
+}
+
+/**
+ * The pages folded once per list: the tree gives a new list when anything in it changes (it never changes one in place), and
+ * a search runs on every key, over what can be thousands of imported pages.
+ */
+const indexes = new WeakMap<readonly PageNode[], Indexed[]>()
+
+function indexOf(pages: readonly PageNode[]): Indexed[] {
+  let index = indexes.get(pages)
+  if (!index) {
+    const titles = new Map(pages.map((page) => [page.id, page.title]))
+    index = pages.map((page) => ({
+      choice: {
+        id: page.id,
+        title: page.title,
+        parentTitle: page.parentId === null ? null : (titles.get(page.parentId) ?? null),
+      },
+      folded: fold(page.title),
+    }))
+    indexes.set(pages, index)
+  }
+  return index
+}
+
 /**
  * The live pages whose title contains what was typed, for a menu that makes a link: titles that start with it first, then the
  * others, each in the order of the list given (the sidebar's), at most `limit`; with nothing typed, the first ones. The page
@@ -30,17 +59,10 @@ export function findPages(
   limit: number = MAX_PAGE_CHOICES,
 ): PageChoice[] {
   const wanted = fold(query.trim())
-  const titles = new Map(pages.map((page) => [page.id, page.title]))
   const starts: PageChoice[] = []
   const contains: PageChoice[] = []
-  for (const page of pages) {
-    if (page.id === currentPageId) continue
-    const folded = fold(page.title)
-    const choice: PageChoice = {
-      id: page.id,
-      title: page.title,
-      parentTitle: page.parentId === null ? null : (titles.get(page.parentId) ?? null),
-    }
+  for (const { choice, folded } of indexOf(pages)) {
+    if (choice.id === currentPageId) continue
     if (wanted === '' || folded.startsWith(wanted)) starts.push(choice)
     else if (folded.includes(wanted)) contains.push(choice)
     if (starts.length >= limit) break

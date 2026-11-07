@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/core'
+import { ySyncPluginKey } from '@tiptap/y-tiptap'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import * as Y from 'yjs'
@@ -601,5 +602,114 @@ describe('making links', () => {
 
     expect(pageMenu()).toBeNull()
     expect(links(editor)).toEqual([['Other page', `/p/${ID_OTHER}`]])
+  })
+
+  /** Someone else changes the first paragraph's text, through the server, while this tab has the page open. */
+  async function remoteEdit(editor: Editor, change: (text: Y.XmlText) => void) {
+    const local = (ySyncPluginKey.getState(editor.state) as { binding: { doc: Y.Doc } }).binding.doc
+    const remote = new Y.Doc()
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(local))
+    let update: Uint8Array = new Uint8Array()
+    remote.on('update', (u: Uint8Array) => (update = u))
+    const paragraph = remote.getXmlFragment(FIELD).get(0) as Y.XmlElement
+    change(paragraph.get(0) as Y.XmlText)
+    hub.sockets[0]!.deliver(wireUpdate(pageId, update))
+    await settle()
+  }
+
+  it('puts the link on the text it was opened for, when someone else changes the paragraph while the picker is open', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    ctrlK(editor)
+    await settle()
+
+    await remoteEdit(editor, (text) => text.insert(0, 'Oh, '))
+    expect(editor.getText()).toBe('Oh, hello world')
+    pickerOption('The target').click()
+    await settle()
+
+    expect(links(editor)).toEqual([['world', `/p/${ID_TARGET}`]])
+  })
+
+  it('makes no link when someone else deleted the text while the picker was open, and gives the focus back', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    ctrlK(editor)
+    await settle()
+
+    await remoteEdit(editor, (text) => text.delete(5, 6))
+    expect(editor.getText()).toBe('hello')
+    pickerOption('The target').click()
+    await settle()
+
+    expect(picker()).toBeNull()
+    expect(links(editor)).toEqual([])
+    expect(document.activeElement).toBe(editor.view.dom)
+  })
+
+  it('makes no link when the page stops being editable while the picker is open', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    ctrlK(editor)
+    await settle()
+    expect(picker()).not.toBeNull()
+
+    await wrapper!.setProps({ readOnly: true })
+    await settle()
+
+    expect(picker()).toBeNull()
+    expect(links(editor)).toEqual([])
+  })
+
+  it('changes and removes the whole link when only a part of it is selected, never splitting it', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    editor.commands.setLink({ href: `/p/${ID_TARGET}` })
+    editor.commands.setTextSelection({ from: 8, to: 10 })
+    await settle()
+
+    document.querySelector<HTMLButtonElement>('[data-testid="link-change"]')!.click()
+    await settle()
+    pickerOption('Other page').click()
+    await settle()
+    expect(links(editor)).toEqual([['world', `/p/${ID_OTHER}`]])
+
+    editor.commands.setTextSelection({ from: 8, to: 10 })
+    await settle()
+    document.querySelector<HTMLButtonElement>('[data-testid="link-remove"]')!.click()
+    await settle()
+    expect(links(editor)).toEqual([])
+    // The selection is as it was.
+    expect([editor.state.selection.from, editor.state.selection.to]).toEqual([8, 10])
+  })
+
+  it('with a part of a link selected, Ctrl+K changes the whole link', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    editor.commands.setLink({ href: `/p/${ID_TARGET}` })
+    editor.commands.setTextSelection({ from: 8, to: 10 })
+    await settle()
+
+    ctrlK(editor)
+    await settle()
+    pickerOption('Other page').click()
+    await settle()
+
+    expect(links(editor)).toEqual([['world', `/p/${ID_OTHER}`]])
+  })
+
+  it('leaves Ctrl+K to search in code, where a link cannot go, and the app and the editor agree on it', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection(1)
+    editor.commands.setCodeBlock()
+    editor.commands.setTextSelection({ from: 1, to: 6 })
+    await settle()
+
+    expect(editorTakesSearchShortcut()).toBe(false)
+    const event = ctrlK(editor)
+    await settle()
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(picker()).toBeNull()
   })
 })

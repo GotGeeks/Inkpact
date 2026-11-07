@@ -1,6 +1,14 @@
 import { computePosition, flip, offset, shift, size } from '@floating-ui/dom'
 import { nextTick, reactive, ref, watch, type Ref } from 'vue'
-import type { AnchorRect } from './slashExtension'
+import type { AnchorRect } from './suggestionMenu'
+
+/** Keeps the chosen option in view while the arrow keys move through a list that is longer than the menu. */
+export function useChosenInView(menu: Ref<HTMLElement | null>, chosenId: () => string | null) {
+  watch(chosenId, async (id) => {
+    await nextTick()
+    if (id) menu.value?.querySelector(`#${id}`)?.scrollIntoView?.({ block: 'nearest' })
+  })
+}
 
 /**
  * Where a menu that opens at the caret goes: under it, or above when there is no room, inside the part of the screen that is

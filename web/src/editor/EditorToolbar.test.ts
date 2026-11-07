@@ -375,6 +375,25 @@ describe('the mobile toolbar', () => {
     expect(editor.getText()).toBe('hello world [[')
   })
 
+  it('does nothing with the link button in code, where a link cannot go: no brackets are left in the code', async () => {
+    const w = await mountEditor()
+    const editor = await focusEditor(w)
+    typeText(editor, 'ls -l')
+    editor.commands.setCodeBlock()
+    await settle()
+
+    button('link').click()
+    await settle()
+    editor.commands.setTextSelection({ from: 1, to: 3 })
+    await settle()
+    button('link').click()
+    await settle()
+
+    expect(editor.state.doc.textContent).toBe('ls -l')
+    expect(document.querySelector('[data-testid="page-link-menu"]')).toBeNull()
+    expect(document.querySelector('[data-testid="link-picker"]')).toBeNull()
+  })
+
   it('shows the link button as pressed while the caret is in a link', async () => {
     const w = await mountEditor()
     const editor = await focusEditor(w)

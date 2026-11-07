@@ -92,26 +92,24 @@ watch(
   },
 )
 /**
- * True from a key that changes the text until the highlight has followed the list: in that moment the highlighted option
- * is one of the list before (or none), and Enter must not take it.
+ * What was in the field when the highlight last followed the list. While the field has something else (a key that changed the
+ * text, before the list and its highlight caught up), the highlighted option is one of the list before, or none, and Enter must
+ * not take it. A key that leaves the text as it was (the same letter typed over a selection) changes nothing, and the
+ * person's own highlight stays good.
  */
-let listChanging = false
+let listedFor = ''
 watch(
   [options, query],
   async () => {
     await nextTick()
     listbox.value?.highlightFirstItem()
-    listChanging = false
+    listedFor = query.value
   },
   { flush: 'post' },
 )
 
 function choose(option: Option) {
   emit('choose', option.value)
-}
-
-function onInput() {
-  listChanging = true
 }
 
 /**
@@ -125,7 +123,7 @@ function onEnter(event: KeyboardEvent) {
   const highlighted = field
     .closest('[data-testid="link-picker"]')
     ?.querySelector('[data-highlighted]')
-  if (!listChanging && highlighted) return
+  if (field.value === listedFor && highlighted) return
   const first = optionsFor(field.value).options[0]
   event.preventDefault()
   // Reka's own handler, on the same field, would take the option that is highlighted now.
@@ -183,7 +181,6 @@ function keepFocusForEditor(event: Event) {
               enterkeyhint="done"
               class="min-h-14 min-w-0 flex-1 bg-transparent text-body-lg text-on-surface outline-none placeholder:text-on-surface-variant"
               data-testid="link-picker-input"
-              @input="onInput"
               @keydown.enter.capture="onEnter"
             />
             <button

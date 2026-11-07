@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ySyncPluginKey } from '@tiptap/y-tiptap'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
-import { getMarkRange, type Editor } from '@tiptap/core'
+import type { Editor } from '@tiptap/core'
 import type { EditorView } from '@tiptap/pm/view'
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -19,6 +19,8 @@ import { refreshBrokenLinks, type LinkTarget } from './brokenLinks'
 import { openPageMenu } from './blockCommands'
 import { registerLinkShortcut } from './linkShortcutRegistry'
 import { selectedRange } from './selectedRange'
+import { linkableRange, type TextRange } from './linkRange'
+import { placeAt, type Place } from './place'
 import { createPageMenuState } from './pageLinkExtension'
 import { createExtensions } from './extensions'
 import { applyFirstParagraph } from './firstParagraph'
@@ -81,62 +83,79 @@ function checkProjection(current: Editor) {
 const slashState = createSlashState()
 const pageMenuState = createPageMenuState()
 
-/** What the link picker is about: the text that gets the link, as it was when the picker opened. */
-const picker = reactive({ open: false, from: 0, to: 0, hasLink: false })
+/** Whether the link picker is open, and whether the text it is about is a link already (it can then take it away). */
+const picker = reactive({ open: false, hasLink: false })
+/**
+ * The text the picker is about, kept as Yjs relative positions: the picker can stay open a while, and a change from another
+ * client meanwhile moves the text (it replaces the blocks it touched, so ProseMirror's own mapping would lose it).
+ */
+let pickerText: { from: Place; to: Place } | null = null
+
+/** What the picker would be about now (`linkableRange`), or null when there is nothing to link or the page cannot be edited. */
+function linkPickerRange(): TextRange | null {
+  const current = editor.value
+  if (!current || !editable.value) return null
+  return linkableRange(current.state, selectedRange(current.view))
+}
 
 /**
- * Opens the picker for the selected text, or for the whole link when the caret is in one (to change it). False when there is
- * nothing to link: an empty selection outside a link, or a page that cannot be edited.
+ * Opens the picker for the selected text, or for the whole link when the caret or the selection is in one (to change it).
+ * False when there is nothing to link.
  */
 function openLinkPicker(): boolean {
   const current = editor.value
-  if (!current || !editable.value) return false
-  const { selection, schema } = current.state
-  const linkType = schema.marks.link
-  if (!linkType) return false
-  // What is selected as the browser has it (see `selectedRange`), else the link the caret is in. Only when it really is in
-  // one: `getMarkRange` also finds the link that ends right at the caret, which is where the caret is after a link was made.
-  const range =
-    selectedRange(current.view) ??
-    (current.isActive('link') ? getMarkRange(selection.$from, linkType) : null)
-  if (!range || range.from === range.to) return false
-  picker.from = range.from
-  picker.to = range.to
-  picker.hasLink = current.state.doc.rangeHasMark(range.from, range.to, linkType)
+  const range = linkPickerRange()
+  if (!current || !range) return false
+  pickerText = { from: placeAt(current, range.from), to: placeAt(current, range.to) }
+  picker.hasLink = current.state.doc.rangeHasMark(range.from, range.to, current.schema.marks.link!)
   picker.open = true
   return true
 }
 
-/** Back to the text, with what was selected selected again, or the caret after the link that was made. */
+/** Where the picker's text is now; null when it was deleted meanwhile, or the page can no longer be edited. */
+function pickerRange(): TextRange | null {
+  const from = pickerText?.from.resolve()
+  const to = pickerText?.to.resolve()
+  if (from == null || to == null || from >= to || !editable.value) return null
+  return { from, to }
+}
+
+/**
+ * Back to the text: with what was selected selected again, or the caret after the link that was made. The focus goes back to
+ * the editor also when the text is gone.
+ */
 function closePicker(caretAfter: boolean) {
+  const range = pickerRange()
   picker.open = false
+  pickerText = null
   const current = editor.value
-  if (!current) return
+  if (!current || current.isDestroyed) return
   const chain = current.chain().focus()
   // After a link that was made or changed, what is typed next is not part of it (see `insertPageLink`).
-  if (caretAfter) chain.setTextSelection(picker.to).unsetMark('link')
-  else chain.setTextSelection({ from: picker.from, to: picker.to })
+  if (range && caretAfter) chain.setTextSelection(range.to).unsetMark('link')
+  else if (range) chain.setTextSelection(range)
   chain.run()
 }
 
-function chooseLink(href: string) {
+/** Changes the link with `change`, on the picker's text where it is now; nothing when it is gone or the page became read-only. */
+function changePickerText(change: (chain: ReturnType<Editor['chain']>) => void) {
   const current = editor.value
-  if (!current) return
-  current
-    .chain()
-    .focus()
-    .setTextSelection({ from: picker.from, to: picker.to })
-    .setLink({ href })
-    .run()
+  const range = pickerRange()
+  if (current && range) {
+    const chain = current.chain().focus().setTextSelection(range)
+    change(chain)
+    chain.run()
+  }
   closePicker(true)
 }
 
-function removeLink() {
-  const current = editor.value
-  if (!current) return
-  current.chain().focus().setTextSelection({ from: picker.from, to: picker.to }).unsetLink().run()
-  closePicker(true)
-}
+const chooseLink = (href: string) => changePickerText((chain) => chain.setLink({ href }))
+const removeLink = () => changePickerText((chain) => chain.unsetLink())
+
+// A page that stops being editable while the picker is open (it went to the trash, the role changed) gets no link.
+watch(editable, (can) => {
+  if (!can && picker.open) closePicker(false)
+})
 
 /** The link button of the toolbar: the picker for selected text, otherwise `[[`, which opens the menu of pages. */
 function toolbarLink() {
@@ -145,12 +164,10 @@ function toolbarLink() {
   if (!openLinkPicker()) openPageMenu(current)
 }
 
-// Ctrl+K: the editor takes it, and not search, when there is text to link (the app asks before it opens search).
+// Ctrl+K: the editor takes it, and not search, when there is text to link (the app asks before it opens search). The same
+// question as the one the picker asks when it opens, so the two never disagree: if they did, neither would act on the key.
 const stopLinkShortcut = registerLinkShortcut(
-  () =>
-    !!editor.value?.view.hasFocus() &&
-    editable.value &&
-    (selectedRange(editor.value.view) !== null || editor.value.isActive('link')),
+  () => !!editor.value?.view.hasFocus() && linkPickerRange() !== null,
 )
 
 // The drag handle: the extension moves this element next to the block under the mouse, and BlockHandle fills it. Only

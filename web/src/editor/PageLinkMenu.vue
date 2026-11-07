@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, useTemplateRef, watch } from 'vue'
+import { computed, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppIcon from '../components/AppIcon.vue'
 import { PAGE_MENU_LISTBOX_ID, pageOptionId, type PageMenuState } from './pageLinkExtension'
 import { sharedTitles } from './pageSearch'
-import { useMenuPlacement } from './useMenuPlacement'
+import { useChosenInView, useMenuPlacement } from './useMenuPlacement'
 
 const props = defineProps<{
   state: PageMenuState
@@ -12,7 +12,7 @@ const props = defineProps<{
   reserveBottom: number
 }>()
 
-const { t } = useI18n()
+const { t, n } = useI18n()
 const menu = useTemplateRef<HTMLElement>('menu')
 const { placed, position } = useMenuPlacement({
   menu,
@@ -25,16 +25,10 @@ const { placed, position } = useMenuPlacement({
 /** The pages with a title that another in the list has too: they say which page they are in. */
 const shared = computed(() => sharedTitles(props.state.items))
 
-// The chosen option stays in view while the arrow keys move through the list.
-watch(
-  () => props.state.selected,
-  async () => {
-    await nextTick()
-    const chosen = props.state.items[props.state.selected]
-    if (chosen)
-      menu.value?.querySelector(`#${pageOptionId(chosen)}`)?.scrollIntoView?.({ block: 'nearest' })
-  },
-)
+useChosenInView(menu, () => {
+  const chosen = props.state.items[props.state.selected]
+  return chosen ? pageOptionId(chosen) : null
+})
 </script>
 
 <template>
@@ -54,7 +48,7 @@ watch(
     <p role="status" class="sr-only">
       {{
         state.items.length
-          ? t('editor.pageLink.results', { count: state.items.length }, state.items.length)
+          ? t('editor.pageLink.results', { count: n(state.items.length) }, state.items.length)
           : t('editor.pageLink.empty')
       }}
     </p>
