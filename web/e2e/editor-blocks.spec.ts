@@ -25,6 +25,16 @@ async function press(locator: Locator, testInfo: TestInfo) {
   else await locator.tap()
 }
 
+/**
+ * Enter, and wait for the new line. On iOS ProseMirror applies Enter a moment later (it waits for the DOM change): text typed
+ * before then goes on the line before, and the late Enter splits it somewhere, which can start a line with what was typed.
+ */
+async function newLine(page: Page, body: Locator) {
+  const lines = await body.locator(':scope > p').count()
+  await page.keyboard.press('Enter')
+  await expect(body.locator(':scope > p')).toHaveCount(lines + 1)
+}
+
 const unique = (project: string, name: string) => `${name}-${project}-${Date.now().toString(36)}`
 
 /** Each block the menu makes, found by a word that only it has, and the element it leaves in the page. */
@@ -89,7 +99,7 @@ test('the slash menu works with the mouse, filters, and closes with Escape and a
 
   await page.keyboard.type('/')
   await expect(slashMenu(page)).toBeVisible()
-  await expect(page.getByRole('option')).toHaveCount(13)
+  await expect(page.getByRole('option')).toHaveCount(14)
   await page.getByRole('option', { name: /^Heading 2/ }).click()
   await expect(body.locator('h2')).toHaveCount(1)
   // The focus stayed in the editor: typing goes into the heading.
@@ -103,7 +113,7 @@ test('the slash menu works with the mouse, filters, and closes with Escape and a
   await expect(slashMenu(page)).toBeHidden()
   await expect(body).toContainText('/zzz more')
 
-  await page.keyboard.press('Enter')
+  await newLine(page, body)
   await page.keyboard.type('/qu')
   await expect(slashMenu(page)).toBeVisible()
   await page.keyboard.press('Escape')
@@ -111,7 +121,7 @@ test('the slash menu works with the mouse, filters, and closes with Escape and a
   await expect(body).toContainText('/qu')
 
   // Neither inside a word or an address, nor in a code block.
-  await page.keyboard.press('Enter')
+  await newLine(page, body)
   await page.keyboard.type('https://example.com/ and/or')
   await expect(slashMenu(page)).toBeHidden()
 })

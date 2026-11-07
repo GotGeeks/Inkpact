@@ -14,6 +14,9 @@ import type { Translate } from './blockCommands'
 import { isAllowedLink } from './links'
 import { BrokenLinks, type BrokenLinksOptions } from './brokenLinks'
 import { LinkOpening } from './linkOpening'
+import { LinkShortcut, type LinkShortcutOptions } from './linkShortcut'
+import { PageLinkNormalizer } from './pageLinkNormalizer'
+import { createPageLinkExtension, type PageLinkOptions } from './pageLinkExtension'
 import { createSlashExtension, type SlashState } from './slashExtension'
 
 /**
@@ -33,12 +36,16 @@ export interface EditorExtensionsOptions {
   checkboxLabel: (checked: boolean) => string
   /** The slash menu; without it (the tests that only need the schema) `/` is just a character. */
   slash?: { state: SlashState; translate: Translate }
+  /** The menu of pages that `[[` opens; without it (most tests) `[[` is just two characters. */
+  pageLinks?: PageLinkOptions
   /** Told when Alt+Arrow has moved a block. */
   onBlockMoved?: (direction: -1 | 1) => void
   /** The handle next to a block: the element it moves along the page, and which block the mouse is over. */
   dragHandle?: { element: HTMLElement; onHover: (pos: number) => void }
   /** Opens a link that was clicked; without it (a test that only needs the schema) a click on a link does nothing. */
   openLink?: (href: string, newTab: boolean) => void
+  /** Ctrl+K on selected text or in a link; without it (most tests) the key is not taken by the editor. */
+  linkShortcut?: LinkShortcutOptions
   /** Strikes through a link to a page that is in the trash or not to be found (run B.1); without it (most tests) no link is marked. */
   brokenLinks?: BrokenLinksOptions
   /** How a file in the text reads. */
@@ -52,12 +59,14 @@ export function createExtensions({
   placeholder,
   checkboxLabel,
   slash,
+  pageLinks,
   onBlockMoved = () => {},
   dragHandle,
   files,
   upload,
   openLink,
   brokenLinks,
+  linkShortcut,
 }: EditorExtensionsOptions): Extensions {
   return [
     StarterKit.configure({
@@ -77,6 +86,8 @@ export function createExtensions({
     }),
     LinkOpening.configure({ open: openLink }),
     BrokenLinks.configure(brokenLinks ?? {}),
+    PageLinkNormalizer,
+    LinkShortcut.configure(linkShortcut ?? {}),
     Collaboration.configure({ document: doc, field: FIELD }),
     TaskList,
     TaskItem.configure({
@@ -104,5 +115,6 @@ export function createExtensions({
         ]
       : []),
     ...(slash ? [createSlashExtension(slash.state, slash.translate)] : []),
+    ...(pageLinks ? [createPageLinkExtension(pageLinks)] : []),
   ]
 }

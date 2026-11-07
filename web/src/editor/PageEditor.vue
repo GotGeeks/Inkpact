@@ -3,7 +3,7 @@ import { ySyncPluginKey } from '@tiptap/y-tiptap'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import type { Editor } from '@tiptap/core'
 import type { EditorView } from '@tiptap/pm/view'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ApiError } from '../api'
@@ -16,11 +16,19 @@ import { formatFileSize } from '../fileSize'
 import { uploadAttachment } from './attachmentApi'
 import { editorClasses } from './editorClasses'
 import { refreshBrokenLinks, type LinkTarget } from './brokenLinks'
+import { openPageMenu } from './blockCommands'
+import { registerLinkShortcut } from './linkShortcutRegistry'
+import { selectedRange } from './selectedRange'
+import { linkableRange, type TextRange } from './linkRange'
+import { placeAt, type Place } from './place'
+import { createPageMenuState } from './pageLinkExtension'
 import { createExtensions } from './extensions'
 import { applyFirstParagraph } from './firstParagraph'
 import BlockHandle from './BlockHandle.vue'
 import EditorToolbar from './EditorToolbar.vue'
 import LinkMenu from './LinkMenu.vue'
+import LinkPicker from './LinkPicker.vue'
+import PageLinkMenu from './PageLinkMenu.vue'
 import { sanitizePastedHtml } from './sanitize'
 import SlashMenu from './SlashMenu.vue'
 import { openLinkIn } from './linkOpening'
@@ -73,6 +81,94 @@ function checkProjection(current: Editor) {
 }
 
 const slashState = createSlashState()
+const pageMenuState = createPageMenuState()
+
+/** Whether the link picker is open, and whether the text it is about is a link already (it can then take it away). */
+const picker = reactive({ open: false, hasLink: false })
+/**
+ * The text the picker is about, kept as Yjs relative positions: the picker can stay open a while, and a change from another
+ * client meanwhile moves the text (it replaces the blocks it touched, so ProseMirror's own mapping would lose it).
+ */
+let pickerText: { from: Place; to: Place } | null = null
+
+/** What the picker would be about now (`linkableRange`), or null when there is nothing to link or the page cannot be edited. */
+function linkPickerRange(): TextRange | null {
+  const current = editor.value
+  if (!current || !editable.value) return null
+  return linkableRange(current.state, selectedRange(current.view))
+}
+
+/**
+ * Opens the picker for the selected text, or for the whole link when the caret or the selection is in one (to change it).
+ * False when there is nothing to link.
+ */
+function openLinkPicker(): boolean {
+  const current = editor.value
+  const range = linkPickerRange()
+  if (!current || !range) return false
+  pickerText = { from: placeAt(current, range.from), to: placeAt(current, range.to) }
+  picker.hasLink = current.state.doc.rangeHasMark(range.from, range.to, current.schema.marks.link!)
+  picker.open = true
+  return true
+}
+
+/** Where the picker's text is now; null when it was deleted meanwhile, or the page can no longer be edited. */
+function pickerRange(): TextRange | null {
+  const from = pickerText?.from.resolve()
+  const to = pickerText?.to.resolve()
+  if (from == null || to == null || from >= to || !editable.value) return null
+  return { from, to }
+}
+
+/**
+ * Back to the text: with what was selected selected again, or the caret after the link that was made. The focus goes back to
+ * the editor also when the text is gone.
+ */
+function closePicker(caretAfter: boolean) {
+  const range = pickerRange()
+  picker.open = false
+  pickerText = null
+  const current = editor.value
+  if (!current || current.isDestroyed) return
+  const chain = current.chain().focus()
+  // After a link that was made or changed, what is typed next is not part of it (see `insertPageLink`).
+  if (range && caretAfter) chain.setTextSelection(range.to).unsetMark('link')
+  else if (range) chain.setTextSelection(range)
+  chain.run()
+}
+
+/** Changes the link with `change`, on the picker's text where it is now; nothing when it is gone or the page became read-only. */
+function changePickerText(change: (chain: ReturnType<Editor['chain']>) => void) {
+  const current = editor.value
+  const range = pickerRange()
+  if (current && range) {
+    const chain = current.chain().focus().setTextSelection(range)
+    change(chain)
+    chain.run()
+  }
+  closePicker(true)
+}
+
+const chooseLink = (href: string) => changePickerText((chain) => chain.setLink({ href }))
+const removeLink = () => changePickerText((chain) => chain.unsetLink())
+
+// A page that stops being editable while the picker is open (it went to the trash, the role changed) gets no link.
+watch(editable, (can) => {
+  if (!can && picker.open) closePicker(false)
+})
+
+/** The link button of the toolbar: the picker for selected text, otherwise `[[`, which opens the menu of pages. */
+function toolbarLink() {
+  const current = editor.value
+  if (!current || !editable.value) return
+  if (!openLinkPicker()) openPageMenu(current)
+}
+
+// Ctrl+K: the editor takes it, and not search, when there is text to link (the app asks before it opens search). The same
+// question as the one the picker asks when it opens, so the two never disagree: if they did, neither would act on the key.
+const stopLinkShortcut = registerLinkShortcut(
+  () => !!editor.value?.view.hasFocus() && linkPickerRange() !== null,
+)
 
 // The drag handle: the extension moves this element next to the block under the mouse, and BlockHandle fills it. Only
 // with a mouse; on a touch screen the toolbar and the slash menu do this.
@@ -96,6 +192,8 @@ useKeyboardInset(showToolbar)
  * the focus has settled; otherwise the toolbar would go away under the finger that reaches for it.
  */
 function refreshFocus() {
+  // A blur that came just before the person left the page is looked at after the editor is gone: nothing to ask then.
+  if (editor.value?.isDestroyed) return
   const active = document.activeElement
   focusWithin.value =
     !!active &&
@@ -167,6 +265,13 @@ const editor = useEditor({
     // Written out, so the lint rule that finds unused translations can see the keys.
     checkboxLabel: (checked) => (checked ? t('editor.checkboxDone') : t('editor.checkboxNotDone')),
     slash: { state: slashState, translate: (key) => t(key) },
+    pageLinks: {
+      state: pageMenuState,
+      pages: () => tree.pages,
+      currentPageId: () => props.pageId,
+      untitled: () => t('tree.untitled'),
+    },
+    linkShortcut: { open: openLinkPicker },
     openLink,
     brokenLinks: {
       stateOf: linkTarget,
@@ -273,6 +378,7 @@ watch([() => tree.pages, () => tree.trash, () => tree.loaded], () => {
 })
 
 onBeforeUnmount(() => {
+  stopLinkShortcut()
   dropFocusRequest()
   editor.value?.destroy()
   sync.close(props.pageId)
@@ -320,10 +426,20 @@ defineExpose({ focus: focusAtStart })
       {{ t('editor.attachment.uploading', { count: uploading }, uploading) }}
     </p>
     <SlashMenu :state="slashState" :reserve-bottom="showToolbar ? TOOLBAR_HEIGHT : 0" />
+    <PageLinkMenu :state="pageMenuState" :reserve-bottom="showToolbar ? TOOLBAR_HEIGHT : 0" />
+    <LinkPicker
+      :open="picker.open"
+      :page-id="pageId"
+      :has-link="picker.hasLink"
+      @choose="chooseLink"
+      @remove="removeLink"
+      @cancel="closePicker(false)"
+    />
     <LinkMenu
       v-if="editor && inLink"
       :editor="editor"
       :open="openLink"
+      @change="openLinkPicker"
       @focusin="refreshFocus"
       @focusout="focusChanged"
     />
@@ -337,6 +453,7 @@ defineExpose({ focus: focusAtStart })
     <EditorToolbar
       v-if="editor && showToolbar"
       :editor="editor"
+      @link="toolbarLink"
       @focusin="refreshFocus"
       @focusout="focusChanged"
     />

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RouterView } from 'vue-router'
 import { SEARCH_DEBOUNCE_MS } from '../stores/search'
 import { jsonResponse, mountAt } from '../testing/helpers'
+import { registerLinkShortcut } from '../editor/linkShortcutRegistry'
 import { fakeTree, outline } from '../testing/treeFixtures'
 import type { SearchHit, SearchResponse, SearchSegment } from './types'
 
@@ -113,6 +114,25 @@ describe('opening the search', () => {
 
     await openByShortcut({ metaKey: true })
     expect(dialog()).not.toBeNull()
+  })
+
+  it('leaves the key to the editor when the editor takes it (selected text, or a link), and opens search again once it does not', async () => {
+    await shell(() => answer())
+    let taken = true
+    const stop = registerLinkShortcut(() => taken)
+    const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, cancelable: true })
+
+    window.dispatchEvent(event)
+    await flushPromises()
+
+    expect(dialog()).toBeNull()
+    // The shell did not take the key: the editor, which gets it next, does.
+    expect(event.defaultPrevented).toBe(false)
+
+    taken = false
+    await openByShortcut({ ctrlKey: true })
+    expect(dialog()).not.toBeNull()
+    stop()
   })
 
   it('takes the key from the page, so that the browser does not use it', async () => {

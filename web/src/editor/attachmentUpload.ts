@@ -1,13 +1,8 @@
 import { Extension, type Editor } from '@tiptap/core'
 import { Plugin } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
-import {
-  absolutePositionToRelativePosition,
-  relativePositionToAbsolutePosition,
-  ySyncPluginKey,
-} from '@tiptap/y-tiptap'
-import type * as Y from 'yjs'
 import { ApiError } from '../api'
+import { placeAt, type Place } from './place'
 
 /** What the server answers for an upload. */
 export interface UploadedAttachment {
@@ -38,30 +33,6 @@ declare module '@tiptap/core' {
       /** Opens the file picker; what is chosen is added at the caret. */
       pickFiles: (kind: PickKind) => ReturnType
     }
-  }
-}
-
-/**
- * Where an upload goes, kept as a Yjs relative position: it stays next to the same text while others edit the page
- * during the upload. (A ProseMirror position would not: a change from another client replaces the whole document.)
- */
-export interface Place {
-  resolve: () => number | null
-}
-
-function placeAt(editor: Editor, pos: number): Place {
-  const binding = ySyncPluginKey.getState(editor.state)?.binding as
-    | {
-        type: Y.XmlFragment
-        doc: Y.Doc
-        mapping: Parameters<typeof absolutePositionToRelativePosition>[2]
-      }
-    | undefined
-  if (!binding) return { resolve: () => Math.min(pos, editor.state.doc.content.size) }
-  const relative = absolutePositionToRelativePosition(pos, binding.type, binding.mapping)
-  return {
-    resolve: () =>
-      relativePositionToAbsolutePosition(binding.doc, binding.type, relative, binding.mapping),
   }
 }
 

@@ -7,6 +7,11 @@ import { blockCommands } from './blockCommands'
 
 const props = defineProps<{ editor: Editor }>()
 
+const emit = defineEmits<{
+  /** The link button: the page decides what it means (the picker for a selection, the page menu without one). */
+  link: []
+}>()
+
 const { t } = useI18n()
 const root = useTemplateRef<HTMLElement>('root')
 
@@ -101,6 +106,13 @@ const buttons = computed<ToolbarButton[]>(() => {
       icon: 'image',
       label: t('editor.toolbar.image'),
       run: () => command('image').run(editor),
+    },
+    {
+      id: 'link',
+      icon: 'link',
+      label: t('editor.toolbar.link'),
+      pressed: editor.isActive('link'),
+      run: () => emit('link'),
     },
     { id: 'insert', icon: 'slash', label: t('editor.toolbar.insert'), run: openSlashMenu },
   ]
