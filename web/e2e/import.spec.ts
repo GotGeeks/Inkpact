@@ -283,3 +283,33 @@ test('a note of about 6 MB imports as content, opens with a notice, and stays in
   await page.reload()
   await expect(editorBody(page)).toContainText('Saved: Line 0', { timeout: 60_000 })
 })
+
+test('a note of about 4.5 MB that changes in Joplin is replaced as content, not turned into a file, and opens with the new text', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'checked on the desktop')
+  test.setTimeout(420_000)
+  const label = unique(testInfo.project.name)
+  const first = generateLargeJex(label, 4_500_000, label)
+  const changed = generateLargeJex(label, 4_500_000, label, 'Changed. ')
+  await openImportPage(page)
+  await importJex(page, first)
+
+  // The page is large: its update is about 5.5 MB, so the old and new content together (10.5 MiB) are more than a client is
+  // sent for a page (8 MiB, before run 1.22 this became a file). The import compacts the page at once.
+  await openImportPage(page)
+  await importJex(page, changed)
+
+  await expect(page.getByTestId('import-left')).toContainText(
+    '1 item changed in Joplin and was brought up to date here.',
+  )
+  await expect(page.getByTestId('import-report')).toHaveCount(0)
+  await openSidebar(page)
+  await rowFor(page, changed.titles.notebook)
+    .getByRole('button', { name: `Expand ${changed.titles.notebook}` })
+    .click()
+  await rowFor(page, changed.titles.note).click()
+  await closeDrawer(page)
+  await expect(editorBody(page)).toContainText(changed.firstLine, { timeout: 60_000 })
+  await expect(page.getByTestId('sync-status')).toHaveAttribute('data-state', 'live')
+})

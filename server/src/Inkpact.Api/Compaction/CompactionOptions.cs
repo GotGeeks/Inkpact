@@ -14,6 +14,14 @@ public sealed class CompactionOptions
     /// <summary>A page with this many live updates is compacted.</summary>
     public int UpdateThreshold { get; set; } = 500;
 
+    /// <summary>
+    /// A page whose live updates are this many bytes together is compacted at the next round, however few they are and however
+    /// recent. The hub sends a page whose log is over <c>Sync:MaxDiffBytes</c> (2 MiB, the same) as it is stored, with every
+    /// update, so a large page with a long log is not left that way for minutes: an import that replaced its content, or
+    /// clients that edited it. Run 1.22.
+    /// </summary>
+    public long LiveBytesThreshold { get; set; } = 2 * 1024 * 1024;
+
     /// <summary>A page whose newest live update is older than this is compacted, however few updates it has.</summary>
     public TimeSpan IdleAfter { get; set; } = TimeSpan.FromMinutes(2);
 

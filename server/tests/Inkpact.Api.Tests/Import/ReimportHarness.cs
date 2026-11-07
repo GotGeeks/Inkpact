@@ -57,6 +57,10 @@ public abstract class ReimportHarness(PostgresFixture postgres) : IClassFixture<
             await db.Users.Select(u => u.Id).SingleAsync()));
     }
 
+    protected Task<int> LiveUpdatesAsync(Guid pageId) => UseDbAsync(db => LargePages.LiveUpdatesAsync(db, pageId));
+
+    protected Task<PageSnapshot?> SnapshotOfAsync(Guid pageId) => UseDbAsync(db => LargePages.SnapshotOfAsync(db, pageId));
+
     /// <summary>A service of the running app, for a test that has to do what the app does in the background.</summary>
     protected T Service<T>()
         where T : notnull => _factory.Services.GetRequiredService<T>();

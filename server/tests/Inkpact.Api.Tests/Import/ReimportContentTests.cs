@@ -13,6 +13,7 @@ using Inkpact.Data;
 using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Npgsql;
 
 namespace Inkpact.Api.Tests.Import;
@@ -50,7 +51,9 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IClassFixtu
         NpgsqlConnection.ClearAllPools();
     }
 
-    private async Task StartAsync(Func<IYjsCodec, IYjsCodec>? wrapCodec = null)
+    private string _connectionString = null!;
+
+    private async Task StartAsync(Func<IYjsCodec, IYjsCodec>? wrapCodec = null, IReadOnlyDictionary<string, string>? settings = null)
     {
         IYjsCodec? codec = null;
         if (wrapCodec is not null)
@@ -59,7 +62,8 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IClassFixtu
             codec = wrapCodec(_sidecar);
         }
 
-        _factory = new InkpactFactory(await postgres.CreateDatabaseAsync(pooled: true), sidecar: codec is null, codec: codec);
+        _connectionString = await postgres.CreateDatabaseAsync(pooled: true);
+        _factory = new InkpactFactory(_connectionString, settings: settings, sidecar: codec is null, codec: codec);
         _jos = await SyncUser.SetUpAdministratorAsync(_factory);
         if (codec is null)
         {
@@ -78,6 +82,9 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IClassFixtu
     }
 
     private IYjsCodec Codec => _factory.Services.GetRequiredService<IYjsCodec>();
+
+    private T Service<T>()
+        where T : notnull => _factory.Services.GetRequiredService<T>();
 
     /// <summary>The conflict copy's title the English client sends with the upload.</summary>
     private const string CopyTitle = "{title} (Joplin)";
@@ -762,6 +769,181 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IClassFixtu
         (await TextOfAsync(plan.Id)).ShouldBe("Third");
     }
 
+    // ---- a large page is compacted right after its replacement (run 1.22) -------------------------------------------------------
+
+    private Task<int> LiveUpdatesAsync(Guid pageId) => UseDbAsync(db => LargePages.LiveUpdatesAsync(db, pageId));
+
+    private Task<PageSnapshot?> SnapshotOfAsync(Guid pageId) => UseDbAsync(db => LargePages.SnapshotOfAsync(db, pageId));
+
+    private static JexBuilder Large(string start, int bytes) => Library(LargePages.Words(start, bytes));
+
+    /// <summary>A large page that Joplin then changed, imported twice: the old content, then the new one, which the import compacts.</summary>
+    private async Task<Guid> ReplacedLargePageAsync()
+    {
+        await ImportAsync(Large("old ", 2500));
+        var plan = await PageOfAsync("plan");
+        await ImportAsync(Large("new ", 2600));
+        return plan.Id;
+    }
+
+    [Fact]
+    public async Task A_client_that_opens_a_large_page_after_its_replacement_is_sent_the_new_content_only_and_is_not_dropped()
+    {
+        await StartAsync(settings: LargePages.Settings());
+        var plan = await ReplacedLargePageAsync();
+
+        await using var late = await _jos.ConnectAsync();
+        var synced = await late.SyncAsync(plan);
+
+        // The old and new content together are more than a page may be; the page after the compaction is not.
+        synced.Updates.Sum(update => (long)update.Length).ShouldBeLessThanOrEqualTo(LargePages.UpdateLimit);
+        (await Codec.CompactAsync(synced.Updates, default)).Text.Trim().ShouldStartWith("new ");
+        await late.ExpectSilenceAsync();
+    }
+
+    [Fact]
+    public async Task A_client_that_has_a_large_page_open_gets_the_replacement_and_ends_as_a_client_that_opens_it_later_does()
+    {
+        await StartAsync(settings: LargePages.Settings());
+        await ImportAsync(Large("old ", 2500));
+        var plan = await PageOfAsync("plan");
+        await using var editor = await _jos.ConnectAsync();
+        var synced = await editor.SyncAsync(plan.Id);
+
+        await ImportAsync(Large("new ", 2600));
+
+        var update = await editor.ReceiveAsync(MessageType.Update);
+        update.PageId.ShouldBe(plan.Id);
+        var open = (await Codec.CompactAsync([.. synced.Updates, update.Payload], default)).Text.Trim();
+        await using var later = await _jos.ConnectAsync();
+        var fresh = (await Codec.CompactAsync((await later.SyncAsync(plan.Id)).Updates, default)).Text.Trim();
+        open.ShouldStartWith("new ");
+        fresh.ShouldBe(open);
+        await editor.ExpectSilenceAsync();
+    }
+
+    [Fact]
+    public async Task A_page_the_import_compacted_is_still_unchanged_here_for_the_next_import_which_does_not_read_it()
+    {
+        HookCodec? codec = null;
+        await StartAsync(inner => codec = new HookCodec(inner), LargePages.Settings());
+        var plan = await ReplacedLargePageAsync();
+        var seq = (await ItemOfAsync("plan")).PageSeq;
+        var fingerprints = codec!.Fingerprints;
+        var updates = await UpdateCountAsync();
+
+        // Joplin touched the note's file but not its body.
+        var again = await ImportAsync(Library(LargePages.Words("new ", 2600), updatedTime: "2026-05-05T01:02:03.000Z"));
+
+        var counts = CountsOf(again);
+        (counts.Updated, counts.Conflicts, counts.Failed).ShouldBe((0, 0, 0));
+        codec.Fingerprints.ShouldBe(fingerprints);
+        (await UpdateCountAsync()).ShouldBe(updates);
+        (await ItemOfAsync("plan")).PageSeq.ShouldBe(seq);
+        (await SnapshotOfAsync(plan)).ShouldNotBeNull().Watermark.ShouldBe(seq!.Value);
+    }
+
+    [Fact]
+    public async Task A_compaction_that_cannot_run_leaves_the_replacement_in_the_log_and_the_page_is_compacted_later()
+    {
+        HookCodec? codec = null;
+        await StartAsync(inner => codec = new HookCodec(inner), LargePages.Settings());
+        await ImportAsync(Large("old ", 2500));
+        var plan = await PageOfAsync("plan");
+        // The next compaction, the import's, finds the sidecar down.
+        codec!.UnavailableFromCompaction = codec.Compactions + 1;
+
+        var import = await ImportAsync(Large("new ", 2600));
+
+        CountsOf(import).Updated.ShouldBe(1);
+        EntriesOf(import).ShouldBeEmpty();
+        (await SnapshotOfAsync(plan.Id)).ShouldBeNull();
+        (await LiveUpdatesAsync(plan.Id)).ShouldBeGreaterThan(1);
+
+        codec.UnavailableFromCompaction = 0;
+        (await Service<Compactor>().CompactAsync(plan.Id, default)).ShouldBe(CompactionResult.Compacted);
+        (await TextOfAsync(plan.Id)).ShouldStartWith("new ");
+        (await LiveUpdatesAsync(plan.Id)).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task A_compaction_that_does_not_verify_leaves_the_replacement_in_the_log_and_changes_nothing_else()
+    {
+        HookCodec? codec = null;
+        await StartAsync(inner => codec = new HookCodec(inner), LargePages.Settings());
+        await ImportAsync(Large("old ", 2500));
+        var plan = await PageOfAsync("plan");
+        codec!.BrokenFromCompaction = codec.Compactions + 1;
+
+        var import = await ImportAsync(Large("new ", 2600));
+
+        CountsOf(import).Updated.ShouldBe(1);
+        (CountsOf(import).Failed, CountsOf(import).Conflicts).ShouldBe((0, 0));
+        (await SnapshotOfAsync(plan.Id)).ShouldBeNull();
+        (await TextOfAsync(plan.Id)).ShouldStartWith("new ");
+        (await PageOfAsync("plan")).ContentText.ShouldStartWith("new ");
+        (await UseDbAsync(db => db.ArchivedPageUpdates.CountAsync(a => a.PageId == plan.Id))).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task A_page_whose_last_compaction_could_not_run_is_compacted_before_its_next_replacement_so_that_one_is_text()
+    {
+        HookCodec? codec = null;
+        await StartAsync(inner => codec = new HookCodec(inner), LargePages.Settings());
+        await ImportAsync(Large("old ", 2500));
+        var plan = await PageOfAsync("plan");
+        codec!.UnavailableFromCompaction = codec.Compactions + 1;
+        await ImportAsync(Large("new ", 2600));
+        codec.UnavailableFromCompaction = 0;
+        (await LiveUpdatesAsync(plan.Id)).ShouldBeGreaterThan(1);
+
+        // Old, new and this one together would be over three quarters of the queue; the page as it is, and this one, are not.
+        var third = await ImportAsync(Large("third ", 2700));
+
+        CountsOf(third).Updated.ShouldBe(1);
+        EntriesOf(third).ShouldBeEmpty();
+        (await TextOfAsync(plan.Id)).ShouldStartWith("third ");
+        (await LiveUpdatesAsync(plan.Id)).ShouldBe(0);
+    }
+
+    /// <summary>A second connection holding the compactor's lock for a page, as a worker that is compacting it does.</summary>
+    private async Task<NpgsqlConnection> HoldCompactionLockAsync(Guid pageId)
+    {
+        var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand($"select pg_advisory_lock({Compactor.LockClass}, hashtext('{pageId}'))", connection);
+        await command.ExecuteNonQueryAsync();
+        return connection;
+    }
+
+    [Fact]
+    public async Task A_page_the_worker_is_compacting_is_left_to_it_and_the_worker_takes_it_at_its_next_round_for_its_size()
+    {
+        // A page's live updates over this many bytes make it a candidate at once (the app's is 2 MiB).
+        await StartAsync(settings: LargePages.Settings(new Dictionary<string, string> { ["Compaction:LiveBytesThreshold"] = "1000" }));
+        await ImportAsync(Large("old ", 2500));
+        var plan = await PageOfAsync("plan");
+
+        ImportRun run;
+        await using (var held = await HoldCompactionLockAsync(plan.Id))
+        {
+            // The import does not wait for the worker: it would hold up nothing, but it has no reason to either.
+            run = await ImportAsync(Large("new ", 2600)).WaitAsync(TimeSpan.FromSeconds(30));
+            await using var unlock = new NpgsqlCommand("select pg_advisory_unlock_all()", held);
+            await unlock.ExecuteNonQueryAsync();
+        }
+
+        CountsOf(run).Updated.ShouldBe(1);
+        (await SnapshotOfAsync(plan.Id)).ShouldBeNull();
+        (await LiveUpdatesAsync(plan.Id)).ShouldBeGreaterThan(1);
+
+        // Fresh and few updates, but large: the worker's next round takes the page.
+        var worker = Service<IEnumerable<IHostedService>>().OfType<CompactionWorker>().Single();
+        (await worker.RunRoundAsync(default)).Compacted.ShouldBe(1);
+        (await LiveUpdatesAsync(plan.Id)).ShouldBe(0);
+        (await TextOfAsync(plan.Id)).ShouldStartWith("new ");
+    }
+
     // ---- a note that fails -----------------------------------------------------------------------------------------------
 
     /// <summary>
@@ -784,11 +966,36 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IClassFixtu
 
         public int Replacements { get; private set; }
 
+        /// <summary>
+        /// How often anything asked the codec to compact: the import to size a page, the compactor to merge it, a test to read it.
+        /// From the call with this number on (0: never) compacting fails as a sidecar that is down does.
+        /// </summary>
+        public int Compactions { get; private set; }
+
+        public int UnavailableFromCompaction { get; set; }
+
+        /// <summary>From the call with this number on (0: never) the merged state does not match its replay.</summary>
+        public int BrokenFromCompaction { get; set; }
+
         public Task<YjsDiff> DiffAsync(ReadOnlyMemory<byte> stateVector, IReadOnlyList<byte[]> updates, CancellationToken cancellationToken) =>
             inner.DiffAsync(stateVector, updates, cancellationToken);
 
-        public Task<YjsCompaction> CompactAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken) =>
-            inner.CompactAsync(inputs, cancellationToken);
+        public async Task<YjsCompaction> CompactAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken)
+        {
+            var call = ++Compactions;
+            if (UnavailableFromCompaction > 0 && call >= UnavailableFromCompaction)
+            {
+                throw new YjsUnavailableException("the sidecar is down");
+            }
+
+            var result = await inner.CompactAsync(inputs, cancellationToken);
+            if (BrokenFromCompaction > 0 && call >= BrokenFromCompaction)
+            {
+                result = result with { ReplayFingerprint = [1, 2, 3] };
+            }
+
+            return result;
+        }
 
         public Task<YjsRead> ReadAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken) =>
             inner.ReadAsync(inputs, cancellationToken);
