@@ -85,7 +85,7 @@ public class MigrationIntegrationTests(PostgresFixture postgres) : IClassFixture
             list.Add(reader.GetString(1));
         }
 
-        columns.Keys.Where(t => t != "__EFMigrationsHistory").Order().ShouldBe(["attachments", "audit_events", "import_items", "imports", "login_throttles", "page_snapshots", "page_tags", "page_updates", "page_updates_archive", "pages", "reminders", "sessions", "tags", "users", "workspace_members", "workspaces"]);
+        columns.Keys.Where(t => t != "__EFMigrationsHistory").Order().ShouldBe(["attachments", "audit_events", "import_items", "imports", "login_throttles", "page_links", "page_snapshots", "page_tags", "page_updates", "page_updates_archive", "pages", "reminders", "sessions", "tags", "users", "workspace_members", "workspaces"]);
         columns["users"].ShouldBe(["id", "email", "normalized_email", "display_name", "password_hash", "oidc_subject", "created_at", "is_admin"]);
         columns["workspaces"].ShouldBe(["id", "name", "owner_id", "created_at", "tree_version"]);
         columns["workspace_members"].ShouldBe(["workspace_id", "user_id", "role", "created_at"]);
@@ -101,10 +101,11 @@ public class MigrationIntegrationTests(PostgresFixture postgres) : IClassFixture
         columns["imports"].ShouldBe(["id", "workspace_id", "user_id", "source_type", "file_name", "file_size", "state", "error_code", "total_items", "processed_items", "created_at", "started_at", "finished_at", "counts", "report", "copy_title"]);
         columns["import_items"].ShouldBe(["id", "workspace_id", "source_type", "external_id", "kind", "inkpact_id", "content_hash", "state_vector", "import_id", "imported_at", "base", "converter_version", "page_fingerprint", "page_seq"]);
         columns["page_snapshots"].ShouldBe(["page_id", "state", "state_vector", "watermark", "version", "update_count", "history_complete", "updated_at"]);
+        columns["page_links"].ShouldBe(["source_page_id", "target_page_id"]);
         columns["pages"].ShouldBe(
         [
             "id", "workspace_id", "parent_id", "title", "sort_key", "created_at", "updated_at", "deleted_at",
-            "is_todo", "completed_at", "due_at", "external_source_type", "external_id", "version", "content_text", "tag_text", "title_vector", "file_text", "search_vector",
+            "is_todo", "completed_at", "due_at", "external_source_type", "external_id", "version", "content_text", "tag_text", "title_vector", "file_text", "search_vector", "links_indexed",
         ]);
     }
 

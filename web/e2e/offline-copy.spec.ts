@@ -36,9 +36,15 @@ async function removeLastBlock(b: Client, lastText: string, mergedText: RegExp) 
     })
   })
   await b.editor.click()
-  await b.page.keyboard.press('Control+End')
-  await b.page.keyboard.press('Home')
-  await expect(b.page.locator('body')).toHaveAttribute('data-selection-seen', `${lastText}@0`)
+  // Tried again until the cursor is at the start of the last block: under load (WebKit above all) Home can come before the
+  // cursor has reached the end, and it changes nothing once the cursor is where it should be.
+  await expect(async () => {
+    await b.page.keyboard.press('Control+End')
+    await b.page.keyboard.press('Home')
+    await expect(b.page.locator('body')).toHaveAttribute('data-selection-seen', `${lastText}@0`, {
+      timeout: 1_500,
+    })
+  }).toPass({ timeout: 15_000 })
   await b.page.keyboard.press('Backspace')
   await expect(b.editor.locator('p').last()).toHaveText(mergedText)
   // The server has confirmed every change of this tab.

@@ -12,6 +12,7 @@ import { FIELD } from './firstParagraph'
 import { createMoveBlockExtension } from './blockActions'
 import type { Translate } from './blockCommands'
 import { isAllowedLink } from './links'
+import { BrokenLinks, type BrokenLinksOptions } from './brokenLinks'
 import { LinkOpening } from './linkOpening'
 import { createSlashExtension, type SlashState } from './slashExtension'
 
@@ -38,6 +39,8 @@ export interface EditorExtensionsOptions {
   dragHandle?: { element: HTMLElement; onHover: (pos: number) => void }
   /** Opens a link that was clicked; without it (a test that only needs the schema) a click on a link does nothing. */
   openLink?: (href: string, newTab: boolean) => void
+  /** Strikes through a link to a page that is in the trash or not to be found (run B.1); without it (most tests) no link is marked. */
+  brokenLinks?: BrokenLinksOptions
   /** How a file in the text reads. */
   files?: AttachmentFileOptions
   /** Adding files from the picker, a paste or a drop; without it (a read-only page, most tests) there is no way in. */
@@ -54,6 +57,7 @@ export function createExtensions({
   files,
   upload,
   openLink,
+  brokenLinks,
 }: EditorExtensionsOptions): Extensions {
   return [
     StarterKit.configure({
@@ -72,6 +76,7 @@ export function createExtensions({
       },
     }),
     LinkOpening.configure({ open: openLink }),
+    BrokenLinks.configure(brokenLinks ?? {}),
     Collaboration.configure({ document: doc, field: FIELD }),
     TaskList,
     TaskItem.configure({

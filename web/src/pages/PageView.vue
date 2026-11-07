@@ -6,6 +6,7 @@ import { useCurrentPageStore } from '../stores/currentPage'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import SyncStatus from '../sync/SyncStatus.vue'
+import BacklinksPanel from './BacklinksPanel.vue'
 import ChildPages from './ChildPages.vue'
 import TitleField from './TitleField.vue'
 import type { PageDetail } from '../tree/types'
@@ -127,5 +128,6 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
       :page-id="detail.page.id"
       :read-only="!tree.canEdit"
     />
+    <BacklinksPanel :key="`backlinks-${detail.page.id}`" :page-id="detail.page.id" />
   </article>
 </template>

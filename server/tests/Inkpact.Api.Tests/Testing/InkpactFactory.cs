@@ -80,6 +80,9 @@ public class InkpactFactory(
         // Tests that want the worker turn it on through the settings; the others call the compactor themselves.
         builder.UseSetting("Compaction:Enabled", "False");
 
+        // The same for the job that indexes the links of pages that exist from before (run B.1): tests call it themselves.
+        builder.UseSetting("Links:BackfillEnabled", "False");
+
         foreach (var (key, value) in settings ?? new Dictionary<string, string>())
         {
             builder.UseSetting(key, value);

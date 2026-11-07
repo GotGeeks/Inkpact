@@ -34,5 +34,5 @@ export function respond(id, parts, status = 0) {
 }
 
 export function pong(id) {
-  respond(id, [Buffer.from('1'), Buffer.from('stub')])
+  respond(id, [Buffer.from('2'), Buffer.from('stub')])
 }

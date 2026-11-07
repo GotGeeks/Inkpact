@@ -11,9 +11,11 @@ import { useKeyboardInset } from '../composables/useKeyboardInset'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useNotificationsStore } from '../stores/notifications'
 import { useSyncStore } from '../stores/sync'
+import { useTreeStore } from '../stores/tree'
 import { formatFileSize } from '../fileSize'
 import { uploadAttachment } from './attachmentApi'
 import { editorClasses } from './editorClasses'
+import { refreshBrokenLinks, type LinkTarget } from './brokenLinks'
 import { createExtensions } from './extensions'
 import { applyFirstParagraph } from './firstParagraph'
 import BlockHandle from './BlockHandle.vue'
@@ -29,6 +31,7 @@ const props = defineProps<{ pageId: string; readOnly: boolean }>()
 
 const { t, locale } = useI18n()
 const sync = useSyncStore()
+const tree = useTreeStore()
 const notifications = useNotificationsStore()
 
 // The sync client makes the document, so that it can keep it alive while changes are still on their way after the
@@ -138,6 +141,16 @@ const uploading = ref(0)
 const router = useRouter()
 const openLink = openLinkIn(router)
 
+/**
+ * What a page that a link points to is now, by the tree this tab has: there, in the trash, or not to be found. Until the tree
+ * is read nothing is known, so nothing is marked rather than every link for a moment.
+ */
+const trashed = computed(() => new Set(tree.trash.map((page) => page.id)))
+function linkTarget(pageId: string): LinkTarget {
+  if (!tree.loaded || tree.byId.has(pageId)) return 'live'
+  return trashed.value.has(pageId) ? 'trash' : 'unavailable'
+}
+
 function attributes() {
   return {
     role: 'textbox',
@@ -155,6 +168,11 @@ const editor = useEditor({
     checkboxLabel: (checked) => (checked ? t('editor.checkboxDone') : t('editor.checkboxNotDone')),
     slash: { state: slashState, translate: (key) => t(key) },
     openLink,
+    brokenLinks: {
+      stateOf: linkTarget,
+      describe: (state) =>
+        state === 'trash' ? t('editor.link.inTrash') : t('editor.link.unavailable'),
+    },
     onBlockMoved: announceMove,
     dragHandle: {
       element: handleElement, // Leaving the block for the handle reports no block; the handle still belongs to the one it was next to.
@@ -205,22 +223,62 @@ const inLink = computed(
   () => editable.value && focusWithin.value && editor.value?.isActive('link') === true,
 )
 
+/**
+ * A request for the focus (Enter in the title) that came before the page could be typed into: a page that is still being
+ * read from the server is not editable, and the request would be dropped, with the person's next keystrokes going nowhere.
+ * It is kept for a moment and carried out the moment the editor can be typed into. Anything the person does meanwhile (a
+ * key, a click or a tap anywhere) means they went on without the editor, and the request is dropped: the focus is never
+ * taken from where they are typing. After a few seconds it is dropped too.
+ */
+const FOCUS_REQUEST_LIFETIME_MS = 5000
+let focusRequestedAt = 0
+
+function dropFocusRequest() {
+  focusRequestedAt = 0
+  document.removeEventListener('keydown', dropFocusRequest, true)
+  document.removeEventListener('pointerdown', dropFocusRequest, true)
+}
+
+function focusAtStart() {
+  dropFocusRequest()
+  if (editable.value) {
+    editor.value?.commands.focus('start')
+    return
+  }
+  focusRequestedAt = Date.now()
+  // Added while the key that asked (Enter) is being handled, so that key itself does not drop it.
+  document.addEventListener('keydown', dropFocusRequest, true)
+  document.addEventListener('pointerdown', dropFocusRequest, true)
+}
+
 watch(
   [editor, editable],
   ([current, can]) => {
     current?.setEditable(can, false)
     handleElement.toggleAttribute('hidden', !can)
+    if (can && focusRequestedAt > 0) {
+      const fresh = Date.now() - focusRequestedAt < FOCUS_REQUEST_LIFETIME_MS
+      dropFocusRequest()
+      if (fresh) current?.commands.focus('start')
+    }
   },
   { immediate: true },
 )
 watch(locale, () => editor.value?.setOptions({ editorProps: { attributes: attributes() } }))
 
+// A link to a page that goes to the trash, comes back or is made is marked by the tree, not by the document: when the tree
+// changes, the links are looked at again.
+watch([() => tree.pages, () => tree.trash, () => tree.loaded], () => {
+  if (editor.value) refreshBrokenLinks(editor.value.view)
+})
+
 onBeforeUnmount(() => {
+  dropFocusRequest()
   editor.value?.destroy()
   sync.close(props.pageId)
 })
 
-defineExpose({ focus: () => editor.value?.commands.focus('start') })
+defineExpose({ focus: focusAtStart })
 </script>
 
 <template>

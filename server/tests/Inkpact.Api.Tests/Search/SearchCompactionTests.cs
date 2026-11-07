@@ -56,7 +56,11 @@ public class SearchCompactionTests(PostgresFixture postgres, YjsSidecarFixture y
         var text = (await Codec.CompactAsync(stream, default)).Text.Replace("\0", "");
         await using (var db = CreateContext())
         {
-            await db.Pages.Where(p => p.Id == pageId).ExecuteUpdateAsync(s => s.SetProperty(p => p.ContentText, text));
+            // A page that has been compacted before: its links are indexed, so nothing is left for this compaction to write
+            // on the row (the first compaction of a page also marks it as indexed, once).
+            await db.Pages.Where(p => p.Id == pageId).ExecuteUpdateAsync(s => s
+                .SetProperty(p => p.ContentText, text)
+                .SetProperty(p => p.LinksIndexed, Inkpact.Api.Links.LinkIndex.Version));
         }
 
         var before = await RowVersionAsync(pageId);

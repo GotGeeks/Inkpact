@@ -135,6 +135,10 @@ export default defineConfig({
           Attachments__Directory: attachmentsDirectory,
           Import__Directory: importsDirectory,
           Sidecar__ScriptPath: sidecarScript,
+          // Links and search follow compaction, which waits for two idle minutes: a few seconds here, so a spec that
+          // needs a link in the index does not wait for minutes.
+          Compaction__IdleAfter: '00:00:03',
+          Compaction__PollInterval: '00:00:02',
         },
       },
 })

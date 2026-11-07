@@ -242,7 +242,9 @@
     "link": {
       "label": "Link",
       "open": "Link openen",
-      "openPage": "Pagina openen"
+      "openPage": "Pagina openen",
+      "inTrash": "Deze pagina staat in de prullenbak",
+      "unavailable": "Deze pagina is niet beschikbaar: hij staat in de prullenbak of bestaat hier niet"
     },
     "table": {
       "label": "Tabel",
@@ -270,7 +272,9 @@
     "inTrash": "Deze pagina staat in de prullenbak.",
     "inTrashThroughParent": "Een pagina erboven staat in de prullenbak.",
     "children": "Pagina's hierin",
-    "childCount": "{count} pagina | {count} pagina's"
+    "childCount": "{count} pagina | {count} pagina's",
+    "backlinks": "Gelinkt vanaf {count} pagina | Gelinkt vanaf {count} pagina's",
+    "backlinksMany": "Gelinkt vanaf meer dan {count} pagina's"
   },
   "start": {
     "title": "Welkom",

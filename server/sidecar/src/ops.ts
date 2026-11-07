@@ -1,11 +1,12 @@
 import * as Y from 'yjs'
 import { buildDocument, replaceDocument } from './build.ts'
+import { pageLinks } from './links.ts'
 import { readDocument } from './read.ts'
 import { plainText } from './text.ts'
 import yjsPackage from 'yjs/package.json' with { type: 'json' }
 
 /** Bumped when the frames or the operations change in a way an old server could not follow. */
-export const PROTOCOL_VERSION = '1'
+export const PROTOCOL_VERSION = '2'
 
 export const OP_PING = 0
 export const OP_DIFF = 1
@@ -14,8 +15,12 @@ export const OP_FINGERPRINT = 3
 export const OP_BUILD = 4
 export const OP_REPLACE = 5
 export const OP_READ = 6
+export const OP_LINKS = 7
 
 const utf8 = (value: string) => Buffer.from(value, 'utf8')
+
+/** What separates the page ids of the links parts. */
+const LINE = String.fromCharCode(10)
 
 /**
  * The state after replaying the updates in order. Every update gets its own `Y.applyUpdate`, exactly
@@ -63,7 +68,10 @@ function diff([clientStateVector, ...updates]: Uint8Array[]): Uint8Array[] {
   ])
 }
 
-/** The inputs (snapshot first, if any, then the updates) -> [state, its state vector, both fingerprints, text] */
+/**
+ * The inputs (snapshot first, if any, then the updates) -> [state, its state vector, both fingerprints, text, the pages it
+ * links to: their ids, one on each line]. The links are protocol 2 (run B.1).
+ */
 function compact(inputs: Uint8Array[]): Uint8Array[] {
   return withReplay(inputs, (doc) => {
     const state = Y.encodeStateAsUpdate(doc)
@@ -71,7 +79,8 @@ function compact(inputs: Uint8Array[]): Uint8Array[] {
     const replayFingerprint = fingerprint(doc)
     // The state read back on its own fresh document: catches an encoding that does not round-trip.
     const stateFingerprint = withReplay([state], fingerprint)
-    return [state, stateVector, replayFingerprint, stateFingerprint, utf8(plainText(doc))]
+    const links = utf8(pageLinks(doc).join(LINE))
+    return [state, stateVector, replayFingerprint, stateFingerprint, utf8(plainText(doc)), links]
   })
 }
 
@@ -118,6 +127,14 @@ function read(inputs: Uint8Array[]): Uint8Array[] {
   })
 }
 
+/**
+ * The inputs -> [the pages the document links to, one id on each line]. Only the links: no state is encoded and nothing is
+ * read back, which is what indexing a page that is not being compacted needs (run B.1).
+ */
+function linksOf(inputs: Uint8Array[]): Uint8Array[] {
+  return withReplay(inputs, (doc) => [utf8(pageLinks(doc).join(LINE))])
+}
+
 /** Answers one request. Anything it throws becomes an error response; the sidecar keeps serving. */
 export function handle(op: number, parts: Uint8Array[]): Uint8Array[] {
   switch (op) {
@@ -135,6 +152,8 @@ export function handle(op: number, parts: Uint8Array[]): Uint8Array[] {
       return replace(parts)
     case OP_READ:
       return read(parts)
+    case OP_LINKS:
+      return linksOf(parts)
     default:
       throw new Error(`Unknown operation ${op}`)
   }

@@ -54,7 +54,12 @@ This file collects everything that needs a person, a phone or the Unraid box. Ev
 
 ## Phase 1B
 
-Runs B.1 to B.8 add their checks here.
+### B.1a: backlinks and broken links
+- [ ] With your real library: a note you know other notes link to shows them under "Linked from", on the laptop and on the phone. (Right after the update, give it a minute: the index is made when the server starts.)
+- [ ] Trash a page that others link to: their links to it are struck through, and "Linked from" on it still lists what links to it. Restore it: the links are whole again.
+- [ ] Open a note with a broken link with a screen reader (TalkBack): the reason is read after the link.
+
+Runs B.2 to B.8 add their checks here.
 
 ## Phase 2
 

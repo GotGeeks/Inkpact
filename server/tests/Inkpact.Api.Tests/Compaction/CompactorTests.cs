@@ -239,7 +239,7 @@ public class CompactorTests(PostgresFixture postgres, YjsSidecarFixture yjs) : C
         var before = (await ReadStoredAsync(pageId)).Summary;
         var codec = Substitute.For<IYjsCodec>();
         codec.CompactAsync(Arg.Any<IReadOnlyList<byte[]>>(), Arg.Any<CancellationToken>())
-            .Returns(new YjsCompaction([1], [2], [3], [4], "text"));
+            .Returns(new YjsCompaction([1], [2], [3], [4], "text", []));
 
         var result = await CreateCompactor(codec).CompactAsync(pageId, default);
 

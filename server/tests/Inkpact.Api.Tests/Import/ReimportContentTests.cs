@@ -1000,6 +1000,9 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IClassFixtu
         public Task<YjsRead> ReadAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken) =>
             inner.ReadAsync(inputs, cancellationToken);
 
+        public Task<IReadOnlyList<Guid>> LinksAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken) =>
+            inner.LinksAsync(inputs, cancellationToken);
+
         public Task<byte[]> FingerprintAsync(IReadOnlyList<byte[]> updates, CancellationToken cancellationToken)
         {
             Fingerprints++;

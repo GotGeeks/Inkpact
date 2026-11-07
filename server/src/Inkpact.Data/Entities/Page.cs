@@ -50,4 +50,11 @@ public class Page
 
     /// <summary>The text of the note a page keeps as a file (an imported note too large to open as content), at most 200,000 characters. Written by the import, never by the compactor. Feeds search (run 1.17c).</summary>
     public string FileText { get; set; } = "";
+
+    /// <summary>
+    /// The version of the link extraction that last put the links of this page's content into <c>page_links</c>: 0 for a page
+    /// nobody has indexed yet. The compactor sets it with the links, and a job at start-up indexes the pages below the current
+    /// version, which is how the pages that exist from before the index get theirs (run B.1).
+    /// </summary>
+    public int LinksIndexed { get; set; }
 }

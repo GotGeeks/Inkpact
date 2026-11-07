@@ -6,7 +6,7 @@ import {
   STATUS_INVALID_CONTENT,
   encodeRequest,
 } from '../src/framing.ts'
-import { OP_BUILD, OP_COMPACT, OP_DIFF, OP_PING, OP_REPLACE } from '../src/ops.ts'
+import { OP_BUILD, OP_COMPACT, OP_DIFF, OP_PING, OP_REPLACE, PROTOCOL_VERSION } from '../src/ops.ts'
 import { SidecarProcess, bytes, replayed, text, typed } from './helpers.ts'
 
 /** The sidecar as the server runs it: a child process with the protocol on stdin and stdout. */
@@ -26,7 +26,7 @@ describe('the sidecar process', () => {
     const answer = await start().call(OP_PING)
 
     expect(answer.ok).toBe(true)
-    expect(text(answer.parts[0])).toBe('1')
+    expect(text(answer.parts[0])).toBe(PROTOCOL_VERSION)
   })
 
   it('exits cleanly when stdin ends, so it never outlives the server', async () => {

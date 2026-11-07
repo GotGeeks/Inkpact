@@ -1,4 +1,5 @@
 using Inkpact.Api.Crdt;
+using Inkpact.Api.Links;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -45,6 +46,15 @@ public sealed class Compactor(
     /// </summary>
     internal const int LockClass = 0x434F4D50;
 
+    /// <summary>
+    /// Takes the page's compaction lock for the current transaction of <paramref name="db"/>, if nobody has it. Whoever writes
+    /// what a compaction writes (the link index's job does) takes it too, so that the two never write one page at once.
+    /// </summary>
+    internal static Task<bool> TryLockPageAsync(InkpactDbContext db, Guid pageId, CancellationToken cancellationToken) =>
+        db.Database
+            .SqlQuery<bool>($"select pg_try_advisory_xact_lock({LockClass}, hashtext({pageId.ToString()})) as \"Value\"")
+            .SingleAsync(cancellationToken);
+
     public async Task<CompactionResult> CompactAsync(Guid pageId, CancellationToken cancellationToken)
     {
         try
@@ -76,10 +86,7 @@ public sealed class Compactor(
 
         // Held until this transaction ends. A second compaction of the page does not wait, it skips. Two pages whose ids
         // hash alike only cause a skip.
-        var locked = await db.Database
-            .SqlQuery<bool>($"select pg_try_advisory_xact_lock({LockClass}, hashtext({pageId.ToString()})) as \"Value\"")
-            .SingleAsync(cancellationToken);
-        if (!locked)
+        if (!await TryLockPageAsync(db, pageId, cancellationToken))
         {
             return CompactionResult.Skipped;
         }
@@ -154,6 +161,11 @@ public sealed class Compactor(
         await db.Pages.Where(p => p.Id == pageId && p.ContentText != text)
             .ExecuteUpdateAsync(p => p.SetProperty(x => x.ContentText, text), cancellationToken);
         await hooks.AfterStageAsync(pageId, CompactionStage.TextWritten, cancellationToken);
+
+        // The links of what was merged, in the same transaction: the index (run B.1) is never ahead of or behind the snapshot.
+        // A page with more live updates than one batch folds in rounds, and is indexed as far as each round has got.
+        await LinkIndex.ReplaceAsync(db, pageId, merged.Links, cancellationToken);
+        await hooks.AfterStageAsync(pageId, CompactionStage.LinksWritten, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
         logger.LogInformation(

@@ -16,9 +16,11 @@ public sealed record YjsRead(byte[] Json, int Skipped);
 /// <summary>
 /// The result of replaying a page's snapshot and updates. The two fingerprints are those of the inputs replayed and of
 /// <see cref="State"/> decoded on its own fresh document; equal fingerprints mean the encoding lost nothing.
+/// <see cref="Links"/> are the pages the content links to (sorted, once each): the targets of its link marks whose address is
+/// <c>/p/&lt;id&gt;</c>, on this origin or any other (run B.1).
 /// </summary>
 public sealed record YjsCompaction(
-    byte[] State, byte[] StateVector, byte[] ReplayFingerprint, byte[] StateFingerprint, string Text);
+    byte[] State, byte[] StateVector, byte[] ReplayFingerprint, byte[] StateFingerprint, string Text, IReadOnlyList<Guid> Links);
 
 /// <summary>
 /// Everything the server does with the inside of a Yjs update. Updates are opaque to the rest of the app: this is the
@@ -64,6 +66,12 @@ public interface IYjsCodec
     /// is left out and counted. Nothing is changed or stored.
     /// </summary>
     Task<YjsRead> ReadAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The pages that the page made of <paramref name="inputs"/> links to, as <see cref="YjsCompaction.Links"/> has them, and
+    /// nothing else: no state is encoded and nothing is read back. For indexing the links of a page without compacting it (run B.1).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> LinksAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken);
 }
 
 /// <summary>
