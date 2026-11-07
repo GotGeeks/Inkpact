@@ -27,6 +27,7 @@ defineProps<{
     | 'bold'
     | 'italic'
     | 'slash'
+    | 'link'
     | 'grip'
     | 'image'
     | 'file'
@@ -59,6 +60,7 @@ const paths = {
   bold: 'M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z',
   italic: 'M14 5h-4M14 19h-4M15 5l-6 14',
   slash: 'M16 4 8 20',
+  link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
   grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   image: 'M4 5h16v14H4zM4 16l5-5 4 4 2-2 5 5M15 9h.01',
   file: 'm20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7',

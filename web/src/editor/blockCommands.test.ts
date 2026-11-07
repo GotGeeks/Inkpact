@@ -121,7 +121,20 @@ describe('block commands', () => {
     expect(blockCommands.filter((block) => block.insertOnly).map((block) => block.id)).toEqual([
       'image',
       'file',
+      'pageLink',
     ])
+  })
+
+  it('finds "Link to page" by link, page and reference, in both languages', () => {
+    const english = createAppI18n('en').global.t as (key: string) => string
+    const dutch = createAppI18n('nl').global.t as (key: string) => string
+
+    for (const query of ['link', 'page', 'refer']) {
+      expect(filterCommands(query, english).map((block) => block.id)).toContain('pageLink')
+    }
+    for (const query of ['link', 'pagina', 'verwijz']) {
+      expect(filterCommands(query, dutch).map((block) => block.id)).toContain('pageLink')
+    }
   })
 
   it('has an id, a label, a description and search words, in both languages, for each block', () => {

@@ -11,6 +11,16 @@ const props = defineProps<{
   open: (href: string, newTab: boolean) => void
 }>()
 
+const emit = defineEmits<{
+  /** Asks for the picker on the whole link, to point it somewhere else. */
+  change: []
+}>()
+
+/** Takes the link away from the whole link; the text stays and the caret stays in it. */
+function remove() {
+  props.editor.chain().focus().unsetLink().run()
+}
+
 const { t } = useI18n()
 const menu = useTemplateRef<HTMLElement>('menu')
 const position = reactive({ left: 0, top: 0 })
@@ -80,6 +90,24 @@ onBeforeUnmount(() => stopFollowing?.())
       @click="open(href!, false)"
     >
       {{ label }}
+    </button>
+    <button
+      type="button"
+      data-testid="link-change"
+      class="min-h-9 shrink-0 rounded-md px-space-md whitespace-nowrap outline-none hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-primary pointer-coarse:min-h-11"
+      @mousedown.prevent
+      @click="emit('change')"
+    >
+      {{ t('editor.link.change') }}
+    </button>
+    <button
+      type="button"
+      data-testid="link-remove"
+      class="min-h-9 shrink-0 rounded-md px-space-md whitespace-nowrap outline-none hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-primary pointer-coarse:min-h-11"
+      @mousedown.prevent
+      @click="remove"
+    >
+      {{ t('editor.link.remove') }}
     </button>
   </div>
 </template>

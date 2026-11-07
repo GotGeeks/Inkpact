@@ -210,6 +210,11 @@
         "label": "Bestand",
         "description": "Een bestand van je apparaat toevoegen",
         "keywords": "bijlage uploaden pdf document"
+      },
+      "pageLink": {
+        "label": "Link naar pagina",
+        "description": "Linken naar een andere pagina",
+        "keywords": "verwijzing referentie url intern"
       }
     },
     "slash": {
@@ -229,7 +234,8 @@
       "italic": "Cursief",
       "code": "Code",
       "insert": "Een blok invoegen",
-      "image": "Afbeelding toevoegen"
+      "image": "Afbeelding toevoegen",
+      "link": "Link"
     },
     "handle": {
       "label": "Blokopties",
@@ -244,7 +250,25 @@
       "open": "Link openen",
       "openPage": "Pagina openen",
       "inTrash": "Deze pagina staat in de prullenbak",
-      "unavailable": "Deze pagina is niet beschikbaar: hij staat in de prullenbak of bestaat hier niet"
+      "unavailable": "Deze pagina is niet beschikbaar: hij staat in de prullenbak of bestaat hier niet",
+      "change": "Link wijzigen",
+      "remove": "Link verwijderen"
+    },
+    "pageLink": {
+      "label": "Link naar een pagina",
+      "results": "{count} pagina gevonden | {count} pagina's gevonden",
+      "empty": "Geen pagina's gevonden",
+      "in": "In {parent}"
+    },
+    "linkPicker": {
+      "title": "Linken naar",
+      "description": "Kies een pagina, of typ een webadres.",
+      "field": "Pagina of webadres",
+      "pages": "Pagina's",
+      "webAddress": "Linken naar {address}",
+      "results": "{count} resultaat | {count} resultaten",
+      "empty": "Geen pagina's gevonden",
+      "remove": "Link verwijderen"
     },
     "table": {
       "label": "Tabel",

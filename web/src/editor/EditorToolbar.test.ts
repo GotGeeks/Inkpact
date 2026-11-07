@@ -5,12 +5,14 @@ import * as Y from 'yjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createAppI18n } from '../i18n'
 import { useSyncStore } from '../stores/sync'
+import { useTreeStore } from '../stores/tree'
 import { typeText } from '../testing/editor'
 import { FakeSyncHub } from '../testing/fakeSyncHub'
 import { FIELD } from './firstParagraph'
 import PageEditor from './PageEditor.vue'
 
 const pageId = '0a1b2c3d-0000-4000-8000-000000000002'
+const PAGE_ID = '8a1c4e52-3b7d-8f06-9e21-5d4c3b2a1f50'
 
 let hub: FakeSyncHub
 let wrapper: VueWrapper | null = null
@@ -291,6 +293,98 @@ describe('the mobile toolbar', () => {
     await settle()
     expect(editor.getText()).toBe('/')
     expect(slashMenu()).not.toBeNull()
+  })
+
+  it('has a link button, named for a screen reader, in both languages', async () => {
+    let w = await mountEditor()
+    await focusEditor(w)
+    expect(button('link').getAttribute('aria-label')).toBe('Link')
+    w.unmount()
+    wrapper = null
+
+    w = await mountEditor('nl')
+    await focusEditor(w)
+    expect(button('link').getAttribute('aria-label')).toBe('Link')
+  })
+
+  it('opens the picker for the selected text with the link button', async () => {
+    const w = await mountEditor()
+    const editor = await focusEditor(w)
+    typeText(editor, 'hello world')
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    await settle()
+
+    button('link').click()
+    await settle()
+
+    expect(document.querySelector('[data-testid="link-picker"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="page-link-menu"]')).toBeNull()
+    expect(editor.getText()).toBe('hello world')
+  })
+
+  it('types [[ after a space and opens the menu of pages when nothing is selected', async () => {
+    const w = await mountEditor()
+    const editor = await focusEditor(w)
+    typeText(editor, 'see')
+
+    button('link').click()
+    await settle()
+
+    expect(editor.getText()).toBe('see [[')
+    expect(document.querySelector('[data-testid="page-link-menu"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="link-picker"]')).toBeNull()
+  })
+
+  it('opens the menu of pages at the start of an empty line without adding a space', async () => {
+    const w = await mountEditor()
+    const editor = await focusEditor(w)
+
+    button('link').click()
+    await settle()
+
+    expect(editor.getText()).toBe('[[')
+    expect(document.querySelector('[data-testid="page-link-menu"]')).not.toBeNull()
+  })
+
+  it('opens the menu of pages, not the picker, when the caret is right after a link that was just made', async () => {
+    useTreeStore().pages = [
+      { id: PAGE_ID, parentId: null, title: 'Target', sortKey: 'a0', version: 1, updatedAt: '' },
+    ]
+    const w = await mountEditor()
+    const editor = await focusEditor(w)
+    typeText(editor, 'hello world')
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    await settle()
+    button('link').click()
+    await settle()
+    document
+      .querySelector('[data-testid="link-picker-input"]')!
+      .dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+      )
+    await settle()
+    expect(editor.state.selection.from).toBe(12)
+    expect(document.querySelector('[data-testid="link-picker"]')).toBeNull()
+
+    button('link').click()
+    await settle()
+
+    // The caret is at the end of the link, not in it: the next link starts where the person is.
+    expect(document.querySelector('[data-testid="link-picker"]')).toBeNull()
+    expect(document.querySelector('[data-testid="page-link-menu"]')).not.toBeNull()
+    expect(editor.getText()).toBe('hello world [[')
+  })
+
+  it('shows the link button as pressed while the caret is in a link', async () => {
+    const w = await mountEditor()
+    const editor = await focusEditor(w)
+    typeText(editor, 'hello')
+    editor.commands.setTextSelection({ from: 1, to: 6 })
+    editor.commands.setLink({ href: 'https://example.com/' })
+    editor.commands.setTextSelection(3)
+    await settle()
+
+    expect(button('link').getAttribute('aria-pressed')).toBe('true')
   })
 
   it('sits above the keyboard, and the page leaves room for it', async () => {

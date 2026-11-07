@@ -34,3 +34,15 @@ export function isAllowedLink(href: string | null | undefined): boolean {
     return false
   }
 }
+
+/** The address the editor stores for a link to a page: `/p/<id>`, the one form the index of links and the import know. */
+export const pageHref = (pageId: string) => `/p/${pageId}`
+
+/**
+ * The address to store for a link the person made: a page of this app, whichever way it was written (a path, or its full address
+ * on this origin as the address bar and the clipboard have it), becomes `/p/<id>`. Anything else is left as it is.
+ */
+export function normalizeLinkHref(href: string, origin: string = window.location.origin): string {
+  const pageId = pageIdOfLink(href, origin)
+  return pageId ? pageHref(pageId) : href
+}

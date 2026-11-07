@@ -12,6 +12,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import SearchDialog from '../search/SearchDialog.vue'
+import { editorTakesSearchShortcut } from '../editor/linkShortcutRegistry'
 import { isSearchShortcut } from '../search/shortcut'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useAuthStore } from '../stores/auth'
@@ -123,6 +124,8 @@ watch(wide, (isWide) => {
 /** Ctrl+K, or Cmd+K on a Mac, from anywhere in the app, also inside the editor. */
 async function onShortcut(event: KeyboardEvent) {
   if (!isSearchShortcut(event)) return
+  // In the editor, with text selected or the caret in a link, it makes a link (run B.1b): the editor takes the key itself.
+  if (editorTakesSearchShortcut()) return
   event.preventDefault()
   if (drawerOpen.value) {
     // Two dialogs do not share the focus: the drawer makes way, as for the Search row in it.

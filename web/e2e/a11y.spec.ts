@@ -27,6 +27,12 @@ const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const EXCEPTIONS: { rule: string; html: string; reason: string }[] = [
   {
     rule: 'scrollable-region-focusable',
+    html: 'data-testid="page-link-menu"',
+    reason:
+      'The same as the slash menu: the editor keeps the focus while the menu is open, and the keyboard reaches every page through aria-activedescendant, which scrolls the active one into view.',
+  },
+  {
+    rule: 'scrollable-region-focusable',
     html: 'data-testid="slash-menu"',
     reason:
       'The editor keeps the focus while the menu is open, and the keyboard reaches every option through aria-activedescendant, which scrolls the active one into view. A focusable menu would take the focus out of the text.',
@@ -213,6 +219,43 @@ test('the slash menu', async ({ page }, testInfo) => {
   await page.keyboard.type('zzz')
   await expect(page.getByTestId('slash-menu')).toContainText('No results')
   await scan(page, testInfo, 'slash menu without results')
+})
+
+test('the menu of pages, the link picker and the link menu', async ({ page }, testInfo) => {
+  const target = unique(testInfo, 'Linked page')
+  await openNewPage(page, target)
+  await openNewPage(page, unique(testInfo, 'Links here'))
+  const body = page.getByTestId('editor').locator('.ProseMirror')
+  await body.click()
+
+  // [[ opens the menu of pages at the caret.
+  await page.keyboard.type('hello [[')
+  await expect(page.getByTestId('page-link-menu')).toBeVisible()
+  await expect(page.getByTestId('page-link-menu').getByRole('option').first()).toBeVisible()
+  await scan(page, testInfo, 'menu of pages')
+  await page.keyboard.type('zzzz')
+  await expect(page.getByTestId('page-link-menu')).toContainText('No pages found')
+  await scan(page, testInfo, 'menu of pages without results')
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('page-link-menu')).toBeHidden()
+  for (let i = 0; i < '[[zzzz'.length; i++) await page.keyboard.press('Backspace')
+
+  // Ctrl+K on selected text opens the picker, a dialog.
+  await page.keyboard.type('world')
+  for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowLeft')
+  await page.keyboard.press('ControlOrMeta+k')
+  await expect(page.getByTestId('link-picker')).toBeVisible()
+  await page.getByTestId('link-picker-input').fill(target.slice(-12))
+  await expect(page.getByTestId('link-picker').getByRole('option').first()).toBeVisible()
+  await scan(page, testInfo, 'link picker')
+  await page.keyboard.press('Enter')
+  await expect(page.getByTestId('link-picker')).toBeHidden()
+
+  // The menu under a link, with change and remove.
+  await body.getByRole('link', { name: 'world' }).click()
+  await expect(page.getByTestId('link-menu')).toBeVisible()
+  await expect(page.getByTestId('link-remove')).toBeVisible()
+  await scan(page, testInfo, 'link menu')
 })
 
 test('the block menu (a mouse) and the toolbar (a touch screen)', async ({ page }, testInfo) => {

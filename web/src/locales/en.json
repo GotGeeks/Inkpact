@@ -210,6 +210,11 @@
         "label": "File",
         "description": "Attach a file from your device",
         "keywords": "attachment upload pdf document"
+      },
+      "pageLink": {
+        "label": "Link to page",
+        "description": "Link to another page",
+        "keywords": "reference mention url internal"
       }
     },
     "slash": {
@@ -229,7 +234,8 @@
       "italic": "Italic",
       "code": "Code",
       "insert": "Insert a block",
-      "image": "Add an image"
+      "image": "Add an image",
+      "link": "Link"
     },
     "handle": {
       "label": "Block options",
@@ -244,7 +250,25 @@
       "open": "Open link",
       "openPage": "Open page",
       "inTrash": "This page is in the trash",
-      "unavailable": "This page is not available: it is in the trash, or it does not exist here"
+      "unavailable": "This page is not available: it is in the trash, or it does not exist here",
+      "change": "Change link",
+      "remove": "Remove link"
+    },
+    "pageLink": {
+      "label": "Link to a page",
+      "results": "{count} page found | {count} pages found",
+      "empty": "No pages found",
+      "in": "In {parent}"
+    },
+    "linkPicker": {
+      "title": "Link to",
+      "description": "Choose a page, or type a web address.",
+      "field": "Page or web address",
+      "pages": "Pages",
+      "webAddress": "Link to {address}",
+      "results": "{count} result | {count} results",
+      "empty": "No pages found",
+      "remove": "Remove link"
     },
     "table": {
       "label": "Table",

@@ -5,6 +5,9 @@ import * as Y from 'yjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createAppI18n, type Locale } from '../i18n'
 import { useSyncStore } from '../stores/sync'
+import { useTreeStore } from '../stores/tree'
+import { typeText } from '../testing/editor'
+import { editorTakesSearchShortcut } from './linkShortcutRegistry'
 import { FakeSyncHub } from '../testing/fakeSyncHub'
 import PageEditor from './PageEditor.vue'
 import { applyFirstParagraph, FIELD } from './firstParagraph'
@@ -359,5 +362,244 @@ describe('a large page', () => {
     await flushPromises()
 
     expect(document.querySelector('[data-testid="large-page"]')).toBeNull()
+  })
+})
+
+describe('making links', () => {
+  const ID_TARGET = '8a1c4e52-3b7d-8f06-9e21-5d4c3b2a1f40'
+  const ID_OTHER = '8a1c4e52-3b7d-8f06-9e21-5d4c3b2a1f41'
+
+  const picker = () => document.querySelector<HTMLElement>('[data-testid="link-picker"]')
+  const pickerOption = (text: string) =>
+    [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((option) =>
+      option.textContent!.includes(text),
+    )!
+  const pageMenu = () => document.querySelector('[data-testid="page-link-menu"]')
+
+  /** TipTap tells Vue about a new editor state after two animation frames. */
+  async function settle() {
+    await flushPromises()
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    )
+    await flushPromises()
+  }
+
+  async function mountWithPages(readOnly = false) {
+    useTreeStore().pages = [
+      {
+        id: ID_TARGET,
+        parentId: null,
+        title: 'The target',
+        sortKey: 'a0',
+        version: 1,
+        updatedAt: '',
+      },
+      {
+        id: ID_OTHER,
+        parentId: null,
+        title: 'Other page',
+        sortKey: 'a1',
+        version: 1,
+        updatedAt: '',
+      },
+    ]
+    const w = await mountEditor({ readOnly })
+    const editor = editorOf(w)
+    // jsdom only lets an element with a tab index take the focus; a browser does so for what can be edited.
+    editor.view.dom.tabIndex = 0
+    editor.commands.insertContent('hello world')
+    editor.view.dom.focus()
+    await settle()
+    return editor
+  }
+
+  function ctrlK(editor: Editor) {
+    const event = new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    editor.view.dom.dispatchEvent(event)
+    return event
+  }
+
+  const links = (editor: Editor) => {
+    const found: [string, string][] = []
+    editor.state.doc.descendants((node) => {
+      const mark = node.marks.find((m) => m.type.name === 'link')
+      if (node.isText && mark) found.push([node.text!, mark.attrs.href as string])
+    })
+    return found
+  }
+
+  it('links the selected text to a page with Ctrl+K, keeping its text, and the caret goes after the link', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+
+    const event = ctrlK(editor)
+    await settle()
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(picker()).not.toBeNull()
+    pickerOption('The target').click()
+    await settle()
+
+    expect(picker()).toBeNull()
+    expect(links(editor)).toEqual([['world', `/p/${ID_TARGET}`]])
+    expect(editor.getText()).toBe('hello world')
+    expect(editor.state.selection.empty).toBe(true)
+    expect(editor.state.selection.from).toBe(12)
+    expect(document.activeElement).toBe(editor.view.dom)
+    // What is typed next is not part of the link.
+    typeText(editor, 's')
+    expect(links(editor)).toEqual([['world', `/p/${ID_TARGET}`]])
+  })
+
+  it('links the selected text to a web address that is typed', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection({ from: 1, to: 6 })
+    ctrlK(editor)
+    await settle()
+
+    const field = document.querySelector<HTMLInputElement>('[data-testid="link-picker-input"]')!
+    field.value = 'https://example.com/'
+    field.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+    field.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    )
+    await settle()
+
+    expect(links(editor)).toEqual([['hello', 'https://example.com/']])
+  })
+
+  it('on Escape leaves the text as it was, selected again, with the focus back in the editor', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    ctrlK(editor)
+    await settle()
+
+    document
+      .querySelector('[role="dialog"]')!
+      .dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+      )
+    await settle()
+
+    expect(picker()).toBeNull()
+    expect(links(editor)).toEqual([])
+    expect(editor.state.selection.from).toBe(7)
+    expect(editor.state.selection.to).toBe(12)
+    expect(document.activeElement).toBe(editor.view.dom)
+  })
+
+  it('does not take Ctrl+K when nothing is selected and the caret is not in a link, so that search opens', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection(3)
+
+    const event = ctrlK(editor)
+    await settle()
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(picker()).toBeNull()
+    expect(editorTakesSearchShortcut()).toBe(false)
+  })
+
+  it('says to the app that the editor takes Ctrl+K only while it has the focus and there is something to link', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    expect(editorTakesSearchShortcut()).toBe(true)
+
+    editor.view.dom.blur()
+    expect(editorTakesSearchShortcut()).toBe(false)
+    editor.view.dom.focus()
+    editor.commands.setTextSelection(3)
+    expect(editorTakesSearchShortcut()).toBe(false)
+  })
+
+  it('does not take Ctrl+K on a page that cannot be edited', async () => {
+    const editor = await mountWithPages(true)
+    editor.commands.setTextSelection({ from: 1, to: 3 })
+
+    const event = ctrlK(editor)
+    await settle()
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(picker()).toBeNull()
+    expect(editorTakesSearchShortcut()).toBe(false)
+  })
+
+  it('with the caret in a link, Ctrl+K takes the whole link, to point it somewhere else', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    editor.commands.setLink({ href: `/p/${ID_TARGET}` })
+    editor.commands.setTextSelection(9)
+    await settle()
+
+    ctrlK(editor)
+    await settle()
+    expect(document.querySelector('[data-testid="link-picker-remove"]')).not.toBeNull()
+    pickerOption('Other page').click()
+    await settle()
+
+    expect(links(editor)).toEqual([['world', `/p/${ID_OTHER}`]])
+  })
+
+  it('takes the link away with the picker, keeping the text', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    editor.commands.setLink({ href: `/p/${ID_TARGET}` })
+    editor.commands.setTextSelection(9)
+    await settle()
+
+    ctrlK(editor)
+    await settle()
+    document.querySelector<HTMLButtonElement>('[data-testid="link-picker-remove"]')!.click()
+    await settle()
+
+    expect(links(editor)).toEqual([])
+    expect(editor.getText()).toBe('hello world')
+  })
+
+  it('has the link menu change a link, and remove it', async () => {
+    const editor = await mountWithPages()
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    editor.commands.setLink({ href: `/p/${ID_TARGET}` })
+    editor.commands.setTextSelection(9)
+    await settle()
+
+    expect(document.querySelector('[data-testid="link-menu"]')).not.toBeNull()
+    document.querySelector<HTMLButtonElement>('[data-testid="link-change"]')!.click()
+    await settle()
+    expect(picker()).not.toBeNull()
+    pickerOption('Other page').click()
+    await settle()
+    expect(links(editor)).toEqual([['world', `/p/${ID_OTHER}`]])
+
+    editor.commands.setTextSelection(9)
+    await settle()
+    document.querySelector<HTMLButtonElement>('[data-testid="link-remove"]')!.click()
+    await settle()
+    expect(links(editor)).toEqual([])
+    expect(editor.getText()).toBe('hello world')
+  })
+
+  it('lets [[ link to a page, in the page the editor is on', async () => {
+    const editor = await mountWithPages()
+    editor.commands.focus('end')
+
+    typeText(editor, ' see [[oth')
+    await settle()
+    expect(pageMenu()).not.toBeNull()
+    expect(document.querySelector('[role="option"]')!.textContent).toContain('Other page')
+    editor.view.dom.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    )
+    await settle()
+
+    expect(pageMenu()).toBeNull()
+    expect(links(editor)).toEqual([['Other page', `/p/${ID_OTHER}`]])
   })
 })

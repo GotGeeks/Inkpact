@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ySyncPluginKey } from '@tiptap/y-tiptap'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
-import type { Editor } from '@tiptap/core'
+import { getMarkRange, type Editor } from '@tiptap/core'
 import type { EditorView } from '@tiptap/pm/view'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ApiError } from '../api'
@@ -16,11 +16,17 @@ import { formatFileSize } from '../fileSize'
 import { uploadAttachment } from './attachmentApi'
 import { editorClasses } from './editorClasses'
 import { refreshBrokenLinks, type LinkTarget } from './brokenLinks'
+import { openPageMenu } from './blockCommands'
+import { registerLinkShortcut } from './linkShortcutRegistry'
+import { selectedRange } from './selectedRange'
+import { createPageMenuState } from './pageLinkExtension'
 import { createExtensions } from './extensions'
 import { applyFirstParagraph } from './firstParagraph'
 import BlockHandle from './BlockHandle.vue'
 import EditorToolbar from './EditorToolbar.vue'
 import LinkMenu from './LinkMenu.vue'
+import LinkPicker from './LinkPicker.vue'
+import PageLinkMenu from './PageLinkMenu.vue'
 import { sanitizePastedHtml } from './sanitize'
 import SlashMenu from './SlashMenu.vue'
 import { openLinkIn } from './linkOpening'
@@ -73,6 +79,79 @@ function checkProjection(current: Editor) {
 }
 
 const slashState = createSlashState()
+const pageMenuState = createPageMenuState()
+
+/** What the link picker is about: the text that gets the link, as it was when the picker opened. */
+const picker = reactive({ open: false, from: 0, to: 0, hasLink: false })
+
+/**
+ * Opens the picker for the selected text, or for the whole link when the caret is in one (to change it). False when there is
+ * nothing to link: an empty selection outside a link, or a page that cannot be edited.
+ */
+function openLinkPicker(): boolean {
+  const current = editor.value
+  if (!current || !editable.value) return false
+  const { selection, schema } = current.state
+  const linkType = schema.marks.link
+  if (!linkType) return false
+  // What is selected as the browser has it (see `selectedRange`), else the link the caret is in. Only when it really is in
+  // one: `getMarkRange` also finds the link that ends right at the caret, which is where the caret is after a link was made.
+  const range =
+    selectedRange(current.view) ??
+    (current.isActive('link') ? getMarkRange(selection.$from, linkType) : null)
+  if (!range || range.from === range.to) return false
+  picker.from = range.from
+  picker.to = range.to
+  picker.hasLink = current.state.doc.rangeHasMark(range.from, range.to, linkType)
+  picker.open = true
+  return true
+}
+
+/** Back to the text, with what was selected selected again, or the caret after the link that was made. */
+function closePicker(caretAfter: boolean) {
+  picker.open = false
+  const current = editor.value
+  if (!current) return
+  const chain = current.chain().focus()
+  // After a link that was made or changed, what is typed next is not part of it (see `insertPageLink`).
+  if (caretAfter) chain.setTextSelection(picker.to).unsetMark('link')
+  else chain.setTextSelection({ from: picker.from, to: picker.to })
+  chain.run()
+}
+
+function chooseLink(href: string) {
+  const current = editor.value
+  if (!current) return
+  current
+    .chain()
+    .focus()
+    .setTextSelection({ from: picker.from, to: picker.to })
+    .setLink({ href })
+    .run()
+  closePicker(true)
+}
+
+function removeLink() {
+  const current = editor.value
+  if (!current) return
+  current.chain().focus().setTextSelection({ from: picker.from, to: picker.to }).unsetLink().run()
+  closePicker(true)
+}
+
+/** The link button of the toolbar: the picker for selected text, otherwise `[[`, which opens the menu of pages. */
+function toolbarLink() {
+  const current = editor.value
+  if (!current || !editable.value) return
+  if (!openLinkPicker()) openPageMenu(current)
+}
+
+// Ctrl+K: the editor takes it, and not search, when there is text to link (the app asks before it opens search).
+const stopLinkShortcut = registerLinkShortcut(
+  () =>
+    !!editor.value?.view.hasFocus() &&
+    editable.value &&
+    (selectedRange(editor.value.view) !== null || editor.value.isActive('link')),
+)
 
 // The drag handle: the extension moves this element next to the block under the mouse, and BlockHandle fills it. Only
 // with a mouse; on a touch screen the toolbar and the slash menu do this.
@@ -96,6 +175,8 @@ useKeyboardInset(showToolbar)
  * the focus has settled; otherwise the toolbar would go away under the finger that reaches for it.
  */
 function refreshFocus() {
+  // A blur that came just before the person left the page is looked at after the editor is gone: nothing to ask then.
+  if (editor.value?.isDestroyed) return
   const active = document.activeElement
   focusWithin.value =
     !!active &&
@@ -167,6 +248,13 @@ const editor = useEditor({
     // Written out, so the lint rule that finds unused translations can see the keys.
     checkboxLabel: (checked) => (checked ? t('editor.checkboxDone') : t('editor.checkboxNotDone')),
     slash: { state: slashState, translate: (key) => t(key) },
+    pageLinks: {
+      state: pageMenuState,
+      pages: () => tree.pages,
+      currentPageId: () => props.pageId,
+      untitled: () => t('tree.untitled'),
+    },
+    linkShortcut: { open: openLinkPicker },
     openLink,
     brokenLinks: {
       stateOf: linkTarget,
@@ -273,6 +361,7 @@ watch([() => tree.pages, () => tree.trash, () => tree.loaded], () => {
 })
 
 onBeforeUnmount(() => {
+  stopLinkShortcut()
   dropFocusRequest()
   editor.value?.destroy()
   sync.close(props.pageId)
@@ -320,10 +409,20 @@ defineExpose({ focus: focusAtStart })
       {{ t('editor.attachment.uploading', { count: uploading }, uploading) }}
     </p>
     <SlashMenu :state="slashState" :reserve-bottom="showToolbar ? TOOLBAR_HEIGHT : 0" />
+    <PageLinkMenu :state="pageMenuState" :reserve-bottom="showToolbar ? TOOLBAR_HEIGHT : 0" />
+    <LinkPicker
+      :open="picker.open"
+      :page-id="pageId"
+      :has-link="picker.hasLink"
+      @choose="chooseLink"
+      @remove="removeLink"
+      @cancel="closePicker(false)"
+    />
     <LinkMenu
       v-if="editor && inLink"
       :editor="editor"
       :open="openLink"
+      @change="openLinkPicker"
       @focusin="refreshFocus"
       @focusout="focusChanged"
     />
@@ -337,6 +436,7 @@ defineExpose({ focus: focusAtStart })
     <EditorToolbar
       v-if="editor && showToolbar"
       :editor="editor"
+      @link="toolbarLink"
       @focusin="refreshFocus"
       @focusout="focusChanged"
     />

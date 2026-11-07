@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computePosition, flip, offset, shift, size } from '@floating-ui/dom'
-import { computed, nextTick, reactive, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppIcon from '../components/AppIcon.vue'
 import type { BlockCategory, BlockCommand } from './blockCommands'
 import { SLASH_LISTBOX_ID, slashOptionId, type SlashState } from './slashExtension'
+import { useMenuPlacement } from './useMenuPlacement'
 
 const props = defineProps<{
   state: SlashState
@@ -14,10 +14,13 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const menu = useTemplateRef<HTMLElement>('menu')
-// Positions go through the style object (CSSOM), which the strict policy allows; a `style` attribute it does not.
-// Hidden until it has a place, so it does not flash in a corner of the screen first.
-const placed = ref(false)
-const position = reactive({ left: 0, top: 0, maxHeight: 320 })
+const { placed, position } = useMenuPlacement({
+  menu,
+  open: () => props.state.open,
+  anchor: () => props.state.anchor,
+  reserveBottom: () => props.reserveBottom,
+  changes: () => [props.state.items.length],
+})
 
 const categories: BlockCategory[] = ['basic', 'lists', 'blocks']
 function categoryLabel(category: BlockCategory): string {
@@ -39,61 +42,6 @@ const groups = computed(() =>
 function indexOf(item: BlockCommand): number {
   return props.state.items.indexOf(item)
 }
-
-async function place() {
-  const el = menu.value
-  const anchor = props.state.anchor
-  if (!el || !anchor) return
-  // The visible part of the screen: with the keyboard open it is smaller than the layout viewport.
-  const view = window.visualViewport
-  const boundary = {
-    x: view?.offsetLeft ?? 0,
-    y: view?.offsetTop ?? 0,
-    width: view?.width ?? window.innerWidth,
-    height: (view?.height ?? window.innerHeight) - props.reserveBottom,
-  }
-  const caret = {
-    getBoundingClientRect: () => ({
-      x: anchor.left,
-      y: anchor.top,
-      left: anchor.left,
-      top: anchor.top,
-      right: anchor.right,
-      bottom: anchor.bottom,
-      width: anchor.right - anchor.left,
-      height: anchor.bottom - anchor.top,
-    }),
-  }
-  const result = await computePosition(caret, el, {
-    strategy: 'fixed',
-    placement: 'bottom-start',
-    middleware: [
-      offset(4),
-      flip({ rootBoundary: boundary, padding: 8 }),
-      shift({ rootBoundary: boundary, padding: 8 }),
-      size({
-        rootBoundary: boundary,
-        padding: 8,
-        apply: ({ availableHeight }) => {
-          position.maxHeight = Math.max(120, Math.min(320, availableHeight))
-        },
-      }),
-    ],
-  })
-  position.left = result.x
-  position.top = result.y
-  placed.value = true
-}
-
-watch(
-  () => [props.state.open, props.state.anchor, props.state.items.length, props.reserveBottom],
-  async () => {
-    if (!props.state.open) placed.value = false
-    await nextTick()
-    await place()
-  },
-  { flush: 'post' },
-)
 
 // The chosen option stays in view while the arrow keys move through a long list.
 watch(

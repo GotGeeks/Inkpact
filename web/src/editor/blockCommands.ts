@@ -152,7 +152,31 @@ export const blockCommands: readonly BlockCommand[] = [
     run: (editor, range) => pickFiles(editor, range, 'file'),
     insertOnly: true,
   },
+  {
+    id: 'pageLink',
+    category: 'blocks',
+    icon: 'link',
+    label: (t) => t('editor.blocks.pageLink.label'),
+    description: (t) => t('editor.blocks.pageLink.description'),
+    keywords: (t) => t('editor.blocks.pageLink.keywords'),
+    run: (editor, range) => openPageMenu(editor, range),
+    insertOnly: true,
+  },
 ]
+
+/**
+ * Types `[[`, which opens the menu of pages (`pageLinkExtension.ts`). The menu only opens at the start of a line or after a space,
+ * so one is added when the caret follows text. The slash menu's "Link to page" and the toolbar's link button both come here:
+ * one way in, one code path. With `range` (what was typed to find the command) that is removed first.
+ */
+export function openPageMenu(editor: Editor, range?: Range) {
+  const chain = begin(editor, range)
+  const { $from } = editor.state.selection
+  // What is before the caret once the range is gone: the range starts where the caret goes.
+  const at = range ? range.from : $from.pos
+  const before = editor.state.doc.textBetween(Math.max($from.start(), at - 1), at)
+  chain.insertContent(before && before !== ' ' ? ' [[' : '[[').run()
+}
 
 /** Opens the file picker; the file goes in once it is uploaded. Nothing happens in an editor that cannot upload. */
 function pickFiles(editor: Editor, range: Range | undefined, kind: 'image' | 'file') {

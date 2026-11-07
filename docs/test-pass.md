@@ -59,6 +59,13 @@ This file collects everything that needs a person, a phone or the Unraid box. Ev
 - [ ] Trash a page that others link to: their links to it are struck through, and "Linked from" on it still lists what links to it. Restore it: the links are whole again.
 - [ ] Open a note with a broken link with a screen reader (TalkBack): the reason is read after the link.
 
+### B.1b: making links
+- [ ] On the phone, with the on-screen keyboard open: type `[[` in a note and pick a page; the link opens that page. Then select a word, tap the Link button in the toolbar and link it to a page; then tap the Link button with nothing selected: the menu of pages opens.
+- [ ] On the laptop: select a word and press Ctrl+K, link it to a page; press Ctrl+K again with nothing selected: search opens.
+- [ ] Link a word to a web address with Ctrl+K, then change it and remove it from the menu under the link.
+- [ ] Paste a page's address from the address bar into another page: after a few minutes the other page lists it under "Linked from".
+- [ ] With TalkBack (phone) or a screen reader (laptop): the menu of pages and the picker are announced, with the number of results and the option that is chosen.
+
 Runs B.2 to B.8 add their checks here.
 
 ## Phase 2

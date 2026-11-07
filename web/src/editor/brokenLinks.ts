@@ -2,6 +2,7 @@ import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
+import { changedRanges } from './changedRanges'
 import { pageIdOfLink } from './links'
 
 /** How the page a link points to is now: there, in the trash, or not to be found (gone, under a page in the trash, or another workspace's). */
@@ -100,23 +101,10 @@ function decorationsAfter(
   const doc = transaction.doc
   // The blocks to look at again, each once, by their range in the document as it is now.
   const blocks = new Map<string, [number, number]>()
-  const rescan = (start: number, end: number) => {
+  for (const [start, end] of changedRanges(transaction)) {
     const [from, to] = blockAround(doc, start, end)
     blocks.set(`${from}:${to}`, [from, to])
   }
-  transaction.steps.forEach((step, index) => {
-    // What the step replaced, in the document as it is now.
-    const after = transaction.mapping.slice(index + 1)
-    step.getMap().forEach((_oldStart, _oldEnd, newStart, newEnd) => {
-      rescan(after.map(newStart, -1), after.map(newEnd, 1))
-    })
-    // A step that changes marks or attributes moves nothing, so its map is empty: its own range says where it was.
-    const { from, to } = step as unknown as { from?: unknown; to?: unknown }
-    if (typeof from === 'number' && typeof to === 'number') {
-      const through = transaction.mapping.slice(index)
-      rescan(through.map(from, -1), through.map(to, 1))
-    }
-  })
 
   let set = previous.map(transaction.mapping, doc)
   for (const [from, to] of blocks.values()) {
