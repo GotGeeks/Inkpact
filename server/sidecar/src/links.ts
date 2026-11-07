@@ -2,23 +2,16 @@ import * as Y from 'yjs'
 import { FIELD } from './build.ts'
 
 /**
- * The page a link points to, from its address: exactly `/p/<id>` (how the editor and the Joplin import write a link between
- * notes), or that path on a full `http(s)` address (a copied page address). Any host: the server does not know the name the
- * app is reached by, and a link to a page of another installation finds no page here. No query, no fragment, no extra path.
+ * The page a link points to, from its address: exactly `/p/<id>`, which is how the editor and the Joplin import write a link
+ * between notes (the editor stores a page address pasted in full, on its own origin, as `/p/<id>` too). A full address is
+ * not read: the server does not know which host names are its own (one installation is often reached under two), so it
+ * could not tell a page of its own from a page of another installation, and the editor, which does know, would disagree
+ * with it. No query, no fragment, no extra path.
  */
 const PAGE_PATH = /^\/p\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/
 
 export function pageIdOfHref(href: string): string | null {
-  const direct = PAGE_PATH.exec(href)
-  if (direct) return direct[1]!
-  try {
-    const url = new URL(href)
-    if ((url.protocol !== 'http:' && url.protocol !== 'https:') || url.search || url.hash)
-      return null
-    return PAGE_PATH.exec(url.pathname)?.[1] ?? null
-  } catch {
-    return null
-  }
+  return PAGE_PATH.exec(href)?.[1] ?? null
 }
 
 /**

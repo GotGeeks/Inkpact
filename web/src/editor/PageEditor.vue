@@ -145,9 +145,10 @@ const openLink = openLinkIn(router)
  * What a page that a link points to is now, by the tree this tab has: there, in the trash, or not to be found. Until the tree
  * is read nothing is known, so nothing is marked rather than every link for a moment.
  */
+const trashed = computed(() => new Set(tree.trash.map((page) => page.id)))
 function linkTarget(pageId: string): LinkTarget {
   if (!tree.loaded || tree.byId.has(pageId)) return 'live'
-  return tree.trash.some((page) => page.id === pageId) ? 'trash' : 'unavailable'
+  return trashed.value.has(pageId) ? 'trash' : 'unavailable'
 }
 
 function attributes() {
@@ -225,18 +226,29 @@ const inLink = computed(
 /**
  * A request for the focus (Enter in the title) that came before the page could be typed into: a page that is still being
  * read from the server is not editable, and the request would be dropped, with the person's next keystrokes going nowhere.
- * It is kept for a moment and carried out the moment the editor can be typed into; after that the person has moved on.
+ * It is kept for a moment and carried out the moment the editor can be typed into. Anything the person does meanwhile (a
+ * key, a click or a tap anywhere) means they went on without the editor, and the request is dropped: the focus is never
+ * taken from where they are typing. After a few seconds it is dropped too.
  */
 const FOCUS_REQUEST_LIFETIME_MS = 5000
 let focusRequestedAt = 0
 
+function dropFocusRequest() {
+  focusRequestedAt = 0
+  document.removeEventListener('keydown', dropFocusRequest, true)
+  document.removeEventListener('pointerdown', dropFocusRequest, true)
+}
+
 function focusAtStart() {
+  dropFocusRequest()
   if (editable.value) {
-    focusRequestedAt = 0
     editor.value?.commands.focus('start')
-  } else {
-    focusRequestedAt = Date.now()
+    return
   }
+  focusRequestedAt = Date.now()
+  // Added while the key that asked (Enter) is being handled, so that key itself does not drop it.
+  document.addEventListener('keydown', dropFocusRequest, true)
+  document.addEventListener('pointerdown', dropFocusRequest, true)
 }
 
 watch(
@@ -246,7 +258,7 @@ watch(
     handleElement.toggleAttribute('hidden', !can)
     if (can && focusRequestedAt > 0) {
       const fresh = Date.now() - focusRequestedAt < FOCUS_REQUEST_LIFETIME_MS
-      focusRequestedAt = 0
+      dropFocusRequest()
       if (fresh) current?.commands.focus('start')
     }
   },
@@ -261,6 +273,7 @@ watch([() => tree.pages, () => tree.trash, () => tree.loaded], () => {
 })
 
 onBeforeUnmount(() => {
+  dropFocusRequest()
   editor.value?.destroy()
   sync.close(props.pageId)
 })

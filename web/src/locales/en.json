@@ -274,7 +274,7 @@
     "children": "Pages in here",
     "childCount": "{count} page | {count} pages",
     "backlinks": "Linked from {count} page | Linked from {count} pages",
-    "backlinksMore": "There are more pages that link here than are shown."
+    "backlinksMany": "Linked from more than {count} pages"
   },
   "start": {
     "title": "Welcome",

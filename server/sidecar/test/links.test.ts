@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
-import { OP_COMPACT, handle } from '../src/ops.ts'
+import { OP_COMPACT, OP_LINKS, handle } from '../src/ops.ts'
 import { pageIdOfHref, pageLinks } from '../src/links.ts'
 import { text, typed } from './helpers.ts'
 
@@ -34,10 +34,8 @@ function documentWith(build: (root: Y.XmlFragment) => void): Y.Doc {
 }
 
 describe('pageIdOfHref', () => {
-  it('reads /p/<id>, and that path on a full address of any host', () => {
+  it('reads /p/<id>, the address the editor and the import write', () => {
     expect(pageIdOfHref(`/p/${A}`)).toBe(A)
-    expect(pageIdOfHref(`https://notes.example.com/p/${A}`)).toBe(A)
-    expect(pageIdOfHref(`http://localhost:5036/p/${A}`)).toBe(A)
   })
 
   it.each([
@@ -48,8 +46,9 @@ describe('pageIdOfHref', () => {
     ['upper case', `/p/${A.toUpperCase()}`],
     ['no id', '/p/'],
     ['a short id', '/p/1234'],
-    ['a query on a full address', `https://notes.example.com/p/${A}?x=1`],
-    ['a fragment on a full address', `https://notes.example.com/p/${A}#top`],
+    // The server cannot tell its own host names from another installation's; the editor stores its own as /p/<id>.
+    ['a full address', `https://notes.example.com/p/${A}`],
+    ['a full address on the LAN', `http://192.168.1.10/p/${A}`],
     ['mail', 'mailto:a@example.com'],
     ['javascript', `javascript:alert("/p/${A}")`],
     ['a data address', `data:text/html,/p/${A}`],
@@ -64,7 +63,7 @@ describe('pageLinks', () => {
   it('finds the pages the link marks of a page point to, once each and sorted', () => {
     const doc = documentWith((root) => {
       paragraph(root, [['see '], ['b', link(`/p/${B}`)], [' and '], ['a', link(`/p/${A}`)]])
-      paragraph(root, [['b again', link(`https://host.example/p/${B}`)]])
+      paragraph(root, [['b again', link(`/p/${B}`)]])
     })
 
     expect(pageLinks(doc)).toEqual([A, B])
@@ -132,6 +131,33 @@ describe('pageLinks', () => {
     })
 
     expect(pageLinks(doc)).toEqual([A])
+  })
+})
+
+describe('the links-only operation', () => {
+  it('answers with the links of the replayed inputs alone, as the compaction would', () => {
+    const updates = typed(
+      (doc) => paragraph(doc.getXmlFragment('default'), [['a', link(`/p/${A}`)]]),
+      (doc) => paragraph(doc.getXmlFragment('default'), [['b', link(`/p/${B}`)]]),
+    )
+
+    const answer = handle(OP_LINKS, updates)
+
+    expect(answer).toHaveLength(1)
+    expect(text(answer[0])).toBe(`${A}\n${B}`)
+    expect(text(answer[0])).toBe(text(handle(OP_COMPACT, updates)[5]))
+  })
+
+  it('answers with an empty part for a page without links, and for no inputs at all', () => {
+    expect(
+      text(
+        handle(
+          OP_LINKS,
+          typed((doc) => doc.getMap('m').set('k', 'v')),
+        )[0],
+      ),
+    ).toBe('')
+    expect(text(handle(OP_LINKS, [])[0])).toBe('')
   })
 })
 

@@ -37,28 +37,37 @@ public static class BacklinkEndpoints
             .Join(db.Pages.AsNoTracking(), l => l.SourcePageId, p => p.Id, (_, p) => new { p.Id, p.WorkspaceId, p.Title, p.ParentId })
             .ToListAsync(cancellationToken);
 
-        var visible = new List<(Guid Id, string Title, Guid? ParentId)>();
+        // Live first: the same function the tree and search read, so not the trash, nor anything below it.
+        var live = new List<(Guid Id, string Title, Guid? ParentId)>();
         foreach (var inWorkspace in sources.GroupBy(s => s.WorkspaceId))
         {
-            // Not what the person may not see, whichever workspace the link comes from.
-            if (await permissions.GetWorkspaceRoleAsync(userId, inWorkspace.Key, cancellationToken) < WorkspaceRole.Viewer)
+            Guid[] ids = [.. inWorkspace.Select(s => s.Id)];
+            var alive = (await db.Database
+                .SqlQuery<Guid>($"""SELECT page_id AS "Value" FROM live_pages({inWorkspace.Key}) WHERE page_id = ANY({ids})""")
+                .ToListAsync(cancellationToken)).ToHashSet();
+            live.AddRange(inWorkspace.Where(s => alive.Contains(s.Id)).Select(s => (s.Id, s.Title, s.ParentId)));
+        }
+
+        // Then what the person may see, page by page, through the one place that decides it (shares of a page arrive there
+        // in run 2.2). In title order, and only until one more than fits, which is all the answer needs.
+        var page = new List<(Guid Id, string Title, Guid? ParentId)>();
+        var more = false;
+        foreach (var source in live.OrderBy(s => s.Title, StringComparer.OrdinalIgnoreCase).ThenBy(s => s.Id))
+        {
+            if (await permissions.GetPageRoleAsync(userId, source.Id, cancellationToken) < WorkspaceRole.Viewer)
             {
                 continue;
             }
 
-            // The same function the tree and search read: not the trash, nor anything below it.
-            Guid[] ids = [.. inWorkspace.Select(s => s.Id)];
-            var live = (await db.Database
-                .SqlQuery<Guid>($"""SELECT page_id AS "Value" FROM live_pages({inWorkspace.Key}) WHERE page_id = ANY({ids})""")
-                .ToListAsync(cancellationToken)).ToHashSet();
-            visible.AddRange(inWorkspace.Where(s => live.Contains(s.Id)).Select(s => (s.Id, s.Title, s.ParentId)));
+            if (page.Count == MaxBacklinks)
+            {
+                more = true;
+                break;
+            }
+
+            page.Add(source);
         }
 
-        var page = visible
-            .OrderBy(s => s.Title, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(s => s.Id)
-            .Take(MaxBacklinks)
-            .ToList();
         Guid[] parentIds = [.. page.Where(s => s.ParentId is not null).Select(s => s.ParentId!.Value).Distinct()];
         var parentTitles = await db.Pages.AsNoTracking()
             .Where(p => parentIds.Contains(p.Id))
@@ -66,6 +75,6 @@ public static class BacklinkEndpoints
 
         return Results.Ok(new BacklinksDto(
             [.. page.Select(s => new BacklinkDto(s.Id, s.Title, s.ParentId is { } parent ? parentTitles.GetValueOrDefault(parent) : null))],
-            visible.Count > MaxBacklinks));
+            more));
     }
 }

@@ -113,6 +113,65 @@ describe('a link to a page that is not there', () => {
   })
 })
 
+describe('a change to the document', () => {
+  function twoParagraphs(
+    states: Record<string, LinkTarget>,
+    stateOf = (id: string) => states[id] ?? 'live',
+  ) {
+    const editor = makeEditor({ brokenLinks: { stateOf, describe: () => 'gone' } })
+    editor.commands.setContent({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [link(`/p/${GONE}`, 'first')] },
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'plain ' }, link(`/p/${TRASHED}`, 'second')],
+        },
+      ],
+    })
+    return editor
+  }
+
+  it('keeps the marks of the blocks it did not touch, and moves them along', () => {
+    const editor = twoParagraphs({ [GONE]: 'unavailable', [TRASHED]: 'trash' })
+
+    // A new block above both: everything moves, nothing about the links changes.
+    editor.commands.insertContentAt(0, {
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'new' }],
+    })
+
+    expect(marked(editor).map((m) => [m.text, m.state])).toEqual([
+      ['first', 'unavailable'],
+      ['second', 'trash'],
+    ])
+    expect(notes(editor)).toHaveLength(2)
+  })
+
+  it('takes away the mark of a link that was removed, and of its text when that goes', () => {
+    const editor = twoParagraphs({ [GONE]: 'unavailable', [TRASHED]: 'trash' })
+
+    editor.chain().setTextSelection({ from: 1, to: 6 }).unsetLink().run()
+
+    expect(marked(editor).map((m) => m.text)).toEqual(['second'])
+    expect(notes(editor)).toHaveLength(1)
+  })
+
+  it('does not look up the pages of the links outside what changed', () => {
+    const asked: string[] = []
+    const editor = twoParagraphs({}, (id) => {
+      asked.push(id)
+      return 'live'
+    })
+    asked.length = 0
+
+    // Typing into the first paragraph: only its link is looked at again.
+    editor.commands.insertContentAt(1, 'x')
+
+    expect(asked).toEqual([GONE])
+  })
+})
+
 describe('what is not marked', () => {
   it('a link to a page that is there, a link to the web and plain text', () => {
     const editor = editorWith(

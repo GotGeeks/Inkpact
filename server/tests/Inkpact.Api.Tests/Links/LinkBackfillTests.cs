@@ -4,6 +4,7 @@ using Inkpact.Api.Links;
 using Inkpact.Api.Tests.Compaction;
 using Inkpact.Api.Tests.Crdt;
 using Inkpact.Api.Tests.Testing;
+using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -11,26 +12,41 @@ using NSubstitute;
 namespace Inkpact.Api.Tests.Links;
 
 /// <summary>
-/// The job that puts the links of the pages that exist from before the link index into it (run B.1): read-only on the page
-/// content, one transaction and the compactor's lock per page, and never in the way of a compaction.
+/// The job that puts the links of the pages that exist from before the link index into it (run B.1): only pages that are
+/// compacted and have no live updates (the compactor indexes the others), only their snapshot read and only its links asked
+/// for, one transaction and the compactor's lock per page, and nothing it meets can stop the host.
 /// </summary>
 public class LinkBackfillTests(PostgresFixture postgres, YjsSidecarFixture yjs) : CompactionTestBase(postgres, yjs), IClassFixture<YjsSidecarFixture>
 {
     private static readonly Guid A = LinkIndexTests.Targets[0];
     private static readonly Guid B = LinkIndexTests.Targets[1];
 
-    private LinkBackfill CreateBackfill(IYjsCodec? codec = null, Action<LinkIndexOptions>? configure = null)
+    private LinkBackfill CreateBackfill(
+        IYjsCodec? codec = null, Action<LinkIndexOptions>? configure = null, bool sidecarEnabled = true, string? connectionString = null)
     {
         var options = new LinkIndexOptions { RetryDelay = TimeSpan.FromMilliseconds(20) };
         configure?.Invoke(options);
-        return new LinkBackfill(Factory, Store, codec ?? Codec, options, NullLogger<LinkBackfill>.Instance);
+        return new LinkBackfill(
+            connectionString is null ? Factory : new TestDbContextFactory(connectionString),
+            Store,
+            codec ?? Codec,
+            options,
+            new SidecarOptions { Enabled = sidecarEnabled },
+            NullLogger<LinkBackfill>.Instance);
     }
 
-    /// <summary>A page as it is from before the index: content with links, nothing indexed.</summary>
-    private async Task<Guid> PageWithLinksAsync(params Guid[] targets)
+    /// <summary>
+    /// A page as one is from before the index: compacted (a snapshot and nothing live) with links in it, and not indexed. The
+    /// snapshot is written straight, as a compaction before this run did, without the links.
+    /// </summary>
+    private async Task<Guid> LegacyPageAsync(params Guid[] targets)
     {
         var pageId = await AddPageAsync();
-        await AppendAsync(pageId, [await Codec.BuildAsync(LinkIndexTests.Document(LinkIndexTests.PageAddresses(targets)), default)]);
+        var update = await Codec.BuildAsync(LinkIndexTests.Document(LinkIndexTests.PageAddresses(targets)), default);
+        var merged = await Codec.CompactAsync([update], default);
+        await using var db = CreateContext();
+        db.PageSnapshots.Add(new PageSnapshot { PageId = pageId, State = merged.State, StateVector = merged.StateVector, Watermark = 1, Version = 1, UpdateCount = 1, UpdatedAt = Start });
+        await db.SaveChangesAsync();
         return pageId;
     }
 
@@ -46,10 +62,33 @@ public class LinkBackfillTests(PostgresFixture postgres, YjsSidecarFixture yjs) 
         return await db.Pages.AsNoTracking().Where(p => p.Id == pageId).Select(p => p.LinksIndexed).SingleAsync();
     }
 
-    [Fact]
-    public async Task A_page_from_before_the_index_gets_its_links_and_is_marked_without_being_compacted()
+    /// <summary>The real codec, but asking for the links of the page whose snapshot is <paramref name="snapshot"/> throws <paramref name="error"/>.</summary>
+    private IYjsCodec FailingFor(byte[] snapshot, Exception error)
     {
-        var pageId = await PageWithLinksAsync(B, A);
+        var codec = Substitute.For<IYjsCodec>();
+        codec.LinksAsync(Arg.Any<IReadOnlyList<byte[]>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var inputs = call.Arg<IReadOnlyList<byte[]>>();
+                return inputs.Count == 1 && inputs[0].AsSpan().SequenceEqual(snapshot)
+                    ? throw error
+                    : Codec.LinksAsync(inputs, default);
+            });
+        return codec;
+    }
+
+    private async Task<byte[]> SnapshotOfAsync(Guid pageId)
+    {
+        await using var db = CreateContext();
+        return await db.PageSnapshots.AsNoTracking().Where(s => s.PageId == pageId).Select(s => s.State).SingleAsync();
+    }
+
+    // ---- what it indexes ---------------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task A_compacted_page_from_before_the_index_gets_its_links_and_is_marked_without_anything_else_changing()
+    {
+        var pageId = await LegacyPageAsync(B, A);
         var before = (await ReadStoredAsync(pageId)).Summary;
 
         var pass = await CreateBackfill().RunPassAsync(default);
@@ -57,14 +96,13 @@ public class LinkBackfillTests(PostgresFixture postgres, YjsSidecarFixture yjs) 
         pass.ShouldBe(new BackfillPass(1, 0, 0, false));
         (await IndexedAsync(pageId)).ShouldBe([A, B]);
         (await VersionOfAsync(pageId)).ShouldBe(LinkIndex.Version);
-        // Read-only: no snapshot, no archive, the live updates as they were.
         (await ReadStoredAsync(pageId)).Summary.ShouldBe(before);
     }
 
     [Fact]
     public async Task A_second_pass_finds_nothing_to_do_and_a_page_without_content_is_marked_too()
     {
-        var linked = await PageWithLinksAsync(A);
+        var linked = await LegacyPageAsync(A);
         var empty = await AddPageAsync();
 
         var first = await CreateBackfill().RunPassAsync(default);
@@ -78,12 +116,26 @@ public class LinkBackfillTests(PostgresFixture postgres, YjsSidecarFixture yjs) 
     }
 
     [Fact]
+    public async Task A_page_with_live_updates_is_left_to_the_compactor_which_indexes_it_when_it_compacts_it()
+    {
+        var live = await AddPageAsync();
+        await AppendAsync(live, [await Codec.BuildAsync(LinkIndexTests.Document($"/p/{A}"), default)]);
+
+        var pass = await CreateBackfill().RunPassAsync(default);
+
+        pass.ShouldBe(new BackfillPass(0, 0, 0, false));
+        (await VersionOfAsync(live)).ShouldBe(0);
+        (await CreateCompactor().CompactAsync(live, default)).ShouldBe(CompactionResult.Compacted);
+        (await IndexedAsync(live)).ShouldBe([A]);
+    }
+
+    [Fact]
     public async Task Pages_are_indexed_batch_after_batch_and_a_page_in_the_trash_is_indexed_too()
     {
         var pages = new List<Guid>();
         for (var i = 0; i < 5; i++)
         {
-            pages.Add(await PageWithLinksAsync(A));
+            pages.Add(await LegacyPageAsync(A));
         }
 
         await using (var db = CreateContext())
@@ -101,42 +153,45 @@ public class LinkBackfillTests(PostgresFixture postgres, YjsSidecarFixture yjs) 
     }
 
     [Fact]
-    public async Task A_page_that_is_being_compacted_is_left_to_the_compactor_which_indexes_it_itself()
+    public async Task A_page_that_the_compactor_holds_is_left_to_it_and_indexed_by_a_later_pass()
     {
-        var pageId = await PageWithLinksAsync(A);
-        var other = await PageWithLinksAsync(B);
+        var held = await LegacyPageAsync(A);
+        var other = await LegacyPageAsync(B);
         var reached = new TaskCompletionSource();
         var release = new TaskCompletionSource();
         Hooks.OnStage = async stage =>
         {
-            if (stage == CompactionStage.Read)
+            if (stage == CompactionStage.Locked)
             {
                 reached.TrySetResult();
                 await release.Task;
             }
         };
-        var compaction = CreateCompactor().CompactAsync(pageId, default);
+        var compaction = CreateCompactor().CompactAsync(held, default);
         await reached.Task;
 
         var pass = await CreateBackfill().RunPassAsync(default);
 
         pass.ShouldBe(new BackfillPass(1, 1, 0, false));
         (await IndexedAsync(other)).ShouldBe([B]);
-        (await IndexedAsync(pageId)).ShouldBeEmpty();
+        (await VersionOfAsync(held)).ShouldBe(0);
         release.SetResult();
-        (await compaction).ShouldBe(CompactionResult.Compacted);
-        (await IndexedAsync(pageId)).ShouldBe([A]);
-        (await CreateBackfill().RunPassAsync(default)).ShouldBe(new BackfillPass(0, 0, 0, false));
+        // Nothing live: the compactor has nothing to do, and indexes nothing either.
+        (await compaction).ShouldBe(CompactionResult.NothingToDo);
+        (await CreateBackfill().RunPassAsync(default)).ShouldBe(new BackfillPass(1, 0, 0, false));
+        (await IndexedAsync(held)).ShouldBe([A]);
     }
+
+    // ---- what goes wrong -----------------------------------------------------------------------------------------------------
 
     [Fact]
     public async Task A_sidecar_that_is_down_ends_the_pass_without_marking_anything_and_the_next_pass_goes_on()
     {
-        var first = await PageWithLinksAsync(A);
-        var second = await PageWithLinksAsync(B);
+        var first = await LegacyPageAsync(A);
+        var second = await LegacyPageAsync(B);
         var codec = Substitute.For<IYjsCodec>();
-        codec.CompactAsync(Arg.Any<IReadOnlyList<byte[]>>(), Arg.Any<CancellationToken>())
-            .Returns<YjsCompaction>(_ => throw new YjsUnavailableException("the sidecar is down"));
+        codec.LinksAsync(Arg.Any<IReadOnlyList<byte[]>>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<Guid>>(_ => throw new YjsUnavailableException("the sidecar is down"));
 
         var pass = await CreateBackfill(codec).RunPassAsync(default);
 
@@ -145,44 +200,94 @@ public class LinkBackfillTests(PostgresFixture postgres, YjsSidecarFixture yjs) 
         (await VersionOfAsync(second)).ShouldBe(0);
 
         (await CreateBackfill().RunPassAsync(default)).ShouldBe(new BackfillPass(2, 0, 0, false));
-        (await IndexedAsync(first)).ShouldBe([A]);
-        (await IndexedAsync(second)).ShouldBe([B]);
     }
 
     [Fact]
-    public async Task A_page_whose_updates_do_not_decode_is_counted_as_failed_and_the_others_are_still_indexed()
+    public async Task A_page_that_finds_the_sidecar_down_again_and_again_is_left_so_that_it_cannot_keep_taking_it_down()
     {
-        var bad = await PageWithLinksAsync(A);
-        var good = await PageWithLinksAsync(B);
-        var calls = 0;
+        var bad = await LegacyPageAsync(A);
+        var good = await LegacyPageAsync(B);
+        var backfill = CreateBackfill(FailingFor(await SnapshotOfAsync(bad), new YjsUnavailableException("killed: out of memory")));
+
+        var passes = new List<BackfillPass>();
+        for (var i = 0; i < 4; i++)
+        {
+            passes.Add(await backfill.RunPassAsync(default));
+        }
+
+        // The pages go in the order of their ids: if the bad one is first, three passes end on it, then it is left.
+        passes.Last().SidecarUnavailable.ShouldBeFalse();
+        (await VersionOfAsync(good)).ShouldBe(LinkIndex.Version);
+        (await VersionOfAsync(bad)).ShouldBe(0);
+        passes.Count(p => p.SidecarUnavailable).ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task A_page_whose_snapshot_does_not_decode_or_that_meets_another_error_is_failed_and_the_others_are_indexed()
+    {
+        var rejected = await LegacyPageAsync(A);
+        var broken = await LegacyPageAsync(A);
+        var good = await LegacyPageAsync(B);
         var codec = Substitute.For<IYjsCodec>();
-        codec.CompactAsync(Arg.Any<IReadOnlyList<byte[]>>(), Arg.Any<CancellationToken>())
-            .Returns(call => ++calls == 1
-                ? throw new YjsRejectedException("unknown update")
-                : Codec.CompactAsync(call.Arg<IReadOnlyList<byte[]>>(), default));
+        var (rejectedState, brokenState) = (await SnapshotOfAsync(rejected), await SnapshotOfAsync(broken));
+        codec.LinksAsync(Arg.Any<IReadOnlyList<byte[]>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var input = call.Arg<IReadOnlyList<byte[]>>()[0];
+                return input.AsSpan().SequenceEqual(rejectedState) ? throw new YjsRejectedException("unknown update")
+                    : input.AsSpan().SequenceEqual(brokenState) ? throw new InvalidOperationException("the page went away")
+                    : Codec.LinksAsync(call.Arg<IReadOnlyList<byte[]>>(), default);
+            });
 
         var pass = await CreateBackfill(codec).RunPassAsync(default);
 
-        pass.Indexed.ShouldBe(1);
-        pass.Failed.ShouldBe(1);
-        // Which page went first is the order of their ids: the one that failed is not marked, the other is.
-        (await VersionOfAsync(bad) + await VersionOfAsync(good)).ShouldBe(LinkIndex.Version);
+        pass.ShouldBe(new BackfillPass(1, 0, 2, false));
+        (await VersionOfAsync(good)).ShouldBe(LinkIndex.Version);
+        (await VersionOfAsync(rejected)).ShouldBe(0);
+        (await VersionOfAsync(broken)).ShouldBe(0);
+    }
+
+    // ---- the job at start-up -------------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task The_job_at_start_up_indexes_every_page_and_ends()
+    {
+        var pageId = await LegacyPageAsync(A);
+        using var job = CreateBackfill();
+
+        await job.StartAsync(default);
+        await job.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(30));
+
+        (await IndexedAsync(pageId)).ShouldBe([A]);
+        await job.StopAsync(default);
     }
 
     [Fact]
-    public async Task The_job_at_start_up_indexes_every_page_and_ends_and_one_that_is_off_does_nothing()
+    public async Task A_job_that_is_off_or_has_no_sidecar_does_nothing()
     {
-        var pageId = await PageWithLinksAsync(A);
+        var pageId = await LegacyPageAsync(A);
         using var off = CreateBackfill(configure: options => options.BackfillEnabled = false);
+        using var noSidecar = CreateBackfill(sidecarEnabled: false);
+
         await off.StartAsync(default);
+        await noSidecar.StartAsync(default);
         await off.ExecuteTask!;
+        await noSidecar.ExecuteTask!;
+
         (await VersionOfAsync(pageId)).ShouldBe(0);
+    }
 
-        using var on = CreateBackfill();
-        await on.StartAsync(default);
-        await on.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(30));
+    [Fact]
+    public async Task A_database_that_cannot_be_reached_never_stops_the_host_and_the_job_gives_up_after_its_retries()
+    {
+        using var job = CreateBackfill(
+            configure: options => (options.MaxRetries, options.RetryDelay) = (2, TimeSpan.FromMilliseconds(10)),
+            connectionString: "Host=127.0.0.1;Port=1;Database=none;Username=none;Password=none;Timeout=1");
 
-        (await IndexedAsync(pageId)).ShouldBe([A]);
-        await on.StopAsync(default);
+        await job.StartAsync(default);
+
+        // Ends by itself, without an exception: a BackgroundService that throws stops the host.
+        await Should.NotThrowAsync(() => job.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(60)));
+        job.ExecuteTask!.IsFaulted.ShouldBeFalse();
     }
 }

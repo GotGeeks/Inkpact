@@ -17,6 +17,7 @@ internal enum SidecarOp : byte
     Build = 4,
     Replace = 5,
     Read = 6,
+    Links = 7,
 }
 
 /// <summary>

@@ -66,6 +66,12 @@ public interface IYjsCodec
     /// is left out and counted. Nothing is changed or stored.
     /// </summary>
     Task<YjsRead> ReadAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The pages that the page made of <paramref name="inputs"/> links to, as <see cref="YjsCompaction.Links"/> has them, and
+    /// nothing else: no state is encoded and nothing is read back. For indexing the links of a page without compacting it (run B.1).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> LinksAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken);
 }
 
 /// <summary>

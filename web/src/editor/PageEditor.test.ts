@@ -124,6 +124,29 @@ describe('PageEditor', () => {
     vi.useRealTimers()
   })
 
+  it('does not take the focus when the person pressed a key or clicked after asking for it', async () => {
+    for (const went of [
+      () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true })),
+      () => document.body.dispatchEvent(new Event('pointerdown', { bubbles: true })),
+    ]) {
+      hub.holding = true
+      const w = await mountEditor()
+      ;(w.vm as unknown as { focus: () => void }).focus()
+      went()
+
+      hub.release()
+      await flushPromises()
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      expect(root().getAttribute('contenteditable')).toBe('true')
+      expect(document.activeElement).not.toBe(root())
+      wrapper!.unmount()
+      wrapper = null
+      useSyncStore().destroy()
+      document.body.innerHTML = ''
+    }
+  })
+
   it('does not take a focus that was asked for long ago', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     hub.holding = true

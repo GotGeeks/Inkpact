@@ -655,5 +655,7 @@ public sealed partial class ExportEndpointTests(PostgresFixture postgres) : ICla
         public Task<byte[]> BuildAsync(ReadOnlyMemory<byte> content, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<YjsReplacement> ReplaceAsync(IReadOnlyList<byte[]> inputs, ReadOnlyMemory<byte> content, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<Guid>> LinksAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }

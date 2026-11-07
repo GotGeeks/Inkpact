@@ -74,14 +74,20 @@ describe('the backlinks of a page', () => {
     expect(entries()).toEqual(['Untitled'])
   })
 
-  it('says when there are more than are shown', async () => {
+  it('says "more than" in the heading when the server has more than it lists, never a number that is too low', async () => {
     await open({
       backlinks: {
-        Target: { items: [{ id: 'Source', title: 'Source', parentTitle: null }], more: true },
+        Target: {
+          items: [
+            { id: 'Source', title: 'Source', parentTitle: null },
+            { id: 'Other', title: 'Other', parentTitle: null },
+          ],
+          more: true,
+        },
       },
     })
 
-    expect(wrapper!.text()).toContain('There are more pages that link here than are shown.')
+    expect(wrapper!.get('h2').text()).toBe('Linked from more than 2 pages')
   })
 
   it('shows nothing at all for a page nothing links to', async () => {

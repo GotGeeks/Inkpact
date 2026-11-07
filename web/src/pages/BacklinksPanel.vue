@@ -37,9 +37,11 @@ async function load() {
   }
 }
 
-// When the page opens, when the tree changes (a page that links here was trashed or restored), and when the tab comes back:
-// the links are indexed by the server some minutes after they are typed, so a tab left open learns of them this way.
-watch([() => props.pageId, () => tree.treeVersion], load)
+// When the page opens (the view gives every page a panel of its own), when the tree changes (a page that links here was
+// trashed or restored), and when the tab comes back: the links are indexed by the server some minutes after they are
+// typed, so a tab left open learns of them this way. Two asks can overlap (a tree change while the tab comes back): the
+// newest wins.
+watch(() => tree.treeVersion, load)
 onMounted(() => {
   void load()
   document.addEventListener('visibilitychange', onVisible)
@@ -64,7 +66,12 @@ function onVisible() {
       :id="`backlinks-${pageId}`"
       class="mb-space-xs text-label-md text-on-surface-variant uppercase"
     >
-      {{ t('page.backlinks', { count: n(items.length) }, items.length) }}
+      <!-- The server lists so many; when there are more, the number would be wrong, so it says "more than". -->
+      {{
+        more
+          ? t('page.backlinksMany', { count: n(items.length) })
+          : t('page.backlinks', { count: n(items.length) }, items.length)
+      }}
     </h2>
     <ul class="flex flex-col">
       <li v-for="item in items" :key="item.id">
@@ -83,8 +90,5 @@ function onVisible() {
         </RouterLink>
       </li>
     </ul>
-    <p v-if="more" class="px-space-sm pt-space-xs text-body-sm text-on-surface-variant">
-      {{ t('page.backlinksMore') }}
-    </p>
   </nav>
 </template>

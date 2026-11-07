@@ -118,14 +118,15 @@ public class LinkIndexTests(PostgresFixture postgres, YjsSidecarFixture yjs) : C
     }
 
     [Fact]
-    public async Task A_full_address_of_a_page_counts_and_so_does_the_same_link_twice_only_once()
+    public async Task Only_the_address_the_editor_writes_counts_once_and_a_full_address_of_any_host_does_not()
     {
+        // The server cannot tell its own host names from another installation's; the editor stores its own as /p/<id>.
         var pageId = await AddPageAsync();
-        await AppendAsync(pageId, [await Codec.BuildAsync(Document($"https://notes.example.com/p/{Targets[3]}", $"/p/{Targets[3]}", "https://example.com/", $"/p/{Targets[2]}?x=1"), default)]);
+        await AppendAsync(pageId, [await Codec.BuildAsync(Document($"https://notes.example.com/p/{Targets[3]}", $"/p/{Targets[4]}", $"/p/{Targets[4]}", "https://example.com/", $"/p/{Targets[2]}?x=1"), default)]);
 
         await CompactAsync(pageId);
 
-        (await IndexedLinksAsync(pageId)).ShouldBe([Targets[3]]);
+        (await IndexedLinksAsync(pageId)).ShouldBe([Targets[4]]);
     }
 
     [Fact]

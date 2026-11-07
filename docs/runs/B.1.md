@@ -34,16 +34,16 @@ A person can link one page to another from the editor, sees on every page which 
 2. **The link index** (B.1a):
    - **Table `page_links (source_page_id, target_page_id)`:** primary key both, an index on the target, cascade on the source page, no foreign key on the target (a link may point to a page that does not exist yet, as the import's do, or no longer exists).
    - **Written only by the compactor**, in its own transaction: the source's rows are replaced by what the sidecar found. Every guarantee stays: the rows commit with the snapshot or not at all, and the verification is unchanged.
-   - **The sidecar's `OP_COMPACT` answer gets one more part:** the distinct page ids of `link` marks whose `href` is exactly `/p/<uuid>` or an absolute `http(s)` address whose path is exactly that (any host: the server does not know its public name; a link to another Inkpact's page whose id is not a page here simply finds nothing).
+   - **The sidecar's `OP_COMPACT` answer gets one more part:** the distinct page ids of `link` marks whose `href` is exactly `/p/<uuid>` or an absolute `http(s)` address whose path is exactly that (any host: the server does not know its public name; a link to another Inkpact's page whose id is not a page here simply finds nothing). *(Changed by the review: `/p/<uuid>` only, no full addresses; see Review fixes 4.)*
    - **Contract:** the sidecar's contract tests and the C# codec's tests cover the new part; `YjsCompaction` gets `Links`. `OP_READ`, `OP_BUILD` and `OP_REPLACE` do not change.
 3. **Indexing what exists** (B.1a):
    - **`pages.links_indexed`** is a small integer: the version of the extraction that last indexed the page. A migration adds it at 0, and the compactor sets it to the current version (1).
-   - **A one-off backfill:** a hosted job at start-up indexes pages below the current version, in batches, without compacting them. It reads the inputs, asks the sidecar's `OP_COMPACT` for the links only, and writes the rows and the version in a transaction under the compactor's advisory lock for the page (a try: a page being compacted is left to the compactor, which indexes it anyway).
+   - **A one-off backfill:** a hosted job at start-up indexes pages below the current version, in batches, without compacting them. It reads the inputs, asks the sidecar's `OP_COMPACT` for the links only, and writes the rows and the version in a transaction under the compactor's advisory lock for the page (a try: a page being compacted is left to the compactor, which indexes it anyway). *(Changed by the review: only pages without live updates, their snapshot through a links-only operation; see Review fixes 1 to 3.)*
    - **Pace:** it stops when the sidecar is down and goes on later; a library of 5,000 notes takes about as long as reading it once.
    - **Next time:** a later change to the extraction raises the version, and the same job runs again.
 4. **How fresh the backlinks are:** as fresh as search, since both come from compaction. A link typed now shows on the other page after the source page's next compaction, within about two minutes of the last edit. The panel says nothing about it; the architecture does.
 5. **The backlinks endpoint:** `GET /api/pages/{id}/backlinks` with `RequirePageRole(Viewer)`.
-   - It returns the source pages that are live (not in the trash or under it, through `live_pages`) and that the person may view (the permission service, per source workspace).
+   - It returns the source pages that are live (not in the trash or under it, through `live_pages`) and that the person may view (the permission service, per source workspace). *(Changed by the review: each source through the page role; see Review fixes 5.)*
    - Each comes with its id, title and the title of its parent, sorted by title.
    - The page itself is left out.
    - It answers with a list, at most 200 entries and a `more` flag.
@@ -175,6 +175,21 @@ Built on branch `feat/b1a-link-index`. **Not committed, not pushed.**
 - **`offline-copy.spec.ts` on iPhone (run 1.21's spec):** the Home key can come before the cursor has reached the end under load; the key sequence is tried again until the cursor is at the start of the last block (Home changes nothing once it is there).
 
 **Checks:** `pnpm check` (2026-11-07), green: web 1209, sidecar 150, server 1928 with the timing tests, format and types clean, Playwright 361 passed and 74 skipped.
+
+### Review fixes (`/code-review`, 10 findings, all fixed)
+
+1. **A page that keeps taking the sidecar down** is left after three tries, until the next start; before, the backfill went back to it every 30 seconds without end, taking everybody's sync down each time.
+2. **The job never stops the host:** each page's errors are caught (a page deleted meanwhile, a database that is gone for a moment), and so is a whole pass.
+3. **Only a snapshot is read, and only its links:** the backfill takes pages with no live updates (the others are the compactor's, which batches and backs off), and a new links-only sidecar operation (`OP_LINKS`, `IYjsCodec.LinksAsync`) neither encodes nor reads back.
+4. **`/p/<uuid>` only:** the server no longer counts a full address of any host, which the editor (same origin only) disagreed with and which could match another installation's page. B.1b stores a pasted address of its own origin as `/p/<id>`.
+5. **The endpoint asks the page role of each source** (`GetPageRoleAsync`, where page shares arrive in run 2.2), stopping once one more than fits is found.
+6. **A focus request is dropped** at the person's next key or click, so it never takes the focus from where they went on typing.
+7. **Broken-link decorations are kept up to date by the change:** mapped along, and only the top-level blocks a step touched are looked at again (also a mark or attribute step, whose map is empty: a bug the new test found). Trash lookups are a set.
+8. **No sidecar, no job:** it returns at once when the sidecar is off, and stops after twenty passes that met something in the way (about ten minutes).
+9. **The heading never shows a number that is too low:** "Linked from more than 200 pages" when the server has more.
+10. **The panel watches only the tree** (the view gives each page its own panel); the guard for overlapping asks stays, for a tree change while the tab comes back.
+
+**Checks after the review fixes:** `pnpm check` (2026-11-07), green: web 1213, sidecar 152, server 1928 + 4 new (1932) with the timing tests, Playwright 361 passed and 74 skipped.
 
 **Left for B.1b:** making links (decision 8 of the plan).
 

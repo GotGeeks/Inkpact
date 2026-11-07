@@ -90,6 +90,12 @@ public sealed class YjsSidecar(SidecarOptions options, string contentRoot, TimeP
             : throw Unexpected(answer);
     }
 
+    public async Task<IReadOnlyList<Guid>> LinksAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken)
+    {
+        var answer = await CallAsync(SidecarOp.Links, Parts(inputs), options.RequestTimeout, cancellationToken);
+        return answer is [var links] ? ParseLinks(links) : throw Unexpected(answer);
+    }
+
     public async Task<YjsRead> ReadAsync(IReadOnlyList<byte[]> inputs, CancellationToken cancellationToken)
     {
         var answer = await CallAsync(SidecarOp.Read, Parts(inputs), options.RequestTimeout, cancellationToken);
