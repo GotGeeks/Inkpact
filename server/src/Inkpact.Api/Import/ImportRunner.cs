@@ -17,6 +17,24 @@ namespace Inkpact.Api.Import;
 public static class ImportFiles
 {
     public static string PathOf(ImportOptions options, Guid importId) => Path.Combine(options.Directory, $"{importId:N}.jex");
+
+    /// <summary>
+    /// Removes a file, best effort: whatever goes wrong is logged and never stops what comes after. A file that stays is
+    /// removed at the next start (<see cref="ImportWorker.RecoverAsync"/>).
+    /// </summary>
+    public static bool TryDelete(string path, ILogger logger)
+    {
+        try
+        {
+            File.Delete(path);
+            return true;
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning(e, "The import file {Path} could not be deleted", path);
+            return false;
+        }
+    }
 }
 
 /// <summary>Ends the whole import, as opposed to one item of it.</summary>
@@ -49,6 +67,11 @@ public sealed partial class ImportRunner(
 
     /// <summary>How often the end of an import is tried to be written, while the database does not answer.</summary>
     private const int FinishAttempts = 4;
+
+    /// <summary>How often the import's file is tried to be deleted before the end is written, and how long apart.</summary>
+    private const int DeleteAttempts = 5;
+
+    private static readonly TimeSpan DeleteRetryDelay = TimeSpan.FromMilliseconds(200);
 
     [GeneratedRegex(@":/(?<id>[0-9a-f]{32})", RegexOptions.CultureInvariant)]
     private static partial Regex ResourceReference();
@@ -182,15 +205,9 @@ public sealed partial class ImportRunner(
             logger.LogError(e, "Import {ImportId} failed", importId);
         }
 
-        try
-        {
-            await FinishAsync(run, error);
-        }
-        finally
-        {
-            // The file is of no more use, whether or not the end could be written.
-            DeleteFile(run.Path);
-        }
+        // The file must be gone before the end is written: the end is what the person and the tests read as "done".
+        await DeleteFileAsync(run.Path);
+        await FinishAsync(run, error);
     }
 
     /// <summary>
@@ -199,7 +216,7 @@ public sealed partial class ImportRunner(
     /// </summary>
     public async Task AbandonAsync(Guid importId)
     {
-        DeleteFile(ImportFiles.PathOf(options, importId));
+        ImportFiles.TryDelete(ImportFiles.PathOf(options, importId), logger);
         try
         {
             await using var scope = scopes.CreateAsyncScope();
@@ -1831,15 +1848,15 @@ public sealed partial class ImportRunner(
         }
     }
 
-    private void DeleteFile(string path)
+    /// <summary>
+    /// Removes the import's file, trying a few times: on Windows a virus scanner or indexer can hold it for a moment. Never
+    /// throws, so the end is always written; a file that still stays is removed at the next start.
+    /// </summary>
+    private async Task DeleteFileAsync(string path)
     {
-        try
+        for (var attempt = 1; !ImportFiles.TryDelete(path, logger) && attempt < DeleteAttempts; attempt++)
         {
-            File.Delete(path);
-        }
-        catch (IOException e)
-        {
-            logger.LogWarning(e, "The import file {Path} could not be deleted", path);
+            await Task.Delay(DeleteRetryDelay, time);
         }
     }
 }

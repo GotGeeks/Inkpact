@@ -97,8 +97,10 @@ public static class ImportEndpoints
         ImportOptions options,
         ImportQueue queue,
         TimeProvider time,
+        ILoggerFactory loggers,
         CancellationToken cancellationToken)
     {
+        var logger = loggers.CreateLogger(typeof(ImportEndpoints));
         var max = options.MaxFileSize;
         if (http.Request.ContentLength > max)
         {
@@ -144,7 +146,7 @@ public static class ImportEndpoints
                 return Error("import_in_progress", StatusCodes.Status409Conflict);
             }
 
-            var refused = await ReceiveFileAsync(http, options, importId, cancellationToken);
+            var refused = await ReceiveFileAsync(http, options, importId, logger, cancellationToken);
             if (refused is not null)
             {
                 await db.Imports.Where(i => i.Id == importId).ExecuteDeleteAsync(CancellationToken.None);
@@ -160,7 +162,7 @@ public static class ImportEndpoints
         catch when (!enqueued)
         {
             // The connection dropped, or the disk is full: neither the claim nor the file is left behind.
-            DeleteQuietly(ImportFiles.PathOf(options, importId));
+            ImportFiles.TryDelete(ImportFiles.PathOf(options, importId), logger);
             await db.Imports.Where(i => i.Id == importId).ExecuteDeleteAsync(CancellationToken.None);
             throw;
         }
@@ -220,7 +222,7 @@ public static class ImportEndpoints
     }
 
     /// <summary>Writes the body to the import's file. Null when it is kept; otherwise the answer, and the file is gone.</summary>
-    private static async Task<IResult?> ReceiveFileAsync(HttpContext http, ImportOptions options, Guid importId, CancellationToken cancellationToken)
+    private static async Task<IResult?> ReceiveFileAsync(HttpContext http, ImportOptions options, Guid importId, ILogger logger, CancellationToken cancellationToken)
     {
         var max = options.MaxFileSize;
         // Kestrel's own limit is for JSON; here it is the setting, one byte over, so the count below says what is too large.
@@ -255,12 +257,12 @@ public static class ImportEndpoints
         }
         catch (FileTooLargeException)
         {
-            DeleteQuietly(path);
+            ImportFiles.TryDelete(path, logger);
             return TooLarge();
         }
         catch (BadHttpRequestException e) when (e.StatusCode == StatusCodes.Status413PayloadTooLarge)
         {
-            DeleteQuietly(path);
+            ImportFiles.TryDelete(path, logger);
             return TooLarge();
         }
     }
@@ -310,18 +312,6 @@ public static class ImportEndpoints
         }
 
         return total;
-    }
-
-    private static void DeleteQuietly(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (IOException)
-        {
-            // Nothing more to do: the worker's start-up removes old files.
-        }
     }
 
     private static IResult TooLarge() => Error("import_too_large", StatusCodes.Status413PayloadTooLarge);

@@ -73,13 +73,13 @@ public sealed class ImportRunnerTests(PostgresFixture postgres) : IClassFixture<
         return await action(scope.ServiceProvider.GetRequiredService<InkpactDbContext>());
     }
 
-    /// <summary>Puts the file where the job reads it, makes the import's row, and runs the job the way the worker would.</summary>
-    private async Task<ImportRun> ImportAsync(JexBuilder jex, CancellationToken cancellationToken = default)
+    /// <summary>Puts the bytes where the job reads them and makes the import's row, queued, without running the job.</summary>
+    private async Task<Guid> QueueAsync(byte[] bytes)
     {
         var options = _factory.Services.GetRequiredService<ImportOptions>();
         var id = Guid.CreateVersion7();
         Directory.CreateDirectory(options.Directory);
-        await File.WriteAllBytesAsync(ImportFiles.PathOf(options, id), jex.ToBytes());
+        await File.WriteAllBytesAsync(ImportFiles.PathOf(options, id), bytes);
         await UseDbAsync(async db =>
         {
             db.Imports.Add(new ImportRun
@@ -96,6 +96,13 @@ public sealed class ImportRunnerTests(PostgresFixture postgres) : IClassFixture<
             return 0;
         });
 
+        return id;
+    }
+
+    /// <summary>Puts the file where the job reads it, makes the import's row, and runs the job the way the worker would.</summary>
+    private async Task<ImportRun> ImportAsync(JexBuilder jex, CancellationToken cancellationToken = default)
+    {
+        var id = await QueueAsync(jex.ToBytes());
         await _factory.Services.GetRequiredService<ImportRunner>().RunAsync(id, cancellationToken);
         return await GetImportAsync(id);
     }
@@ -319,15 +326,7 @@ public sealed class ImportRunnerTests(PostgresFixture postgres) : IClassFixture<
     {
         await StartAsync();
         var options = _factory.Services.GetRequiredService<ImportOptions>();
-        var id = Guid.CreateVersion7();
-        Directory.CreateDirectory(options.Directory);
-        await File.WriteAllBytesAsync(ImportFiles.PathOf(options, id), new byte[3000]);
-        await UseDbAsync(async db =>
-        {
-            db.Imports.Add(new ImportRun { Id = id, WorkspaceId = _workspaceId, UserId = _userId, SourceType = "joplin", FileName = "x.jex", CreatedAt = DateTimeOffset.UtcNow });
-            await db.SaveChangesAsync();
-            return 0;
-        });
+        var id = await QueueAsync(new byte[3000]);
 
         await _factory.Services.GetRequiredService<ImportRunner>().RunAsync(id, default);
 
@@ -620,6 +619,95 @@ public sealed class ImportRunnerTests(PostgresFixture postgres) : IClassFixture<
         var import = await GetImportAsync(id);
         (import.State, import.ErrorCode).ShouldBe((ImportStates.Failed, "import_failed"));
         File.Exists(ImportFiles.PathOf(options, id)).ShouldBeFalse();
+    }
+
+    /// <summary>A fixed key for the advisory lock below: this test's database is its own, so nothing else takes it.</summary>
+    private const long EndLockKey = 918_273_645;
+
+    /// <summary>
+    /// The import's file must be gone before the row says the import has ended (B.1c): a person polling the row between the
+    /// delete and the write must never see the end with the file still there. A trigger on the test's own database takes an
+    /// advisory lock when the row's state moves to <c>completed</c> or <c>failed</c>, which this test holds first so that it
+    /// can look at the file while the job is paused inside that write.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task The_file_is_gone_before_the_import_says_it_has_ended(bool readable)
+    {
+        await StartAsync();
+        var connectionString = await UseDbAsync(db => Task.FromResult(db.Database.GetConnectionString()))
+            ?? throw new InvalidOperationException("No connection string.");
+        await UseDbAsync(db => db.Database.ExecuteSqlRawAsync($"""
+            create or replace function test_import_end_lock() returns trigger as $$
+            begin
+              if new.state in ('completed', 'failed') and old.state not in ('completed', 'failed') then
+                perform pg_advisory_xact_lock({EndLockKey});
+              end if;
+              return new;
+            end;
+            $$ language plpgsql;
+
+            create trigger test_import_end_lock_trigger before update on imports for each row execute function test_import_end_lock();
+            """));
+        var options = _factory.Services.GetRequiredService<ImportOptions>();
+        var id = await QueueAsync(readable ? new JexBuilder().Folder("f").Note("n", "f", body: "Hello").ToBytes() : new byte[3000]);
+
+        // Not pooled: closing it ends the session, and with it the lock, whatever happens to the test.
+        await using var lockConnection = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(connectionString) { Pooling = false }.ConnectionString);
+        await lockConnection.OpenAsync();
+        await using (var take = new NpgsqlCommand($"select pg_advisory_lock({EndLockKey})", lockConnection))
+        {
+            await take.ExecuteNonQueryAsync();
+        }
+
+        var job = _factory.Services.GetRequiredService<ImportRunner>().RunAsync(id, default);
+        try
+        {
+            // The server is shared with the other classes: only a waiter in this database, on this key, is the job. A bigint
+            // key is kept as its high and low halves.
+            await using var waiting = new NpgsqlCommand(
+                $"""
+                select exists (select 1 from pg_locks
+                  where locktype = 'advisory' and not granted
+                    and database = (select oid from pg_database where datname = current_database())
+                    and classid = {EndLockKey >> 32} and objid = {EndLockKey & 0xFFFFFFFF} and objsubid = 1)
+                """,
+                lockConnection);
+            var deadline = DateTime.UtcNow.AddSeconds(30);
+            while (!(bool)(await waiting.ExecuteScalarAsync())!)
+            {
+                if (job.IsCompleted)
+                {
+                    await job;
+                    throw new InvalidOperationException("The job ended without waiting on the lock: the trigger did not fire.");
+                }
+
+                if (DateTime.UtcNow > deadline)
+                {
+                    throw new TimeoutException("Nothing waited on the advisory lock within 30 seconds.");
+                }
+
+                await Task.Delay(50);
+            }
+
+            File.Exists(ImportFiles.PathOf(options, id)).ShouldBeFalse();
+        }
+        finally
+        {
+            await using (var release = new NpgsqlCommand($"select pg_advisory_unlock({EndLockKey})", lockConnection))
+            {
+                await release.ExecuteNonQueryAsync();
+            }
+
+            // Observed here, so a failure above is not hidden by the job's; awaited again below when nothing failed.
+            await job.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing | ConfigureAwaitOptions.ContinueOnCapturedContext);
+        }
+
+        await job;
+        var import = await GetImportAsync(id);
+        import.State.ShouldBe(readable ? ImportStates.Completed : ImportStates.Failed);
+        import.FinishedAt.ShouldNotBeNull();
     }
 
     // ---- the tree, for any export --------------------------------------------------------------------------------------
