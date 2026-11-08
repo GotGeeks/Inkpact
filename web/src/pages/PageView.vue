@@ -8,6 +8,7 @@ import { useTreeStore } from '../stores/tree'
 import SyncStatus from '../sync/SyncStatus.vue'
 import BacklinksPanel from './BacklinksPanel.vue'
 import ChildPages from './ChildPages.vue'
+import PageTags from './PageTags.vue'
 import TitleField from './TitleField.vue'
 import type { PageDetail } from '../tree/types'
 
@@ -120,6 +121,12 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
       :title="detail.page.title"
       :read-only="!tree.canEdit || detail.inTrash"
       @enter="editor?.focus()"
+    />
+    <PageTags
+      :key="`tags-${detail.page.id}`"
+      :page-id="detail.page.id"
+      :tags="detail.tags"
+      :read-only="!tree.canEdit || detail.inTrash"
     />
     <ChildPages :page-id="detail.page.id" />
     <PageEditor

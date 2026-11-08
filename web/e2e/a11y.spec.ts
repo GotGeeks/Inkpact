@@ -10,7 +10,7 @@ import {
   rowFor,
 } from './helpers'
 import { importJex, openImportPage } from './importHelpers'
-import { generateLinkedJex } from './jex'
+import { generateJex, generateLinkedJex } from './jex'
 
 /**
  * Every screen and state, on every device (desktop, Pixel 7, iPhone 15 and a 320-pixel phone): no WCAG 2.2 A or AA
@@ -389,6 +389,35 @@ test('a page with the pages that link to it, and a link to a page in the trash',
   await closeDrawer(page)
   await expect(page.locator('[data-broken-link="trash"]')).toBeVisible()
   await scan(page, testInfo, 'a page with a link to a page in the trash')
+})
+
+test('tags: the row with the add field open, the Tags view and a tag’s own page', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000)
+  const jex = generateJex(unique(testInfo, 'Tags').replaceAll(' ', '-'))
+  await openImportPage(page)
+  await importJex(page, jex)
+  await openSidebar(page)
+  await rowFor(page, jex.titles.notebook)
+    .getByRole('button', { name: `Expand ${jex.titles.notebook}` })
+    .click()
+  await rowFor(page, jex.titles.pictures).click()
+  await closeDrawer(page)
+  await expect(page.getByTestId('page-title')).toHaveValue(jex.titles.pictures)
+
+  await page.getByTestId('add-tag-button').click()
+  await page.getByTestId('add-tag-field').fill('a')
+  await scan(page, testInfo, 'the tag row with the add field open')
+
+  await page.keyboard.press('Escape')
+  await openSidebar(page)
+  await page.getByRole('link', { name: 'Tags' }).click()
+  await closeDrawer(page)
+  await scan(page, testInfo, 'the Tags view')
+
+  await page.getByRole('link', { name: jex.titles.tag }).click()
+  await scan(page, testInfo, 'a tag’s own page')
 })
 
 test('the same screens in Dutch have names too', async ({ page }, testInfo) => {

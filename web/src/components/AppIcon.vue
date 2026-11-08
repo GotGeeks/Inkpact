@@ -33,6 +33,7 @@ defineProps<{
     | 'file'
     | 'upload'
     | 'search'
+    | 'tag'
 }>()
 
 const paths = {
@@ -66,6 +67,7 @@ const paths = {
   file: 'm20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7',
   upload: 'M12 16V4M7 9l5-5 5 5M4 20h16',
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM21 21l-4.3-4.3',
+  tag: 'M12.6 3H6a2 2 0 0 0-2 2v6.6a2 2 0 0 0 .6 1.4l8.4 8.4a2 2 0 0 0 2.8 0l6-6a2 2 0 0 0 0-2.8L13.4 3.6A2 2 0 0 0 12.6 3ZM7.5 8h.01',
 } as const
 </script>
 

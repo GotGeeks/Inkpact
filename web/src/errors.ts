@@ -60,6 +60,14 @@ export function useErrorMessage() {
         return t('errors.move_cycle')
       case 'page_in_trash':
         return t('errors.page_in_trash')
+      case 'tag_name_empty':
+        return t('errors.tag_name_empty')
+      case 'tag_name_too_long':
+        return t('errors.tag_name_too_long')
+      case 'too_many_tags':
+        return t('errors.too_many_tags')
+      case 'tag_name_taken':
+        return t('errors.tag_name_taken')
       case 'restore_the_parent':
         return t('errors.restore_the_parent')
       case 'too_many_pages':

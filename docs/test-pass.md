@@ -66,7 +66,13 @@ This file collects everything that needs a person, a phone or the Unraid box. Ev
 - [ ] Paste a page's address from the address bar into another page: after a few minutes the other page lists it under "Linked from".
 - [ ] With TalkBack (phone) or a screen reader (laptop): the menu of pages and the picker are announced, with the number of results and the option that is chosen.
 
-Runs B.2 to B.8 add their checks here.
+### B.2: tags in the interface
+- [ ] With your real library: a note you tagged in Joplin shows its tags, on the laptop and on the phone; the "Tags" view in the sidebar lists them with sensible counts.
+- [ ] On the phone, with the on-screen keyboard open: add an existing tag and a new one to a note, remove one.
+- [ ] Rename a tag from its own page, remove a tag from a note, then import the same Joplin export again: both changes are still there.
+- [ ] With TalkBack (phone) or a screen reader (laptop): the tag row and the add-tag field are announced, with the number of suggestions.
+
+Runs B.3 to B.8 add their checks here.
 
 ## Phase 2
 

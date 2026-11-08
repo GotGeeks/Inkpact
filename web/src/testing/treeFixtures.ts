@@ -1,6 +1,7 @@
 import { vi, type Mock } from 'vitest'
 import { jsonResponse } from './helpers'
 import type { SearchResponse } from '../search/types'
+import type { TagPagesResponse, TagRef, WorkspaceTag } from '../tags/types'
 import type { PageChange, PageNode, WorkspaceSummary } from '../tree/types'
 
 export const workspace: WorkspaceSummary = { id: 'w1', name: 'Private', role: 'owner' }
@@ -68,6 +69,8 @@ export function fakeTree(
     exportCheck?: () => Response
     /** The pages that link to a page, by its id; none without it. */
     backlinks?: Record<string, BacklinksAnswer>
+    /** A page's tags, by its id; none without it. */
+    tags?: Record<string, TagRef[]>
   } = {},
 ): FakeTree {
   let pages = initial.pages ?? []
@@ -79,6 +82,26 @@ export function fakeTree(
     Object.entries(initial.backlinks ?? {}),
   )
   const backlinkReads: string[] = []
+
+  // Tags: who has which (by id), and every tag's current name, so a rename or a reused name agrees everywhere.
+  const tagsByPage = new Map<string, Set<string>>(
+    Object.entries(initial.tags ?? {}).map(([pageId, tags]) => [
+      pageId,
+      new Set(tags.map((tag) => tag.id)),
+    ]),
+  )
+  const tagNames = new Map<string, string>(
+    Object.values(initial.tags ?? {})
+      .flat()
+      .map((tag) => [tag.id, tag.name]),
+  )
+  let nextTagId = 1
+
+  function tagsOf(pageId: string): TagRef[] {
+    return [...(tagsByPage.get(pageId) ?? [])]
+      .map((id) => ({ id, name: tagNames.get(id) ?? '' }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }
 
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const method = init?.method ?? 'GET'
@@ -120,11 +143,39 @@ export function fakeTree(
               inTrash:
                 trash.some((p) => p.id === page.id) || (initial.hidden ?? []).includes(page.id),
               workspaceId: workspace.id,
+              tags: tagsOf(page.id),
             })
           : jsonResponse(404, { code: 'not_found' })
       }
       if (path === `/api/workspaces/${workspace.id}/export/check`) {
         return initial.exportCheck?.() ?? new Response(null, { status: 204 })
+      }
+      if (path === `/api/workspaces/${workspace.id}/tags`) {
+        const counts = new Map<string, number>()
+        for (const page of pages) {
+          for (const id of tagsByPage.get(page.id) ?? []) counts.set(id, (counts.get(id) ?? 0) + 1)
+        }
+        const list: WorkspaceTag[] = [...counts]
+          .map(([id, pageCount]) => ({ id, name: tagNames.get(id) ?? '', pageCount }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+        return jsonResponse(200, list)
+      }
+      const tagPages = /^\/api\/workspaces\/[^/]+\/tags\/([^/]+)\/pages$/.exec(path)
+      if (tagPages) {
+        const tagId = decodeURIComponent(tagPages[1]!)
+        if (!tagNames.has(tagId)) return jsonResponse(404, { code: 'not_found' })
+        const items = pages
+          .filter((page) => (tagsByPage.get(page.id) ?? new Set()).has(tagId))
+          .map((page) => ({
+            id: page.id,
+            title: page.title,
+            parentTitle: page.parentId
+              ? (pages.find((p) => p.id === page.parentId)?.title ?? null)
+              : null,
+          }))
+          .sort((a, b) => a.title.localeCompare(b.title))
+        const answer: TagPagesResponse = { tagName: tagNames.get(tagId) ?? '', items, more: false }
+        return jsonResponse(200, answer)
       }
       throw new Error(`Unexpected read: ${path}`)
     }
@@ -135,6 +186,29 @@ export function fakeTree(
       const { status, code } = failure
       failure = null
       return jsonResponse(status, { code })
+    }
+
+    const pageTags = /^\/api\/pages\/([^/]+)\/tags$/.exec(path)
+    if (pageTags) {
+      const pageId = decodeURIComponent(pageTags[1]!)
+      const set = tagsByPage.get(pageId) ?? new Set<string>()
+      for (const id of (body.remove as string[] | undefined) ?? []) set.delete(id)
+      for (const name of (body.add as string[] | undefined) ?? []) {
+        const existing = [...tagNames].find(([, n]) => n.toLowerCase() === name.toLowerCase())
+        const id = existing?.[0] ?? `t${nextTagId++}`
+        if (!existing) tagNames.set(id, name)
+        set.add(id)
+      }
+      tagsByPage.set(pageId, set)
+      return jsonResponse(200, tagsOf(pageId))
+    }
+
+    const renameTag = /^\/api\/workspaces\/[^/]+\/tags\/([^/]+)$/.exec(path)
+    if (renameTag && method === 'PATCH') {
+      const tagId = decodeURIComponent(renameTag[1]!)
+      if (!tagNames.has(tagId)) return jsonResponse(404, { code: 'not_found' })
+      tagNames.set(tagId, String(body.name ?? ''))
+      return jsonResponse(200, { id: tagId, name: tagNames.get(tagId) })
     }
 
     const target = /^\/api\/pages\/([^/]+)/.exec(path)?.[1]
