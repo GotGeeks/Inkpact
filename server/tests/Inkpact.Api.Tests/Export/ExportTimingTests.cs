@@ -141,14 +141,21 @@ public sealed class ExportTimingTests(PostgresFixture postgres, ITestOutputHelpe
         using var stop = new CancellationTokenSource();
         // What is sampled is the memory still in use, after a full collection: without it the sample also counts garbage
         // the GC has not got to yet, which depends on the machine (23 MB on one, 86 MB on a CI runner, for the same export).
-        // A buffered zip is in use until the end, so it is still seen.
+        // A buffered zip grows through the whole export and is in use until the end, so a sample four times a second
+        // still sees it. A full collection stops every thread, and on a CI runner one takes long enough that sampling
+        // every 50 ms made the export ten times slower: the time spent in them is not counted as the export's.
+        var collecting = TimeSpan.Zero;
+        var samples = 0;
         var sampler = Task.Run(async () =>
         {
             while (!stop.IsCancellationRequested)
             {
+                var collection = Stopwatch.StartNew();
                 GC.Collect();
+                collecting += collection.Elapsed;
+                samples++;
                 peak = Math.Max(peak, GC.GetTotalMemory(forceFullCollection: false));
-                await Task.Delay(50);
+                await Task.Delay(250);
             }
         });
 
@@ -172,9 +179,11 @@ public sealed class ExportTimingTests(PostgresFixture postgres, ITestOutputHelpe
             archive.Entries.Count(e => e.FullName.StartsWith("_attachments/", StringComparison.Ordinal)).ShouldBe(Files);
             archive.Entries.Where(e => e.FullName.StartsWith("_attachments/", StringComparison.Ordinal)).ShouldAllBe(e => e.Length == FileSize);
             var growth = (peak - baseline) / (1024 * 1024);
-            output.WriteLine($"{Notebooks * (NotesPerNotebook + 1)} pages and {Files * FileSize / (1024 * 1024)} MB of files exported in {clock.Elapsed.TotalSeconds:0.0} s, zip {new FileInfo(zipPath).Length / (1024 * 1024)} MB, managed memory grew by {growth} MB");
+            var exporting = clock.Elapsed - collecting;
+            output.WriteLine($"{Notebooks * (NotesPerNotebook + 1)} pages and {Files * FileSize / (1024 * 1024)} MB of files exported in {exporting.TotalSeconds:0.0} s (plus {collecting.TotalSeconds:0.0} s in {samples} samples of the memory), zip {new FileInfo(zipPath).Length / (1024 * 1024)} MB, managed memory grew by {growth} MB");
 
-            clock.Elapsed.ShouldBeLessThan(TimeSpan.FromMinutes(1));
+            exporting.ShouldBeLessThan(TimeSpan.FromMinutes(1));
+            samples.ShouldBeGreaterThan(4, "too few samples of the memory to see a buffered zip");
             // The files alone are 100 MB: held in memory, as a buffered zip would, the heap would grow by more than that.
             growth.ShouldBeLessThan(60);
         }
