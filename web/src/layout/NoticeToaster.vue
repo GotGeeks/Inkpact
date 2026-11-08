@@ -54,6 +54,16 @@ const IMPORTANT = new Set<PostedNotice['type']>([
 ])
 const important = (notice: PostedNotice) => IMPORTANT.has(notice.type)
 
+/**
+ * Reka closes every notice on any Escape on the page, so the Escape that closes the drawer, a menu or a dialog would
+ * also take the notices with it, with their Undo. Only the notice that has the focus closes.
+ */
+function keepUnlessFocused(notice: PostedNotice, event: KeyboardEvent) {
+  const target = event.target instanceof Element ? event.target : null
+  if (target?.closest('[data-notice-id]')?.getAttribute('data-notice-id') !== String(notice.id))
+    event.preventDefault()
+}
+
 function openCopy(notice: PostedNotice) {
   if (notice.type === 'editsKept')
     void router.push({ name: 'page', params: { pageId: notice.pageId } })
@@ -65,11 +75,13 @@ function openCopy(notice: PostedNotice) {
     <ToastRoot
       v-for="notice in notifications.notices"
       :key="notice.id"
+      :data-notice-id="notice.id"
       :duration="notice.type === 'error' ? 8000 : important(notice) ? 30000 : 6000"
       :type="important(notice) ? 'foreground' : 'background'"
       class="flex items-center gap-space-md rounded-md border border-border-subtle bg-surface-elevated p-space-md text-body-sm text-on-surface shadow-lg"
       :class="notice.type === 'error' ? 'border-error' : ''"
       @update:open="(open: boolean) => !open && notifications.dismiss(notice.id)"
+      @escape-key-down="(event: KeyboardEvent) => keepUnlessFocused(notice, event)"
     >
       <ToastDescription class="flex-1">{{ text(notice) }}</ToastDescription>
       <ToastAction
