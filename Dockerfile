@@ -47,11 +47,13 @@ COPY web/src/editor/allowList.json web/src/editor/
 COPY web/src/locales/en.json web/src/locales/nl.json web/src/locales/
 RUN dotnet publish server/src/Inkpact.Api/Inkpact.Api.csproj -c Release -o /out --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:de0ee358cdd672f7017a003bed21e9ac9ed48a27c922a59b18175b6e82fa7fee AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:1a48394b6f29d3a32c79d9edecd4abda0ecbe8776d567dbfc4590ed6979c740c AS final
 
 # pg_dump 18: a migration backs the database up first and refuses to run without it, and a dump of a Postgres 18
 # server needs a client of the same major version, which the distribution does not have. curl is for the health check, libatomic1 for the Node binary.
+# The upgrade takes Ubuntu's security fixes that the base image does not have yet (Microsoft rebuilds it later).
 RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
  && apt-get install -y --no-install-recommends ca-certificates curl gnupg libatomic1 \
  && install -d /usr/share/postgresql-common/pgdg \
  && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \

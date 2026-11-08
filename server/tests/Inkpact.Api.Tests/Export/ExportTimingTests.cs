@@ -139,12 +139,16 @@ public sealed class ExportTimingTests(PostgresFixture postgres, ITestOutputHelpe
         var baseline = GC.GetTotalMemory(forceFullCollection: true);
         var peak = baseline;
         using var stop = new CancellationTokenSource();
+        // What is sampled is the memory still in use, after a full collection: without it the sample also counts garbage
+        // the GC has not got to yet, which depends on the machine (23 MB on one, 86 MB on a CI runner, for the same export).
+        // A buffered zip is in use until the end, so it is still seen.
         var sampler = Task.Run(async () =>
         {
             while (!stop.IsCancellationRequested)
             {
+                GC.Collect();
                 peak = Math.Max(peak, GC.GetTotalMemory(forceFullCollection: false));
-                await Task.Delay(10);
+                await Task.Delay(50);
             }
         });
 
