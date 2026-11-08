@@ -121,16 +121,21 @@ public sealed class ImportWorker(
 
         foreach (var file in Directory.EnumerateFiles(options.Directory, "*.jex"))
         {
+            DateTime written;
             try
             {
-                if (time.GetUtcNow() - File.GetLastWriteTimeUtc(file) > StrayFileAge)
-                {
-                    File.Delete(file);
-                }
+                written = File.GetLastWriteTimeUtc(file);
             }
-            catch (IOException e)
+            catch (Exception e)
             {
-                logger.LogWarning(e, "The old import file {File} could not be removed", file);
+                // One file that cannot be read never keeps the others on the disk.
+                logger.LogWarning(e, "The old import file {File} could not be read", file);
+                continue;
+            }
+
+            if (time.GetUtcNow() - written > StrayFileAge)
+            {
+                ImportFiles.TryDelete(file, logger);
             }
         }
     }
