@@ -399,24 +399,24 @@ test('tags: the row with the add field open, the Tags view and a tag’s own pag
   await openImportPage(page)
   await importJex(page, jex)
   await openSidebar(page)
-  await rowFor(page, jex.titles.notebook)
-    .getByRole('button', { name: `Expand ${jex.titles.notebook}` })
-    .click()
-  await rowFor(page, jex.titles.pictures).click()
+  // The notebook page itself, not a note: it has no attachment, which axe scans separately (editor-blocks.spec.ts).
+  await rowFor(page, jex.titles.notebook).click()
   await closeDrawer(page)
-  await expect(page.getByTestId('page-title')).toHaveValue(jex.titles.pictures)
+  await expect(page.getByTestId('page-title')).toHaveValue(jex.titles.notebook)
 
+  const tagName = unique(testInfo, 'label').replaceAll(' ', '-')
   await page.getByTestId('add-tag-button').click()
-  await page.getByTestId('add-tag-field').fill('a')
+  await page.getByTestId('add-tag-field').fill(tagName)
   await scan(page, testInfo, 'the tag row with the add field open')
-
+  await page.getByRole('option', { name: `Create tag “${tagName}”` }).click()
   await page.keyboard.press('Escape')
+
   await openSidebar(page)
-  await page.getByRole('link', { name: 'Tags' }).click()
+  await page.getByRole('link', { name: 'Tags', exact: true }).click()
   await closeDrawer(page)
   await scan(page, testInfo, 'the Tags view')
 
-  await page.getByRole('link', { name: jex.titles.tag }).click()
+  await page.getByRole('link', { name: tagName }).click()
   await scan(page, testInfo, 'a tag’s own page')
 })
 

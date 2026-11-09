@@ -139,6 +139,7 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible
       v-for="tag in current"
       :key="tag.id"
       role="listitem"
+      data-testid="tag-pill"
       class="inline-flex min-h-8 items-center gap-space-xs rounded-full bg-surface-container-high px-space-md text-label-md text-on-surface pointer-coarse:min-h-11"
     >
       <RouterLink
@@ -158,7 +159,7 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible
       </button>
     </span>
 
-    <div v-if="!readOnly && !adding">
+    <div v-if="!readOnly && !adding" role="listitem">
       <button
         ref="addButton"
         type="button"
@@ -171,7 +172,7 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible
       </button>
     </div>
 
-    <div v-else-if="!readOnly" class="relative">
+    <div v-else-if="!readOnly" role="listitem" class="relative">
       <input
         ref="input"
         v-model="query"

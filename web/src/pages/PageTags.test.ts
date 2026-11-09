@@ -34,7 +34,7 @@ async function open(
   return { server, ...mounted }
 }
 
-const pillNames = () => wrapper!.findAll('[role="listitem"]').map((li) => li.text())
+const pillNames = () => wrapper!.findAll('[data-testid="tag-pill"]').map((li) => li.text())
 
 describe('a page’s tags', () => {
   it('shows each as a pill linking to that tag’s page, with an add button', async () => {

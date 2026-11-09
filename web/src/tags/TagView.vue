@@ -89,7 +89,7 @@ async function save() {
         type="text"
         :aria-label="t('tags.nameLabel')"
         data-testid="tag-name-field"
-        class="w-full rounded bg-transparent text-headline-xl-mobile text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:text-headline-xl"
+        class="w-full rounded bg-transparent text-headline-xl-mobile text-on-surface pointer-coarse:min-h-11 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:text-headline-xl"
         @blur="save"
         @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
       />
