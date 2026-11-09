@@ -64,16 +64,46 @@ public class SyncFuzzTests(PostgresFixture postgres, ITestOutputHelper output) :
         _outcomes.ShouldBe(new Dictionary<string, int> { ["closed"] = 1 });
     }
 
-    private async Task<bool> RunAsync(byte[][] messages)
+    /// <summary>
+    /// The case a full run found: a message closes the socket while the next is still being sent. The pause waits until the
+    /// hub has dropped the connection, so the next send meets a closed socket every time, not only when the timing says so.
+    /// </summary>
+    [Fact]
+    public async Task A_message_sent_after_the_hub_closed_the_socket_does_not_count_against_the_hub()
+    {
+        (await RunAsync([Frame.Encode(MessageType.Update, _pageId, []), [(byte)MessageType.Ping]], waitForCloseAfterFirst: true)).ShouldBeTrue();
+
+        _outcomes.ShouldBe(new Dictionary<string, int> { ["closed"] = 1 });
+    }
+
+    private async Task<bool> RunAsync(byte[][] messages, bool waitForCloseAfterFirst = false)
     {
         await using var client = await _jos.ConnectAsync();
+        var hub = _factory.Services.GetRequiredService<SyncHub>();
+
+        // Pings in the generated messages are answered too; only the pong to the last one means everything was handled.
+        // Sending stops at a socket the hub has closed (the test host throws for a send to it): what the hub said about
+        // it is read below.
+        var open = true;
         foreach (var message in messages)
         {
-            await client.SendAsync(message);
+            if (!(open = await TrySendAsync(client, message)))
+            {
+                break;
+            }
+
+            if (waitForCloseAfterFirst)
+            {
+                waitForCloseAfterFirst = false;
+                await WaitUntilAsync(() => hub.OpenConnections == 0);
+            }
         }
 
-        // Pings in the generated messages are answered too; only the pong to this last one means everything was handled.
-        await client.SendAsync([(byte)MessageType.Ping]);
+        if (open)
+        {
+            await TrySendAsync(client, [(byte)MessageType.Ping]);
+        }
+
         var pongsExpected = messages.Count(message => message is [(byte)MessageType.Ping]) + 1;
         while (true)
         {
@@ -101,14 +131,35 @@ public class SyncFuzzTests(PostgresFixture postgres, ITestOutputHelper output) :
         }
 
         await client.DisposeAsync();
-        var hub = _factory.Services.GetRequiredService<SyncHub>();
+        await WaitUntilAsync(() => hub.OpenConnections == 0);
+        return hub.OpenConnections == 0;
+    }
+
+    /// <summary>
+    /// Sends, or answers false when the hub has already closed the socket: the test host throws for that before the client
+    /// has read the close (so the socket's state still says open). The close itself is read and checked afterwards, so a
+    /// send that failed for any other reason still fails the case there.
+    /// </summary>
+    private static async Task<bool> TrySendAsync(SyncTestClient client, byte[] message)
+    {
+        try
+        {
+            await client.SendAsync(message);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
         var deadline = DateTime.UtcNow + SyncTestClient.Timeout;
-        while (hub.OpenConnections > 0 && DateTime.UtcNow < deadline)
+        while (!condition() && DateTime.UtcNow < deadline)
         {
             await Task.Delay(5);
         }
-
-        return hub.OpenConnections == 0;
     }
 
     private void Count(string outcome) => _outcomes[outcome] = _outcomes.GetValueOrDefault(outcome) + 1;
