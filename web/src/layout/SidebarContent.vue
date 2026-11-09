@@ -56,6 +56,17 @@ async function openSearch() {
       @created="emit('created', $event)"
     />
 
+    <nav class="px-space-xs" :aria-label="t('tags.navLabel')">
+      <RouterLink
+        :to="{ name: 'tags' }"
+        class="flex min-h-11 items-center gap-space-sm rounded px-space-md text-body-sm text-on-surface-variant hover:bg-surface-elevated aria-[current=page]:bg-surface-elevated aria-[current=page]:text-on-surface focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary md:min-h-8"
+        @click="emit('navigate')"
+      >
+        <AppIcon name="tag" />
+        <span class="flex-1">{{ t('tags.link') }}</span>
+      </RouterLink>
+    </nav>
+
     <nav class="px-space-xs" :aria-label="t('trash.navLabel')">
       <RouterLink
         :to="{ name: 'trash' }"

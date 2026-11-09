@@ -71,6 +71,14 @@ public abstract class ReimportHarness(PostgresFixture postgres) : IClassFixture<
         return await action(scope.ServiceProvider.GetRequiredService<InkpactDbContext>());
     }
 
+    /// <summary>A scoped service of the running app (one that is not a singleton, such as <c>TagService</c>), for one call.</summary>
+    protected async Task<T> UseScopeAsync<TService, T>(Func<TService, Task<T>> action)
+        where TService : notnull
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        return await action(scope.ServiceProvider.GetRequiredService<TService>());
+    }
+
     protected async Task<ImportRun> ImportAsync(JexBuilder jex)
     {
         var options = _factory.Services.GetRequiredService<ImportOptions>();

@@ -1,4 +1,5 @@
 using Inkpact.Api.Pages;
+using Inkpact.Api.Tags;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -501,10 +502,10 @@ public sealed partial class ImportRunner
 
     // ---- tags imported before --------------------------------------------------------------------------------------------
 
-    /// <summary>A tag's name as it is kept here: no control characters or tabs, at most 200 characters.</summary>
+    /// <summary>A tag's name as it is kept here (<see cref="TagNames.Clean"/>, the interface's rule too), at most 200 characters.</summary>
     private static string TagNameOf(JexTag tag)
     {
-        var name = ContentRules.Cut(ContentRules.CleanText(tag.Title).Replace('\t', ' ').Trim(), 200);
+        var name = ContentRules.Cut(TagNames.Clean(tag.Title), TagNames.MaxLength);
         return name.Length == 0 ? "-" : name;
     }
 
@@ -537,7 +538,7 @@ public sealed partial class ImportRunner
             switch (ThreeWay.Decide<string?>(baseInfo?.Title, name, row.Name, known))
             {
                 case FieldOutcome.Take:
-                    var normalized = name.ToLowerInvariant();
+                    var normalized = TagNames.Normalize(name);
                     // Only a tag made for this one: a tag of the same name that was there before (made by hand) is not Joplin's to rename.
                     var madeForIt = row.ExternalSourceType == SourceType && row.ExternalId == tag.Id;
                     var nameTaken = await db.Tags.AnyAsync(

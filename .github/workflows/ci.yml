@@ -99,7 +99,7 @@ jobs:
     # @playwright/test in the lockfile; the first step checks that. Dependabot does not move this tag: when its
     # `playwright` group moves the package, that pull request fails here until the tag below is changed to match.
     container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      image: mcr.microsoft.com/playwright:v1.65.0-noble
       # As Playwright's Docker guide advises for Chromium: a shared memory the size of the host's, and an init process.
       options: --ipc=host --init
     services:

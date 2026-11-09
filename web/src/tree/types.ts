@@ -1,3 +1,5 @@
+import type { TagRef } from '../tags/types'
+
 /** A page as the server's tree shows it. */
 export interface PageNode {
   id: string
@@ -44,4 +46,5 @@ export interface PageDetail {
   page: PageNode
   inTrash: boolean
   workspaceId: string
+  tags: TagRef[]
 }

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Inkpact.Api.Pages;
 using Inkpact.Api.Permissions;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
@@ -6,11 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Inkpact.Api.Links;
 
-/// <summary>A page that links to another: its id and title, and its parent's title so that pages with one title can be told apart.</summary>
-public sealed record BacklinkDto(Guid Id, string Title, string? ParentTitle);
-
 /// <summary>The pages that link to a page, at most <see cref="BacklinkEndpoints.MaxBacklinks"/> of them; <c>More</c> when there are more.</summary>
-public sealed record BacklinksDto(IReadOnlyList<BacklinkDto> Items, bool More);
+public sealed record BacklinksDto(IReadOnlyList<ListedPage> Items, bool More);
 
 /// <summary>
 /// The backlinks of a page (run B.1): the pages whose content links to it, from the link index. Only pages the person may
@@ -68,13 +66,6 @@ public static class BacklinkEndpoints
             page.Add(source);
         }
 
-        Guid[] parentIds = [.. page.Where(s => s.ParentId is not null).Select(s => s.ParentId!.Value).Distinct()];
-        var parentTitles = await db.Pages.AsNoTracking()
-            .Where(p => parentIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id, p => p.Title, cancellationToken);
-
-        return Results.Ok(new BacklinksDto(
-            [.. page.Select(s => new BacklinkDto(s.Id, s.Title, s.ParentId is { } parent ? parentTitles.GetValueOrDefault(parent) : null))],
-            more));
+        return Results.Ok(new BacklinksDto(await ListedPages.WithParentTitlesAsync(db, page, cancellationToken), more));
     }
 }

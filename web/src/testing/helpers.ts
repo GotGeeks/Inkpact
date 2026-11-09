@@ -58,15 +58,26 @@ export function refused(
   return { method, path, respond: () => jsonResponse(status, field ? { code, field } : { code }) }
 }
 
-/** Mounts a page with the real router, a fresh store and the real translations, at the given path. */
-export async function mountAt(component: Component, path: string, locale: Locale = 'en') {
+/**
+ * Mounts a page with the real router, a fresh store and the real translations, at the given path. `attach` puts it in the
+ * document, which a test of where the focus goes needs.
+ */
+export async function mountAt(
+  component: Component,
+  path: string,
+  locale: Locale = 'en',
+  options: { attach?: boolean } = {},
+) {
   const pinia = createPinia()
   setActivePinia(pinia)
   const router = createAppRouter(createMemoryHistory())
   const i18n = createAppI18n(locale)
   await router.push(path)
   await router.isReady()
-  const wrapper = mount(component, { global: { plugins: [pinia, i18n, router] } })
+  const wrapper = mount(component, {
+    global: { plugins: [pinia, i18n, router] },
+    attachTo: options.attach ? document.body : undefined,
+  })
   await flushPromises()
   return { wrapper, router, i18n }
 }
