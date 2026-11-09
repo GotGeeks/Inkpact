@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppIcon from '../components/AppIcon.vue'
 import { useMediaQuery } from '../composables/useMediaQuery'
+import { useFavoritesStore } from '../stores/favorites'
 import { useTreeStore } from '../stores/tree'
 import MovePageDialog from './MovePageDialog.vue'
 import TreeRow from './TreeRow.vue'
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const tree = useTreeStore()
+const favorites = useFavoritesStore()
 
 const rows = computed(() => visibleRows(tree.pages, tree.expanded))
 
@@ -291,6 +293,7 @@ defineExpose({ newPage })
         :drop-zone="hint?.id === row.page.id ? hint.zone : null"
         :dragging="draggingId === row.page.id"
         :draggable="canDrag && tree.canEdit"
+        :favorite="favorites.has(row.page.id)"
         @focusin="focusedId = row.page.id"
         @keydown="onKeydown($event, row, index)"
         @dragstart="onDragStart($event, row)"
@@ -304,6 +307,7 @@ defineExpose({ newPage })
         @menu-rename="startRename(row.page.id)"
         @menu-add-subpage="newPage(row.page.id)"
         @menu-move="movingId = row.page.id"
+        @menu-favorite="favorites.toggle(row.page.id)"
         @menu-trash="trashRow(row.page.id)"
       />
     </ul>

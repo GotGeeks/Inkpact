@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { ApiError, api } from '../api'
 import AppIcon from '../components/AppIcon.vue'
+import { useOnTabVisible } from '../composables/onTabVisible'
 import { useChosenInView } from '../editor/useMenuPlacement'
 import { useNotificationsStore } from '../stores/notifications'
 import { useTagsStore } from '../stores/tags'
@@ -153,12 +154,7 @@ async function readAgain() {
   }
 }
 
-function onVisible() {
-  if (document.visibilityState === 'visible') void inTurn(readAgain)
-}
-
-onMounted(() => document.addEventListener('visibilitychange', onVisible))
-onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible))
+useOnTabVisible(() => void inTurn(readAgain))
 </script>
 
 <template>

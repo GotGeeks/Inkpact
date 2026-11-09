@@ -8,6 +8,12 @@
     "en": "English",
     "nl": "Nederlands"
   },
+  "theme": {
+    "label": "Thema",
+    "system": "Systeem",
+    "light": "Licht",
+    "dark": "Donker"
+  },
   "fields": {
     "email": "E-mailadres",
     "password": "Wachtwoord",
@@ -72,7 +78,8 @@
     "sidecar_unavailable": "Het deel van de server dat de pagina’s opbouwt is niet bereikbaar. Probeer het zo opnieuw; wat al geïmporteerd is blijft bewaard.",
     "import_failed": "De import is gestopt omdat er iets misging op de server.",
     "interrupted": "De import is onderbroken, omdat de server opnieuw is gestart.",
-    "workspace_missing": "De werkruimte waarvoor deze import bedoeld was bestaat niet meer."
+    "workspace_missing": "De werkruimte waarvoor deze import bedoeld was bestaat niet meer.",
+    "too_many_favorites": "Je kunt maximaal 200 favorieten in een werkruimte hebben. Verwijder er eerst een."
   },
   "shell": {
     "sidebar": "Navigatie",
@@ -332,7 +339,9 @@
   "start": {
     "title": "Welkom",
     "empty": "Je hebt nog geen pagina’s. Maak je eerste aan.",
-    "pick": "Kies een pagina in de zijbalk of maak een nieuwe."
+    "pick": "Kies een pagina in de zijbalk of maak een nieuwe.",
+    "recent": "Onlangs geopend",
+    "recentIn": "in {parent}"
   },
   "import": {
     "menu": "Importeren uit Joplin",
@@ -505,5 +514,12 @@
     "openCopy": "Open de kopie",
     "openCopyAlt": "Open de kopie van je offline wijzigingen aan “{title}”",
     "dismiss": "Sluiten"
+  },
+  "favorites": {
+    "navLabel": "Favorieten",
+    "title": "Favorieten",
+    "toggle": "Favoriet",
+    "add": "Aan favorieten toevoegen",
+    "remove": "Uit favorieten verwijderen"
   }
 }

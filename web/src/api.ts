@@ -22,7 +22,7 @@ export function setCsrfToken(token: string | null | undefined) {
   csrfToken = token ?? null
 }
 
-type Method = 'GET' | 'POST' | 'PATCH'
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 async function send(
   method: Method,

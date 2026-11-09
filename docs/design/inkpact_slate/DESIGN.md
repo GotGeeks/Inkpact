@@ -154,6 +154,56 @@ The palette is rooted in an ultra-deep charcoal slate (`#090A0F`) that minimizes
   - `sync-offline` (`#F59E0B`): Flags disconnected, local-cache fallback operations.
   - `presence-cursor-*`: A reserved high-contrast palette assigned dynamically to peer sessions to ensure collaborator pointers remain identifiable against dark editor blocks.
 
+## Light theme
+
+Run B.3 added a light theme. Every colour token has two values, written in `web/src/style.css` as `light-dark(<light>, <dark>)`, so the browser picks by the colour scheme of the page: the system setting by default, or the person's choice in the user menu (System, Light, Dark; per device, `data-theme` on the root element). The dark values above are unchanged; the light ones were chosen so that every pair `web/src/contrast.test.ts` asks for passes in both themes. In the light theme `surface-elevated` is darker than `surface-panel` (a hover or a menu shows as a grey), the opposite of dark, which is what the token means in both. The `presence-cursor-*` colours are one value in both themes. A new colour token needs both values; the contrast test fails for one with a single value.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `surface` | `#fcf8ff` | `#13121b` |
+| `surface-dim` | `#dcd8e5` | `#13121b` |
+| `surface-bright` | `#fcf8ff` | `#393842` |
+| `surface-container-lowest` | `#ffffff` | `#0e0d16` |
+| `surface-container-low` | `#f6f2fe` | `#1b1b24` |
+| `surface-container` | `#f0ecf9` | `#1f1f28` |
+| `surface-container-high` | `#eae6f3` | `#2a2933` |
+| `surface-container-highest` | `#e4e1ee` | `#35343e` |
+| `on-surface` | `#1b1b24` | `#e4e1ee` |
+| `on-surface-variant` | `#464555` | `#c7c4d8` |
+| `inverse-surface` | `#302f39` | `#e4e1ee` |
+| `inverse-on-surface` | `#f3effc` | `#302f39` |
+| `outline` | `#636176` | `#918fa1` |
+| `outline-variant` | `#c7c4d8` | `#464555` |
+| `surface-tint` | `#4d44e3` | `#c3c0ff` |
+| `primary` | `#4338ca` | `#c3c0ff` |
+| `on-primary` | `#ffffff` | `#1d00a5` |
+| `primary-container` | `#4f46e5` | `#4f46e5` |
+| `on-primary-container` | `#ffffff` | `#dad7ff` |
+| `inverse-primary` | `#c3c0ff` | `#4d44e3` |
+| `secondary` | `#00628b` | `#89ceff` |
+| `on-secondary` | `#ffffff` | `#00344d` |
+| `secondary-container` | `#c9e6ff` | `#00a2e6` |
+| `on-secondary-container` | `#001e2f` | `#00344e` |
+| `tertiary` | `#953a00` | `#ffb695` |
+| `on-tertiary` | `#ffffff` | `#571f00` |
+| `tertiary-container` | `#ffdbcc` | `#a44100` |
+| `on-tertiary-container` | `#351000` | `#ffd2be` |
+| `error` | `#b3261e` | `#ffb4ab` |
+| `on-error` | `#ffffff` | `#690005` |
+| `error-container` | `#ffdad6` | `#93000a` |
+| `on-error-container` | `#410002` | `#ffdad6` |
+| `background` | `#fcf8ff` | `#13121b` |
+| `on-background` | `#1b1b24` | `#e4e1ee` |
+| `surface-variant` | `#e4e1ee` | `#35343e` |
+| `surface-canvas` | `#ffffff` | `#090a0f` |
+| `surface-panel` | `#f7f7fa` | `#11131a` |
+| `surface-subtle` | `#f1f2f6` | `#181b24` |
+| `surface-elevated` | `#eceef3` | `#222634` |
+| `border-subtle` | `#e1e3ea` | `#232838` |
+| `border-strong` | `#c3c7d2` | `#374151` |
+| `sync-active` | `#03704f` | `#10b981` |
+| `sync-offline` | `#a14a06` | `#f59e0b` |
+
 ## Typography
 
 Typography centers exclusively on `Inter` for interface labels, prose, and document headers, using `JetBrains Mono` strictly for code segments, keyboard shortcuts, and document hash metadata.

@@ -141,3 +141,36 @@ A person marks the pages they use most as favorites and finds them at the top of
 - Read a long note in the light theme in daylight on the phone, and in the dark theme at night: both comfortable; the editor's toolbar, menus, notices and the import report readable in both.
 - Star a page on the laptop: it is at the top of the sidebar on the phone. Open a page on the phone: it is first under "Recently opened" on the laptop.
 - With TalkBack (phone) or a screen reader (laptop): the star is announced as a toggle with its state, and the recent list with its heading.
+
+## Handoff
+
+Built on branch `feat/b3-favorites-theme`, on Sonnet 5.5; the review fixes on Opus 5.5.
+
+**Done**
+- **Server** (`Favorites/FavoriteEndpoints.cs`): the five endpoints of decisions 5 and 6; the tables `favorites` and `page_visits` (migration `AddFavoritesAndVisits`).
+- **Theme:** every colour token in `style.css` is `light-dark(<light>, <dark>)` with `color-scheme: light dark` on the root; `theme.ts` and "Theme: System, Light, Dark" in the user menu set `data-theme` before the app mounts; `index.html` has the `color-scheme` and `theme-color` metas. The light values are those of decision 2, unchanged: the contrast test and axe passed on them in both themes, so none needed adjusting.
+- **Web:** the star (`pages/FavoriteButton.vue`) in the page header, "Add to / Remove from favorites" in the row menu, the favorites list above the tree (`layout/FavoritesList.vue`), "Recently opened" on the start page (`relativeTime.ts` for "5 minutes ago"), the `favorites` and `recent` stores, both languages.
+- **Tests:** `FavoriteEndpointTests` (17), the migration's column test; Vitest for `theme.ts`, the contrast of both palettes, the stores, the star, the sidebar list, the row menu item, the start page and the relative times; Playwright `favorites.spec.ts` and `theme.spec.ts` on desktop and both phones, and `a11y.spec.ts` scanning every state in both themes on all four projects, with the sidebar with favorites and the start page with recents added.
+
+**Deviations from the plan**
+- **The star is disabled on a page in the trash** unless the page is already starred, so the `page_in_trash` refusal is not reachable from the page header.
+- **The row menu item is for editors only:** the row menu exists only for someone who can edit, as before. A viewer stars from the page header.
+- **No retry on the unique key:** a star and a visit lock the person's own user row (`for update`) for their transaction instead, which also keeps the limit of 200 and the pruning of visits right under parallel requests (review fixes 3 and 4).
+- **The lists are one raw query each, joined on `live_pages`**, as the tree and search read it; starring checks the page with the walk up from it (`TreeService.IsLiveAsync`).
+- **The language line in the architecture** now says per device, as built (decision 6 of "What is there now").
+
+**Found while building:** a PUT or DELETE without a body is answered 415 by the CSRF check, which reads a request without a content type as a form. The web client always sends `{}`; the server tests do the same.
+
+**Review fixes** (`/code-review`, 10 findings, all fixed):
+1. **A refused star or unstar undoes only itself;** another toggle that went through meanwhile stays, and a refused unstar goes back to its place.
+2. **The browser bar follows a theme chosen in the menu:** `applyTheme` switches the `theme-color` metas; a test keeps their colours equal to `surface-panel` of each theme.
+3. **The limit of 200 holds under parallel stars** (the user row lock).
+4. **Parallel visits never deadlock** on the pruning (the same lock).
+5. **The page just opened is on the start page at once:** a visit puts it at the front of the local list, and a read waits for the visits still being sent.
+6. **"5 minutes ago" moves on** while the start page stays open (every 30 seconds).
+7. **One lookup per sidebar row:** the favorites are a `Set`.
+8. **Fewer and cheaper queries** (see the deviations).
+9. **One helper for "read again when the tab is back"** (`composables/onTabVisible.ts`), used by both stores, the backlinks panel and the tag row. The sync client's own listener is left: it sends a heartbeat, not a reload.
+10. **`isTheme` is shared** by `theme.ts` and the user menu; a test name that promised a System check it did not make is corrected; a repeated assertion is gone.
+
+**Not done:** the manual checks, in `docs/test-pass.md` under "B.3".

@@ -6,6 +6,7 @@ import AppIcon from '../components/AppIcon.vue'
 import { useSearchStore } from '../stores/search'
 import { useTreeStore } from '../stores/tree'
 import SidebarTree from '../tree/SidebarTree.vue'
+import FavoritesList from './FavoritesList.vue'
 import UserMenu from './UserMenu.vue'
 
 defineProps<{ selectedId: string | null }>()
@@ -49,6 +50,8 @@ async function openSearch() {
         }}</kbd>
       </button>
     </div>
+
+    <FavoritesList :selected-id="selectedId" @navigate="emit('navigate')" />
 
     <SidebarTree
       :selected-id="selectedId"

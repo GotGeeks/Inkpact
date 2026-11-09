@@ -64,6 +64,8 @@ export function useErrorMessage() {
         return t('errors.tag_name_empty')
       case 'tag_name_too_long':
         return t('errors.tag_name_too_long')
+      case 'too_many_favorites':
+        return t('errors.too_many_favorites')
       case 'too_many_tags':
         return t('errors.too_many_tags')
       case 'tag_name_taken':

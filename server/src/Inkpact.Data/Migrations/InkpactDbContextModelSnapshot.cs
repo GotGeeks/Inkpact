@@ -192,6 +192,29 @@ namespace Inkpact.Data.Migrations
                     b.ToTable("audit_events", (string)null);
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.Favorite", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("page_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("UserId", "PageId")
+                        .HasName("pk_favorites");
+
+                    b.HasIndex("PageId")
+                        .HasDatabaseName("ix_favorites_page_id");
+
+                    b.ToTable("favorites", (string)null);
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.ImportItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -631,6 +654,32 @@ namespace Inkpact.Data.Migrations
                     b.ToTable("page_updates", (string)null);
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.PageVisit", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("page_id");
+
+                    b.Property<DateTimeOffset>("OpenedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("opened_at");
+
+                    b.HasKey("UserId", "PageId")
+                        .HasName("pk_page_visits");
+
+                    b.HasIndex("PageId")
+                        .HasDatabaseName("ix_page_visits_page_id");
+
+                    b.HasIndex("UserId", "OpenedAt")
+                        .HasDatabaseName("ix_page_visits_user_id_opened_at");
+
+                    b.ToTable("page_visits", (string)null);
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.Reminder", b =>
                 {
                     b.Property<Guid>("Id")
@@ -938,6 +987,23 @@ namespace Inkpact.Data.Migrations
                         .HasConstraintName("fk_audit_events_workspace_id");
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.Favorite", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.Page", null)
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_favorites_page_id");
+
+                    b.HasOne("Inkpact.Data.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_favorites_user_id");
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.ImportItem", b =>
                 {
                     b.HasOne("Inkpact.Data.Entities.ImportRun", null)
@@ -1042,6 +1108,23 @@ namespace Inkpact.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_page_updates_user_id");
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.PageVisit", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.Page", null)
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_page_visits_page_id");
+
+                    b.HasOne("Inkpact.Data.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_page_visits_user_id");
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.Reminder", b =>

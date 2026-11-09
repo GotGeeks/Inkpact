@@ -1,53 +1,57 @@
 @import 'tailwindcss';
 
-/* Tokens from docs/design/inkpact_slate/DESIGN.md. Components use these, never raw values. */
+/*
+ * Tokens from docs/design/inkpact_slate/DESIGN.md. Components use these, never raw values. Each colour is
+ * light-dark(<light>, <dark>): the browser picks by the colour scheme of the page, so the system setting needs no script
+ * and no flash. The presence colours are one value in both themes.
+ */
 @theme {
   --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  --color-surface: #13121b;
-  --color-surface-dim: #13121b;
-  --color-surface-bright: #393842;
-  --color-surface-container-lowest: #0e0d16;
-  --color-surface-container-low: #1b1b24;
-  --color-surface-container: #1f1f28;
-  --color-surface-container-high: #2a2933;
-  --color-surface-container-highest: #35343e;
-  --color-on-surface: #e4e1ee;
-  --color-on-surface-variant: #c7c4d8;
-  --color-inverse-surface: #e4e1ee;
-  --color-inverse-on-surface: #302f39;
-  --color-outline: #918fa1;
-  --color-outline-variant: #464555;
-  --color-surface-tint: #c3c0ff;
-  --color-primary: #c3c0ff;
-  --color-on-primary: #1d00a5;
-  --color-primary-container: #4f46e5;
-  --color-on-primary-container: #dad7ff;
-  --color-inverse-primary: #4d44e3;
-  --color-secondary: #89ceff;
-  --color-on-secondary: #00344d;
-  --color-secondary-container: #00a2e6;
-  --color-on-secondary-container: #00344e;
-  --color-tertiary: #ffb695;
-  --color-on-tertiary: #571f00;
-  --color-tertiary-container: #a44100;
-  --color-on-tertiary-container: #ffd2be;
-  --color-error: #ffb4ab;
-  --color-on-error: #690005;
-  --color-error-container: #93000a;
-  --color-on-error-container: #ffdad6;
-  --color-background: #13121b;
-  --color-on-background: #e4e1ee;
-  --color-surface-variant: #35343e;
-  --color-surface-canvas: #090a0f;
-  --color-surface-panel: #11131a;
-  --color-surface-subtle: #181b24;
-  --color-surface-elevated: #222634;
-  --color-border-subtle: #232838;
-  --color-border-strong: #374151;
-  --color-sync-active: #10b981;
-  --color-sync-offline: #f59e0b;
+  --color-surface: light-dark(#fcf8ff, #13121b);
+  --color-surface-dim: light-dark(#dcd8e5, #13121b);
+  --color-surface-bright: light-dark(#fcf8ff, #393842);
+  --color-surface-container-lowest: light-dark(#ffffff, #0e0d16);
+  --color-surface-container-low: light-dark(#f6f2fe, #1b1b24);
+  --color-surface-container: light-dark(#f0ecf9, #1f1f28);
+  --color-surface-container-high: light-dark(#eae6f3, #2a2933);
+  --color-surface-container-highest: light-dark(#e4e1ee, #35343e);
+  --color-on-surface: light-dark(#1b1b24, #e4e1ee);
+  --color-on-surface-variant: light-dark(#464555, #c7c4d8);
+  --color-inverse-surface: light-dark(#302f39, #e4e1ee);
+  --color-inverse-on-surface: light-dark(#f3effc, #302f39);
+  --color-outline: light-dark(#636176, #918fa1);
+  --color-outline-variant: light-dark(#c7c4d8, #464555);
+  --color-surface-tint: light-dark(#4d44e3, #c3c0ff);
+  --color-primary: light-dark(#4338ca, #c3c0ff);
+  --color-on-primary: light-dark(#ffffff, #1d00a5);
+  --color-primary-container: light-dark(#4f46e5, #4f46e5);
+  --color-on-primary-container: light-dark(#ffffff, #dad7ff);
+  --color-inverse-primary: light-dark(#c3c0ff, #4d44e3);
+  --color-secondary: light-dark(#00628b, #89ceff);
+  --color-on-secondary: light-dark(#ffffff, #00344d);
+  --color-secondary-container: light-dark(#c9e6ff, #00a2e6);
+  --color-on-secondary-container: light-dark(#001e2f, #00344e);
+  --color-tertiary: light-dark(#953a00, #ffb695);
+  --color-on-tertiary: light-dark(#ffffff, #571f00);
+  --color-tertiary-container: light-dark(#ffdbcc, #a44100);
+  --color-on-tertiary-container: light-dark(#351000, #ffd2be);
+  --color-error: light-dark(#b3261e, #ffb4ab);
+  --color-on-error: light-dark(#ffffff, #690005);
+  --color-error-container: light-dark(#ffdad6, #93000a);
+  --color-on-error-container: light-dark(#410002, #ffdad6);
+  --color-background: light-dark(#fcf8ff, #13121b);
+  --color-on-background: light-dark(#1b1b24, #e4e1ee);
+  --color-surface-variant: light-dark(#e4e1ee, #35343e);
+  --color-surface-canvas: light-dark(#ffffff, #090a0f);
+  --color-surface-panel: light-dark(#f7f7fa, #11131a);
+  --color-surface-subtle: light-dark(#f1f2f6, #181b24);
+  --color-surface-elevated: light-dark(#eceef3, #222634);
+  --color-border-subtle: light-dark(#e1e3ea, #232838);
+  --color-border-strong: light-dark(#c3c7d2, #374151);
+  --color-sync-active: light-dark(#03704f, #10b981);
+  --color-sync-offline: light-dark(#a14a06, #f59e0b);
   --color-presence-cursor-1: #f43f5e;
   --color-presence-cursor-2: #10b981;
   --color-presence-cursor-3: #38bdf8;
@@ -99,6 +103,17 @@
   --spacing-space-md: 0.75rem;
   --spacing-space-lg: 1rem;
   --spacing-space-xl: 1.5rem;
+}
+
+/* The system decides, unless the person chose a theme in the app (theme.ts sets data-theme). */
+:root {
+  color-scheme: light dark;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 /*

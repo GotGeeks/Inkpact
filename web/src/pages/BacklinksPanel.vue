@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { api } from '../api'
+import { useOnTabVisible } from '../composables/onTabVisible'
 import { useTreeStore } from '../stores/tree'
 
 interface Backlink {
@@ -42,17 +43,9 @@ async function load() {
 // typed, so a tab left open learns of them this way. Two asks can overlap (a tree change while the tab comes back): the
 // newest wins.
 watch(() => tree.treeVersion, load)
-onMounted(() => {
-  void load()
-  document.addEventListener('visibilitychange', onVisible)
-})
-onBeforeUnmount(() => {
-  asked++
-  document.removeEventListener('visibilitychange', onVisible)
-})
-function onVisible() {
-  if (document.visibilityState === 'visible') void load()
-}
+onMounted(() => void load())
+onBeforeUnmount(() => asked++)
+useOnTabVisible(() => void load())
 </script>
 
 <template>
