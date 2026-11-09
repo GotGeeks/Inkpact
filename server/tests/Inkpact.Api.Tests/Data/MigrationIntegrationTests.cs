@@ -1,6 +1,7 @@
 using Inkpact.Api.Tests.Testing;
 using Inkpact.Data.Upgrade;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -29,6 +30,30 @@ public class MigrationIntegrationTests(PostgresFixture postgres) : IClassFixture
         var applied = await new EfMigrationStore(holder.Db).GetAppliedMigrationsAsync(default);
         applied.ShouldBe(new EfMigrationStore(holder.Db).GetKnownMigrations());
         await backup.DidNotReceiveWithAnyArgs().BackupAsync(default!, default!, default!, default);
+    }
+
+    [Theory]
+    [InlineData(false)] // no database: as the e2e suite starts, or a server whose database is made by the app
+    [InlineData(true)] // an empty database: as the Postgres container of docker-compose.yml makes one (POSTGRES_DB)
+    public async Task Migrating_a_fresh_install_logs_no_warning_or_error(bool databaseExists)
+    {
+        // A fresh install starts one of these two ways: an error in its first log would send the person looking for a fault.
+        var connectionString = databaseExists
+            ? await postgres.CreateDatabaseAsync()
+            : new NpgsqlConnectionStringBuilder(postgres.Container.GetConnectionString())
+            {
+                Database = $"never_created_{Guid.NewGuid():N}",
+                Pooling = false,
+            }.ConnectionString;
+        var logs = new CapturingLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(logs).SetMinimumLevel(LogLevel.Debug));
+        using var holder = new InkpactDbContextHolder(connectionString, loggerFactory);
+
+        await CreateMigrator(holder, Substitute.For<IDatabaseBackup>()).MigrateAsync();
+
+        (await holder.Db.Database.GetPendingMigrationsAsync()).ShouldBeEmpty();
+        logs.Entries.ShouldContain(e => e.Category.StartsWith("Microsoft.EntityFrameworkCore")); // it really listened
+        logs.WarningsAndErrors.ShouldBeEmpty();
     }
 
     [Fact]
@@ -139,12 +164,15 @@ public class MigrationIntegrationTests(PostgresFixture postgres) : IClassFixture
         }
     }
 
-    private sealed class InkpactDbContextHolder(string connectionString) : IDisposable
+    private sealed class InkpactDbContextHolder(string connectionString, ILoggerFactory? loggerFactory = null) : IDisposable
     {
         public string ConnectionString { get; } = connectionString;
 
         public Inkpact.Data.InkpactDbContext Db { get; } = new(
-            new DbContextOptionsBuilder<Inkpact.Data.InkpactDbContext>().UseNpgsql(connectionString).Options);
+            new DbContextOptionsBuilder<Inkpact.Data.InkpactDbContext>()
+                .UseNpgsql(connectionString)
+                .UseLoggerFactory(loggerFactory ?? NullLoggerFactory.Instance)
+                .Options);
 
         public void Dispose() => Db.Dispose();
     }

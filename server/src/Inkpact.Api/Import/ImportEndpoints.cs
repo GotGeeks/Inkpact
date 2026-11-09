@@ -122,7 +122,13 @@ public static class ImportEndpoints
         var enqueued = false;
         try
         {
-            await ReleaseLeftBehindAsync(db, queue, workspaceId, time, cancellationToken);
+            // One at a time per workspace: a second export while the first is running would only fill the disk. Asked
+            // first, so the usual case is an answer and not a failed insert in the log; the unique index below still
+            // decides when two uploads arrive at the same moment.
+            if (await ReleaseLeftBehindAsync(db, queue, workspaceId, time, cancellationToken))
+            {
+                return Error("import_in_progress", StatusCodes.Status409Conflict);
+            }
 
             var import = new ImportRun
             {
@@ -142,7 +148,7 @@ public static class ImportEndpoints
             }
             catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
             {
-                // One at a time per workspace: a second export while the first is running would only fill the disk.
+                // Another upload took the place between the question above and this insert.
                 return Error("import_in_progress", StatusCodes.Status409Conflict);
             }
 
@@ -199,18 +205,19 @@ public static class ImportEndpoints
     /// <summary>
     /// Marks the workspace's imports that say they wait or run but that no job here works on: what a job that ended
     /// without a word (the database went away under it) left. Without this, such a row would block the workspace until
-    /// the app restarts.
+    /// the app restarts. Answers whether an import that a job here does work on is still open.
     /// </summary>
-    private static async Task ReleaseLeftBehindAsync(InkpactDbContext db, ImportQueue queue, Guid workspaceId, TimeProvider time, CancellationToken cancellationToken)
+    private static async Task<bool> ReleaseLeftBehindAsync(InkpactDbContext db, ImportQueue queue, Guid workspaceId, TimeProvider time, CancellationToken cancellationToken)
     {
         var open = await db.Imports.AsNoTracking()
             .Where(i => i.WorkspaceId == workspaceId && (i.State == ImportStates.Queued || i.State == ImportStates.Running))
             .Select(i => i.Id)
             .ToListAsync(cancellationToken);
         var leftBehind = open.Where(id => !queue.IsActive(id)).ToList();
+        var anotherIsOpen = leftBehind.Count < open.Count;
         if (leftBehind.Count == 0)
         {
-            return;
+            return anotherIsOpen;
         }
 
         var now = time.GetUtcNow();
@@ -219,6 +226,7 @@ public static class ImportEndpoints
             .ExecuteUpdateAsync(
                 set => set.SetProperty(i => i.State, ImportStates.Failed).SetProperty(i => i.ErrorCode, "interrupted").SetProperty(i => i.FinishedAt, now),
                 cancellationToken);
+        return anotherIsOpen;
     }
 
     /// <summary>Writes the body to the import's file. Null when it is kept; otherwise the answer, and the file is gone.</summary>
