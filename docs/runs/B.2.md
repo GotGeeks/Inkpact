@@ -147,6 +147,6 @@ Built on branch `feat/b2-tags`, on Sonnet 5; the review fixes on Opus 5.5.
 
 Each fix has a test that fails without it (mutation-checked).
 
-**Not changed:** the iPhone run of `editor-blocks.spec.ts` "the slash button opens the menu, which stays out from under the toolbar" fails now and then, also on its own; it is older than this run and unrelated to tags.
+**A spec this run broke, fixed in its fixture:** `editor-blocks.spec.ts` "the slash button opens the menu, which stays out from under the toolbar" failed on the iPhone in every full run, and 4 of 4 alone; it passed 6 of 6 on `main`. The phone specs' fake visual viewport copied `window.innerHeight` once at the start of the page, when WebKit still reports 1643 pixels on the iPhone, so the menu's placement never kept clear of the toolbar. On `main` the menu ended half a pixel above the toolbar by luck; the tag row, 44 pixels on touch, moved the content down. The fake now reads its size from the window each time, as a real one does; the app was not at fault. (First taken for an older flake: it was checked on `main` only after the PR was opened.)
 
 **Not done:** the manual checks, in `docs/test-pass.md` under "B.2".
