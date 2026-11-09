@@ -6,6 +6,7 @@ const SUBSCRIBE = 0
 const UPDATE = 2
 const SYNC = 3
 const PING = 5
+const EMPTY_UPDATE = [0, 0]
 
 // The app's own client is tested in sync-client.spec.ts. This one writes the frames by hand and checks what only a real
 // browser can: that the strict policy lets the app open its own socket (connect-src 'self' must cover ws: and wss:, which
@@ -36,11 +37,13 @@ test('the app opens its own sync socket under the strict policy, and two tabs se
       .toEqual([SYNC])
   }
 
-  await sendFrame(page, 'a', UPDATE, pageId, [1, 2, 3])
+  // The update of an empty Yjs document: the hub relays any bytes, but this page stays in the workspace, and bytes Yjs
+  // cannot decode would make every later compaction and export of it log an error.
+  await sendFrame(page, 'a', UPDATE, pageId, EMPTY_UPDATE)
 
   await expect
     .poll(async () => (await socketLog(other, 'b')).frames.at(-1))
-    .toEqual({ type: UPDATE, pageId, bytes: [1, 2, 3] })
+    .toEqual({ type: UPDATE, pageId, bytes: EMPTY_UPDATE })
   // The sender does not get its own update back.
   await sendFrame(page, 'a', PING)
   await expect.poll(async () => (await socketLog(page, 'a')).pongs).toBe(1)
