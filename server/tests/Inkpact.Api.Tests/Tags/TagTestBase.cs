@@ -70,6 +70,16 @@ public abstract class TagTestBase(PostgresFixture postgres) : DatabaseTestBase(p
         return result.Error;
     }
 
+    /// <summary>A tag no page has, as the import leaves one, or one that was taken off its last page.</summary>
+    protected async Task<Guid> AddTagAsync(string name)
+    {
+        await using var db = CreateContext();
+        var tag = new Tag { WorkspaceId = WorkspaceId, Name = name, NormalizedName = name.ToLowerInvariant(), CreatedAt = Start };
+        db.Tags.Add(tag);
+        await db.SaveChangesAsync();
+        return tag.Id;
+    }
+
     protected async Task<List<Tag>> AllTagsAsync()
     {
         await using var db = CreateContext();

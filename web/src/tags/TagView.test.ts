@@ -92,4 +92,15 @@ describe('a tag’s page', () => {
     expect(wrapper!.find('input').exists()).toBe(false)
     expect(wrapper!.get('h1').text()).toBe('Fruit')
   })
+
+  it('does not rename while an input method is composing a word', async () => {
+    const { server } = await open({ Apple: [{ id: 't1', name: 'Fruit' }] })
+    const field = wrapper!.get('input')
+    await field.setValue('くだもの')
+
+    await field.trigger('keydown', { key: 'Enter', isComposing: true })
+    await flushPromises()
+
+    expect(server.writes()).toEqual([])
+  })
 })

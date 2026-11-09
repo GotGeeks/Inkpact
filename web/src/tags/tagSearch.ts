@@ -27,8 +27,22 @@ export function findTags(
   return [...starts, ...contains].slice(0, limit)
 }
 
-/** Whether a tag of the workspace already has this exact name (case and accents folded). */
-export function hasExactMatch(tags: readonly WorkspaceTag[], query: string): boolean {
-  const wanted = fold(query.trim())
-  return wanted !== '' && tags.some((tag) => fold(tag.name) === wanted)
+/**
+ * A name as the server keeps it (`TagNames.Clean`): no control characters, tabs and line breaks as spaces, trimmed, the
+ * inner spaces as they are.
+ */
+export function cleanTagName(name: string): string {
+  return name
+    .replace(/[\t\n]/g, ' ')
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, '')
+    .trim()
+}
+
+/**
+ * Whether a tag of the workspace already has this name by the server's rule: the same name in lower case. Accents count,
+ * so "cafe" can be made next to "café", as the server allows; finding tags ignores them, matching does not.
+ */
+export function hasExactMatch(tags: readonly WorkspaceTag[], name: string): boolean {
+  const wanted = cleanTagName(name).toLowerCase()
+  return wanted !== '' && tags.some((tag) => tag.name.toLowerCase() === wanted)
 }

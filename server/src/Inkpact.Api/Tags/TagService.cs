@@ -1,3 +1,4 @@
+using Inkpact.Api.Pages;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -11,11 +12,8 @@ public sealed record TagDto(Guid Id, string Name);
 /// <summary>A workspace's tag, with the number of live pages that have it.</summary>
 public sealed record WorkspaceTagDto(Guid Id, string Name, int PageCount);
 
-/// <summary>A page that has a tag: its id and title, and its parent's title so pages with one title can be told apart.</summary>
-public sealed record TagPageDto(Guid Id, string Title, string? ParentTitle);
-
 /// <summary>The live pages of a tag, at most <see cref="TagService.MaxTagPages"/> of them; <c>More</c> when there are more.</summary>
-public sealed record TagPagesDto(string TagName, IReadOnlyList<TagPageDto> Items, bool More);
+public sealed record TagPagesDto(string TagName, IReadOnlyList<ListedPage> Items, bool More);
 
 /// <summary>An operation that was refused: the status, the code the client translates, and the field it concerns.</summary>
 public sealed record TagError(int Status, string Code, string? Field = null);
@@ -37,7 +35,7 @@ public readonly record struct TagResult<T>(T? Value, TagError? Error)
 /// </summary>
 public sealed class TagService(InkpactDbContext db, TimeProvider time)
 {
-    public const int MaxNameLength = 200;
+    public const int MaxNameLength = TagNames.MaxLength;
 
     /// <summary>Names and ids together, in one request to change a page's tags.</summary>
     public const int MaxNamesPerRequest = 100;
@@ -56,11 +54,12 @@ public sealed class TagService(InkpactDbContext db, TimeProvider time)
             .ToListAsync(cancellationToken);
 
     /// <summary>
-    /// Adds and removes tags on a page, as a set: removes first, then adds. A name is matched to an existing tag of the
-    /// workspace by its lower case, with that tag's own spelling kept; otherwise a tag is made with the name as given.
-    /// Adding a tag the page has, or removing one it does not, does nothing. The page row is locked for the change, so
-    /// two requests on one page run one after the other; two workspaces' pages making the same new tag at once is the
-    /// unique index's race, tried again once. Answers with the page's tags as they now are.
+    /// Adds and removes tags on a page, as a set: removes first, then adds. A name is cleaned by the import's rule
+    /// (<see cref="TagNames"/>) and matched to an existing tag of the workspace by its lower case, with that tag's own
+    /// spelling kept; otherwise a tag is made with the name as given. Adding a tag the page has, or removing one it does
+    /// not, does nothing. The page row is locked for the change, so two requests on one page run one after the other. Two
+    /// pages making the same new tag at once meet the unique index, and a rename may drop a tag this request just found;
+    /// either way the request is run again once. Answers with the page's tags as they now are.
     /// </summary>
     public async Task<TagResult<IReadOnlyList<TagDto>>> ChangeTagsAsync(
         Guid pageId, IReadOnlyList<string>? addNames, IReadOnlyList<Guid>? removeIds, CancellationToken cancellationToken = default)
@@ -75,18 +74,12 @@ public sealed class TagService(InkpactDbContext db, TimeProvider time)
         var cleanedAdd = new List<(string Name, string Normalized)>();
         foreach (var raw in add)
         {
-            var clean = CleanName(raw);
-            if (clean is null)
+            if (CheckName(raw, "add", out var clean) is { } error)
             {
-                return new TagError(StatusCodes.Status400BadRequest, "tag_name_empty", "add");
+                return error;
             }
 
-            if (clean.Length > MaxNameLength)
-            {
-                return new TagError(StatusCodes.Status400BadRequest, "tag_name_too_long", "add");
-            }
-
-            cleanedAdd.Add((clean, clean.ToLowerInvariant()));
+            cleanedAdd.Add((clean, TagNames.Normalize(clean)));
         }
 
         for (var attempt = 0; ; attempt++)
@@ -150,10 +143,10 @@ public sealed class TagService(InkpactDbContext db, TimeProvider time)
                 {
                     await db.SaveChangesAsync(cancellationToken);
                 }
-                catch (DbUpdateException ex) when (attempt == 0 && IsUniqueViolation(ex))
+                catch (DbUpdateException ex) when (attempt == 0 && IsRace(ex))
                 {
-                    // Another page made the same new tag at the same moment: the next attempt finds it instead of making
-                    // a second one.
+                    // Another page made the same new tag at the same moment, or a rename dropped the unused tag this found:
+                    // the next attempt reads the tags again.
                     db.ChangeTracker.Clear();
                     continue;
                 }
@@ -185,7 +178,10 @@ public sealed class TagService(InkpactDbContext db, TimeProvider time)
         return [.. rows.Select(r => new WorkspaceTagDto(r.Id, r.Name, (int)r.PageCount))];
     }
 
-    /// <summary>The live pages of a tag, by title; <c>not_found</c> for a tag of another workspace or none at all.</summary>
+    /// <summary>
+    /// The live pages of a tag, by title (case ignored, as the backlinks), at most <see cref="MaxTagPages"/>, sorted and
+    /// cut in the database; <c>not_found</c> for a tag of another workspace or none at all.
+    /// </summary>
     public async Task<TagResult<TagPagesDto>> GetTagPagesAsync(Guid workspaceId, Guid tagId, CancellationToken cancellationToken = default)
     {
         var tag = await db.Tags.AsNoTracking().SingleOrDefaultAsync(t => t.Id == tagId && t.WorkspaceId == workspaceId, cancellationToken);
@@ -194,44 +190,37 @@ public sealed class TagService(InkpactDbContext db, TimeProvider time)
             return new TagError(StatusCodes.Status404NotFound, "not_found");
         }
 
+        // One more than fits, to know whether there are more. upper() in the "C" collation is what OrdinalIgnoreCase does.
         var rows = await db.Database.SqlQuery<TagPageRow>($"""
             SELECT p.id AS "Id", p.title AS "Title", p.parent_id AS "ParentId"
             FROM page_tags pt
             JOIN pages p ON p.id = pt.page_id
             JOIN live_pages({workspaceId}) live ON live.page_id = p.id
             WHERE pt.tag_id = {tagId}
+            ORDER BY upper(p.title) COLLATE "C", p.id
+            LIMIT {MaxTagPages + 1}
             """).ToListAsync(cancellationToken);
 
-        var ordered = rows.OrderBy(r => r.Title, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Id).ToList();
-        var more = ordered.Count > MaxTagPages;
-        var page = ordered.Take(MaxTagPages).ToList();
-
-        Guid[] parentIds = [.. page.Where(r => r.ParentId is not null).Select(r => r.ParentId!.Value).Distinct()];
-        var parentTitles = await db.Pages.AsNoTracking()
-            .Where(p => parentIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id, p => p.Title, cancellationToken);
-
-        return new TagPagesDto(
-            tag.Name,
-            [.. page.Select(r => new TagPageDto(r.Id, r.Title, r.ParentId is { } parent ? parentTitles.GetValueOrDefault(parent) : null))],
-            more);
+        var more = rows.Count > MaxTagPages;
+        var pages = await ListedPages.WithParentTitlesAsync(
+            db, [.. rows.Take(MaxTagPages).Select(r => (r.Id, r.Title, r.ParentId))], cancellationToken);
+        return new TagPagesDto(tag.Name, pages, more);
     }
 
-    /// <summary>Renames a tag; a change of case only is allowed, another spelling that collides with another tag is not.</summary>
+    /// <summary>
+    /// Renames a tag. A change of case only is allowed. Another tag with the name is a conflict, unless no page has it at
+    /// all (not even one in the trash): such a tag is only kept so that its name reuses it, and the renamed tag takes over
+    /// that role, so it goes. A tag that only pages in the trash have is a conflict of its own (<c>tag_name_taken_in_trash</c>),
+    /// since the Tags view does not show it. A rename that meets another request making the same name is a conflict too.
+    /// </summary>
     public async Task<TagResult<TagDto>> RenameTagAsync(Guid workspaceId, Guid tagId, string? name, CancellationToken cancellationToken = default)
     {
-        var clean = CleanName(name);
-        if (clean is null)
+        if (CheckName(name, "name", out var clean) is { } error)
         {
-            return new TagError(StatusCodes.Status400BadRequest, "tag_name_empty", "name");
+            return error;
         }
 
-        if (clean.Length > MaxNameLength)
-        {
-            return new TagError(StatusCodes.Status400BadRequest, "tag_name_too_long", "name");
-        }
-
-        var normalized = clean.ToLowerInvariant();
+        var normalized = TagNames.Normalize(clean);
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var tag = await db.Tags.SingleOrDefaultAsync(t => t.Id == tagId && t.WorkspaceId == workspaceId, cancellationToken);
@@ -240,36 +229,62 @@ public sealed class TagService(InkpactDbContext db, TimeProvider time)
             return new TagError(StatusCodes.Status404NotFound, "not_found");
         }
 
-        var taken = await db.Tags.AsNoTracking()
-            .AnyAsync(t => t.WorkspaceId == workspaceId && t.Id != tagId && t.NormalizedName == normalized, cancellationToken);
-        if (taken)
+        if (tag.NormalizedName != normalized)
         {
-            return new TagError(StatusCodes.Status409Conflict, "tag_name_taken", "name");
+            var other = await db.Tags.AsNoTracking()
+                .Where(t => t.WorkspaceId == workspaceId && t.Id != tagId && t.NormalizedName == normalized)
+                .Select(t => (Guid?)t.Id)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (other is { } otherId)
+            {
+                if (await db.PageTags.AnyAsync(pt => pt.TagId == otherId, cancellationToken))
+                {
+                    var onLivePage = await db.Database.SqlQuery<bool>($"""
+                        select exists(
+                            select 1 from page_tags pt join live_pages({workspaceId}) live on live.page_id = pt.page_id
+                            where pt.tag_id = {otherId}) as "Value"
+                        """).SingleAsync(cancellationToken);
+                    return new TagError(StatusCodes.Status409Conflict, onLivePage ? "tag_name_taken" : "tag_name_taken_in_trash", "name");
+                }
+
+                // Deleted first, in its own statement, so the unique index never sees both names at once.
+                await db.Tags.Where(t => t.Id == otherId).ExecuteDeleteAsync(cancellationToken);
+            }
         }
 
         tag.Name = clean;
         tag.NormalizedName = normalized;
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsRace(ex))
+        {
+            // Another request made a tag of this name since it was looked for.
+            return new TagError(StatusCodes.Status409Conflict, "tag_name_taken", "name");
+        }
+
         await transaction.CommitAsync(cancellationToken);
         return new TagDto(tag.Id, tag.Name);
     }
 
     // ---- helpers -------------------------------------------------------------------------------------------------
 
-    /// <summary>Trimmed, with inner white space made one space; null when that leaves nothing.</summary>
-    private static string? CleanName(string? name)
+    /// <summary>The name cleaned by <see cref="TagNames.Clean"/>, or the reason it cannot be one.</summary>
+    private static TagError? CheckName(string? raw, string field, out string clean)
     {
-        if (name is null)
+        clean = TagNames.Clean(raw);
+        if (clean.Length == 0)
         {
-            return null;
+            return new TagError(StatusCodes.Status400BadRequest, "tag_name_empty", field);
         }
 
-        var collapsed = string.Join(' ', name.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-        return collapsed.Length == 0 ? null : collapsed;
+        return clean.Length > MaxNameLength ? new TagError(StatusCodes.Status400BadRequest, "tag_name_too_long", field) : null;
     }
 
-    private static bool IsUniqueViolation(DbUpdateException ex) =>
-        ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+    /// <summary>A unique name taken, or a tag that went away, by another request at the same moment.</summary>
+    private static bool IsRace(DbUpdateException ex) =>
+        ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.ForeignKeyViolation };
 
     // What the raw queries return; the names match the aliases in the SQL.
     private sealed class WorkspaceTagRow

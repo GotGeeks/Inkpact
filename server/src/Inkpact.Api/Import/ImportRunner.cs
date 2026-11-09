@@ -6,6 +6,7 @@ using Inkpact.Api.Compaction;
 using Inkpact.Api.Crdt;
 using Inkpact.Api.Pages;
 using Inkpact.Api.Sync;
+using Inkpact.Api.Tags;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -467,7 +468,7 @@ public sealed partial class ImportRunner(
 
         var bytes = await ReadItemAsync(run, tag.Offset, tag.Length, cancellationToken);
         var name = TagNameOf(tag);
-        var normalized = name.ToLowerInvariant();
+        var normalized = TagNames.Normalize(name);
 
         await using var scope = scopes.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<InkpactDbContext>();

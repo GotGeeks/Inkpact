@@ -119,7 +119,7 @@ public class TagEndpointTests(PostgresFixture postgres) : IClassFixture<Postgres
         tag.PageCount.ShouldBe(2);
 
         var pages = await _owner.GetFromJsonAsync<TagPagesDto>($"/api/workspaces/{_workspaceId}/tags/{tag.Id}/pages");
-        pages!.Items.ShouldBe([new TagPageDto(apple.Id, "Apple", null), new TagPageDto(banana.Id, "banana", "Notebook")]);
+        pages!.Items.ShouldBe([new ListedPage(apple.Id, "Apple", null), new ListedPage(banana.Id, "banana", "Notebook")]);
         pages.More.ShouldBeFalse();
     }
 

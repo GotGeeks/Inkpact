@@ -50,6 +50,13 @@ async function load() {
 
 watch(tagId, load, { immediate: true })
 
+/** Enter saves by leaving the field, but not the Enter that confirms a word in an input method. */
+function onEnter(event: KeyboardEvent) {
+  if (event.isComposing || event.keyCode === 229) return
+  event.preventDefault()
+  ;(event.target as HTMLInputElement).blur()
+}
+
 async function save() {
   const trimmed = draft.value.trim()
   if (!tree.canEdit || trimmed === name.value || trimmed === '') {
@@ -91,7 +98,7 @@ async function save() {
         data-testid="tag-name-field"
         class="w-full rounded bg-transparent text-headline-xl-mobile text-on-surface pointer-coarse:min-h-11 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:text-headline-xl"
         @blur="save"
-        @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
+        @keydown.enter="onEnter"
       />
       <h1 v-else class="text-headline-xl-mobile md:text-headline-xl">{{ name }}</h1>
     </header>

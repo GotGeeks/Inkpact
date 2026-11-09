@@ -68,6 +68,8 @@ export function useErrorMessage() {
         return t('errors.too_many_tags')
       case 'tag_name_taken':
         return t('errors.tag_name_taken')
+      case 'tag_name_taken_in_trash':
+        return t('errors.tag_name_taken_in_trash')
       case 'restore_the_parent':
         return t('errors.restore_the_parent')
       case 'too_many_pages':

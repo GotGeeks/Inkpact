@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findTags, hasExactMatch } from './tagSearch'
+import { cleanTagName, findTags, hasExactMatch } from './tagSearch'
 import type { WorkspaceTag } from './types'
 
 const tags: WorkspaceTag[] = [
@@ -29,10 +29,25 @@ describe('findTags', () => {
 })
 
 describe('hasExactMatch', () => {
-  it('is true only for a name that matches exactly, case and accents folded', () => {
+  it('matches by the server’s rule: case ignored, accents not', () => {
     expect(hasExactMatch(tags, 'work')).toBe(true)
-    expect(hasExactMatch(tags, 'CAFE')).toBe(true)
+    expect(hasExactMatch(tags, ' CAFÉ ')).toBe(true)
+    // The server would make "cafe" next to "café", so the menu must offer to.
+    expect(hasExactMatch(tags, 'cafe')).toBe(false)
     expect(hasExactMatch(tags, 'wo')).toBe(false)
     expect(hasExactMatch(tags, '')).toBe(false)
+  })
+
+  it('keeps inner spaces, as the import and the server do', () => {
+    const imported: WorkspaceTag[] = [{ id: 't9', name: 'to  do', pageCount: 1 }]
+    expect(hasExactMatch(imported, 'To  Do')).toBe(true)
+    expect(hasExactMatch(imported, 'to do')).toBe(false)
+  })
+})
+
+describe('cleanTagName', () => {
+  it('trims, turns tabs and line breaks into spaces, and drops control characters', () => {
+    expect(cleanTagName('  book\u0000\tclub \n')).toBe('book club')
+    expect(cleanTagName('to  do')).toBe('to  do')
   })
 })

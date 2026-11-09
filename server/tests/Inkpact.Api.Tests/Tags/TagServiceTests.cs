@@ -1,5 +1,8 @@
+using Inkpact.Api.Pages;
 using Inkpact.Api.Tags;
 using Inkpact.Api.Tests.Testing;
+using Inkpact.Data.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace Inkpact.Api.Tests.Tags;
 
@@ -74,13 +77,26 @@ public class TagServiceTests(PostgresFixture postgres) : TagTestBase(postgres)
     }
 
     [Fact]
-    public async Task A_name_is_trimmed_and_its_inner_white_space_collapsed()
+    public async Task A_name_is_cleaned_by_the_imports_rule_trimmed_with_control_characters_out_and_tabs_as_spaces()
     {
         var page = await CreatePageAsync();
 
-        var result = await SucceededAsync(WithTagsAsync(tags => tags.ChangeTagsAsync(page, ["  book   club  "], [])));
+        var result = await SucceededAsync(WithTagsAsync(tags => tags.ChangeTagsAsync(page, ["  book\u0000\tclub  "], [])));
 
         result.Select(t => t.Name).ShouldBe(["book club"]);
+    }
+
+    [Fact]
+    public async Task A_name_with_inner_spaces_finds_the_tag_the_import_made_with_the_same_name()
+    {
+        // The import keeps inner spaces as they are (TagNames.Clean): a name typed with them must find that tag.
+        var page = await CreatePageAsync();
+        var imported = await AddTagAsync("to  do");
+
+        var result = await SucceededAsync(WithTagsAsync(tags => tags.ChangeTagsAsync(page, ["To  Do"], [])));
+
+        result.ShouldBe([new TagDto(imported, "to  do")]);
+        (await AllTagsAsync()).Count.ShouldBe(1);
     }
 
     [Theory]
@@ -248,10 +264,93 @@ public class TagServiceTests(PostgresFixture postgres) : TagTestBase(postgres)
 
         result.Value!.Items.ShouldBe(
         [
-            new TagPageDto(apple, "Apple", null),
-            new TagPageDto(banana, "banana", "Notebook"),
+            new ListedPage(apple, "Apple", null),
+            new ListedPage(banana, "banana", "Notebook"),
         ]);
         result.Value!.More.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Renaming_onto_the_name_of_a_tag_no_page_has_takes_it_over_and_that_tag_goes()
+    {
+        var page = await CreatePageAsync();
+        var work = (await SucceededAsync(WithTagsAsync(tags => tags.ChangeTagsAsync(page, ["Work"], [])))).Single();
+        var unused = await AddTagAsync("projects");
+
+        var renamed = await WithTagsAsync(tags => tags.RenameTagAsync(WorkspaceId, work.Id, "Projects"));
+
+        renamed.Value.ShouldBe(new TagDto(work.Id, "Projects"));
+        (await AllTagsAsync()).Select(t => t.Id).ShouldBe([work.Id]);
+        (await AllTagsAsync()).ShouldNotContain(t => t.Id == unused);
+    }
+
+    [Fact]
+    public async Task Renaming_onto_the_name_of_a_tag_only_pages_in_the_trash_have_says_so()
+    {
+        var page = await CreatePageAsync("Live");
+        var trashed = await CreatePageAsync("Trashed");
+        var work = (await SucceededAsync(WithTagsAsync(tags => tags.ChangeTagsAsync(page, ["Work"], [])))).Single();
+        await WithTagsAsync(tags => tags.ChangeTagsAsync(trashed, ["Projects"], []));
+        await TrashPageAsync(trashed);
+
+        var result = await WithTagsAsync(tags => tags.RenameTagAsync(WorkspaceId, work.Id, "projects"));
+
+        result.Error!.Code.ShouldBe("tag_name_taken_in_trash");
+        (await AllTagsAsync()).Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Two_renames_to_one_new_name_at_the_same_moment_let_one_through_and_refuse_the_other()
+    {
+        for (var round = 0; round < 10; round++)
+        {
+            var page = await CreatePageAsync($"Page {round}");
+            var added = await SucceededAsync(WithTagsAsync(tags => tags.ChangeTagsAsync(page, [$"a{round}", $"b{round}"], [])));
+
+            var results = await Task.WhenAll(added.Select(tag =>
+                WithTagsAsync(tags => tags.RenameTagAsync(WorkspaceId, tag.Id, $"same{round}"))));
+
+            results.Count(r => r.Succeeded).ShouldBe(1, $"round {round}");
+            results.Single(r => !r.Succeeded).Error!.Code.ShouldBe("tag_name_taken");
+        }
+    }
+
+    [Fact]
+    public async Task A_tags_pages_stop_at_two_hundred_by_title_and_say_there_are_more()
+    {
+        var tagId = await AddTagAsync("many");
+        await using (var db = CreateContext())
+        {
+            var pages = Enumerable.Range(0, TagService.MaxTagPages + 1)
+                .Select(i => new Page { WorkspaceId = WorkspaceId, Title = $"Page {TagService.MaxTagPages - i:D3}", SortKey = $"a{i:D4}", CreatedAt = Start, UpdatedAt = Start })
+                .ToList();
+            db.Pages.AddRange(pages);
+            db.PageTags.AddRange(pages.Select(p => new PageTag { PageId = p.Id, TagId = tagId }));
+            await db.SaveChangesAsync();
+        }
+
+        var result = (await WithTagsAsync(tags => tags.GetTagPagesAsync(WorkspaceId, tagId))).Value!;
+
+        result.Items.Count.ShouldBe(TagService.MaxTagPages);
+        result.More.ShouldBeTrue();
+        result.Items[0].Title.ShouldBe("Page 000");
+        result.Items[^1].Title.ShouldBe("Page 199");
+    }
+
+    [Fact]
+    public async Task A_tags_pages_are_sorted_with_case_ignored()
+    {
+        var notebook = await CreatePageAsync("Notebook");
+        foreach (var title in new[] { "banana", "Apple", "cherry" })
+        {
+            var page = await CreatePageAsync(title, notebook);
+            await WithTagsAsync(tags => tags.ChangeTagsAsync(page, ["Fruit"], []));
+        }
+
+        var tagId = (await AllTagsAsync()).Single().Id;
+        var result = (await WithTagsAsync(tags => tags.GetTagPagesAsync(WorkspaceId, tagId))).Value!;
+
+        result.Items.Select(i => (i.Title, i.ParentTitle)).ShouldBe([("Apple", "Notebook"), ("banana", "Notebook"), ("cherry", "Notebook")]);
     }
 
     [Fact]

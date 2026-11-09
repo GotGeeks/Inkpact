@@ -1,7 +1,8 @@
-import { type VueWrapper } from '@vue/test-utils'
+import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mountAt } from '../testing/helpers'
+import { jsonResponse, mountAt } from '../testing/helpers'
 import { fakeTree, outline } from '../testing/treeFixtures'
+import { useNotificationsStore } from '../stores/notifications'
 import TagsView from './TagsView.vue'
 
 let wrapper: VueWrapper | null = null
@@ -56,5 +57,50 @@ describe('the Tags view', () => {
     await open({ Apple: [{ id: 't1', name: 'Fruit' }] })
 
     expect(wrapper!.get('a').attributes('href')).toBe('/tags/t1')
+  })
+
+  it('says it is loading, not that there are none, until the list is read', async () => {
+    const server = fakeTree({
+      pages: outline(['Apple']),
+      tags: { Apple: [{ id: 't1', name: 'Fruit' }] },
+    })
+    const answer = server.fetch.getMockImplementation()!
+    let release: () => void = () => {}
+    server.fetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/tags')) await new Promise<void>((r) => (release = r))
+      return answer(input, init)
+    })
+    wrapper = (await mountAt(TagsView, '/tags')).wrapper
+
+    expect(wrapper.get('[role="status"]').text()).toBe('Loading tags…')
+    expect(wrapper.text()).not.toContain('There are no tags yet.')
+
+    release()
+    await flushPromises()
+    expect(rows()).toEqual(['Fruit1'])
+  })
+
+  it('says the list could not be read, and posts why, when the server fails', async () => {
+    const server = fakeTree({ pages: outline(['Apple']) })
+    const answer = server.fetch.getMockImplementation()!
+    server.fetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).endsWith('/tags')
+        ? jsonResponse(500, { code: 'server_error' })
+        : answer(input, init),
+    )
+    wrapper = (await mountAt(TagsView, '/tags')).wrapper
+
+    expect(wrapper.text()).toContain('The tags could not be loaded.')
+    expect(wrapper.text()).not.toContain('There are no tags yet.')
+    expect(useNotificationsStore().notices).toMatchObject([{ type: 'error', code: 'server_error' }])
+  })
+
+  it('says so when the filter matches nothing', async () => {
+    await open({ Apple: [{ id: 't1', name: 'Fruit' }] })
+
+    await wrapper!.get('[data-testid="tags-filter"]').setValue('zzz')
+
+    expect(wrapper!.get('[data-testid="tags-no-match"]').text()).toBe('No tags match “zzz”.')
+    expect(wrapper!.find('[data-testid="tags-list"]').exists()).toBe(false)
   })
 })

@@ -31,7 +31,7 @@ A person sees a page's tags under its title, adds a tag (an existing one or a ne
 
 1. **The page's tags come with the page:** `PageDetail` gets `tags: [{ id, name }]`, sorted by their lower-case name. No second request when a page opens.
 2. **Changing a page's tags is one set operation:** `POST /api/pages/{id}/tags` with `{ add: string[] (names), remove: string[] (tag ids) }`, `RequirePageRole(Editor)`. It answers with the page's tags as they now are.
-   - **Adding by name:** the name is trimmed and its inner white space made one space. A tag with that name in lower case is the one used, with its own spelling; otherwise a tag is made with the name as typed. Adding a tag the page has does nothing.
+   - **Adding by name:** the name is cleaned by the import's rule (control characters out, tabs as spaces, trimmed; inner spaces kept, so a typed name finds the tag the import made from it; changed in review, the plan said to make inner white space one space). A tag with that name in lower case is the one used, with its own spelling; otherwise a tag is made with the name as typed. Adding a tag the page has does nothing.
    - **Removing by id:** only the page's own `page_tags` rows are touched, so an id of another workspace or one the page does not have does nothing and tells nothing.
    - **Both at once:** removes first, then adds.
    - **Limits and errors** (codes, translated by the client): `tag_name_empty`, `tag_name_too_long` (over 200), `too_many_tags` (more than 100 names and ids in one request), `page_in_trash` (409, as a rename: a page's metadata is read-only in the trash; its content is not).
@@ -39,7 +39,7 @@ A person sees a page's tags under its title, adds a tag (an existing one or a ne
    - **What it does not touch:** the page's `version`, `updated_at` and the workspace's tree version. Tags are not the tree's title or place, and the re-import's base is unaffected.
 3. **The workspace's tags:** `GET /api/workspaces/{id}/tags`, `RequireWorkspaceRole(Viewer)`: `[{ id, name, pageCount }]`, counting live pages only (`live_pages`). A tag on no live page is left out. Sorted by lower-case name. No cap: a library has hundreds, not tens of thousands.
 4. **The pages of a tag:** `GET /api/workspaces/{id}/tags/{tagId}/pages`, `RequireWorkspaceRole(Viewer)`: the live pages with that tag, with id, title and the parent's title, by title, at most 200 and a `more` flag: the shape of the backlinks endpoint, sharing its code where that is less code. A tag of another workspace is `not_found`.
-5. **Renaming a tag** (question 2): `PATCH /api/workspaces/{id}/tags/{tagId}` with `{ name }`, `RequireWorkspaceRole(Editor)`. The same name rules; `tag_name_taken` (409) when another tag has the name in lower case; a change of case only is allowed. There is no delete: a tag that is on no live page is not listed and not suggested, and is used again when its name is typed.
+5. **Renaming a tag** (question 2): `PATCH /api/workspaces/{id}/tags/{tagId}` with `{ name }`, `RequireWorkspaceRole(Editor)`. The same name rules; `tag_name_taken` (409) when another tag has the name in lower case; a change of case only is allowed. *(Changed in review: `tag_name_taken_in_trash` when only pages in the trash have the other tag, and a tag no page has is taken over: it goes.)* There is no delete: a tag that is on no live page is not listed and not suggested, and is used again when its name is typed.
 6. **The tag row on a page** (`pages/PageTags.vue`, question 1), between the title and the child pages:
    - **Pills:** `rounded-full`, `label-md`, `bg-surface-container-high`, the name after a `#` that a screen reader does not read. Each opens that tag's pages. With edit rights, each has a remove button ("Remove tag {name}"), 44 pixels on touch.
    - **Adding:** an "Add tag" button opens a field in the row (Reka UI `Combobox`), focus in it. It suggests the workspace's tags whose name contains what is typed (case and accents folded as in `pageSearch.ts`, names that start with it first, at most 8, not those the page has), and "Create tag "{name}"" first when no tag has exactly that name. Enter or a click adds and keeps the field open for the next; Escape closes it and gives the focus back to the button.
@@ -116,3 +116,37 @@ A person sees a page's tags under its title, adds a tag (an existing one or a ne
 
 1. **Where tags show:** a row of pills under the title, and a "Tags" view in the sidebar with each tag's pages.
 2. **Managing tags:** rename, no delete; a tag on no live page is not listed.
+
+## Handoff
+
+Built on branch `feat/b2-tags`, on Sonnet 5; the review fixes on Opus 5.5.
+
+**Done**
+- **Server** (`Tags/`): `TagService` and `TagEndpoints`, the four endpoints of decisions 2 to 5; `PageDetail` has the page's tags. `TagNames` is the one name rule, shared with the import.
+- **Web:** the tag row (`pages/PageTags.vue`) under the title, the "Tags" view and a tag's own page (`tags/`), the `tags` store, a "Tags" link in the sidebar, both languages.
+- **Tests:** `TagServiceTests`, `TagEndpointTests`, an FsCheck model test (`TagPropertyTests`), two re-import tests in `ReimportFieldsTests` (a removal and a rename made here survive); Vitest for the row, the store, the search helpers and both views; Playwright `tags.spec.ts` and a state in `a11y.spec.ts`.
+
+**Deviations from the plan**
+- **The page row is locked `for update`, not with `LockAndLoadAsync`:** that one raises the workspace's tree version, which decision 2 says a tag change leaves alone.
+- **The add field is an input with a listbox in the ARIA combobox pattern,** not Reka UI's `Combobox`, as the other menus of the app are.
+- **The workspace's id is found by the tags store itself** (`tree.init()` when nothing has), so the views work when opened on their own.
+
+**Found by the full check, fixed:** the tag row's add control was a plain child of `role="list"` (invalid, and the row is on every page, so it failed the axe scan of many screens); the rename field was under 44 pixels on touch.
+
+**Review fixes** (`/code-review`, 10 findings, all fixed):
+1. **No older answer replaces a newer one:** a row sends its changes one at a time and reads the tags again on the same queue; it no longer follows the page the view reads, which could be older.
+2. **One name rule for the import and the interface** (`TagNames.Clean`): inner spaces are kept (the plan said to make them one space), so a name typed here finds the tag the import made from it; control characters are removed rather than reaching Postgres.
+3. **"Same name" on the client is the server's rule:** case ignored, accents not, so "cafe" can be made next to "café".
+4. **The highlighted option goes back to the first** when the text changes.
+5. **The focus comes back:** to "Add tag" after Escape; to the next pill, or "Add tag", after a remove.
+6. **The field is focused before the workspace's tags are read,** so a phone opens its keyboard on the first tap.
+7. **Enter that confirms a word in an input method** is left to it, in the add field and in the rename field.
+8. **Rename:** a tag no page has is taken over (it goes); one only pages in the trash have gives `tag_name_taken_in_trash`; two renames to one name at once give one `tag_name_taken`, not a 500.
+9. **A tag's pages are sorted and cut to 200 in the database;** the list of pages with their parent's title (`ListedPage`) is shared with the backlinks.
+10. **The Tags view says it is loading, or could not load** (with a notice), never "no tags yet" before it knows, and says so when the filter matches nothing.
+
+Each fix has a test that fails without it (mutation-checked).
+
+**Not changed:** the iPhone run of `editor-blocks.spec.ts` "the slash button opens the menu, which stays out from under the toolbar" fails now and then, also on its own; it is older than this run and unrelated to tags.
+
+**Not done:** the manual checks, in `docs/test-pass.md` under "B.2".
