@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ySyncPluginKey } from '@tiptap/y-tiptap'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import type { Editor } from '@tiptap/core'
 import type { EditorView } from '@tiptap/pm/view'
@@ -69,16 +68,6 @@ const editable = computed(() => {
   if (page.state === 'missing' || page.state === 'tooLarge') return false
   return everSynced.value || sync.connection === 'offline'
 })
-
-/**
- * A page with something in it that this schema does not know (made by a newer version of the app, with a block this tab
- * has never heard of) cannot be shown. y-tiptap then stops writing the editor's changes to the page, so nothing is
- * deleted, and says so in its binding. TipTap's own `contentError` covers the other way in: a change from another client
- * that makes the document invalid.
- */
-function checkProjection(current: Editor) {
-  if (ySyncPluginKey.getState(current.state)?.binding?.projectionError) contentError.value = true
-}
 
 const slashState = createSlashState()
 const pageMenuState = createPageMenuState()
@@ -272,6 +261,11 @@ const editor = useEditor({
       untitled: () => t('tree.untitled'),
     },
     linkShortcut: { open: openLinkPicker },
+    // A page with something in it that this schema does not know (made by a newer version of the app, with a block this
+    // tab has never heard of) cannot be shown. y-tiptap keeps it and stops writing the editor's changes to the page, so
+    // nothing is deleted. TipTap's own `contentError` covers the other way in: a change from another client that makes
+    // the document invalid.
+    onInvalidContent: () => (contentError.value = true),
     openLink,
     brokenLinks: {
       stateOf: linkTarget,
@@ -311,8 +305,6 @@ const editor = useEditor({
   },
   onFocus: refreshFocus,
   onBlur: focusChanged,
-  onCreate: ({ editor: created }) => checkProjection(created),
-  onTransaction: ({ editor: changed }) => checkProjection(changed),
   editorProps: {
     attributes: attributes(),
     transformPastedHTML: sanitizePastedHtml,

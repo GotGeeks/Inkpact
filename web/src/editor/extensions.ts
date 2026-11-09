@@ -52,6 +52,12 @@ export interface EditorExtensionsOptions {
   files?: AttachmentFileOptions
   /** Adding files from the picker, a paste or a drop; without it (a read-only page, most tests) there is no way in. */
   upload?: AttachmentUploadOptions
+  /**
+   * Told when the page holds something this schema does not know (a block from a newer version of the app). y-tiptap
+   * then shows what it can and writes nothing to the page until it fits again; without this callback it would delete
+   * that content from the page for everybody, so it is always passed.
+   */
+  onInvalidContent?: (error: Error) => void
 }
 
 export function createExtensions({
@@ -67,6 +73,7 @@ export function createExtensions({
   openLink,
   brokenLinks,
   linkShortcut,
+  onInvalidContent = () => {},
 }: EditorExtensionsOptions): Extensions {
   return [
     StarterKit.configure({
@@ -88,7 +95,7 @@ export function createExtensions({
     BrokenLinks.configure(brokenLinks ?? {}),
     PageLinkNormalizer,
     LinkShortcut.configure(linkShortcut ?? {}),
-    Collaboration.configure({ document: doc, field: FIELD }),
+    Collaboration.configure({ document: doc, field: FIELD, ySyncOptions: { onInvalidContent } }),
     TaskList,
     TaskItem.configure({
       nested: true,
