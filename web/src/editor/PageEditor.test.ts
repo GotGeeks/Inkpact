@@ -216,6 +216,16 @@ describe('PageEditor', () => {
     await vi.waitFor(() => expect(w.find('[role="alert"]').exists()).toBe(true))
     expect(w.get('[role="alert"]').text()).toContain('newer version of Inkpact')
     expect(root().getAttribute('contenteditable')).toBe('false')
+    // The block it does not know is still in the page, here and on the server: nothing was written for it.
+    const local = (ySyncPluginKey.getState(editorOf(w).state) as { binding: { doc: Y.Doc } })
+      .binding.doc
+    expect(
+      local
+        .getXmlFragment(FIELD)
+        .toArray()
+        .map((node) => (node as Y.XmlElement).nodeName),
+    ).toEqual(['paragraph', 'futureBlock'])
+    expect(hub.log(pageId)).toHaveLength(1)
   })
 
   it('shows a link another client wrote with a script address without that address', async () => {
