@@ -1,7 +1,9 @@
 using Inkpact.Api.Import;
+using Inkpact.Api.Tags;
 using Inkpact.Api.Tests.Testing;
 using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Inkpact.Api.Tests.Import;
 
@@ -494,6 +496,41 @@ public sealed class ReimportFieldsTests(PostgresFixture postgres) : ReimportHarn
             await db.Tags.ExecuteUpdateAsync(set => set.SetProperty(t => t.Name, "Mine").SetProperty(t => t.NormalizedName, "mine"));
             return 0;
         });
+
+        var import = await ImportAsync(Library().Tag("t-work", "Job"));
+
+        (await TagOfAsync("t-work")).Name.ShouldBe("Mine");
+        var entry = EntryOf(import, "t-work");
+        entry.Reasons.Select(r => (r.Code, r.Detail)).ShouldBe([(NoteCodes.TagNameKept, "Job")]);
+    }
+
+    [Fact]
+    public async Task A_tag_removed_with_the_tag_endpoint_stays_removed_after_the_same_export_is_imported_again()
+    {
+        await StartAsync();
+        await ImportAsync(Library().Tag("t-work", "Work").NoteTag("plan", "t-work"));
+        var page = await PageOfAsync("plan");
+        var work = await TagOfAsync("t-work");
+
+        (await UseScopeAsync<TagService, TagResult<IReadOnlyList<TagDto>>>(tags => tags.ChangeTagsAsync(page.Id, [], [work.Id]))).Succeeded.ShouldBeTrue();
+
+        var import = await ImportAsync(Library().Tag("t-work", "Work").NoteTag("plan", "t-work"));
+
+        // Joplin still has the tag; nothing here asked for it back, so the removal here stands, silently (unlike a
+        // title conflict, a tag that stays removed is not its own report entry).
+        (await TagNamesOfAsync(page.Id)).ShouldBeEmpty();
+        EntriesOf(import).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task A_tag_renamed_with_the_tag_endpoint_keeps_its_name_after_the_same_export_is_imported_again()
+    {
+        await StartAsync();
+        await ImportAsync(Library().Tag("t-work", "Work"));
+        var work = await TagOfAsync("t-work");
+
+        var renamed = await UseScopeAsync<TagService, TagResult<TagDto>>(tags => tags.RenameTagAsync(WorkspaceId, work.Id, "Mine"));
+        renamed.Succeeded.ShouldBeTrue();
 
         var import = await ImportAsync(Library().Tag("t-work", "Job"));
 

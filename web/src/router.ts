@@ -32,6 +32,8 @@ export function createAppRouter(history: RouterHistory = createWebHistory()): Ro
           { path: '', name: 'home', component: () => import('./pages/StartPage.vue') },
           { path: 'p/:pageId', name: 'page', component: () => import('./pages/PageView.vue') },
           { path: 'trash', name: 'trash', component: () => import('./pages/TrashView.vue') },
+          { path: 'tags', name: 'tags', component: () => import('./tags/TagsView.vue') },
+          { path: 'tags/:tagId', name: 'tag', component: () => import('./tags/TagView.vue') },
           {
             // The import's id is in the address, so that a reload shows the same import again.
             path: 'import/joplin/:importId?',

@@ -20,6 +20,7 @@ import { useCurrentPageStore } from '../stores/currentPage'
 import { useNotificationsStore } from '../stores/notifications'
 import { useSearchStore } from '../stores/search'
 import { useSyncStore } from '../stores/sync'
+import { useTagsStore } from '../stores/tags'
 import { useTreeStore } from '../stores/tree'
 import SidebarContent from './SidebarContent.vue'
 import NoticeToaster from './NoticeToaster.vue'
@@ -33,6 +34,7 @@ const notifications = useNotificationsStore()
 const search = useSearchStore()
 const sync = useSyncStore()
 const auth = useAuthStore()
+const tags = useTagsStore()
 useKeepLostEdits()
 
 // From the md breakpoint (48 rem) the sidebar stays beside the page; below it, a drawer opens from a button.
@@ -81,6 +83,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onShortcut, true)
   search.reset()
   tree.reset()
+  tags.reset()
   sync.destroy()
 })
 

@@ -75,9 +75,9 @@ public class BacklinkEndpointTests(PostgresFixture postgres) : IClassFixture<Pos
         backlinks.More.ShouldBeFalse();
         backlinks.Items.ShouldBe(
         [
-            new BacklinkDto(apple.Id, "Apple", null),
-            new BacklinkDto(banana.Id, "banana", "Notebook"),
-            new BacklinkDto(cherry.Id, "Cherry", "Notebook"),
+            new ListedPage(apple.Id, "Apple", null),
+            new ListedPage(banana.Id, "banana", "Notebook"),
+            new ListedPage(cherry.Id, "Cherry", "Notebook"),
         ]);
     }
 

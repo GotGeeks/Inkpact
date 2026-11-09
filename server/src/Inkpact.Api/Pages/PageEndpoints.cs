@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Inkpact.Api.Auth;
 using Inkpact.Api.Permissions;
 using Inkpact.Api.Sync;
+using Inkpact.Api.Tags;
 using Inkpact.Data.Entities;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,7 +22,7 @@ public sealed record MovePageRequest(Guid? ParentId, Guid? AfterId, Guid? Before
 
 public sealed record VersionedRequest(int? ExpectedVersion);
 
-public sealed record PageDetail(PageDto Page, bool InTrash, Guid WorkspaceId);
+public sealed record PageDetail(PageDto Page, bool InTrash, Guid WorkspaceId, IReadOnlyList<TagDto> Tags);
 
 /// <summary>
 /// The page tree over REST. Tree operations never go through the CRDT: they go here, one at a time. Reading needs
@@ -102,10 +103,16 @@ public static class PageEndpoints
     private static async Task<IResult> GetTrash(Guid workspaceId, TreeService tree, CancellationToken cancellationToken) =>
         Results.Ok(await tree.GetTrashAsync(workspaceId, cancellationToken));
 
-    private static async Task<IResult> GetPage(Guid pageId, TreeService tree, CancellationToken cancellationToken) =>
-        await tree.GetPageAsync(pageId, cancellationToken) is { } found
-            ? Results.Ok(new PageDetail(found.Page, found.InTrash, found.WorkspaceId))
-            : NotFound();
+    private static async Task<IResult> GetPage(Guid pageId, TreeService tree, TagService tags, CancellationToken cancellationToken)
+    {
+        if (await tree.GetPageAsync(pageId, cancellationToken) is not { } found)
+        {
+            return NotFound();
+        }
+
+        var pageTags = await tags.GetPageTagsAsync(pageId, cancellationToken);
+        return Results.Ok(new PageDetail(found.Page, found.InTrash, found.WorkspaceId, pageTags));
+    }
 
     private static async Task<IResult> Create(
         Guid workspaceId, CreatePageRequest request, HttpContext http, TreeService tree, SyncOptions sync, CancellationToken cancellationToken)
