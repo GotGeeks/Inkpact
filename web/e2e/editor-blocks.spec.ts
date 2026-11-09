@@ -155,21 +155,28 @@ test.describe('on a phone', () => {
     test.skip(testInfo.project.name === 'desktop', 'needs a touch screen')
   })
 
-  /** The browser's visual viewport shrinks when the keyboard opens; Playwright has no keyboard, so a test makes one. */
+  /**
+   * The browser's visual viewport shrinks when the keyboard opens; Playwright has no keyboard, so a test makes one. Its size
+   * is read from the window every time, as a real one is: at the start of the page WebKit still has a layout viewport of
+   * 1643 pixels on the iPhone, and a size copied then let the slash menu run under the toolbar.
+   */
   async function fakeKeyboard(page: Page) {
     await page.addInitScript(() => {
+      let keyboard = 0
       const viewport = Object.assign(new EventTarget(), {
-        width: window.innerWidth,
-        height: window.innerHeight,
         offsetLeft: 0,
         offsetTop: 0,
         pageLeft: 0,
         pageTop: 0,
         scale: 1,
       })
+      Object.defineProperties(viewport, {
+        width: { get: () => window.innerWidth },
+        height: { get: () => window.innerHeight - keyboard },
+      })
       Object.defineProperty(window, 'visualViewport', { value: viewport, configurable: true })
       ;(window as unknown as Record<string, unknown>).__setKeyboard = (height: number) => {
-        viewport.height = window.innerHeight - height
+        keyboard = height
         viewport.dispatchEvent(new Event('resize'))
       }
     })
