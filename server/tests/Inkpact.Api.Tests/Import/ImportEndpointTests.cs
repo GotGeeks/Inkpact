@@ -342,6 +342,8 @@ public sealed class ImportEndpointTests(PostgresFixture postgres) : IClassFixtur
         (await refused.ReadErrorAsync()).Code.ShouldBe("import_in_progress");
         UploadedFiles().ShouldBeEmpty();
         (await UseDbAsync(db => db.Imports.CountAsync())).ShouldBe(1);
+        // Refused by asking, not by a failed insert that EF logs as an error.
+        _factory.Logs.WarningsAndErrors.Where(line => line.Contains(" Microsoft.EntityFrameworkCore")).ShouldBeEmpty();
 
         await UseDbAsync(db => db.Imports.Where(i => i.Id == running).ExecuteUpdateAsync(set => set.SetProperty(i => i.State, ImportStates.Completed)));
         queue.Release(running);
