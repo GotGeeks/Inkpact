@@ -24,7 +24,7 @@
     "@tiptap/starter-kit": "^3.32.2",
     "@tiptap/suggestion": "^3.32.2",
     "@tiptap/vue-3": "^3.32.2",
-    "@tiptap/y-tiptap": "^3.0.11",
+    "@tiptap/y-tiptap": "^3.2.0",
     "dompurify": "^3.4.17",
     "lib0": "0.2.119",
     "pinia": "^4.1.0",
