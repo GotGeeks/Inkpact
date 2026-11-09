@@ -17,7 +17,9 @@ import { isSearchShortcut } from '../search/shortcut'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useAuthStore } from '../stores/auth'
 import { useCurrentPageStore } from '../stores/currentPage'
+import { useFavoritesStore } from '../stores/favorites'
 import { useNotificationsStore } from '../stores/notifications'
+import { useRecentStore } from '../stores/recent'
 import { useSearchStore } from '../stores/search'
 import { useSyncStore } from '../stores/sync'
 import { useTagsStore } from '../stores/tags'
@@ -35,6 +37,8 @@ const search = useSearchStore()
 const sync = useSyncStore()
 const auth = useAuthStore()
 const tags = useTagsStore()
+const favorites = useFavoritesStore()
+const recent = useRecentStore()
 useKeepLostEdits()
 
 // From the md breakpoint (48 rem) the sidebar stays beside the page; below it, a drawer opens from a button.
@@ -69,6 +73,7 @@ async function start() {
   failed.value = false
   try {
     await tree.init()
+    void favorites.load()
   } catch {
     failed.value = true
   }
@@ -76,6 +81,7 @@ async function start() {
 
 onMounted(() => {
   void start()
+  favorites.watchFocus()
   // Capturing, so that the editor does not take the key first; the browser would otherwise use it for its own search.
   window.addEventListener('keydown', onShortcut, true)
 })
@@ -84,6 +90,8 @@ onBeforeUnmount(() => {
   search.reset()
   tree.reset()
   tags.reset()
+  favorites.reset()
+  recent.reset()
   sync.destroy()
 })
 

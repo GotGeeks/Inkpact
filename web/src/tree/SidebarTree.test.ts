@@ -536,13 +536,14 @@ describe('SidebarTree: the menu of a row', () => {
     return { ...context, items, item }
   }
 
-  it('opens with the context menu key and lists the four actions', async () => {
+  it('opens with the context menu key and lists the five actions', async () => {
     const { items } = await menuOf('B')
 
     expect(items().map((el) => el.textContent?.trim())).toEqual([
       'Rename',
       'Add subpage',
       'Move to…',
+      'Add to favorites',
       'Move to trash',
     ])
   })
@@ -553,7 +554,7 @@ describe('SidebarTree: the menu of a row', () => {
     await key('B', 'F10', { shiftKey: true })
     await flushPromises()
 
-    expect(document.body.querySelectorAll('[role="menuitem"]')).toHaveLength(4)
+    expect(document.body.querySelectorAll('[role="menuitem"]')).toHaveLength(5)
   })
 
   it('renames from the menu', async () => {
@@ -585,6 +586,21 @@ describe('SidebarTree: the menu of a row', () => {
     await flushPromises()
 
     expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('Move “B” to')
+  })
+
+  it('stars the page from the menu, and offers to remove the star afterwards', async () => {
+    const { item, server, key } = await menuOf('B')
+
+    item('Add to favorites').click()
+    await flushPromises()
+
+    expect(server.writes()).toEqual([{ method: 'PUT', path: '/api/pages/B/favorite', body: {} }])
+    await key('B', 'ContextMenu')
+    await flushPromises()
+    const again = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].map((el) =>
+      el.textContent?.trim(),
+    )
+    expect(again).toContain('Remove from favorites')
   })
 
   it('moves the page to the trash', async () => {

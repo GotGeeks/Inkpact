@@ -44,6 +44,11 @@ export interface FakeTree {
   setBacklinks: (pageId: string, answer: BacklinksAnswer | Response) => void
   /** The pages whose backlinks were asked for, in order. */
   backlinkReads: () => string[]
+  /** What the server says the person starred or opened, from now on. */
+  setFavorites: (ids: string[]) => void
+  setRecent: (items: { pageId: string; openedAt: string }[]) => void
+  /** The favorite ids the server holds now. */
+  favorites: () => string[]
   /** Makes the next write fail with this status and code. */
   failNext: (status: number, code: string) => void
 }
@@ -71,10 +76,16 @@ export function fakeTree(
     backlinks?: Record<string, BacklinksAnswer>
     /** A page's tags, by its id; none without it. */
     tags?: Record<string, TagRef[]>
+    /** The ids of the pages the person starred, in the order they were; none without it. */
+    favorites?: string[]
+    /** The pages the person opened, newest first; none without it. */
+    recent?: { pageId: string; openedAt: string }[]
   } = {},
 ): FakeTree {
   let pages = initial.pages ?? []
   let trash = initial.trash ?? []
+  let favorites = [...(initial.favorites ?? [])]
+  let recent = [...(initial.recent ?? [])]
   let failure: { status: number; code: string } | null = null
   const writes: { method: string; path: string; body: Record<string, unknown> }[] = []
   const searches: string[] = []
@@ -120,6 +131,8 @@ export function fakeTree(
       if (path === `/api/workspaces/${workspace.id}/pages`)
         return jsonResponse(200, { treeVersion: 1, pages })
       if (path === `/api/workspaces/${workspace.id}/trash`) return jsonResponse(200, trash)
+      if (path === `/api/workspaces/${workspace.id}/favorites`) return jsonResponse(200, favorites)
+      if (path === `/api/workspaces/${workspace.id}/recent`) return jsonResponse(200, recent)
       const searchPath = `/api/workspaces/${workspace.id}/search?q=`
       if (path.startsWith(searchPath) && initial.search) {
         const query = decodeURIComponent(path.slice(searchPath.length))
@@ -188,6 +201,23 @@ export function fakeTree(
       return jsonResponse(status, { code })
     }
 
+    const favoriteOf = /^\/api\/pages\/([^/]+)\/favorite$/.exec(path)
+    if (favoriteOf) {
+      const pageId = decodeURIComponent(favoriteOf[1]!)
+      favorites = favorites.filter((id) => id !== pageId)
+      if (method === 'PUT') favorites.push(pageId)
+      return new Response(null, { status: 204 })
+    }
+    const visited = /^\/api\/pages\/([^/]+)\/visit$/.exec(path)
+    if (visited) {
+      const pageId = decodeURIComponent(visited[1]!)
+      recent = [
+        { pageId, openedAt: new Date().toISOString() },
+        ...recent.filter((r) => r.pageId !== pageId),
+      ]
+      return new Response(null, { status: 204 })
+    }
+
     const pageTags = /^\/api\/pages\/([^/]+)\/tags$/.exec(path)
     if (pageTags) {
       const pageId = decodeURIComponent(pageTags[1]!)
@@ -245,6 +275,13 @@ export function fakeTree(
       backlinks.set(pageId, answer)
     },
     backlinkReads: () => backlinkReads,
+    setFavorites: (ids) => {
+      favorites = [...ids]
+    },
+    setRecent: (items) => {
+      recent = [...items]
+    },
+    favorites: () => favorites,
     failNext: (status, code) => {
       failure = { status, code }
     },

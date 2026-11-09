@@ -12,11 +12,21 @@ const sources = import.meta.glob(['./**/*.vue', './**/editorClasses.ts'], {
   eager: true,
 }) as Record<string, string>
 
-/** A theme colour by its name in style.css ("on-surface"), as it is written there. */
-function token(name: string): string {
-  const match = new RegExp(`--color-${name}: *(#[0-9a-fA-F]{6});`).exec(css)
-  if (!match) throw new Error(`no colour token ${name}`)
-  return match[1]!
+const themes = ['light', 'dark'] as const
+type Theme = (typeof themes)[number]
+
+/** The colours that are one value in both themes: the cursors of other people, drawn on the text of either. */
+const singleValue = /^presence-/
+
+/** A theme colour by its name in style.css ("on-surface") for one theme: `light-dark(light, dark)`, or one value. */
+function token(name: string, theme: Theme): string {
+  const pair = new RegExp(
+    `--color-${name}: *light-dark\\((#[0-9a-fA-F]{6}), *(#[0-9a-fA-F]{6})\\);`,
+  ).exec(css)
+  if (pair) return theme === 'light' ? pair[1]! : pair[2]!
+  const single = new RegExp(`--color-${name}: *(#[0-9a-fA-F]{6});`).exec(css)
+  if (single && singleValue.test(name)) return single[1]!
+  throw new Error(`no colour token ${name} with a light and a dark value`)
 }
 
 function luminance(hex: string): number {
@@ -27,9 +37,9 @@ function luminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
-/** WCAG's contrast ratio of two colours. */
-function ratio(a: string, b: string): number {
-  const [x, y] = [luminance(token(a)), luminance(token(b))]
+/** WCAG's contrast ratio of two colours in one theme. */
+function ratio(a: string, b: string, theme: Theme): number {
+  const [x, y] = [luminance(token(a, theme)), luminance(token(b, theme))]
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
 }
 
@@ -43,9 +53,9 @@ const surfaces = [
   'surface-container-high',
 ]
 
-describe('contrast of the design tokens (WCAG 2.2 AA)', () => {
+describe.each(themes)('contrast of the design tokens, %s theme (WCAG 2.2 AA)', (theme) => {
   it('reads the tokens it checks', () => {
-    expect(token('surface-canvas')).toBe('#090a0f')
+    expect(token('surface-canvas', theme)).toBe(theme === 'light' ? '#ffffff' : '#090a0f')
   })
 
   describe.each([
@@ -63,7 +73,7 @@ describe('contrast of the design tokens (WCAG 2.2 AA)', () => {
     ['primary', 3],
   ] as const)('%s', (foreground, minimum) => {
     it.each(surfaces)(`is at least ${minimum}:1 on %s`, (surface) => {
-      expect(ratio(foreground, surface)).toBeGreaterThanOrEqual(minimum)
+      expect(ratio(foreground, surface, theme)).toBeGreaterThanOrEqual(minimum)
     })
   })
 
@@ -72,12 +82,35 @@ describe('contrast of the design tokens (WCAG 2.2 AA)', () => {
     ['on-error-container', 'error-container'],
     ['on-surface', 'surface-container-highest'],
   ])('text %s on %s is at least 4.5:1', (foreground, background) => {
-    expect(ratio(foreground, background)).toBeGreaterThanOrEqual(4.5)
+    expect(ratio(foreground, background, theme)).toBeGreaterThanOrEqual(4.5)
   })
 
   it('the edge of a text field is at least 3:1 on the page', () => {
-    expect(ratio('outline', 'surface-canvas')).toBeGreaterThanOrEqual(3)
+    expect(ratio('outline', 'surface-canvas', theme)).toBeGreaterThanOrEqual(3)
   })
+})
+
+describe('the theme tokens', () => {
+  it('every colour token has a light and a dark value, except the listed ones', () => {
+    const names = [...css.matchAll(/--color-([a-z0-9-]+):/g)].map((m) => m[1]!)
+    expect(names.length).toBeGreaterThan(40)
+    const single = names.filter(
+      (name) => !/light-dark\(/.test(css.match(new RegExp(`--color-${name}:[^;]*;`))![0]),
+    )
+    expect(single.filter((name) => !singleValue.test(name))).toEqual([])
+  })
+
+  it.each(themes)(
+    'the browser bar colour of index.html is surface-panel of the %s theme',
+    (theme) => {
+      // index.html has no stylesheet when the browser reads it, so the value is written there and checked here.
+      const html = readFileSync(resolve(import.meta.dirname, '../index.html'), 'utf8')
+      const meta = new RegExp(
+        `<meta\\s+name="theme-color"\\s+data-scheme="${theme}"\\s+content="(#[0-9a-f]{6})"`,
+      )
+      expect(meta.exec(html)?.[1]).toBe(token('surface-panel', theme))
+    },
+  )
 })
 
 describe('classes that failed the contrast and must not come back', () => {

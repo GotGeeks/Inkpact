@@ -33,6 +33,10 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
 
     public DbSet<PageTag> PageTags => Set<PageTag>();
 
+    public DbSet<Favorite> Favorites => Set<Favorite>();
+
+    public DbSet<PageVisit> PageVisits => Set<PageVisit>();
+
     public DbSet<Reminder> Reminders => Set<Reminder>();
 
     public DbSet<ImportRun> Imports => Set<ImportRun>();
@@ -219,6 +223,25 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             pageTag.HasOne<Tag>().WithMany().HasForeignKey(t => t.TagId).OnDelete(DeleteBehavior.Cascade);
             // The pages that have a tag.
             pageTag.HasIndex(t => t.TagId);
+        });
+
+        modelBuilder.Entity<Favorite>(favorite =>
+        {
+            favorite.ToTable("favorites");
+            favorite.HasKey(f => new { f.UserId, f.PageId });
+            favorite.HasOne<User>().WithMany().HasForeignKey(f => f.UserId).OnDelete(DeleteBehavior.Cascade);
+            favorite.HasOne<Page>().WithMany().HasForeignKey(f => f.PageId).OnDelete(DeleteBehavior.Cascade);
+            favorite.HasIndex(f => f.PageId);
+        });
+
+        modelBuilder.Entity<PageVisit>(visit =>
+        {
+            visit.ToTable("page_visits");
+            visit.HasKey(v => new { v.UserId, v.PageId });
+            visit.HasOne<User>().WithMany().HasForeignKey(v => v.UserId).OnDelete(DeleteBehavior.Cascade);
+            visit.HasOne<Page>().WithMany().HasForeignKey(v => v.PageId).OnDelete(DeleteBehavior.Cascade);
+            visit.HasIndex(v => new { v.UserId, v.OpenedAt });
+            visit.HasIndex(v => v.PageId);
         });
 
         modelBuilder.Entity<Reminder>(reminder =>

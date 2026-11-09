@@ -34,6 +34,7 @@ defineProps<{
     | 'upload'
     | 'search'
     | 'tag'
+    | 'star'
 }>()
 
 const paths = {
@@ -68,6 +69,7 @@ const paths = {
   upload: 'M12 16V4M7 9l5-5 5 5M4 20h16',
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM21 21l-4.3-4.3',
   tag: 'M12.6 3H6a2 2 0 0 0-2 2v6.6a2 2 0 0 0 .6 1.4l8.4 8.4a2 2 0 0 0 2.8 0l6-6a2 2 0 0 0 0-2.8L13.4 3.6A2 2 0 0 0 12.6 3ZM7.5 8h.01',
+  star: 'm12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
 } as const
 </script>
 

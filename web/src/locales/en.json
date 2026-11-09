@@ -8,6 +8,12 @@
     "en": "English",
     "nl": "Nederlands"
   },
+  "theme": {
+    "label": "Theme",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
   "fields": {
     "email": "Email",
     "password": "Password",
@@ -72,7 +78,8 @@
     "sidecar_unavailable": "The part of the server that builds the pages is not available. Try again in a moment; what was imported is kept.",
     "import_failed": "The import stopped because something went wrong on the server.",
     "interrupted": "The import was interrupted, because the server restarted.",
-    "workspace_missing": "The workspace this import was for no longer exists."
+    "workspace_missing": "The workspace this import was for no longer exists.",
+    "too_many_favorites": "You can have at most 200 favorites in a workspace. Remove one first."
   },
   "shell": {
     "sidebar": "Navigation",
@@ -332,7 +339,9 @@
   "start": {
     "title": "Welcome",
     "empty": "You have no pages yet. Create your first one.",
-    "pick": "Pick a page in the sidebar, or create a new one."
+    "pick": "Pick a page in the sidebar, or create a new one.",
+    "recent": "Recently opened",
+    "recentIn": "in {parent}"
   },
   "import": {
     "menu": "Import from Joplin",
@@ -505,5 +514,12 @@
     "openCopy": "Open the copy",
     "openCopyAlt": "Open the copy of your offline changes to “{title}”",
     "dismiss": "Dismiss"
+  },
+  "favorites": {
+    "navLabel": "Favorites",
+    "title": "Favorites",
+    "toggle": "Favorite",
+    "add": "Add to favorites",
+    "remove": "Remove from favorites"
   }
 }

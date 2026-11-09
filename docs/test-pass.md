@@ -72,7 +72,13 @@ This file collects everything that needs a person, a phone or the Unraid box. Ev
 - [ ] Rename a tag from its own page, remove a tag from a note, then import the same Joplin export again: both changes are still there.
 - [ ] With TalkBack (phone) or a screen reader (laptop): the tag row and the add-tag field are announced, with the number of suggestions.
 
-Runs B.3 to B.8 add their checks here.
+### B.3: favorites, recently opened pages and the light theme
+- [ ] On the phone, switch the system between light and dark: Inkpact follows, also in the browser's bar; on the laptop, choose Light in the user menu with a dark system, reload: still light.
+- [ ] Read a long note in the light theme in daylight on the phone, and in the dark theme at night: both comfortable; the editor's toolbar, menus, notices and the import report readable in both.
+- [ ] Star a page on the laptop: it is at the top of the sidebar on the phone. Open a page on the phone: it is first under "Recently opened" on the laptop.
+- [ ] With TalkBack (phone) or a screen reader (laptop): the star is announced as a toggle with its state, and the recent list with its heading.
+
+Runs B.4 to B.8 add their checks here.
 
 ## Phase 2
 

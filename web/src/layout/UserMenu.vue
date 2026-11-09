@@ -10,12 +10,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from 'reka-ui'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import { api, ApiError } from '../api'
 import { applyLocale, locales, type Locale } from '../i18n'
+import { applyTheme, detectTheme, isTheme, themes, type Theme } from '../theme'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationsStore } from '../stores/notifications'
 import { useSettingsStore } from '../stores/settings'
@@ -39,6 +40,20 @@ function chooseLocale(next: unknown) {
   settings.setLocale(next as Locale)
   locale.value = next
   applyLocale(next as Locale)
+}
+
+const themeNames = computed(() => ({
+  system: t('theme.system'),
+  light: t('theme.light'),
+  dark: t('theme.dark'),
+}))
+// Per device, like the language: kept in this browser, System by default.
+const theme = ref<Theme>(detectTheme())
+
+function chooseTheme(next: unknown) {
+  if (!isTheme(next)) return
+  theme.value = next
+  applyTheme(next)
 }
 
 async function openImport() {
@@ -122,6 +137,21 @@ const item =
           >
             {{ names[code] }}
             <AppIcon v-if="locale === code" name="check" class="text-primary" />
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator class="my-space-xs h-px bg-border-subtle" />
+        <DropdownMenuLabel class="px-space-md py-space-xs text-label-xs text-on-surface-variant">{{
+          t('theme.label')
+        }}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup :model-value="theme" @update:model-value="chooseTheme">
+          <DropdownMenuRadioItem
+            v-for="choice in themes"
+            :key="choice"
+            :value="choice"
+            :class="[item, 'justify-between']"
+          >
+            {{ themeNames[choice] }}
+            <AppIcon v-if="theme === choice" name="check" class="text-primary" />
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator class="my-space-xs h-px bg-border-subtle" />

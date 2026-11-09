@@ -108,9 +108,12 @@ async function targets(page: Page, name: string) {
   expect(small, `${name}: small targets`).toEqual([])
 }
 
-/** Axe, reflow and (on a touch screen) target sizes of whatever is showing. */
+/** Axe, reflow and (on a touch screen) target sizes of whatever is showing. Axe runs in both themes: it checks the contrast. */
 async function scan(page: Page, testInfo: TestInfo, name: string) {
-  await axe(page, name)
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme })
+    await axe(page, `${name} (${colorScheme})`)
+  }
   await noSidewaysScroll(page, name)
   if (isTouch(testInfo)) await targets(page, name)
 }
@@ -147,6 +150,46 @@ test('the start page', async ({ page }, testInfo) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1, name: 'Welcome', exact: true })).toBeVisible()
   await scan(page, testInfo, 'start page')
+})
+
+test('the sidebar with favorites, and the start page with recently opened pages', async ({
+  page,
+}, testInfo) => {
+  const title = unique(testInfo, 'Starred')
+  await page.goto('/')
+  const row = await createPageNamed(page, title)
+  const id = await pageIdOf(row)
+  await closeDrawer(page)
+  await expect(page.getByTestId('page-title')).toHaveValue(title)
+  await page.getByRole('button', { name: 'Favorite', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Favorite', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await scan(page, testInfo, 'page with a star')
+
+  await openSidebar(page)
+  await expect(
+    page.getByRole('navigation', { name: 'Favorites' }).getByRole('link', { name: title }),
+  ).toBeVisible()
+  await scan(page, testInfo, 'sidebar with favorites')
+  await closeDrawer(page)
+
+  // The visit is recorded when the page opens; the start page lists it once the server has it.
+  await expect
+    .poll(async () => {
+      const workspaces = (await (await page.request.get('/api/workspaces')).json()) as {
+        id: string
+      }[]
+      const recent = (await (
+        await page.request.get(`/api/workspaces/${workspaces[0]!.id}/recent`)
+      ).json()) as { pageId: string }[]
+      return recent.some((r) => r.pageId === id)
+    })
+    .toBe(true)
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 2, name: 'Recently opened' })).toBeVisible()
+  await scan(page, testInfo, 'start page with recently opened pages')
 })
 
 test('the sidebar: on a phone the drawer, the tree and a row menu', async ({ page }, testInfo) => {

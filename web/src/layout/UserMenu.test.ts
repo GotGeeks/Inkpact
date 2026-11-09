@@ -11,7 +11,10 @@ import UserMenu from './UserMenu.vue'
 
 let wrapper: VueWrapper | null = null
 
-beforeEach(() => localStorage.clear())
+beforeEach(() => {
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-theme')
+})
 afterEach(() => {
   wrapper?.unmount()
   wrapper = null
@@ -83,6 +86,36 @@ describe('UserMenu', () => {
     expect(i18n.global.locale.value).toBe('nl')
     expect(localStorage.getItem('inkpact.locale')).toBe('nl')
     expect(document.documentElement.lang).toBe('nl')
+  })
+
+  it('offers System, Light and Dark, with System marked until one is chosen', async () => {
+    const { item } = await menu()
+
+    expect(item('System').getAttribute('aria-checked')).toBe('true')
+    expect(item('Light').getAttribute('aria-checked')).toBe('false')
+    expect(item('Dark').getAttribute('aria-checked')).toBe('false')
+  })
+
+  it('switches the theme on the page and remembers it for this device', async () => {
+    const { item } = await menu()
+
+    item('Light').click()
+    await flushPromises()
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+    expect(localStorage.getItem('inkpact.theme')).toBe('light')
+  })
+
+  it('shows the theme chosen before, and System removes it again', async () => {
+    localStorage.setItem('inkpact.theme', 'dark')
+    document.documentElement.setAttribute('data-theme', 'dark')
+    const { item } = await menu()
+
+    expect(item('Dark').getAttribute('aria-checked')).toBe('true')
+    item('System').click()
+    await flushPromises()
+
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
+    expect(localStorage.getItem('inkpact.theme')).toBeNull()
   })
 
   it('opens the Joplin import page, and tells the drawer to make way', async () => {

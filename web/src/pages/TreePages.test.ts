@@ -73,7 +73,29 @@ describe('PageView', () => {
     await wrapper!.get('[role="status"] button').trigger('click')
     await flushPromises()
 
-    expect(server.writes()).toEqual([{ method: 'POST', path: '/api/pages/Old/restore', body: {} }])
+    // Opening the page was recorded, then the restore was asked for.
+    expect(server.writes()).toEqual([
+      { method: 'POST', path: '/api/pages/Old/visit', body: {} },
+      { method: 'POST', path: '/api/pages/Old/restore', body: {} },
+    ])
+  })
+
+  it('records the visit once when a page opens, and has a star that stars it', async () => {
+    const { server } = await open('/p/Notes', { pages: outline(['Notes']) })
+    await vi.waitFor(() =>
+      expect(wrapper!.find('[data-testid="favorite-toggle"]').exists()).toBe(true),
+    )
+
+    expect(server.writes()).toEqual([{ method: 'POST', path: '/api/pages/Notes/visit', body: {} }])
+
+    await wrapper!.get('[data-testid="favorite-toggle"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper!.get('[data-testid="favorite-toggle"]').attributes('aria-pressed')).toBe('true')
+    expect(server.writes().map((w) => `${w.method} ${w.path}`)).toEqual([
+      'POST /api/pages/Notes/visit',
+      'PUT /api/pages/Notes/favorite',
+    ])
   })
 
   it('says when only a page above is in the trash, and does not offer to restore this one', async () => {

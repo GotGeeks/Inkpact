@@ -3,11 +3,13 @@ import { computed, defineAsyncComponent, h, onBeforeUnmount, ref, useTemplateRef
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute } from 'vue-router'
 import { useCurrentPageStore } from '../stores/currentPage'
+import { useRecentStore } from '../stores/recent'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import SyncStatus from '../sync/SyncStatus.vue'
 import BacklinksPanel from './BacklinksPanel.vue'
 import ChildPages from './ChildPages.vue'
+import FavoriteButton from './FavoriteButton.vue'
 import PageTags from './PageTags.vue'
 import TitleField from './TitleField.vue'
 import type { PageDetail } from '../tree/types'
@@ -26,6 +28,7 @@ const { t } = useI18n()
 const route = useRoute()
 const tree = useTreeStore()
 const sync = useSyncStore()
+const recent = useRecentStore()
 
 const pageId = computed(() => String(route.params.pageId))
 const detail = ref<PageDetail | null>(null)
@@ -40,6 +43,15 @@ watch(
     if (id !== pageId.value) return
     detail.value = found
     missing.value = found === null
+  },
+  { immediate: true },
+)
+
+// Once when a page opens, not when its tree or tags are read again. A failure is ignored.
+watch(
+  () => detail.value?.page.id,
+  (id) => {
+    if (id) void recent.visit(id)
   },
   { immediate: true },
 )
@@ -102,7 +114,8 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
       </button>
     </div>
 
-    <div class="flex items-center justify-end">
+    <div class="flex items-center justify-end gap-space-sm">
+      <FavoriteButton :page-id="detail.page.id" :in-trash="detail.inTrash" />
       <SyncStatus />
     </div>
 

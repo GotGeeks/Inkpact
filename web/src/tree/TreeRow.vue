@@ -22,6 +22,8 @@ const props = defineProps<{
   dropZone: DropZone | null
   dragging: boolean
   draggable: boolean
+  /** Whether the person starred this page, for the menu item. */
+  favorite?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -33,6 +35,7 @@ const emit = defineEmits<{
   'menu-rename': []
   'menu-add-subpage': []
   'menu-move': []
+  'menu-favorite': []
   'menu-trash': []
 }>()
 
@@ -193,6 +196,9 @@ function cancel() {
           }}</DropdownMenuItem>
           <DropdownMenuItem :class="menuItem" @select="emit('menu-move')">{{
             t('tree.moveTo')
+          }}</DropdownMenuItem>
+          <DropdownMenuItem :class="menuItem" @select="emit('menu-favorite')">{{
+            favorite ? t('favorites.remove') : t('favorites.add')
           }}</DropdownMenuItem>
           <DropdownMenuItem :class="[menuItem, 'text-error']" @select="emit('menu-trash')">{{
             t('tree.moveToTrash')
