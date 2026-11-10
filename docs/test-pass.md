@@ -85,7 +85,13 @@ This file collects everything that needs a person, a phone or the Unraid box. Ev
 - [ ] With TalkBack on the phone and a screen reader on the laptop, hear the active scope, results, errors and shortcut help; move through the list and dismiss it back to the opener, or the menu button when the drawer was closed.
 - [ ] With the real Joplin library, search and switch pages quickly, and type in the editor with the palette closed: neither action should feel held up by the palette.
 
-Runs B.5 to B.8 add their checks here.
+### B.5: version history, restore and retention
+- [ ] On the laptop, change a page's title and content, wait for a version, preview and restore an earlier one, then restore the before-restore version. Check a picture and an internal link, and confirm tags and the page's place did not change.
+- [ ] Open the same page on the phone and laptop. Edit it on the phone with the tab kept open and offline, restore an older version on the laptop, then reconnect the phone: the offline text remains in the page or an announced copy. Also try restoring while the other device is editing.
+- [ ] In a spare test workspace, change the history windows and cap, turn history off and on, reload, and check the warning and availability of older versions. A non-owner cannot change the setting; do not use the real library to test destructive limits.
+- [ ] On the phone and with TalkBack or a laptop screen reader, open the history list, preview, confirmation and settings; check labels, focus, scrolling, both themes and returning to the editor.
+
+Runs B.6 to B.8 add their checks here.
 
 ## Phase 2
 

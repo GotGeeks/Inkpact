@@ -238,6 +238,45 @@ public class PermissionServiceTests(PostgresFixture postgres) : DatabaseTestBase
     }
 
     [Fact]
+    public async Task Locking_a_workspace_role_requires_a_transaction()
+    {
+        var owner = await AddUserAsync("owner@example.com");
+        var workspace = await AddWorkspaceAsync(owner);
+        await using var db = CreateContext();
+
+        await Should.ThrowAsync<InvalidOperationException>(() => CreateService(db).LockWorkspaceRoleAsync(owner.Id, workspace.Id));
+    }
+
+    [Fact]
+    public async Task A_locked_workspace_role_cannot_be_revoked_until_the_transaction_commits()
+    {
+        var owner = await AddUserAsync("owner@example.com");
+        var member = await AddUserAsync("member@example.com");
+        var workspace = await AddWorkspaceAsync(owner, (member, WorkspaceRole.Editor));
+        await using var db = CreateContext();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        var permissions = CreateService(db);
+        (await permissions.LockWorkspaceRoleAsync(member.Id, workspace.Id)).ShouldBe(WorkspaceRole.Editor);
+
+        await using var other = CreateContext();
+        var revoking = other.WorkspaceMembers.Where(m => m.UserId == member.Id && m.WorkspaceId == workspace.Id)
+            .ExecuteDeleteAsync();
+        try
+        {
+            (await Task.WhenAny(revoking, Task.Delay(250))).ShouldNotBe(revoking);
+            (await permissions.GetWorkspaceRoleAsync(member.Id, workspace.Id)).ShouldBe(WorkspaceRole.Editor);
+        }
+        finally
+        {
+            await transaction.CommitAsync();
+        }
+
+        (await revoking).ShouldBe(1);
+        await using var next = CreateContext();
+        (await CreateService(next).GetWorkspaceRoleAsync(member.Id, workspace.Id)).ShouldBe(WorkspaceRole.None);
+    }
+
+    [Fact]
     public async Task Admin_is_read_from_the_database_each_request()
     {
         var admin = await AddUserAsync("admin@example.com", isAdmin: true);

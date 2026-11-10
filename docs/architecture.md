@@ -58,13 +58,13 @@ Each page is one Yjs document; the server stores its update log in Postgres and 
 | Table | Holds | Notes |
 | --- | --- | --- |
 | `users` | Accounts, password hash, OIDC subject | Optional OIDC later (Authentik, Authelia) |
-| `workspaces` | Name, owner | Every user gets a private workspace on signup |
+| `workspaces` | Name, owner, history enabled flag, granular/daily/expiry windows, optional history payload cap | Every user gets a private workspace on signup |
 | `workspace_members` | User, workspace, role | Roles: owner, editor, viewer |
 | `pages` | Id, workspace, parent page, title, sort key (fractional index), timestamps, soft-delete flag, to-do flag, completed at, due at, external source type and id (Joplin now, other importers later) | Tree lives here, not in the CRDT, so permission checks stay cheap |
 | `page_snapshots` | Page id, compacted Yjs state (`bytea`), state vector, watermark (highest update sequence number folded in), version, update count, whether the page's full history is still in the archive | One current row per page |
 | `page_updates` | Page id, sequence, Yjs update (`bytea`), user, timestamp | Appended live; folded into the snapshot by a compaction job |
 | `page_updates_archive` | The same columns as `page_updates`, with the sequence number the row had, and when it was archived | Where merged updates go in phase 1A; purged after 30 days |
-| `page_versions` | Page id, snapshot, created at, created by | Full snapshots, chosen for simplicity over storage; thinned by a configurable retention: everything for 24 hours, then daily for 30 days, then weekly for a year; history can be capped or turned off per workspace if storage becomes a problem |
+| `page_versions` | Page id, full Yjs state, title, file-note search text, created at/by, kind, protection deadline and payload byte count | Full snapshots, chosen for simplicity over storage; thinned by a configurable retention: everything for 24 hours, then daily for 30 days, then weekly for a year; history can be capped or turned off per workspace if storage becomes a problem. The title and file-note text are needed because they are not in the Yjs state |
 | `attachments` | Id, page, file name, MIME type, size, SHA-256 (the storage key), created at, created by, external source type and id | Files on disk or S3-compatible storage, not in Postgres; one row per upload, one stored file per content. A file that an import found in several notes has a row on each page, with the same external id (unique per page) |
 | `tags`, `page_tags` | A tag: workspace, name, lower-case name (unique per workspace), external source type and id. A tag on a page: page, tag | Stored by the Joplin import (phase 1A); read and changed from the interface from run B.2. No delete: a tag on no live page is left out of the workspace's list and the suggestions, but kept, so typing its name again reuses it rather than making a duplicate |
 | `reminders` | Id, page, user, remind at, delivered at, created at | One per imported to-do with a due date, for the person who imported; delivered from phase 2 |

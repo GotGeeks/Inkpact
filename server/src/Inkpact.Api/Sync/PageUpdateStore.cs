@@ -27,6 +27,14 @@ public sealed class PageUpdateStore(IDbContextFactory<InkpactDbContext> dbFactor
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
+        var content = await LoadInTransactionAsync(db, pageId, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return content;
+    }
+
+    /// <summary>Reads all live inputs using the caller's transaction, so related metadata can share the same observation.</summary>
+    internal static async Task<PageContent> LoadInTransactionAsync(InkpactDbContext db, Guid pageId, CancellationToken cancellationToken)
+    {
         var snapshot = await db.PageSnapshots.AsNoTracking()
             .Where(s => s.PageId == pageId)
             .Select(s => new { s.State, s.Watermark })
@@ -38,7 +46,6 @@ public sealed class PageUpdateStore(IDbContextFactory<InkpactDbContext> dbFactor
             .OrderBy(u => u.Seq)
             .Select(u => new { u.Seq, u.Data })
             .ToListAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
         var lastSeq = Math.Max(snapshot?.Watermark ?? 0, rows.Count == 0 ? 0 : rows[^1].Seq);
         return new PageContent(snapshot?.State, [.. rows.Select(r => r.Data)], lastSeq);
     }

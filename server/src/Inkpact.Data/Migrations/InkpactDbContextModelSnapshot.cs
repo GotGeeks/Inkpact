@@ -654,6 +654,71 @@ namespace Inkpact.Data.Migrations
                     b.ToTable("page_updates", (string)null);
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.PageVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("FileText")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("file_text");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("page_id");
+
+                    b.Property<long>("PayloadBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("payload_bytes");
+
+                    b.Property<DateTimeOffset?>("ProtectedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("protected_until");
+
+                    b.Property<byte[]>("State")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("state");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_page_versions");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_page_versions_created_at");
+
+                    b.HasIndex("CreatedBy")
+                        .HasDatabaseName("ix_page_versions_created_by");
+
+                    b.HasIndex("PageId", "CreatedAt", "Id")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("ix_page_versions_page_id_created_at_id");
+
+                    b.ToTable("page_versions", (string)null);
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.PageVisit", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -888,6 +953,34 @@ namespace Inkpact.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<long?>("HistoryCapBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("history_cap_bytes");
+
+                    b.Property<int>("HistoryDailyDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(30)
+                        .HasColumnName("history_daily_days");
+
+                    b.Property<bool>("HistoryEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("history_enabled");
+
+                    b.Property<int>("HistoryExpiryDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(365)
+                        .HasColumnName("history_expiry_days");
+
+                    b.Property<int>("HistoryGranularHours")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(24)
+                        .HasColumnName("history_granular_hours");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1108,6 +1201,22 @@ namespace Inkpact.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_page_updates_user_id");
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.PageVersion", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_page_versions_created_by");
+
+                    b.HasOne("Inkpact.Data.Entities.Page", null)
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_page_versions_page_id");
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.PageVisit", b =>
