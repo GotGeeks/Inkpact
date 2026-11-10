@@ -5,6 +5,7 @@ import {
   type Router,
   type RouterHistory,
 } from 'vue-router'
+import { ApiError } from './api'
 import { useAuthStore } from './stores/auth'
 
 /**
@@ -44,13 +45,34 @@ export function createAppRouter(history: RouterHistory = createWebHistory()): Ro
       },
       { path: '/login', name: 'login', component: () => import('./pages/LoginPage.vue') },
       { path: '/setup', name: 'setup', component: () => import('./pages/SetupPage.vue') },
+      {
+        path: '/offline',
+        name: 'offline',
+        component: () => import('./offline/OfflineUnavailable.vue'),
+      },
       { path: '/:pathMatch(.*)*', redirect: { name: 'home' } },
     ],
   })
 
   router.beforeEach(async (to): Promise<boolean | RouteLocationRaw> => {
     const auth = useAuthStore()
-    if (!auth.loaded) await auth.load()
+    if (!auth.loaded) {
+      try {
+        await auth.load()
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.code !== 'network_error') throw error
+        auth.enterOffline()
+      }
+    }
+
+    // The cached identity only selects a local partition. Offline routes never grant access to server operations.
+    if (auth.offline) {
+      return to.name === 'page' || to.name === 'offline'
+        ? true
+        : { name: 'offline', query: { redirect: to.fullPath } }
+    }
+
+    if (to.name === 'offline') return safeRedirect(to.query.redirect) ?? { name: 'home' }
 
     if (auth.setupRequired) {
       return to.name === 'setup' ? true : { name: 'setup' }

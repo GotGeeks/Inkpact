@@ -152,6 +152,18 @@ test('the start page', async ({ page }, testInfo) => {
   await scan(page, testInfo, 'start page')
 })
 
+test('a cached page remains accessible while offline', async ({ page }, testInfo) => {
+  await openNewPage(page, unique(testInfo, 'Offline accessibility'))
+  await expect(page.getByTestId('sync-status')).toHaveAttribute('data-local', 'saved')
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined))
+  await page.reload()
+  await expect(page.getByTestId('sync-status')).toHaveAttribute('data-state', 'live')
+  await page.context().setOffline(true)
+  await expect(page.getByTestId('sync-status')).toHaveAttribute('data-state', 'offline')
+  await scan(page, testInfo, 'offline cached page')
+  await page.context().setOffline(false)
+})
+
 test('the sidebar with favorites, and the start page with recently opened pages', async ({
   page,
 }, testInfo) => {

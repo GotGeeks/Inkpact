@@ -41,9 +41,17 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-async function mountPicker(props: { hasLink?: boolean } = {}, locale: Locale = 'en') {
+async function mountPicker(
+  props: { hasLink?: boolean; pagesAvailable?: boolean } = {},
+  locale: Locale = 'en',
+) {
   wrapper = mount(LinkPicker, {
-    props: { open: true, pageId: ID_HERE, hasLink: props.hasLink ?? false },
+    props: {
+      open: true,
+      pageId: ID_HERE,
+      hasLink: props.hasLink ?? false,
+      pagesAvailable: props.pagesAvailable,
+    },
     attachTo: document.body,
     global: { plugins: [createAppI18n(locale)] },
   })
@@ -76,6 +84,22 @@ async function press(key: string) {
 }
 
 describe('the link picker', () => {
+  it('does not expose the workspace tree offline, but still accepts a web address', async () => {
+    const w = await mountPicker({ pagesAvailable: false })
+    expect(options()).toEqual([])
+    await type('https://example.com')
+    await press('Enter')
+    expect(w.emitted('choose')).toEqual([['https://example.com']])
+  })
+
+  it('removes previously offered pages when it goes offline while open', async () => {
+    const w = await mountPicker()
+    expect(options().length).toBeGreaterThan(0)
+    await w.setProps({ pagesAvailable: false })
+    await flushPromises()
+    expect(options()).toEqual([])
+  })
+
   it('is a dialog with a name and a labelled combobox, with the pages listed (not the page it is on) and the cursor in the field', async () => {
     await mountPicker()
 

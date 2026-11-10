@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { PageNode } from '../tree/types'
 import { destroyEditors, makeEditor, pressKey, typeText } from '../testing/editor'
 import { openPageMenu } from './blockCommands'
-import { createPageMenuState, PAGE_MENU_LISTBOX_ID } from './pageLinkExtension'
+import { closePageMenu, createPageMenuState, PAGE_MENU_LISTBOX_ID } from './pageLinkExtension'
 
 const ID_PLAN = '8a1c4e52-3b7d-8f06-9e21-5d4c3b2a1f10'
 const ID_PLAN_B = '8a1c4e52-3b7d-8f06-9e21-5d4c3b2a1f11'
@@ -63,6 +63,31 @@ function links(editor: Editor) {
 }
 
 describe('the page menu', () => {
+  it('does not open offline and closes an existing menu when the network is lost', async () => {
+    let available = true
+    const state = createPageMenuState()
+    const editor = makeEditor({
+      pageLinks: {
+        state,
+        pages: () => [page(ID_PLAN, 'Project plan')],
+        currentPageId: () => ID_HERE,
+        untitled: () => 'Untitled',
+        available: () => available,
+      },
+    })
+    editor.commands.focus()
+    await typed(editor, '[[')
+    expect(state.open).toBe(true)
+    available = false
+    closePageMenu(editor)
+    await flushPromises()
+    expect(state.open).toBe(false)
+    expect(state.items).toEqual([])
+    editor.commands.setContent('<p></p>')
+    await typed(editor, '[[')
+    expect(state.open).toBe(false)
+  })
+
   it('opens on [[ at the start of a line, with the pages, but not the page it is on', async () => {
     const { editor, state } = setup()
     expect(state.open).toBe(false)

@@ -91,7 +91,16 @@ This file collects everything that needs a person, a phone or the Unraid box. Ev
 - [ ] In a spare test workspace, change the history windows and cap, turn history off and on, reload, and check the warning and availability of older versions. A non-owner cannot change the setting; do not use the real library to test destructive limits.
 - [ ] On the phone and with TalkBack or a laptop screen reader, open the history list, preview, confirmation and settings; check labels, focus, scrolling, both themes and returning to the editor.
 
-Runs B.6 to B.8 add their checks here.
+### B.6: installable PWA and offline Yjs persistence
+- [ ] On the laptop over HTTPS, install Inkpact if the browser offers it. Open a page online, disconnect the network, edit and reload the same page URL; confirm the text survives with an honest local-only/offline status. Reconnect and confirm a second client receives the edit once.
+- [ ] Repeat on an Android phone. On an iPhone, add the app to the Home Screen manually, then check offline reload and reconnect; do not expect the same install prompt as Chromium.
+- [ ] Open a page never loaded on the device while offline and confirm it is reported unavailable, not shown as empty. Check that tree mutations and attachment uploads are unavailable offline.
+- [ ] With an offline edit pending, make a newer app version available. Confirm the open editor is not forced to reload and the edit is not discarded; update after the pending change is safe.
+- [ ] In a spare account/profile, sign out and sign in as another account. Confirm the prior account's cached notes and pending edits are not visible or sent as the new account.
+- [ ] In a disposable multi-user workspace when available, downgrade or revoke a user's access while that user has a pending offline edit. On reconnect, confirm the edit stays on the device and is not sent; restore edit access and check that the original account can recover it. Also confirm a viewer can read a previously confirmed page but cannot edit it.
+- [ ] If using an HTTP LAN install, confirm it still works online and does not claim PWA installation or service-worker caching support.
+
+Runs B.7 and B.8 add their checks here.
 
 ## Phase 2
 

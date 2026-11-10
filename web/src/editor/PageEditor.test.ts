@@ -5,6 +5,8 @@ import { createPinia, setActivePinia } from 'pinia'
 import * as Y from 'yjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createAppI18n, type Locale } from '../i18n'
+import { OfflineDocument } from '../offline/offlineDocument'
+import type { CachedPage, OfflineRepository } from '../offline/types'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import { typeText } from '../testing/editor'
@@ -33,9 +35,12 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-async function mountEditor(props: { readOnly?: boolean } = {}, locale: Locale = 'en') {
+async function mountEditor(
+  props: { readOnly?: boolean; document?: OfflineDocument } = {},
+  locale: Locale = 'en',
+) {
   wrapper = mount(PageEditor, {
-    props: { pageId, readOnly: props.readOnly ?? false },
+    props: { pageId, readOnly: props.readOnly ?? false, document: props.document },
     attachTo: document.body,
     global: { plugins: [createAppI18n(locale)] },
   })
@@ -176,10 +181,42 @@ describe('PageEditor', () => {
     await vi.waitFor(() => expect(document.activeElement).toBe(root()))
   })
 
-  it('can be typed into at once when there is plainly no server', async () => {
+  it('does not make an uncached page editable when the server never sent its content', async () => {
     hub.refusing = true
     await mountEditor()
-    await vi.waitFor(() => expect(root().getAttribute('contenteditable')).toBe('true'))
+    await vi.waitFor(() => expect(useSyncStore().connection).toBe('offline'))
+    expect(root().getAttribute('contenteditable')).toBe('false')
+  })
+
+  it('opens a fully hydrated cached document for editing when the server is offline', async () => {
+    const metadata: CachedPage = {
+      userId: 'user',
+      workspaceId: 'workspace',
+      pageId,
+      title: 'Cached',
+      inTrash: false,
+      ownTrash: false,
+      canEdit: true,
+      ready: true,
+      lastOpened: 1,
+    }
+    const repository: OfflineRepository = {
+      findPage: async () => metadata,
+      readSnapshots: async () => [
+        { ...metadata, writerId: 'old', update: pageWithText('cached'), unconfirmed: 0 },
+      ],
+      saveSnapshot: async () => {},
+      saveRecovery: async () => {},
+      listRecoveries: async () => [],
+      deleteRecovery: async () => {},
+      cleanup: async () => 0,
+    }
+    const document = await OfflineDocument.open(repository, metadata, false, () => {})
+    hub.refusing = true
+    await mountEditor({ document })
+    await vi.waitFor(() => expect(useSyncStore().connection).toBe('offline'))
+    expect(root().textContent).toBe('cached')
+    expect(root().getAttribute('contenteditable')).toBe('true')
   })
 
   it('is read-only for a viewer', async () => {

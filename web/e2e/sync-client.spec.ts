@@ -20,7 +20,7 @@ interface SocketControl {
 async function controlSocket(page: Page): Promise<SocketControl> {
   let offline = false
   const open: { route: WebSocketRoute; server: WebSocketRoute }[] = []
-  await page.routeWebSocket(/\/api\/sync$/, (route) => {
+  await page.routeWebSocket(/\/api\/sync(?:\?.*)?$/, (route) => {
     if (offline) {
       void route.close()
       return
@@ -52,7 +52,9 @@ async function openNewPage(page: Page, title: string) {
 
 test('opening a page shows that it is live', async ({ page }, testInfo) => {
   await openNewPage(page, `Live-${testInfo.project.name}-${Date.now().toString(36)}`)
-  await expect(pill(page)).toHaveText('Live')
+  await expect(pill(page)).toHaveAttribute('data-local', 'saved')
+  await expect(pill(page)).toContainText('Live')
+  await expect(pill(page)).toContainText('saved on this device')
 })
 
 test('a cut connection shows offline, and the page finds its way back', async ({

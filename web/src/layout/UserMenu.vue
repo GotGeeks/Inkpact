@@ -20,6 +20,7 @@ import { applyTheme, detectTheme, isTheme, themes, type Theme } from '../theme'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationsStore } from '../stores/notifications'
 import { useSettingsStore } from '../stores/settings'
+import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 
 const emit = defineEmits<{ navigate: [] }>()
@@ -29,6 +30,7 @@ const auth = useAuthStore()
 const settings = useSettingsStore()
 const tree = useTreeStore()
 const notifications = useNotificationsStore()
+const sync = useSyncStore()
 const router = useRouter()
 
 // Static keys, so the unused-keys lint rule can see them.
@@ -63,12 +65,18 @@ async function openImport() {
 }
 
 async function leave(everywhere: boolean) {
+  if (sync.unsafeToLeave) {
+    notifications.post({ type: 'error', code: 'offline_storage_pending' })
+    return
+  }
   try {
     if (everywhere) await auth.logoutEverywhere()
     else await auth.logout()
-  } finally {
-    await router.replace({ name: 'login' })
+  } catch (error) {
+    notifications.post({ type: 'error', code: error instanceof ApiError ? error.code : 'unknown' })
+    if (auth.user) return
   }
+  await router.replace({ name: 'login' })
 }
 
 /**

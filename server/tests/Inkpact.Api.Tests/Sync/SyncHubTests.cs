@@ -126,6 +126,25 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
     }
 
     [Fact]
+    public async Task A_socket_bound_to_another_account_is_refused_before_it_can_receive_or_send()
+    {
+        var socketClient = _factory.Server.CreateWebSocketClient();
+        socketClient.ConfigureRequest = request =>
+        {
+            request.Headers.Cookie = _jos.CookieHeader;
+            request.Headers.Origin = "http://localhost";
+        };
+
+        await HandshakeFailsWithAsync(
+            () => socketClient.ConnectAsync(new Uri($"ws://localhost/api/sync?user={Guid.NewGuid()}"), CancellationToken.None),
+            HttpStatusCode.Conflict);
+
+        using var socket = await socketClient.ConnectAsync(new Uri($"ws://localhost/api/sync?user={_jos.UserId}"), CancellationToken.None);
+        socket.State.ShouldBe(WebSocketState.Open);
+        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task A_plain_request_to_the_sync_path_is_told_to_use_a_websocket()
     {
         var response = await _jos.Http.GetAsync(SyncEndpoints.Path);

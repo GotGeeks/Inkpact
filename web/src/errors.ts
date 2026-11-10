@@ -82,6 +82,12 @@ export function useErrorMessage() {
         return t('errors.attachment_empty')
       case 'attachment_not_added':
         return t('errors.attachment_not_added')
+      case 'offline_upload':
+        return t('errors.offline_upload')
+      case 'session_changed':
+        return t('errors.session_changed')
+      case 'offline_storage_pending':
+        return t('errors.offline_storage_pending')
       case 'import_empty':
         return t('errors.import_empty')
       case 'import_invalid':

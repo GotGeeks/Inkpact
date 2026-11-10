@@ -92,6 +92,7 @@ app.Use((context, next) =>
 app.UseWebSockets();
 app.UseJsonOnlyApi();
 app.UseAuthentication();
+app.UseMiddleware<ExpectedUserMiddleware>();
 // Per address, before anything costly; then the CSRF token, which is checked against the signed-in user.
 app.UseRateLimiter();
 app.UseCsrfProtection();

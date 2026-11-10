@@ -35,7 +35,11 @@ export interface EditorExtensionsOptions {
   /** The label of a task item's checkbox; the node view calls it for every item. */
   checkboxLabel: (checked: boolean) => string
   /** The slash menu; without it (the tests that only need the schema) `/` is just a character. */
-  slash?: { state: SlashState; translate: Translate }
+  slash?: {
+    state: SlashState
+    translate: Translate
+    available?: Parameters<typeof createSlashExtension>[2]
+  }
   /** The menu of pages that `[[` opens; without it (most tests) `[[` is just two characters. */
   pageLinks?: PageLinkOptions
   /** Told when Alt+Arrow has moved a block. */
@@ -121,7 +125,7 @@ export function createExtensions({
           }),
         ]
       : []),
-    ...(slash ? [createSlashExtension(slash.state, slash.translate)] : []),
+    ...(slash ? [createSlashExtension(slash.state, slash.translate, slash.available)] : []),
     ...(pageLinks ? [createPageLinkExtension(pageLinks)] : []),
   ]
 }

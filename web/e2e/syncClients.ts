@@ -43,7 +43,7 @@ export async function openClient(
   // the page talks to the route, the route talks to the real server.
   let offline = false
   const open: { route: WebSocketRoute; server: WebSocketRoute }[] = []
-  await page.routeWebSocket(/\/api\/sync$/, (route) => {
+  await page.routeWebSocket(/\/api\/sync(?:\?.*)?$/, (route) => {
     if (offline) {
       void route.close()
       return
@@ -87,4 +87,28 @@ export async function typeText(client: Client, text: string, delayMs = 15) {
   await client.editor.click()
   await client.page.keyboard.press('Control+End')
   await client.page.keyboard.type(text, { delay: delayMs })
+}
+
+/** Joins the last block to the previous one and waits for the server to confirm the change. */
+export async function removeLastBlock(client: Client, lastText: string, mergedText: RegExp) {
+  // Wait for ProseMirror to see the browser's selection before sending Backspace.
+  await client.page.evaluate(() => {
+    document.addEventListener('selectionchange', () => {
+      const selection = getSelection()
+      document.body.dataset.selectionSeen = `${selection?.anchorNode?.textContent ?? ''}@${selection?.anchorOffset ?? -1}`
+    })
+  })
+  await client.editor.click()
+  await expect(async () => {
+    await client.page.keyboard.press('Control+End')
+    await client.page.keyboard.press('Home')
+    await expect(client.page.locator('body')).toHaveAttribute(
+      'data-selection-seen',
+      `${lastText}@0`,
+      { timeout: 1_500 },
+    )
+  }).toPass({ timeout: 15_000 })
+  await client.page.keyboard.press('Backspace')
+  await expect(client.editor.locator('p').last()).toHaveText(mergedText)
+  await expect(client.status).toHaveAttribute('data-unsent', 'false', { timeout: 30_000 })
 }

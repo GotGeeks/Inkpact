@@ -8,6 +8,7 @@ import {
   MessageType,
   type IncomingFrame,
 } from './protocol'
+import { remoteOrigin } from '../offline/offlineDocument'
 
 /** The socket, as far as the client uses it: the browser's WebSocket, or a fake in a test. */
 export interface SocketLike {
@@ -27,7 +28,7 @@ export type ConnectionStatus = 'connecting' | 'open' | 'offline'
  * `syncing`: waiting for the server's answer. `synced`: in step with the server. `missing`: the server has no such page
  * for this person. `tooLarge`: a change is bigger than a message may be, so nothing more is sent for this page.
  */
-export type PageState = 'syncing' | 'synced' | 'missing' | 'tooLarge'
+export type PageState = 'syncing' | 'synced' | 'missing' | 'tooLarge' | 'blocked'
 
 export interface PageHandle {
   readonly pageId: string
@@ -38,6 +39,8 @@ export interface PageHandle {
   readonly readOnly: boolean
   /** Local changes the server has not got yet. */
   readonly unsent: boolean
+  /** Includes updates sent on the socket but not yet confirmed by a subsequent pong. */
+  readonly unconfirmed: boolean
   /**
    * The bytes the server sent with the first Sync of this page (its state, or its stored updates): about how large the page
    * is, known without encoding the document again. 0 until the first Sync.
@@ -63,6 +66,12 @@ export interface SyncClientOptions {
    * so it would be gone without a word. `before` is the page as it was just before, with those changes, as one update.
    */
   onEditsLost?: (pageId: string, before: Uint8Array) => void
+  /** Recheck the account and page permissions before each socket attempt. */
+  beforeConnect?: () => Promise<'allow' | 'retry' | 'stop'>
+  /** Recheck each page under the same account before sending its state vector or edits. */
+  beforeSubscribe?: (
+    pageId: string,
+  ) => Promise<'edit' | 'read' | 'blocked' | 'missing' | 'retry' | 'stop'>
   random?: () => number
 }
 
@@ -110,7 +119,6 @@ export class SyncClient {
   private socket: SocketLike | null = null
   private status: ConnectionStatus = 'connecting'
   private readonly pages = new Map<string, Page>()
-  private readonly remote = Symbol('remote')
   private readonly options: SyncClientOptions
   private reconnectMs = MIN_RECONNECT_MS
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -122,6 +130,9 @@ export class SyncClient {
   private pongsReceived = 0
   private ended = false
   private destroyed = false
+  private attempt = 0
+  private confirmationScheduled = false
+  private readonly subscribing = new Set<string>()
 
   private readonly onOffline = () => this.dropSocket()
   private readonly onOnline = () => this.reconnectNow()
@@ -147,8 +158,39 @@ export class SyncClient {
 
   /** True when a page has changes the server has not got, so closing the tab would lose them. */
   hasUnsent(): boolean {
-    for (const page of this.pages.values()) if (page.unsent && !page.readOnly) return true
+    for (const page of this.pages.values()) if (page.unconfirmed) return true
     return false
+  }
+
+  openPages(): readonly PageHandle[] {
+    return [...this.pages.values()]
+  }
+
+  /** Called after a fresh server permission check, before a page can subscribe again. */
+  setPageAccess(pageId: string, access: 'edit' | 'read' | 'blocked' | 'missing') {
+    const page = this.pages.get(pageId)
+    if (!page) return
+    if (access === 'missing' || access === 'blocked') {
+      page.readOnly = true
+      this.setState(page, access)
+      return
+    }
+    page.readOnly = access === 'read'
+    if (page.state === 'blocked') this.setState(page, 'syncing')
+    this.options.onPageChange?.(pageId)
+  }
+
+  /** Stops immediately when another tab changes the account, without destroying local documents. */
+  stopForIdentityChange() {
+    if (this.destroyed || this.ended) return
+    this.ended = true
+    this.attempt++
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+    this.reconnectTimer = null
+    this.closeSocket()
+    this.stopHeartbeat()
+    this.markAllSyncing()
+    this.setStatus('offline')
   }
 
   get(pageId: string): PageHandle | undefined {
@@ -162,7 +204,13 @@ export class SyncClient {
    */
   subscribe(
     pageId: string,
-    options: { readOnly?: boolean; init?: (doc: Y.Doc) => void } = {},
+    options: {
+      readOnly?: boolean
+      init?: (doc: Y.Doc) => void
+      doc?: Y.Doc
+      onDetach?: () => void
+      unconfirmed?: boolean
+    } = {},
   ): PageHandle {
     const existing = this.pages.get(pageId)
     if (existing) {
@@ -172,15 +220,23 @@ export class SyncClient {
       return existing
     }
 
-    const doc = new Y.Doc()
-    options.init?.(doc)
+    const doc = options.doc ?? new Y.Doc()
+    if (!options.doc) options.init?.(doc)
     const awareness = new Awareness(doc)
     // Nobody is announced until a caller says who is here: y-protocols starts every client with an empty state.
     awareness.setLocalState(null)
 
     const onUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin === this.remote || page.readOnly) return
-      if (page.state === 'missing' || page.state === 'tooLarge') return
+      if (origin === remoteOrigin) return
+      if (page.readOnly) {
+        this.markUnsent(page, true)
+        this.setState(page, 'blocked')
+        return
+      }
+      if (page.state === 'missing' || page.state === 'tooLarge' || page.state === 'blocked') {
+        this.markUnsent(page, true)
+        return
+      }
       // Until the page is synced, local changes are held back: the diff sent after the Sync covers them, so nothing
       // reaches the server twice.
       if (page.state !== 'synced' || !this.isOpen()) {
@@ -194,7 +250,7 @@ export class SyncClient {
       origin: unknown,
     ) => {
       // The server closes a connection that sends awareness for a page it does not know.
-      if (origin === this.remote || page.state !== 'synced') return
+      if (origin === remoteOrigin || page.state !== 'synced') return
       this.send(
         MessageType.Awareness,
         pageId,
@@ -210,7 +266,10 @@ export class SyncClient {
       awareness,
       state: 'syncing',
       readOnly: options.readOnly ?? false,
-      unsent: false,
+      unsent: options.unconfirmed ?? false,
+      get unconfirmed() {
+        return this.unsent || this.confirmAt !== null
+      },
       firstSyncBytes: 0,
       leaving: false,
       confirmAt: null,
@@ -218,6 +277,7 @@ export class SyncClient {
         doc.off('update', onUpdate)
         awareness.off('update', onAwareness)
         awareness.destroy()
+        options.onDetach?.()
         doc.destroy()
       },
     }
@@ -230,7 +290,7 @@ export class SyncClient {
   unsubscribe(pageId: string) {
     const page = this.pages.get(pageId)
     if (!page) return
-    if (page.unsent && !page.readOnly && page.state === 'syncing') {
+    if (page.unconfirmed && (page.state !== 'synced' || !this.isOpen())) {
       page.leaving = true
       return
     }
@@ -245,6 +305,7 @@ export class SyncClient {
 
   destroy() {
     this.destroyed = true
+    this.attempt++
     if (typeof window !== 'undefined') {
       window.removeEventListener('offline', this.onOffline)
       window.removeEventListener('online', this.onOnline)
@@ -264,7 +325,30 @@ export class SyncClient {
     this.reconnectTimer = null
     if (this.destroyed || this.ended) return
     this.setStatus('connecting')
+    const attempt = ++this.attempt
+    if (this.options.beforeConnect) {
+      void this.options.beforeConnect().then(
+        (decision) => {
+          if (attempt !== this.attempt || this.destroyed || this.ended) return
+          if (decision === 'allow') this.openSocket()
+          else if (decision === 'retry') this.connectionLost(false)
+          else {
+            this.ended = true
+            this.setStatus('offline')
+          }
+        },
+        (error: unknown) => {
+          if (attempt !== this.attempt || this.destroyed || this.ended) return
+          console.error('The sync connection could not be authorized', error)
+          this.connectionLost(false)
+        },
+      )
+      return
+    }
+    this.openSocket()
+  }
 
+  private openSocket() {
     let socket: SocketLike
     try {
       socket = (this.options.createSocket ?? defaultSocket)(this.options.url)
@@ -324,6 +408,7 @@ export class SyncClient {
   private connectionLost(wasOpen: boolean) {
     this.stopHeartbeat()
     this.socket = null
+    this.subscribing.clear()
     this.markAllSyncing()
     this.setStatus('offline')
     if (this.destroyed || this.ended) return
@@ -342,7 +427,12 @@ export class SyncClient {
 
   /** Gives up on the current socket without waiting for it to report anything. */
   private dropSocket() {
-    if (this.destroyed || this.ended || !this.socket) return
+    if (this.destroyed || this.ended) return
+    this.attempt++
+    if (!this.socket) {
+      this.connectionLost(false)
+      return
+    }
     const wasOpen = this.status === 'open'
     this.closeSocket()
     this.connectionLost(wasOpen)
@@ -351,6 +441,7 @@ export class SyncClient {
   /** The network came back: do not wait for the backoff, and do not trust a socket from before the outage. */
   private reconnectNow() {
     if (this.destroyed || this.ended) return
+    this.attempt++
     if (this.socket) this.dropSocket()
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     this.reconnectTimer = null
@@ -361,6 +452,7 @@ export class SyncClient {
   private closeSocket() {
     const socket = this.socket
     this.socket = null
+    this.subscribing.clear()
     if (!socket) return
     socket.onopen = socket.onmessage = socket.onclose = null
     try {
@@ -428,7 +520,40 @@ export class SyncClient {
   }
 
   private sendSubscribe(page: Page) {
-    if (!this.isOpen()) return
+    if (!this.isOpen() || page.state === 'blocked' || page.state === 'missing') return
+    if (this.options.beforeSubscribe) {
+      if (this.subscribing.has(page.pageId)) return
+      this.subscribing.add(page.pageId)
+      const socket = this.socket
+      void this.options.beforeSubscribe(page.pageId).then(
+        (access) => {
+          if (socket !== this.socket || this.pages.get(page.pageId) !== page) return
+          this.subscribing.delete(page.pageId)
+          if (access === 'retry') {
+            this.dropSocket()
+            return
+          }
+          if (access === 'stop') {
+            this.ended = true
+            this.closeSocket()
+            this.stopHeartbeat()
+            this.markAllSyncing()
+            this.setStatus('offline')
+            return
+          }
+          this.setPageAccess(page.pageId, access)
+          if (access === 'blocked' || access === 'missing') return
+          this.send(MessageType.Subscribe, page.pageId, Y.encodeStateVector(page.doc))
+        },
+        (error: unknown) => {
+          if (socket !== this.socket || this.pages.get(page.pageId) !== page) return
+          this.subscribing.delete(page.pageId)
+          console.error('The page could not be authorized for sync', error)
+          this.dropSocket()
+        },
+      )
+      return
+    }
     // The state vector tells the server what this client already has; it answers with what is missing.
     this.send(MessageType.Subscribe, page.pageId, Y.encodeStateVector(page.doc))
   }
@@ -459,10 +584,10 @@ export class SyncClient {
         this.handleSync(page, frame.stateVector, frame.updates)
         break
       case MessageType.Update:
-        Y.applyUpdate(page.doc, frame.payload, this.remote)
+        if (page.state !== 'blocked') Y.applyUpdate(page.doc, frame.payload, remoteOrigin)
         break
       case MessageType.Awareness:
-        applyAwarenessUpdate(page.awareness, frame.payload, this.remote)
+        applyAwarenessUpdate(page.awareness, frame.payload, remoteOrigin)
         break
       case MessageType.Error:
         this.handleError(page, frame.code)
@@ -474,11 +599,13 @@ export class SyncClient {
     for (const page of [...this.pages.values()]) {
       if (page.confirmAt === null || this.pongsReceived < page.confirmAt) continue
       page.confirmAt = null
+      this.options.onPageChange?.(page.pageId)
       if (page.leaving) this.release(page)
     }
   }
 
   private handleSync(page: Page, serverStateVector: Uint8Array, updates: Uint8Array[]) {
+    if (page.state === 'blocked') return
     if (page.firstSyncBytes === 0)
       page.firstSyncBytes = updates.reduce((sum, update) => sum + update.byteLength, 0)
     let serverVector = serverStateVector
@@ -496,7 +623,7 @@ export class SyncClient {
     const before = unsynced.length > 0 ? Y.encodeStateAsUpdate(page.doc) : null
     // In diff mode one update, in log mode the stored ones, each in its own apply (one transaction can lose a deletion,
     // run 0.5).
-    for (const update of updates) Y.applyUpdate(page.doc, update, this.remote)
+    for (const update of updates) Y.applyUpdate(page.doc, update, remoteOrigin)
     if (before && unsynced.some((item) => item.deleted))
       this.options.onEditsLost?.(page.pageId, before)
 
@@ -516,19 +643,33 @@ export class SyncClient {
     const local = page.awareness.getLocalState()
     if (local !== null) page.awareness.setLocalState(local)
 
-    if (page.leaving) this.release(page)
+    if (page.leaving) {
+      if (page.confirmAt === null) this.release(page)
+      else this.sendPing()
+    }
   }
 
   private handleError(page: Page, code: string) {
     switch (code) {
-      case 'page_not_found':
+      case 'page_not_found': {
+        const rejected = page.unconfirmed
+        page.confirmAt = null
+        if (rejected) this.markUnsent(page, true)
         this.setState(page, 'missing')
         break
-      case 'read_only':
+      }
+      case 'read_only': {
         // The server stored nothing: the person may read this page but not change it.
+        const rejected = page.unconfirmed
+        page.confirmAt = null
         page.readOnly = true
+        if (rejected) {
+          this.markUnsent(page, true)
+          this.setState(page, 'blocked')
+        }
         this.options.onPageChange?.(page.pageId)
         break
+      }
       default:
         this.options.onError?.(code, page.pageId)
     }
@@ -541,11 +682,23 @@ export class SyncClient {
     const frame = encodeFrame(MessageType.Update, page.pageId, update)
     if (frame.length > MAX_MESSAGE_BYTES) {
       // The server would close the connection, and sending the same change again after the reconnect would do it again.
+      this.markUnsent(page, true)
       this.setState(page, 'tooLarge')
       return
     }
-    this.sendRaw(frame)
+    if (!this.sendRaw(frame)) {
+      this.markUnsent(page, true)
+      return
+    }
     page.confirmAt = this.pingsSent + 1
+    this.options.onPageChange?.(page.pageId)
+    if (!this.confirmationScheduled) {
+      this.confirmationScheduled = true
+      queueMicrotask(() => {
+        this.confirmationScheduled = false
+        if (!this.destroyed) this.sendPing()
+      })
+    }
   }
 
   private sendPing() {
@@ -558,12 +711,15 @@ export class SyncClient {
     this.sendRaw(encodeFrame(type, pageId, payload))
   }
 
-  private sendRaw(frame: Uint8Array) {
-    if (!this.isOpen()) return
+  private sendRaw(frame: Uint8Array): boolean {
+    if (!this.isOpen()) return false
     try {
       this.socket!.send(frame)
-    } catch {
-      // The socket is closing: its close event starts the reconnect.
+      return true
+    } catch (error) {
+      console.error('A sync frame could not be sent', error)
+      this.dropSocket()
+      return false
     }
   }
 }
@@ -600,6 +756,7 @@ function defaultSocket(url: string): SocketLike {
 }
 
 /** The sync socket on the page's own host, `wss:` under HTTPS. */
-export function syncUrl(location: Pick<Location, 'protocol' | 'host'>): string {
-  return `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/sync`
+export function syncUrl(location: Pick<Location, 'protocol' | 'host'>, userId?: string): string {
+  const url = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/sync`
+  return userId ? `${url}?user=${encodeURIComponent(userId)}` : url
 }

@@ -47,6 +47,14 @@ public static class SyncEndpoints
         }
 
         var userId = Guid.Parse(http.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        // A persisted document belongs to the account that opened it. The cookie may change in another tab between
+        // the client's session check and this upgrade, so bind new clients to that account at the handshake too.
+        if (http.Request.Query.TryGetValue("user", out var expectedUser)
+            && (expectedUser.Count != 1 || !Guid.TryParse(expectedUser[0], out var expectedId) || expectedId != userId))
+        {
+            return Results.Json(new ApiError("session_changed"), statusCode: StatusCodes.Status409Conflict);
+        }
+
         // Already authenticated for this request, so this reads the cached result.
         var authentication = await http.AuthenticateAsync();
         string? sessionKey = null;

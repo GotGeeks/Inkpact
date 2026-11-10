@@ -5,7 +5,7 @@ import { useNotificationsStore } from '../stores/notifications'
 import { useSyncStore, type LostEdits } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import type { PageChange, PageDetail } from '../tree/types'
-import { copyUpdate, newPageId, toBase64 } from './pageCopy'
+import { copyUpdate, toBase64 } from './pageCopy'
 
 /** The longest title the server takes, in UTF-16 units, as it counts them (TreeService.MaxTitleLength). */
 const MAX_TITLE_LENGTH = 500
@@ -48,15 +48,15 @@ export function useKeepLostEdits() {
   const sync = useSyncStore()
   const tree = useTreeStore()
   const notifications = useNotificationsStore()
-  const busy = new Set<number>()
+  const busy = new Set<string>()
   /** What the person was told about which lost edits (`id:type`), so that a failure that comes back is not said again. */
   const told = new Set<string>()
   /** The id each copy gets: every try for the same edits asks for the same page. */
-  const copyIds = new Map<number, string>()
+  const copyIds = new Map<string, string>()
   /** The content of each copy, in base64: written once, not again for every try (it can be megabytes). */
-  const contents = new Map<number, string>()
+  const contents = new Map<string, string>()
   /** Lost edits whose copy the server said is too large: never tried again. */
-  const tooLargeIds = new Set<number>()
+  const tooLargeIds = new Set<string>()
 
   function tell(lost: LostEdits, type: 'editsWaiting' | 'editsTooLarge', title: string) {
     const key = `${lost.id}:${type}`
@@ -66,7 +66,7 @@ export function useKeepLostEdits() {
   }
 
   /** What is kept for lost edits that are no longer waiting: kept as a copy, or gone with the session. */
-  function forget(id: number) {
+  function forget(id: string) {
     copyIds.delete(id)
     contents.delete(id)
     tooLargeIds.delete(id)
@@ -76,9 +76,15 @@ export function useKeepLostEdits() {
   const stillWaiting = (lost: LostEdits) => sync.lostEdits.some((other) => other.id === lost.id)
 
   /** The page the edits were made on, as the server has it; null when it is gone altogether. */
-  async function pageOf(pageId: string): Promise<PageDetail | null> {
+  async function pageOf(lost: LostEdits): Promise<PageDetail | null> {
     try {
-      return await api<PageDetail>('GET', `/api/pages/${encodeURIComponent(pageId)}`)
+      return await api<PageDetail>(
+        'GET',
+        `/api/pages/${encodeURIComponent(lost.pageId)}`,
+        undefined,
+        undefined,
+        lost.userId,
+      )
     } catch (error) {
       if (error instanceof ApiError && error.code === 'not_found') return null
       throw error
@@ -90,15 +96,15 @@ export function useKeepLostEdits() {
     busy.add(lost.id)
     let title = t('tree.untitled')
     try {
-      const original = await pageOf(lost.pageId)
+      const original = await pageOf(lost)
       // A page that is gone has no workspace to ask about: its copy goes to the one on screen, the person's own.
-      const workspaceId = original?.workspaceId ?? tree.workspace?.id
+      const workspaceId = original?.workspaceId ?? lost.workspaceId ?? tree.workspace?.id
       if (!workspaceId) return
       title = original?.page.title || title
 
       // As much of the original's title as fits beside the words around it.
       const room = MAX_TITLE_LENGTH - t('sync.offlineCopyTitle', { title: '' }).length
-      const id = copyIds.get(lost.id) ?? newPageId()
+      const id = copyIds.get(lost.id) ?? lost.id
       copyIds.set(lost.id, id)
       const content = contents.get(lost.id) ?? toBase64(copyUpdate(lost.before))
       contents.set(lost.id, content)
@@ -107,31 +113,41 @@ export function useKeepLostEdits() {
         title: t('sync.offlineCopyTitle', { title: cut(title, room) }),
         content,
         beforeId: null,
+        expectedUserId: lost.userId,
       }
       const create = (parentId: string | null, afterId: string | null) =>
-        api<PageChange>('POST', `/api/workspaces/${encodeURIComponent(workspaceId)}/pages`, {
-          ...body,
-          parentId,
-          afterId,
-        })
+        api<PageChange>(
+          'POST',
+          `/api/workspaces/${encodeURIComponent(workspaceId)}/pages`,
+          { ...body, parentId, afterId },
+          undefined,
+          lost.userId,
+        )
 
       let made: PageChange
       const beside = original && !original.inTrash ? original.page : null
       try {
         made = await create(beside?.parentId ?? null, beside?.id ?? null)
       } catch (error) {
-        if (!beside || unreachable(error) || refusedForSize(error)) throw error
+        if (
+          !beside ||
+          unreachable(error) ||
+          refusedForSize(error) ||
+          (error instanceof ApiError && error.code === 'session_changed')
+        )
+          throw error
         made = await create(null, null)
       }
 
       // The page is made with the edits in it. A person who left meanwhile has their copy, and nobody else is told.
       if (!stillWaiting(lost)) return
-      sync.forgetLostEdits(lost.id)
+      if (!(await sync.forgetLostEdits(lost.id))) return
       forget(lost.id)
       notifications.post({ type: 'editsKept', pageId: made.page.id, title })
       await tree.load().catch(() => undefined)
     } catch (error) {
       if (!stillWaiting(lost)) return
+      if (error instanceof ApiError && error.code === 'session_changed') sync.identityChanged()
       if (tooLarge(error)) {
         tooLargeIds.add(lost.id)
         tell(lost, 'editsTooLarge', title)
@@ -150,7 +166,7 @@ export function useKeepLostEdits() {
       for (const id of new Set([...copyIds.keys(), ...contents.keys(), ...tooLargeIds]))
         if (!all.some((lost) => lost.id === id)) forget(id)
       if (display !== 'live') return
-      for (const lost of all) void keep(lost)
+      for (const lost of all) if (lost.ready) void keep(lost)
     },
     { immediate: true },
   )

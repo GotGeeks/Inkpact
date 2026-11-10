@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, api, setCsrfToken } from '../api'
+import { readOfflineIdentity, writeOfflineIdentity } from '../offline/identity'
 import {
   freshInstall,
   jsonResponse,
@@ -51,6 +52,25 @@ describe('auth store', () => {
 
     await expect(auth.load()).rejects.toMatchObject({ code: 'network_error' })
     expect(auth.loaded).toBe(false)
+  })
+
+  it('uses the last verified id only as an offline cache partition, never as an authenticated user', () => {
+    writeOfflineIdentity('previous-user')
+    const auth = useAuthStore()
+    auth.enterOffline()
+    expect(auth.offline).toBe(true)
+    expect(auth.offlineUserId).toBe('previous-user')
+    expect(auth.user).toBeNull()
+    writeOfflineIdentity(null)
+  })
+
+  it('clears the active offline identity when the server confirms the session ended', async () => {
+    writeOfflineIdentity('previous-user')
+    stubApi([state(signedOut)])
+    const auth = useAuthStore()
+    await auth.load()
+    expect(readOfflineIdentity()).toBeNull()
+    expect(auth.user).toBeNull()
   })
 
   it('logs in with the email and password, then reloads who is signed in', async () => {
@@ -140,6 +160,25 @@ describe('auth store', () => {
 
     expect(auth.user).toBeNull()
   })
+
+  it.each(['logout', 'logoutEverywhere'] as const)(
+    '%s clears the local identity even if the follow-up state request fails',
+    async (action) => {
+      const auth = useAuthStore()
+      auth.acceptState({ ...signedIn, csrfToken: null })
+      expect(readOfflineIdentity()).toBe(signedIn.user!.id)
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce(new Response(null, { status: 204 }))
+          .mockRejectedValueOnce(new TypeError('network unavailable')),
+      )
+      await expect(auth[action]()).rejects.toBeInstanceOf(ApiError)
+      expect(auth.user).toBeNull()
+      expect(readOfflineIdentity()).toBeNull()
+    },
+  )
 
   it('hands the token of every new state to the API calls', async () => {
     setCsrfToken(null)

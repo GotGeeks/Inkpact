@@ -2,12 +2,14 @@
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import type { Editor } from '@tiptap/core'
 import type { EditorView } from '@tiptap/pm/view'
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ApiError } from '../api'
+import type { OfflineDocument } from '../offline/offlineDocument'
 import { useKeyboardInset } from '../composables/useKeyboardInset'
 import { useMediaQuery } from '../composables/useMediaQuery'
+import { useAuthStore } from '../stores/auth'
 import { useNotificationsStore } from '../stores/notifications'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
@@ -20,7 +22,7 @@ import { registerLinkShortcut } from './linkShortcutRegistry'
 import { selectedRange } from './selectedRange'
 import { linkableRange, type TextRange } from './linkRange'
 import { placeAt, type Place } from './place'
-import { createPageMenuState } from './pageLinkExtension'
+import { closePageMenu, createPageMenuState } from './pageLinkExtension'
 import { createExtensions } from './extensions'
 import { applyFirstParagraph } from './firstParagraph'
 import BlockHandle from './BlockHandle.vue'
@@ -34,21 +36,39 @@ import { openLinkIn } from './linkOpening'
 import { createSlashState } from './slashExtension'
 import TableMenu from './TableMenu.vue'
 
-const props = defineProps<{ pageId: string; readOnly: boolean }>()
+const props = defineProps<{
+  pageId: string
+  readOnly: boolean
+  document?: OfflineDocument | null
+}>()
 
 const { t, locale } = useI18n()
 const sync = useSyncStore()
+const auth = useAuthStore()
 const tree = useTreeStore()
 const notifications = useNotificationsStore()
+const browserOnline = ref(navigator.onLine)
+const pagesAvailable = computed(
+  () => browserOnline.value && !auth.offline && sync.connection !== 'offline',
+)
+const updateNetwork = () => (browserOnline.value = navigator.onLine)
+onMounted(() => {
+  window.addEventListener('online', updateNetwork)
+  window.addEventListener('offline', updateNetwork)
+})
 
 // The sync client makes the document, so that it can keep it alive while changes are still on their way after the
 // person left. The first paragraph is applied once, before the subscribe.
-const handle = sync.open(props.pageId, { readOnly: props.readOnly, init: applyFirstParagraph })
+const handle = sync.open(props.pageId, {
+  readOnly: props.readOnly,
+  init: applyFirstParagraph,
+  document: props.document ?? undefined,
+})
 const info = computed(() => sync.pages[props.pageId])
 
 // A page that has not been in step with the server yet may be empty only because its content has not arrived: typing
 // then would land in the first paragraph. Once it has been in step, or when there is plainly no server, typing is fine.
-const everSynced = ref(info.value?.state === 'synced')
+const everSynced = ref(info.value?.state === 'synced' || !!props.document?.metadata.ready)
 watch(
   () => info.value?.state,
   (state) => {
@@ -65,8 +85,9 @@ const contentError = ref(false)
 const editable = computed(() => {
   const page = info.value
   if (!page || props.readOnly || page.readOnly || contentError.value) return false
-  if (page.state === 'missing' || page.state === 'tooLarge') return false
-  return everSynced.value || sync.connection === 'offline'
+  if (page.state === 'missing' || page.state === 'tooLarge' || page.state === 'blocked')
+    return false
+  return everSynced.value
 })
 
 const slashState = createSlashState()
@@ -150,7 +171,7 @@ watch(editable, (can) => {
 function toolbarLink() {
   const current = editor.value
   if (!current || !editable.value) return
-  if (!openLinkPicker()) openPageMenu(current)
+  if (!openLinkPicker() && pagesAvailable.value) openPageMenu(current)
 }
 
 // Ctrl+K: the editor takes it, and not search, when there is text to link (the app asks before it opens search). The same
@@ -253,12 +274,17 @@ const editor = useEditor({
     placeholder: t('editor.placeholder'),
     // Written out, so the lint rule that finds unused translations can see the keys.
     checkboxLabel: (checked) => (checked ? t('editor.checkboxDone') : t('editor.checkboxNotDone')),
-    slash: { state: slashState, translate: (key) => t(key) },
+    slash: {
+      state: slashState,
+      translate: (key) => t(key),
+      available: (command) => pagesAvailable.value || command.id !== 'pageLink',
+    },
     pageLinks: {
       state: pageMenuState,
       pages: () => tree.pages,
       currentPageId: () => props.pageId,
       untitled: () => t('tree.untitled'),
+      available: () => pagesAvailable.value,
     },
     linkShortcut: { open: openLinkPicker },
     // A page with something in it that this schema does not know (made by a newer version of the app, with a block this
@@ -284,7 +310,10 @@ const editor = useEditor({
       downloadLabel: (fileName, size) => t('editor.attachment.download', { name: fileName, size }),
     },
     upload: {
-      upload: (file) => uploadAttachment(props.pageId, file),
+      upload: (file) =>
+        sync.connection === 'open'
+          ? uploadAttachment(props.pageId, file)
+          : Promise.reject(new ApiError(0, 'offline_upload')),
       onError: (error) =>
         notifications.post({
           type: 'error',
@@ -362,6 +391,12 @@ watch(
   { immediate: true },
 )
 watch(locale, () => editor.value?.setOptions({ editorProps: { attributes: attributes() } }))
+watch(pagesAvailable, (available) => {
+  if (!available) {
+    if (pageMenuState.open && editor.value) closePageMenu(editor.value)
+    slashState.items = slashState.items.filter((command) => command.id !== 'pageLink')
+  }
+})
 
 // A link to a page that goes to the trash, comes back or is made is marked by the tree, not by the document: when the tree
 // changes, the links are looked at again.
@@ -370,6 +405,8 @@ watch([() => tree.pages, () => tree.trash, () => tree.loaded], () => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('online', updateNetwork)
+  window.removeEventListener('offline', updateNetwork)
   stopLinkShortcut()
   dropFocusRequest()
   editor.value?.destroy()
@@ -423,6 +460,7 @@ defineExpose({ focus: focusAtStart })
       :open="picker.open"
       :page-id="pageId"
       :has-link="picker.hasLink"
+      :pages-available="pagesAvailable"
       @choose="chooseLink"
       @remove="removeLink"
       @cancel="closePicker(false)"

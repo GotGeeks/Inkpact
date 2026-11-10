@@ -138,13 +138,19 @@ describe('AppShell when the pages cannot be loaded', () => {
     )
     const mounted = await mountAt(RouterView, '/')
     wrapper = mounted.wrapper
-    await vi.waitFor(() => expect(wrapper!.find('[role="alert"]').exists()).toBe(true))
+    await vi.waitFor(() =>
+      expect(wrapper!.find('[data-testid="shell-load-error"]').exists()).toBe(true),
+    )
 
-    expect(wrapper!.get('[role="alert"]').text()).toContain('The pages could not be loaded.')
+    expect(wrapper!.get('[data-testid="shell-load-error"]').text()).toContain(
+      'The pages could not be loaded.',
+    )
 
     fail = false
-    await wrapper!.get('[role="alert"] button').trigger('click')
-    await vi.waitFor(() => expect(wrapper!.find('[role="alert"]').exists()).toBe(false))
+    await wrapper!.get('[data-testid="shell-load-error"] button').trigger('click')
+    await vi.waitFor(() =>
+      expect(wrapper!.find('[data-testid="shell-load-error"]').exists()).toBe(false),
+    )
     await vi.waitFor(() => expect(wrapper!.findAll('[role="treeitem"]').length).toBe(2))
   })
 })

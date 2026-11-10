@@ -18,13 +18,18 @@ import { useTreeStore } from '../stores/tree'
 import { isAllowedLink, normalizeLinkHref, pageHref } from './links'
 import { findPages, sharedTitles, type PageChoice } from './pageSearch'
 
-const props = defineProps<{
-  open: boolean
-  /** The page being edited: not offered, a link to itself being no use. */
-  pageId: string
-  /** The text already is a link: the picker can take it away. */
-  hasLink: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    /** The page being edited: not offered, a link to itself being no use. */
+    pageId: string
+    /** The text already is a link: the picker can take it away. */
+    hasLink: boolean
+    /** Page search needs the online workspace tree; web addresses still work offline. */
+    pagesAvailable?: boolean
+  }>(),
+  { pagesAvailable: true },
+)
 
 const emit = defineEmits<{
   /** The address to put on the text: `/p/<id>` for a page, anything else as it is typed. */
@@ -57,7 +62,7 @@ interface Option {
  */
 function optionsFor(text: string): { options: Option[]; pages: PageChoice[] } {
   const typed = text.trim()
-  const pages = findPages(tree.pages, typed, props.pageId)
+  const pages = props.pagesAvailable === false ? [] : findPages(tree.pages, typed, props.pageId)
   const address: Option[] =
     typed !== '' && isAllowedLink(typed)
       ? [{ value: normalizeLinkHref(typed), kind: 'address', title: typed, parentTitle: null }]

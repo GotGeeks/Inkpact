@@ -10,6 +10,7 @@ import {
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
+import { ApiError } from '../api'
 import AppIcon from '../components/AppIcon.vue'
 import SearchDialog from '../search/SearchDialog.vue'
 import { editorTakesSearchShortcut } from '../editor/linkShortcutRegistry'
@@ -21,6 +22,7 @@ import { useAuthStore } from '../stores/auth'
 import { useCurrentPageStore } from '../stores/currentPage'
 import { useFavoritesStore } from '../stores/favorites'
 import { useNotificationsStore } from '../stores/notifications'
+import { useOfflineStore } from '../stores/offline'
 import { useRecentStore } from '../stores/recent'
 import { useSearchStore } from '../stores/search'
 import { useSyncStore } from '../stores/sync'
@@ -38,6 +40,7 @@ const notifications = useNotificationsStore()
 const search = useSearchStore()
 const sync = useSyncStore()
 const auth = useAuthStore()
+const offline = useOfflineStore()
 const tags = useTagsStore()
 const favorites = useFavoritesStore()
 const recent = useRecentStore()
@@ -47,6 +50,13 @@ useKeepLostEdits()
 const wide = useMediaQuery('(min-width: 48rem)', true)
 const drawerOpen = ref(false)
 const failed = ref(false)
+const browserOnline = ref(navigator.onLine)
+const localOnly = computed(
+  () => auth.offline || !browserOnline.value || sync.connection === 'offline',
+)
+const routeReady = ref(auth.offline || tree.loaded)
+const updateNetwork = () => (browserOnline.value = navigator.onLine)
+let starting: Promise<void> | null = null
 
 const selectedId = computed(() => (route.name === 'page' ? String(route.params.pageId) : null))
 
@@ -71,24 +81,43 @@ function skipToPage() {
   main.value?.focus()
 }
 
-async function start() {
+function start(): Promise<void> {
+  if (starting) return starting
+  starting = startOnce().finally(() => (starting = null))
+  return starting
+}
+
+async function startOnce() {
   failed.value = false
   try {
     await tree.init()
+    routeReady.value = tree.loaded
     void favorites.load()
-  } catch {
-    failed.value = true
+  } catch (error) {
+    if (error instanceof ApiError && error.code === 'network_error' && route.name === 'page') {
+      auth.enterOffline()
+      routeReady.value = true
+    } else {
+      console.error('The page tree could not be loaded', error)
+      failed.value = true
+    }
   }
 }
 
 onMounted(() => {
-  void start()
+  if (!auth.offline) void start()
+  const userId = auth.user?.id ?? auth.offlineUserId
+  if (userId) void sync.loadRecoveries(userId)
   favorites.watchFocus()
+  window.addEventListener('offline', updateNetwork)
+  window.addEventListener('online', updateNetwork)
   // Capturing, so that the editor does not take the key first; the browser would otherwise use it for its own search.
   window.addEventListener('keydown', onShortcut, true)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onShortcut, true)
+  window.removeEventListener('offline', updateNetwork)
+  window.removeEventListener('online', updateNetwork)
   search.reset()
   tree.reset()
   tags.reset()
@@ -97,12 +126,24 @@ onBeforeUnmount(() => {
   sync.destroy()
 })
 
+watch(
+  () => auth.offline,
+  (isOffline) => {
+    if (isOffline) routeReady.value = true
+    else if (!tree.loaded) void start()
+  },
+)
+
 // The server ended the session (or connecting kept failing and the sign-in state says so): back to the login page, and
 // to this page again afterwards.
 watch(
   () => sync.sessionEnded,
   async (ended) => {
     if (!ended) return
+    if (sync.unsent || sync.unsafeToLeave || sync.lostEdits.length > 0) {
+      sync.identityChanged()
+      return
+    }
     if (auth.user) {
       // Still signed in after all: start over with a new socket.
       window.location.reload()
@@ -136,6 +177,7 @@ watch(wide, (isWide) => {
 
 /** Ctrl+K, or Cmd+K on a Mac, from anywhere in the app, also inside the editor. */
 async function onShortcut(event: KeyboardEvent) {
+  if (localOnly.value) return
   if (isSearchShortcut(event)) {
     // In the editor, with text selected or the caret in a link, it makes a link (run B.1b): the editor takes the key itself.
     if (editorTakesSearchShortcut()) return
@@ -301,10 +343,47 @@ function open(id: string) {
   drawerOpen.value = false
   show(id)
 }
+
+function reloadAfterAccountChange() {
+  if (!sync.unsafeToLeave) window.location.reload()
+}
+
+function retryOfflineStorage() {
+  void offline.retryAll()
+  sync.retryRecoveries()
+  const userId = auth.user?.id ?? auth.offlineUserId
+  if (userId) void sync.loadRecoveries(userId)
+}
 </script>
 
 <template>
-  <div class="flex h-dvh bg-surface-canvas text-on-surface">
+  <main
+    v-if="sync.accountChanged"
+    class="mx-auto flex max-w-2xl flex-col items-start gap-space-md p-margin text-on-surface md:p-margin-desktop"
+  >
+    <h1 class="text-headline-xl-mobile md:text-headline-xl">
+      {{ t('offline.accountChangedTitle') }}
+    </h1>
+    <p role="alert">{{ t('offline.accountChanged') }}</p>
+    <p v-if="sync.unsafeToLeave">{{ t('offline.accountUnsafe') }}</p>
+    <button
+      v-if="sync.unsafeToLeave"
+      type="button"
+      class="min-h-11 rounded border border-border-strong px-space-lg"
+      @click="retryOfflineStorage"
+    >
+      {{ t('offline.retry') }}
+    </button>
+    <button
+      type="button"
+      :disabled="sync.unsafeToLeave"
+      class="min-h-11 rounded border border-border-strong px-space-lg disabled:opacity-50"
+      @click="reloadAfterAccountChange"
+    >
+      {{ t('offline.continue') }}
+    </button>
+  </main>
+  <div v-else class="flex h-dvh bg-surface-canvas text-on-surface">
     <a
       href="#main"
       class="sr-only focus:not-sr-only focus:fixed focus:start-space-md focus:top-space-md focus:z-[70] focus:rounded focus:bg-primary-container focus:px-space-lg focus:py-space-sm focus:text-label-md focus:text-on-primary-container focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -316,7 +395,7 @@ function open(id: string) {
       {{ announcement }}
     </p>
     <aside
-      v-if="wide"
+      v-if="wide && !localOnly"
       class="w-80 shrink-0 border-e border-border-subtle"
       :aria-label="t('shell.sidebar')"
     >
@@ -325,7 +404,7 @@ function open(id: string) {
 
     <div class="flex min-w-0 flex-1 flex-col">
       <header
-        v-if="!wide"
+        v-if="!wide && !localOnly"
         class="flex min-h-14 items-center gap-space-sm border-b border-border-subtle bg-surface-panel px-space-sm"
       >
         <button
@@ -349,9 +428,34 @@ function open(id: string) {
       </header>
 
       <main id="main" ref="main" class="min-h-0 flex-1 overflow-y-auto outline-none" tabindex="-1">
+        <p
+          v-if="localOnly"
+          role="status"
+          class="border-b border-border-subtle bg-surface-panel p-space-md text-body-sm"
+        >
+          {{ t('offline.limited') }}
+        </p>
+        <p
+          v-if="offline.evicted > 0"
+          role="status"
+          class="border-b border-border-subtle bg-surface-panel p-space-md text-body-sm"
+        >
+          {{ t('offline.evicted') }}
+        </p>
+        <div
+          v-if="offline.hasFailure"
+          role="alert"
+          class="border-b border-error bg-error-container p-space-md text-body-sm text-on-error-container"
+        >
+          <p>{{ t('offline.storageAttention') }}</p>
+          <button type="button" class="min-h-11 underline" @click="retryOfflineStorage">
+            {{ t('offline.retry') }}
+          </button>
+        </div>
         <div
           v-if="failed"
           role="alert"
+          data-testid="shell-load-error"
           class="m-margin flex flex-col items-start gap-space-md rounded border border-error bg-error-container p-space-lg text-on-error-container"
         >
           <p>{{ t('shell.loadFailed') }}</p>
@@ -363,11 +467,11 @@ function open(id: string) {
             {{ t('shell.retry') }}
           </button>
         </div>
-        <RouterView v-else-if="tree.loaded" />
+        <RouterView v-else-if="routeReady" />
       </main>
     </div>
 
-    <DialogRoot v-if="!wide" v-model:open="drawerOpen">
+    <DialogRoot v-if="!wide && !localOnly" v-model:open="drawerOpen">
       <DialogPortal>
         <DialogOverlay class="fixed inset-0 z-40 bg-surface-canvas/70" />
         <DialogContent
@@ -385,7 +489,7 @@ function open(id: string) {
       </DialogPortal>
     </DialogRoot>
 
-    <SearchDialog @command="dispatchCommand" />
+    <SearchDialog v-if="!localOnly" @command="dispatchCommand" />
 
     <NoticeToaster />
   </div>

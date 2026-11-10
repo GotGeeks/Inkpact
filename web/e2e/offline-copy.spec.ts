@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures'
 import { openSidebar, openUserMenu, pageIdOf, rowFor } from './helpers'
 import { generateLargeJex } from './jex'
-import { newPage, openClient, typeText, type Client } from './syncClients'
+import { newPage, openClient, removeLastBlock, typeText, type Client } from './syncClients'
 
 /**
  * Edits a Sync would delete are kept as a copy (docs/architecture.md, sync flow, step 7): a browser that typed offline
@@ -18,37 +18,6 @@ const OFFLINE = ' typed-offline-1234'
 async function treeTitles(page: Page) {
   await openSidebar(page)
   return page.locator('[role="treeitem"]').allInnerTexts()
-}
-
-/**
- * `b` removes the last block of the page by joining it to the one before (Home, Backspace), and the server has it when this
- * returns. That matters: a deletion that reaches the other browser after it is back online is a live update, which is not
- * checked. `lastText` is the text of the last block.
- */
-async function removeLastBlock(b: Client, lastText: string, mergedText: RegExp) {
-  // ProseMirror reads a cursor that the browser moved (Home) on the next selectionchange event, and a key pressed before
-  // that is applied to the old selection or dropped. This listener comes after ProseMirror's, so what it saw, ProseMirror
-  // has seen too.
-  await b.page.evaluate(() => {
-    document.addEventListener('selectionchange', () => {
-      const selection = getSelection()
-      document.body.dataset.selectionSeen = `${selection?.anchorNode?.textContent ?? ''}@${selection?.anchorOffset ?? -1}`
-    })
-  })
-  await b.editor.click()
-  // Tried again until the cursor is at the start of the last block: under load (WebKit above all) Home can come before the
-  // cursor has reached the end, and it changes nothing once the cursor is where it should be.
-  await expect(async () => {
-    await b.page.keyboard.press('Control+End')
-    await b.page.keyboard.press('Home')
-    await expect(b.page.locator('body')).toHaveAttribute('data-selection-seen', `${lastText}@0`, {
-      timeout: 1_500,
-    })
-  }).toPass({ timeout: 15_000 })
-  await b.page.keyboard.press('Backspace')
-  await expect(b.editor.locator('p').last()).toHaveText(mergedText)
-  // The server has confirmed every change of this tab.
-  await expect(b.status).toHaveAttribute('data-unsent', 'false', { timeout: 30_000 })
 }
 
 /** `a` is back online: it says its edits are in a copy, and the copy is the next page, with the edits in it. */
