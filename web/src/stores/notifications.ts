@@ -9,6 +9,7 @@ export type Notice =
   | { type: 'error'; code: string; retryAfterSeconds?: number }
   | { type: 'trashed'; pageId: string; title: string }
   | { type: 'restored'; pageId: string; title: string; toTopLevel: boolean }
+  | { type: 'pageCreated'; pageId: string; title: string }
   /** Offline edits to the page titled `title` were deleted by a change from elsewhere, and kept in the page `pageId`. */
   | { type: 'editsKept'; pageId: string; title: string }
   /** The copy of such edits could not be made yet: it is tried again when the connection is back. */

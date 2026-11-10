@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { api } from '../api'
+import { ApiError, api } from '../api'
 import { onTabVisible } from '../composables/onTabVisible'
 import { useTreeStore } from './tree'
 
@@ -17,21 +17,34 @@ export interface RecentPage {
  */
 export const useRecentStore = defineStore('recent', () => {
   const items = ref<RecentPage[]>([])
+  const loaded = ref(false)
+  const loadError = ref<string | null>(null)
   const sending = new Set<Promise<unknown>>()
   let reads = 0
   let stopWatching: (() => void) | null = null
 
-  async function load() {
+  async function load(): Promise<boolean> {
     const workspace = useTreeStore().workspace
-    if (!workspace) return
+    if (!workspace) {
+      loadError.value = 'unknown'
+      return false
+    }
     const mine = ++reads
     await Promise.allSettled([...sending])
-    if (mine !== reads) return
+    if (mine !== reads) return false
     try {
       const answer = await api<RecentPage[]>('GET', `/api/workspaces/${workspace.id}/recent`)
-      if (mine === reads) items.value = answer
-    } catch {
-      // Without the list the start page has no recent pages, which is fine.
+      if (mine === reads) {
+        items.value = answer
+        loaded.value = true
+        loadError.value = null
+      }
+      return mine === reads
+    } catch (error) {
+      if (mine === reads) {
+        loadError.value = error instanceof ApiError ? error.code : 'unknown'
+      }
+      return false
     }
   }
 
@@ -65,7 +78,9 @@ export const useRecentStore = defineStore('recent', () => {
     unwatchFocus()
     reads++
     items.value = []
+    loaded.value = false
+    loadError.value = null
   }
 
-  return { items, load, visit, watchFocus, unwatchFocus, reset }
+  return { items, loaded, load, loadError, visit, watchFocus, unwatchFocus, reset }
 })

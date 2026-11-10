@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeTree, outline } from '../testing/treeFixtures'
+import { jsonResponse } from '../testing/helpers'
 import { useRecentStore } from './recent'
 import { useTreeStore } from './tree'
 
@@ -24,6 +25,28 @@ describe('recent store', () => {
     await store.load()
 
     expect(store.items).toEqual(recent)
+    expect(store.loaded).toBe(true)
+    expect(store.loadError).toBeNull()
+  })
+
+  it('exposes a failed read and recovers when the list is retried', async () => {
+    const server = fakeTree({ pages: outline(['A']), recent })
+    await useTreeStore().init()
+    const store = useRecentStore()
+    const original = server.fetch.getMockImplementation()!
+    server.fetch.mockImplementation(async (input, init) => {
+      if (String(input).endsWith('/recent')) return jsonResponse(503, { code: 'server_error' })
+      return original(input, init)
+    })
+
+    await expect(store.load()).resolves.toBe(false)
+    expect(store.loaded).toBe(false)
+    expect(store.loadError).toBe('server_error')
+
+    server.fetch.mockImplementation(original)
+    await expect(store.load()).resolves.toBe(true)
+    expect(store.loaded).toBe(true)
+    expect(store.loadError).toBeNull()
   })
 
   it('tells the server a page was opened', async () => {

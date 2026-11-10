@@ -32,6 +32,8 @@ function text(notice: PostedNotice): string {
       return notice.toTopLevel
         ? t('notices.restoredToTopLevel', { title })
         : t('notices.restored', { title })
+    case 'pageCreated':
+      return t('notices.pageCreated', { title })
     case 'editsKept':
       return t('notices.editsKept', { title })
     case 'editsWaiting':
@@ -56,6 +58,11 @@ const important = (notice: PostedNotice) => IMPORTANT.has(notice.type)
 
 function openCopy(notice: PostedNotice) {
   if (notice.type === 'editsKept')
+    void router.push({ name: 'page', params: { pageId: notice.pageId } })
+}
+
+function openPage(notice: PostedNotice) {
+  if (notice.type === 'pageCreated')
     void router.push({ name: 'page', params: { pageId: notice.pageId } })
 }
 </script>
@@ -96,6 +103,19 @@ function openCopy(notice: PostedNotice) {
           @click="openCopy(notice)"
         >
           {{ t('notices.openCopy') }}
+        </button>
+      </ToastAction>
+      <ToastAction
+        v-if="notice.type === 'pageCreated'"
+        as-child
+        :alt-text="t('notices.openCreatedPageAlt', { title: notice.title || t('tree.untitled') })"
+      >
+        <button
+          type="button"
+          class="min-h-11 rounded px-space-md text-label-md text-primary hover:bg-surface-container-high focus-visible:outline-2 focus-visible:outline-primary md:min-h-8"
+          @click="openPage(notice)"
+        >
+          {{ t('notices.openCreatedPage') }}
         </button>
       </ToastAction>
       <ToastClose

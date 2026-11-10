@@ -39,6 +39,7 @@ export const useTreeStore = defineStore('tree', () => {
   const loaded = ref(false)
   const expanded = ref<Set<string>>(new Set())
   const notifications = useNotificationsStore()
+  let loadGeneration = 0
 
   const canEdit = computed(
     () => workspace.value?.role === 'owner' || workspace.value?.role === 'editor',
@@ -57,16 +58,25 @@ export const useTreeStore = defineStore('tree', () => {
     loaded.value = true
   }
 
-  async function load() {
-    if (!workspace.value) return
+  async function load(): Promise<boolean> {
+    if (!workspace.value) return false
     const id = workspace.value.id
+    const mine = ++loadGeneration
     const [tree, trashed] = await Promise.all([
       api<TreeResponse>('GET', `/api/workspaces/${id}/pages`),
       api<PageNode[]>('GET', `/api/workspaces/${id}/trash`),
     ])
+    if (
+      mine !== loadGeneration ||
+      workspace.value?.id !== id ||
+      tree.treeVersion < treeVersion.value
+    ) {
+      return false
+    }
     pages.value = tree.pages
     treeVersion.value = tree.treeVersion
     trash.value = trashed
+    return true
   }
 
   function persistExpanded() {
@@ -197,6 +207,7 @@ export const useTreeStore = defineStore('tree', () => {
 
   /** Forgets everything, when the person leaves, so the next one starts clean. */
   function reset() {
+    loadGeneration++
     workspace.value = null
     pages.value = []
     trash.value = []

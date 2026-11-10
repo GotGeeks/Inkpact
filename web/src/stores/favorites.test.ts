@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeTree, outline } from '../testing/treeFixtures'
+import { jsonResponse } from '../testing/helpers'
 import { useFavoritesStore } from './favorites'
 import { useNotificationsStore } from './notifications'
 import { useTreeStore } from './tree'
@@ -24,8 +25,28 @@ describe('favorites store', () => {
     await favorites.load()
 
     expect(favorites.ids).toEqual(['C', 'A'])
+    expect(favorites.loaded).toBe(true)
+    expect(favorites.loadError).toBeNull()
     expect(favorites.has('A')).toBe(true)
     expect(favorites.has('B')).toBe(false)
+  })
+
+  it('exposes a failed read and recovers when the list is retried', async () => {
+    const { server, favorites } = await started()
+    const original = server.fetch.getMockImplementation()!
+    server.fetch.mockImplementation(async (input, init) => {
+      if (String(input).endsWith('/favorites')) return jsonResponse(503, { code: 'server_error' })
+      return original(input, init)
+    })
+
+    await expect(favorites.load()).resolves.toBe(false)
+    expect(favorites.loaded).toBe(false)
+    expect(favorites.loadError).toBe('server_error')
+
+    server.fetch.mockImplementation(original)
+    await expect(favorites.load()).resolves.toBe(true)
+    expect(favorites.loaded).toBe(true)
+    expect(favorites.loadError).toBeNull()
   })
 
   it('shows a star at once, before the server has answered', async () => {
