@@ -110,15 +110,16 @@ public class MigrationIntegrationTests(PostgresFixture postgres) : IClassFixture
             list.Add(reader.GetString(1));
         }
 
-        columns.Keys.Where(t => t != "__EFMigrationsHistory").Order().ShouldBe(["attachments", "audit_events", "favorites", "import_items", "imports", "login_throttles", "page_links", "page_snapshots", "page_tags", "page_updates", "page_updates_archive", "page_visits", "pages", "reminders", "sessions", "tags", "users", "workspace_members", "workspaces"]);
+        columns.Keys.Where(t => t != "__EFMigrationsHistory").Order().ShouldBe(["attachments", "audit_events", "favorites", "import_items", "imports", "login_throttles", "page_links", "page_snapshots", "page_tags", "page_updates", "page_updates_archive", "page_versions", "page_visits", "pages", "reminders", "sessions", "tags", "users", "workspace_members", "workspaces"]);
         columns["users"].ShouldBe(["id", "email", "normalized_email", "display_name", "password_hash", "oidc_subject", "created_at", "is_admin"]);
-        columns["workspaces"].ShouldBe(["id", "name", "owner_id", "created_at", "tree_version"]);
+        columns["workspaces"].ShouldBe(["id", "name", "owner_id", "created_at", "tree_version", "history_cap_bytes", "history_daily_days", "history_enabled", "history_expiry_days", "history_granular_hours"]);
         columns["workspace_members"].ShouldBe(["workspace_id", "user_id", "role", "created_at"]);
         columns["audit_events"].ShouldBe(["id", "occurred_at", "type", "user_id", "email", "ip", "user_agent", "workspace_id"]);
         columns["login_throttles"].ShouldBe(["key", "failures", "locked_until", "last_failure_at"]);
         columns["sessions"].ShouldBe(["id", "user_id", "ticket", "created_at", "last_seen_at", "expires_at", "user_agent"]);
         columns["page_updates"].ShouldBe(["seq", "page_id", "data", "user_id", "created_at"]);
         columns["page_updates_archive"].ShouldBe(["seq", "page_id", "data", "user_id", "created_at", "archived_at"]);
+        columns["page_versions"].ShouldBe(["id", "page_id", "state", "title", "file_text", "created_at", "created_by", "kind", "protected_until", "payload_bytes"]);
         columns["attachments"].ShouldBe(["id", "page_id", "file_name", "content_type", "size", "sha256", "created_at", "created_by", "external_id", "external_source_type"]);
         columns["tags"].ShouldBe(["id", "workspace_id", "name", "normalized_name", "external_source_type", "external_id", "created_at"]);
         columns["page_tags"].ShouldBe(["page_id", "tag_id"]);

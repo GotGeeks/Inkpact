@@ -23,6 +23,8 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
 
     public DbSet<PageSnapshot> PageSnapshots => Set<PageSnapshot>();
 
+    public DbSet<PageVersion> PageVersions => Set<PageVersion>();
+
     public DbSet<ArchivedPageUpdate> ArchivedPageUpdates => Set<ArchivedPageUpdate>();
 
     public DbSet<PageLink> PageLinks => Set<PageLink>();
@@ -60,6 +62,10 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
         {
             workspace.ToTable("workspaces");
             workspace.Property(w => w.Name).HasMaxLength(200).IsRequired();
+            workspace.Property(w => w.HistoryEnabled).HasDefaultValue(true);
+            workspace.Property(w => w.HistoryGranularHours).HasDefaultValue(Workspace.DefaultHistoryGranularHours);
+            workspace.Property(w => w.HistoryDailyDays).HasDefaultValue(Workspace.DefaultHistoryDailyDays);
+            workspace.Property(w => w.HistoryExpiryDays).HasDefaultValue(Workspace.DefaultHistoryExpiryDays);
             workspace.HasOne(w => w.Owner).WithMany().HasForeignKey(w => w.OwnerId).OnDelete(DeleteBehavior.Restrict);
             workspace.HasIndex(w => w.OwnerId);
         });
@@ -157,6 +163,22 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             snapshot.Property(s => s.StateVector).IsRequired();
             snapshot.Property(s => s.HistoryComplete).HasDefaultValue(true);
             snapshot.HasOne<Page>().WithOne().HasForeignKey<PageSnapshot>(s => s.PageId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PageVersion>(version =>
+        {
+            version.ToTable("page_versions");
+            version.Property(v => v.State).IsRequired();
+            version.Property(v => v.Title).HasMaxLength(500).IsRequired();
+            version.Property(v => v.FileText).IsRequired();
+            version.Property(v => v.Kind)
+                .HasConversion(kind => kind.ToString().ToLowerInvariant(), text => Enum.Parse<PageVersionKind>(text, true))
+                .HasMaxLength(32)
+                .IsRequired();
+            version.HasOne<Page>().WithMany().HasForeignKey(v => v.PageId).OnDelete(DeleteBehavior.Cascade);
+            version.HasOne<User>().WithMany().HasForeignKey(v => v.CreatedBy).OnDelete(DeleteBehavior.SetNull);
+            version.HasIndex(v => new { v.PageId, v.CreatedAt, v.Id }).IsDescending(false, true, true);
+            version.HasIndex(v => v.CreatedAt);
         });
 
         modelBuilder.Entity<PageLink>(link =>

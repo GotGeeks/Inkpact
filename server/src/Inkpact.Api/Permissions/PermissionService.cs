@@ -17,6 +17,12 @@ public interface IPermissionService
     Task<WorkspaceRole> GetWorkspaceRoleAsync(Guid userId, Guid workspaceId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Locks and rereads the membership until the current transaction ends, for a commit-time permission check.
+    /// A caller that also locks the workspace must take that lock first.
+    /// </summary>
+    Task<WorkspaceRole> LockWorkspaceRoleAsync(Guid userId, Guid workspaceId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// The user's role on the page, or <see cref="WorkspaceRole.None"/> when there is no such page. Today this is
     /// the role in the page's workspace; shares on pages and their ancestors (run 2.2) are added here, so no
     /// endpoint has to change.
@@ -53,6 +59,25 @@ public sealed class PermissionService(InkpactDbContext db) : IPermissionService
             return cached;
         }
 
+        return await ReadWorkspaceRoleAsync(userId, workspaceId, cancellationToken);
+    }
+
+    public async Task<WorkspaceRole> LockWorkspaceRoleAsync(Guid userId, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        if (db.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("Locking a workspace role requires a transaction.");
+        }
+
+        var locked = await db.WorkspaceMembers.Where(m => m.UserId == userId && m.WorkspaceId == workspaceId)
+            .ExecuteUpdateAsync(set => set.SetProperty(m => m.Role, m => m.Role), cancellationToken);
+        return locked == 0
+            ? _workspaceRoles[(userId, workspaceId)] = WorkspaceRole.None
+            : await ReadWorkspaceRoleAsync(userId, workspaceId, cancellationToken);
+    }
+
+    private async Task<WorkspaceRole> ReadWorkspaceRoleAsync(Guid userId, Guid workspaceId, CancellationToken cancellationToken)
+    {
         var role = await db.WorkspaceMembers.AsNoTracking()
             .Where(m => m.UserId == userId && m.WorkspaceId == workspaceId)
             .Select(m => (WorkspaceRole?)m.Role)

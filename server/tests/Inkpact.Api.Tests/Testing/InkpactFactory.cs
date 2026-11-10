@@ -85,6 +85,9 @@ public class InkpactFactory(
         // Tests that want the worker turn it on through the settings; the others call the compactor themselves.
         builder.UseSetting("Compaction:Enabled", "False");
 
+        // History retention tests run the job themselves unless they explicitly enable the worker.
+        builder.UseSetting("History:RetentionEnabled", "False");
+
         // The same for the job that indexes the links of pages that exist from before (run B.1): tests call it themselves.
         builder.UseSetting("Links:BackfillEnabled", "False");
 
