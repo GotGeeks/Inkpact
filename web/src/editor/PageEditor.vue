@@ -64,6 +64,17 @@ const handle = sync.open(props.pageId, {
   init: applyFirstParagraph,
   document: props.document ?? undefined,
 })
+watch(
+  () => props.document,
+  (document) => {
+    if (!document || document.doc === handle.doc) return
+    sync.open(props.pageId, {
+      readOnly: props.readOnly,
+      init: applyFirstParagraph,
+      document,
+    })
+  },
+)
 const info = computed(() => sync.pages[props.pageId])
 
 // A page that has not been in step with the server yet may be empty only because its content has not arrived: typing

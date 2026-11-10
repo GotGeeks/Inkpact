@@ -27,9 +27,18 @@ export async function registerPwa(container: WorkerContainer) {
       const installing = registration.installing
       if (!installing || observed.has(installing)) return
       observed.add(installing)
+      if (installing.state === 'redundant') {
+        console.error('The offline application shell worker became redundant during installation')
+        state.registrationFailed = true
+        return
+      }
       if (installing.state === 'installed' && container.controller) state.updateReady = true
       installing.addEventListener('statechange', () => {
         if (installing.state === 'installed' && container.controller) state.updateReady = true
+        if (installing.state === 'redundant') {
+          console.error('The offline application shell worker became redundant during installation')
+          state.registrationFailed = true
+        }
       })
     }
     observeUpdate()

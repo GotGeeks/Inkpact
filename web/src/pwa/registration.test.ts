@@ -46,6 +46,25 @@ describe('service worker registration', () => {
     expect(pwaState.updateReady).toBe(true)
   })
 
+  it('reports an installing worker that becomes redundant', async () => {
+    const { registerPwa, pwaState } = await import('./registration')
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const worker = new EventTarget() as ServiceWorker
+    Object.defineProperty(worker, 'state', { value: 'installing', writable: true })
+    const registration = {
+      waiting: null,
+      installing: worker,
+      addEventListener: vi.fn(),
+    }
+
+    await registerPwa({ controller: null, register: vi.fn().mockResolvedValue(registration) })
+    Object.defineProperty(worker, 'state', { value: 'redundant' })
+    worker.dispatchEvent(new Event('statechange'))
+
+    expect(pwaState.registrationFailed).toBe(true)
+    expect(logged).toHaveBeenCalledOnce()
+  })
+
   it('reports registration failures instead of claiming offline availability', async () => {
     const { registerPwa, pwaState } = await import('./registration')
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {})

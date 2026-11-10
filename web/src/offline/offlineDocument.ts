@@ -21,7 +21,7 @@ interface PendingRecovery {
  * The recovery queue is committed before the snapshot that could contain a remote deletion.
  */
 export class OfflineDocument {
-  readonly doc: Y.Doc
+  doc: Y.Doc
   readonly metadata: CachedPage
   private readonly writerId = newPageId()
   private readonly repository: OfflineRepository
@@ -92,6 +92,21 @@ export class OfflineDocument {
 
   get unconfirmed() {
     return this.needsConfirmation
+  }
+
+  /** Joins a document that was edited in memory while browser storage was unavailable. */
+  adopt(doc: Y.Doc, unconfirmed: boolean) {
+    if (this.doc === doc) return
+
+    const previous = this.doc
+    const persisted = Y.encodeStateAsUpdate(previous)
+    previous.off('update', this.onUpdate)
+    this.doc = doc
+    Y.applyUpdate(doc, persisted)
+    this.needsConfirmation ||= unconfirmed
+    doc.on('update', this.onUpdate)
+    previous.destroy()
+    this.scheduleSnapshot()
   }
 
   /** The first complete server Sync is only available offline after its snapshot commits. */

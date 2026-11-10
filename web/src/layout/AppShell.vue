@@ -28,6 +28,7 @@ import { useSearchStore } from '../stores/search'
 import { useSyncStore } from '../stores/sync'
 import { useTagsStore } from '../stores/tags'
 import { useTreeStore } from '../stores/tree'
+import { isOfflineIdentityEvent, readOfflineIdentity } from '../offline/identity'
 import SidebarContent from './SidebarContent.vue'
 import NoticeToaster from './NoticeToaster.vue'
 import { useKeepLostEdits } from '../sync/useKeepLostEdits'
@@ -55,7 +56,10 @@ const localOnly = computed(
   () => auth.offline || !browserOnline.value || sync.connection === 'offline',
 )
 const routeReady = ref(auth.offline || tree.loaded)
-const updateNetwork = () => (browserOnline.value = navigator.onLine)
+function updateNetwork() {
+  browserOnline.value = navigator.onLine
+  if (browserOnline.value && auth.offline) void revalidateSession()
+}
 let starting: Promise<void> | null = null
 
 const selectedId = computed(() => (route.name === 'page' ? String(route.params.pageId) : null))
@@ -79,6 +83,22 @@ watch(
 /** The skip link: past the sidebar to the page, without an address change. */
 function skipToPage() {
   main.value?.focus()
+}
+
+async function revalidateSession() {
+  try {
+    await auth.load()
+    if (!auth.user) sync.identityChanged()
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.code !== 'network_error')
+      console.error('The offline session could not be revalidated', error)
+  }
+}
+
+function onStorage(event: StorageEvent) {
+  if (!isOfflineIdentityEvent(event)) return
+  const expected = auth.user?.id ?? auth.offlineUserId
+  if (expected && readOfflineIdentity() !== expected) sync.identityChanged()
 }
 
 function start(): Promise<void> {
@@ -111,6 +131,7 @@ onMounted(() => {
   favorites.watchFocus()
   window.addEventListener('offline', updateNetwork)
   window.addEventListener('online', updateNetwork)
+  window.addEventListener('storage', onStorage)
   // Capturing, so that the editor does not take the key first; the browser would otherwise use it for its own search.
   window.addEventListener('keydown', onShortcut, true)
 })
@@ -118,6 +139,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onShortcut, true)
   window.removeEventListener('offline', updateNetwork)
   window.removeEventListener('online', updateNetwork)
+  window.removeEventListener('storage', onStorage)
   search.reset()
   tree.reset()
   tags.reset()

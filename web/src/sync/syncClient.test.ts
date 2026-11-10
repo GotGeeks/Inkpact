@@ -106,6 +106,38 @@ describe('SyncClient', () => {
       client.destroy()
     })
 
+    it.each(['blocked', 'missing'] as const)(
+      'reauthorizes a %s page after the connection returns',
+      async (initialAccess) => {
+        const hub = new FakeSyncHub()
+        let access: 'blocked' | 'missing' | 'edit' = initialAccess
+        let checks = 0
+        const client = new SyncClient({
+          url: 'ws://localhost/api/sync',
+          createSocket: hub.createSocket,
+          random: () => 0.5,
+          beforeSubscribe: async () => {
+            checks++
+            return access
+          },
+        })
+        const handle = client.subscribe(page, { unconfirmed: true })
+        await tick()
+        expect(handle.state).toBe(initialAccess)
+
+        textEdit(handle.doc, 'restored')
+        access = 'edit'
+        hub.current.serverClose(1006)
+        await tick(250)
+        await tick()
+
+        expect(checks).toBe(2)
+        expect(handle.state).toBe('synced')
+        expect(serverText(hub)).toBe('restored')
+        client.destroy()
+      },
+    )
+
     it('keeps sent updates unconfirmed until a later pong', async () => {
       const { hub, client } = start()
       hub.answerPings = false

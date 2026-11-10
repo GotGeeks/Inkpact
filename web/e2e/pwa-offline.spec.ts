@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import type { BrowserContextOptions, WebSocketRoute } from '@playwright/test'
 import type { CachedPage } from '../src/offline/types'
 import { ADMIN, SIGNED_OUT } from './credentials'
@@ -126,7 +125,7 @@ test('a confirmed cached page remains readable after access becomes read-only', 
   await expect(editor).toHaveAttribute('contenteditable', 'false')
 })
 
-test('the shell cache contains no API data and an uncached page is unavailable offline', async ({
+test('the shell cache contains no API data and an uncached page reconnects without a reload', async ({
   page,
 }, testInfo) => {
   await newPage(page, unique(testInfo.project.name, 'Cache boundary'))
@@ -192,8 +191,36 @@ test('the shell cache contains no API data and an uncached page is unavailable o
   ).toBe(false)
   expect(cached.flat().some((entry) => entry.containsNote)).toBe(false)
 
+  const retryId = await newPage(page, unique(testInfo.project.name, 'Offline retry'))
+  await expect(page.getByTestId('sync-status')).toHaveAttribute('data-local', 'saved')
+  await page.evaluate(async () => {
+    const request = indexedDB.open('inkpact-offline')
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    const transaction = database.transaction(['pages', 'snapshots'], 'readwrite')
+    transaction.objectStore('pages').clear()
+    transaction.objectStore('snapshots').clear()
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve()
+      transaction.onabort = () => reject(transaction.error)
+      transaction.onerror = () => reject(transaction.error)
+    })
+    const verification = database.transaction(['pages', 'snapshots'], 'readonly')
+    const pages = verification.objectStore('pages').count()
+    const snapshots = verification.objectStore('snapshots').count()
+    const counts = await new Promise<[number, number]>((resolve, reject) => {
+      verification.oncomplete = () => resolve([pages.result, snapshots.result])
+      verification.onabort = () => reject(verification.error)
+      verification.onerror = () => reject(verification.error)
+    })
+    if (counts[0] !== 0 || counts[1] !== 0) throw new Error('Offline page data was not cleared')
+    database.close()
+  })
+
   await page.context().setOffline(true)
-  await page.goto(`/p/${randomUUID()}`)
+  await page.goto(`/p/${retryId}`)
   await expect(page.getByRole('heading', { name: 'Not available offline' })).toBeVisible()
   await expect(page.getByTestId('editor')).toHaveCount(0)
   const apiReached = await page.evaluate(() =>
@@ -203,6 +230,49 @@ test('the shell cache contains no API data and an uncached page is unavailable o
     ),
   )
   expect(apiReached).toBe(false)
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByRole('alert')).toContainText('The server is still unavailable')
+  await page.context().setOffline(false)
+  await expect(page.getByTestId('editor')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId('page-title')).toHaveValue(/Offline retry/)
+})
+
+test('the first uncontrolled tab keeps old shell caches during initial worker activation', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'The first-visit lifecycle is checked on desktop.')
+  await page.addInitScript(() => {
+    const container = navigator.serviceWorker
+    const state = window as Window & {
+      __registerWorker?: ServiceWorkerContainer['register']
+    }
+    state.__registerWorker = container.register.bind(container)
+    Object.defineProperty(container, 'register', {
+      configurable: true,
+      value: () => new Promise<ServiceWorkerRegistration>(() => {}),
+    })
+  })
+  await newPage(page, unique(testInfo.project.name, 'First visit'))
+  await page.evaluate(() => caches.open('inkpact-shell-first-visit-old'))
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(false)
+  await page.evaluate(async () => {
+    const state = window as Window & {
+      __registerWorker?: ServiceWorkerContainer['register']
+    }
+    Object.defineProperty(navigator.serviceWorker, 'register', {
+      configurable: true,
+      value: state.__registerWorker,
+    })
+    await navigator.serviceWorker.register(`/service-worker.js?first-visit=${Date.now()}`)
+  })
+  await expect
+    .poll(() =>
+      page.evaluate(
+        async () => (await navigator.serviceWorker.getRegistration())?.active?.scriptURL,
+      ),
+    )
+    .toContain('first-visit=')
+  expect(await page.evaluate(() => caches.has('inkpact-shell-first-visit-old'))).toBe(true)
 })
 
 test('two offline tabs keep their own edits across reloads and merge on reconnect', async ({
@@ -554,8 +624,11 @@ test('revoked page access does not replay a pending local edit', async ({
   await expect(other.editor).not.toContainText('permission-pending')
 
   forbidden = false
-  await page.reload()
+  await page.context().setOffline(true)
+  await expect(page.getByText(/Offline mode:/)).toBeVisible()
+  await page.context().setOffline(false)
   await expect(editor).toContainText('permission-pending')
+  await expect(status).toHaveAttribute('data-unsent', 'false', { timeout: 15_000 })
   await expect(other.editor).toContainText('permission-pending', { timeout: 15_000 })
   await other.context.close()
 })
@@ -623,15 +696,22 @@ test('a waiting worker never takes over a tab with pending edits', async ({ page
   await reopened.close()
 })
 
-test('an IndexedDB failure is visible and unsaved edits keep the unload warning', async ({
+test('IndexedDB recovers without losing an edit held by the live editor', async ({
   page,
+  browser,
+  baseURL,
 }, testInfo) => {
   await page.addInitScript(() => {
-    IDBFactory.prototype.open = () => {
-      throw new DOMException('Storage is unavailable', 'QuotaExceededError')
+    const state = window as Window & { __allowIndexedDB?: boolean }
+    state.__allowIndexedDB = sessionStorage.getItem('allowIndexedDB') === 'true'
+    const open = IDBFactory.prototype.open
+    IDBFactory.prototype.open = function (this: IDBFactory, name: string, version?: number) {
+      if (!state.__allowIndexedDB)
+        throw new DOMException('Storage is unavailable', 'QuotaExceededError')
+      return open.call(this, name, version)
     }
   })
-  await newPage(page, unique(testInfo.project.name, 'Storage failure'))
+  const id = await newPage(page, unique(testInfo.project.name, 'Storage recovery'))
   const status = page.getByTestId('sync-status')
   const editor = page.getByTestId('editor').locator('.ProseMirror')
   await expect(
@@ -648,6 +728,24 @@ test('an IndexedDB failure is visible and unsaved edits keep the unload warning'
     return event.defaultPrevented
   })
   expect(warned).toBe(true)
+
+  await page.evaluate(() => {
+    sessionStorage.setItem('allowIndexedDB', 'true')
+    ;(window as Window & { __allowIndexedDB?: boolean }).__allowIndexedDB = true
+  })
+  await page.context().setOffline(false)
+  await expect(status).toHaveAttribute('data-state', 'live', { timeout: 15_000 })
+  await expect(status).toHaveAttribute('data-unsent', 'false', { timeout: 15_000 })
+  await expect(status).toHaveAttribute('data-local', 'saved', { timeout: 15_000 })
+  await expect(editor).toContainText('not yet durable')
+
+  const other = await openClient(browser, testInfo, baseURL, id)
+  await expect(other.editor).toContainText('not yet durable')
+  await other.context.close()
+
+  await page.reload()
+  await expect(page.getByTestId('editor').locator('.ProseMirror')).toContainText('not yet durable')
+  await expect(page.getByTestId('sync-status')).toHaveAttribute('data-local', 'saved')
 })
 
 test('an account change hides pending edits and only the original account can resume them', async ({

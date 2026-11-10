@@ -144,6 +144,37 @@ describe('offline documents', () => {
     restored.doc.destroy()
   })
 
+  it('adopts an in-memory editor document after storage recovers and persists both documents', async () => {
+    const repository = new MemoryRepository()
+    const saved = await OfflineDocument.open(repository, page(), true, () => {})
+    saved.doc.getText('text').insert(0, 'persisted')
+    await vi.waitFor(() => expect(repository.snapshots.size).toBe(1))
+
+    const recovered = await OfflineDocument.open(repository, page(), true, () => {})
+    const live = new Y.Doc()
+    live.getText('text').insert(0, 'memory')
+    recovered.adopt(live, true)
+
+    expect(recovered.doc).toBe(live)
+    expect(live.getText('text').toString()).toContain('persisted')
+    expect(live.getText('text').toString()).toContain('memory')
+    expect(recovered.unconfirmed).toBe(true)
+    await vi.waitFor(async () => {
+      const updates = await repository.readSnapshots(page())
+      const combined = new Y.Doc()
+      for (const snapshot of updates) Y.applyUpdate(combined, snapshot.update)
+      expect(combined.getText('text').toString()).toContain('persisted')
+      expect(combined.getText('text').toString()).toContain('memory')
+      expect(updates.some((snapshot) => snapshot.unconfirmed === 1)).toBe(true)
+      combined.destroy()
+    })
+
+    saved.detach()
+    saved.doc.destroy()
+    recovered.detach()
+    live.destroy()
+  })
+
   it('keeps concurrent writers and merges their edits without crossing user or workspace partitions', async () => {
     const repository = new MemoryRepository()
     const first = await OfflineDocument.open(repository, page(), true, () => {})

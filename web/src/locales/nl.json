@@ -7,7 +7,7 @@
     "httpsRequired": "Offline opnieuw openen en de app installeren vereisen HTTPS. Je kunt Inkpact online blijven gebruiken.",
     "dismiss": "Sluiten",
     "identityFailed": "Het offline account kon niet worden opgeslagen of gewist. Offline toegang is mogelijk niet beschikbaar of verouderd; deel dit browserprofiel niet.",
-    "registrationFailed": "De offline app kon niet worden voorbereid. Houd dit tabblad open totdat je wijzigingen de server hebben bereikt.",
+    "registrationFailed": "De offline app kon niet worden voorbereid of bijgewerkt. Houd dit tabblad open totdat je wijzigingen de server hebben bereikt.",
     "updatePendingEdits": "Er staat een update klaar. Wacht tot je wijzigingen de server hebben bereikt voordat je alle Inkpact-tabbladen sluit om bij te werken.",
     "updateReady": "Er staat een update klaar. Sluit alle Inkpact-tabbladen en open Inkpact opnieuw om de update te gebruiken."
   },

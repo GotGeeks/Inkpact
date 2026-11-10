@@ -61,6 +61,18 @@ describe('AppShell on a wide screen', () => {
     expect(wrapper!.get('main').text()).toContain('Pick a page in the sidebar')
   })
 
+  it('shields a home tab without a sync client after another tab changes the offline identity', async () => {
+    screen(true)
+    await shell()
+    localStorage.setItem('inkpact.offline.user', 'different-account')
+
+    window.dispatchEvent(new StorageEvent('storage', { key: 'inkpact.offline.user' }))
+    await flushPromises()
+
+    expect(wrapper!.get('main h1').text()).toBe('Your session changed')
+    expect(wrapper!.find('[data-testid="user-name"]').exists()).toBe(false)
+  })
+
   it('invites the first page when there are none', async () => {
     screen(true)
     await shell('/', { pages: [] })

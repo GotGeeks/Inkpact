@@ -176,7 +176,7 @@ export class SyncClient {
       return
     }
     page.readOnly = access === 'read'
-    if (page.state === 'blocked') this.setState(page, 'syncing')
+    if (page.state === 'blocked' || page.state === 'missing') this.setState(page, 'syncing')
     this.options.onPageChange?.(pageId)
   }
 
@@ -503,7 +503,7 @@ export class SyncClient {
         page.confirmAt = null
         if (!page.readOnly) this.markUnsent(page, true)
       }
-      if (page.state === 'synced') this.setState(page, 'syncing')
+      if (page.state !== 'tooLarge') this.setState(page, 'syncing')
     }
   }
 
@@ -520,7 +520,7 @@ export class SyncClient {
   }
 
   private sendSubscribe(page: Page) {
-    if (!this.isOpen() || page.state === 'blocked' || page.state === 'missing') return
+    if (!this.isOpen() || page.state === 'tooLarge') return
     if (this.options.beforeSubscribe) {
       if (this.subscribing.has(page.pageId)) return
       this.subscribing.add(page.pageId)

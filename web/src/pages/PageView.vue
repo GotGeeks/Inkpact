@@ -4,6 +4,7 @@ import {
   defineAsyncComponent,
   h,
   nextTick,
+  onMounted,
   onBeforeUnmount,
   ref,
   shallowRef,
@@ -11,7 +12,7 @@ import {
   watch,
 } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError } from '../api'
 import type { OfflineDocument } from '../offline/offlineDocument'
 import type { CachedPage } from '../offline/types'
@@ -41,6 +42,7 @@ const PageEditor = defineAsyncComponent({
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 const tree = useTreeStore()
 const sync = useSyncStore()
 const auth = useAuthStore()
@@ -53,14 +55,26 @@ const pageId = computed(() => String(route.params.pageId))
 const detail = ref<PageDetail | null>(null)
 const cached = shallowRef<CachedPage | null>(null)
 const document = shallowRef<OfflineDocument | null>(null)
+const browserOnline = ref(navigator.onLine)
 const editorReady = ref(false)
 const storageFailed = ref(false)
 const offlineMissing = ref(false)
+const retryFailed = ref(false)
 const loadFailed = ref(false)
 const missing = ref(false)
-const localOnly = computed(() => auth.offline || sync.connection === 'offline' || !navigator.onLine)
+const localOnly = computed(
+  () => auth.offline || sync.connection === 'offline' || !browserOnline.value,
+)
+const canReachApi = computed(() => browserOnline.value && !auth.offline)
+const retryCount = ref(0)
 let loadGeneration = 0
 let loadedId = ''
+const updateNetwork = () => (browserOnline.value = navigator.onLine)
+
+onMounted(() => {
+  window.addEventListener('online', updateNetwork)
+  window.addEventListener('offline', updateNetwork)
+})
 
 function discardIfUnused(session: OfflineDocument, id: string) {
   if (id === pageId.value || sync.ownsDocument(session)) return
@@ -135,8 +149,8 @@ async function prepareOnline(found: PageDetail, userId: string, mine: number) {
 
 // Read again when the page changes and when anything in the tree does, so a rename or a trash shows here at once.
 watch(
-  [pageId, () => tree.treeVersion, localOnly],
-  async ([id, , isLocal]) => {
+  [pageId, () => tree.treeVersion, localOnly, canReachApi, retryCount],
+  async ([id, , isLocal, hasApi]) => {
     const mine = ++loadGeneration
     if (loadedId !== id) {
       detail.value = null
@@ -147,9 +161,9 @@ watch(
     missing.value = false
     offlineMissing.value = false
     loadFailed.value = false
-    if (isLocal && loadedId === id && editorReady.value) return
+    if (!hasApi && isLocal && loadedId === id && editorReady.value) return
     const userId = auth.user?.id ?? auth.offlineUserId
-    if (isLocal) {
+    if (!hasApi) {
       await openCached(id, userId, mine)
       return
     }
@@ -199,6 +213,7 @@ const missingOnSocket = ref(false)
 watch(pageId, () => (missingOnSocket.value = false))
 watch(syncState, (state) => {
   if (state === 'missing') missingOnSocket.value = true
+  else if (state === 'synced') missingOnSocket.value = false
 })
 const notFound = computed(() => missing.value || missingOnSocket.value)
 
@@ -212,7 +227,11 @@ watch(
   },
   { immediate: true },
 )
-onBeforeUnmount(() => current.clear())
+onBeforeUnmount(() => {
+  window.removeEventListener('online', updateNetwork)
+  window.removeEventListener('offline', updateNetwork)
+  current.clear()
+})
 
 const ownTrash = computed(() => detail.value?.page.deletedAt !== undefined)
 const shownId = computed(() => detail.value?.page.id ?? cached.value?.pageId)
@@ -223,7 +242,26 @@ const localStatus = computed(() => (shownId.value ? sync.localStatus(shownId.val
 const saveError = computed(() => storageFailed.value || !!localStatus.value?.error)
 function retryStorage() {
   if (document.value) offline.retry(document.value.metadata)
-  else if (!sync.unsent) window.location.reload()
+  else retryCount.value++
+}
+async function retryUnavailable() {
+  try {
+    await auth.load()
+    if (!auth.user) {
+      const redirect = route.fullPath
+      await router.replace({
+        name: 'login',
+        query: redirect && redirect !== '/' ? { redirect } : {},
+      })
+      return
+    }
+    if (!tree.loaded) await tree.init()
+    retryCount.value++
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.code !== 'network_error')
+      console.error('The unavailable page could not be retried', error)
+    retryFailed.value = true
+  }
 }
 const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
 </script>
@@ -235,6 +273,14 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
   >
     <h1 class="text-headline-xl-mobile md:text-headline-xl">{{ t('offline.unavailableTitle') }}</h1>
     <p>{{ t('offline.unavailable') }}</p>
+    <p v-if="retryFailed" role="alert">{{ t('offline.retryFailed') }}</p>
+    <button
+      type="button"
+      class="min-h-11 self-start rounded border border-border-strong px-space-lg"
+      @click="retryUnavailable"
+    >
+      {{ t('offline.retry') }}
+    </button>
   </section>
 
   <section
@@ -322,7 +368,6 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
       <p>{{ t('offline.storageFailed') }}</p>
       <button
         type="button"
-        :disabled="!document && sync.unsent"
         class="min-h-11 rounded border border-error px-space-md disabled:opacity-50"
         @click="retryStorage"
       >

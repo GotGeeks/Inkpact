@@ -15,17 +15,15 @@ The app container has a read-only root filesystem, no extra privileges and runs 
 
 ## Install and use pages offline
 
-> **Not ready for use:** Known defects can lose offline edits after a storage failure and expose unsynced edits after an account switch in the same browser profile. Do not rely on offline editing or share a browser profile until the [B.6 review blockers](runs/B.6.md#handoff) are fixed.
-
 Serve Inkpact over **HTTPS** to install it or use its offline app shell. Browsers make an exception for `localhost`, but plain HTTP to a LAN address is not a secure context: Inkpact remains usable online there without promising installation or offline reloads. A browser that supports installation may offer it; on iPhone, use Safari's **Add to Home Screen** instead.
 
 First visit Inkpact online and open the pages you want available. After the app shell and a page have been saved on the device, you can reload that page's URL offline, edit it and reconnect later. The status distinguishes changes saved on this device from changes confirmed by the server. Keep the tab open if local storage reports a failure and the server has not confirmed the changes. Tree browsing, search, login, page management, imports and attachment uploads need the server; attachment files themselves are not stored for offline use.
 
-The browser stores page content and recovery copies in IndexedDB, partitioned by the last authenticated account, workspace and page. Signing out normally clears the active offline account but does not erase its cached documents; account switches are not fully isolated yet. The account marker selects local data and does **not** grant server access. Browser-profile access can expose cached notes: this storage is not encrypted by Inkpact. If the browser reports that it could not clear the account marker, do not share that profile.
+The browser stores page content and recovery copies in IndexedDB, partitioned by the last authenticated account, workspace and page. Signing out normally clears the active offline account but does not erase its cached documents; after an account switch, cached pages remain partitioned and pending edits are withheld until the original account is revalidated. The account marker selects local data and does **not** grant server access. Browser-profile access can expose cached notes: this storage is not encrypted by Inkpact. If the browser reports that it could not clear the account marker, do not share that profile.
 
 Browser storage is not a backup. Browsers may deny or evict it, private browsing may clear it, and installed apps or other browser profiles may have separate storage. Inkpact requests persistent storage where supported, but the browser decides whether to grant it. It keeps at most 40 server-confirmed cached pages without pending recovery copies across the profile; older ones must be opened online again. Pages with unconfirmed edits and recovery copies are retained, so local storage can still grow. Back up the server as described below, and sync edits and resolve recovery copies before clearing site data or removing the app.
 
-Application updates do not force open tabs to reload, but a first-visit tab may not prevent a new worker from activating. Sync pending changes before closing all Inkpact tabs and reopening the app to use an update.
+Application updates do not force open tabs to reload. Old shell caches are retained while any Inkpact window is open, including a first-visit tab not yet controlled by a worker; after all tabs close, the waiting update can activate and clean older caches. Sync pending changes before closing all Inkpact tabs and reopening the app to use an update.
 
 ## What to back up
 

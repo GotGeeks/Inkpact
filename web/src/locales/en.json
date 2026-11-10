@@ -7,7 +7,7 @@
     "httpsRequired": "Offline reload and app installation require HTTPS. You can continue using Inkpact online.",
     "dismiss": "Dismiss",
     "identityFailed": "The offline account could not be saved or cleared. Offline access may be unavailable or out of date; do not share this browser profile.",
-    "registrationFailed": "The offline app could not be prepared. Keep this tab open until your edits reach the server.",
+    "registrationFailed": "The offline app could not be prepared or updated. Keep this tab open until your edits reach the server.",
     "updatePendingEdits": "An update is ready. Wait until your changes reach the server before closing all Inkpact tabs to update.",
     "updateReady": "An update is ready. Close all Inkpact tabs and open Inkpact again to use it."
   },

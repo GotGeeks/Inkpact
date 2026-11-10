@@ -119,8 +119,9 @@ export const useSyncStore = defineStore('sync', () => {
   }
 
   function identityChanged() {
+    if (accountChanged.value) return
     client?.stopForIdentityChange()
-    if (!unsent.value && !unsafeToLeave.value && lostEdits.value.length === 0) {
+    if (client && !unsent.value && !unsafeToLeave.value && lostEdits.value.length === 0) {
       sessionEnded.value = true
       return
     }
@@ -288,23 +289,25 @@ export const useSyncStore = defineStore('sync', () => {
     pageId: string,
     options: { readOnly?: boolean; init?: (doc: Y.Doc) => void; document?: OfflineDocument } = {},
   ): PageHandle {
+    const syncClient = ensureClient()
     const document = options.document
+    const existing = syncClient.get(pageId)
+    if (document && existing && existing.doc !== document.doc)
+      document.adopt(existing.doc, existing.unconfirmed)
     if (document) documents.value = new Map(documents.value).set(pageId, document)
-    const handle = ensureClient().subscribe(pageId, {
+    const handle = syncClient.subscribe(pageId, {
       readOnly: options.readOnly,
       init: options.init,
       doc: document?.doc,
       unconfirmed: document?.unconfirmed,
-      onDetach: document
-        ? () => {
-            if (documents.value.get(pageId) === document) {
-              const next = new Map(documents.value)
-              next.delete(pageId)
-              documents.value = next
-            }
-            offline.release(document)
-          }
-        : undefined,
+      onDetach: () => {
+        const attached = documents.value.get(pageId)
+        if (!attached) return
+        const next = new Map(documents.value)
+        next.delete(pageId)
+        documents.value = next
+        offline.release(attached)
+      },
     })
     pages.value = { ...pages.value, [pageId]: snapshot(handle) }
     return handle
@@ -363,6 +366,8 @@ export const useSyncStore = defineStore('sync', () => {
     window.removeEventListener('storage', onStorage)
     connection.value = 'connecting'
     pages.value = {}
+    accountChanged.value = false
+    sessionEnded.value = false
   }
 
   return {
