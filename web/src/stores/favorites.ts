@@ -13,6 +13,8 @@ import { useTreeStore } from './tree'
  */
 export const useFavoritesStore = defineStore('favorites', () => {
   const ids = ref<string[]>([])
+  const loaded = ref(false)
+  const loadError = ref<string | null>(null)
   const notifications = useNotificationsStore()
   // The newest read wins, and a change made while one is under way is not undone by its older answer.
   let reads = 0
@@ -23,16 +25,30 @@ export const useFavoritesStore = defineStore('favorites', () => {
   const starred = computed(() => new Set(ids.value))
   const has = (id: string) => starred.value.has(id)
 
-  async function load() {
+  async function load(): Promise<boolean> {
     const workspace = useTreeStore().workspace
-    if (!workspace) return
+    if (!workspace) {
+      loadError.value = 'unknown'
+      return false
+    }
     const mine = ++reads
     const startedAt = changes
+    loadError.value = null
     try {
       const answer = await api<string[]>('GET', `/api/workspaces/${workspace.id}/favorites`)
-      if (mine === reads && startedAt === changes) ids.value = answer
-    } catch {
-      // The list is a convenience: without it the sidebar simply has no favorites.
+      if (mine === reads) {
+        if (startedAt === changes) {
+          ids.value = answer
+          loaded.value = true
+        }
+        loadError.value = null
+      }
+      return mine === reads
+    } catch (error) {
+      if (mine === reads) {
+        loadError.value = error instanceof ApiError ? error.code : 'unknown'
+      }
+      return false
     }
   }
 
@@ -74,7 +90,9 @@ export const useFavoritesStore = defineStore('favorites', () => {
     reads++
     changes++
     ids.value = []
+    loaded.value = false
+    loadError.value = null
   }
 
-  return { ids, has, load, toggle, watchFocus, unwatchFocus, reset }
+  return { ids, loaded, has, load, loadError, toggle, watchFocus, unwatchFocus, reset }
 })

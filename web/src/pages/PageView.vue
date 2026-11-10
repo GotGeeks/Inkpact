@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, h, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  h,
+  nextTick,
+  onBeforeUnmount,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute } from 'vue-router'
 import { useCurrentPageStore } from '../stores/currentPage'
@@ -29,6 +38,8 @@ const route = useRoute()
 const tree = useTreeStore()
 const sync = useSyncStore()
 const recent = useRecentStore()
+const current = useCurrentPageStore()
+const titleField = useTemplateRef<InstanceType<typeof TitleField>>('titleField')
 
 const pageId = computed(() => String(route.params.pageId))
 const detail = ref<PageDetail | null>(null)
@@ -43,6 +54,10 @@ watch(
     if (id !== pageId.value) return
     detail.value = found
     missing.value = found === null
+    if (found && current.consumeTitleFocus(id)) {
+      await nextTick()
+      titleField.value?.focus()
+    }
   },
   { immediate: true },
 )
@@ -68,12 +83,11 @@ watch(syncState, (state) => {
 const notFound = computed(() => missing.value || missingOnSocket.value)
 
 // What is on the screen, for the tab's title and the announcement: the page as fetched, in the trash or not.
-const current = useCurrentPageStore()
 watch(
   [pageId, detail, notFound],
   ([id, found, isNotFound]) => {
     if (isNotFound) current.show(id, '', true)
-    else if (found && found.page.id === id) current.show(id, found.page.title, false)
+    else if (found && found.page.id === id) current.show(id, found.page.title, false, found.inTrash)
   },
   { immediate: true },
 )
@@ -129,6 +143,7 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
 
     <!-- The title is metadata of the page tree, not part of the document. The content of a page in the trash stays editable. -->
     <TitleField
+      ref="titleField"
       :key="`title-${detail.page.id}`"
       :page-id="detail.page.id"
       :title="detail.page.title"

@@ -78,7 +78,14 @@ This file collects everything that needs a person, a phone or the Unraid box. Ev
 - [ ] Star a page on the laptop: it is at the top of the sidebar on the phone. Open a page on the phone: it is first under "Recently opened" on the laptop.
 - [ ] With TalkBack (phone) or a screen reader (laptop): the star is announced as a toggle with its state, and the recent list with its heading.
 
-Runs B.4 to B.8 add their checks here.
+### B.4: quick switcher, command palette and keyboard shortcuts
+- [ ] On the phone, open the palette with the on-screen keyboard up; switch between pages, tags and commands, scroll the results, open a page and a tag, and check that the keyboard does not cover the chosen item.
+- [ ] Star and open pages on one device, then open the palette on the other and clear the Pages field: Favorites and Recent are current, do not repeat a page, and no trashed page is offered.
+- [ ] On the laptop, check Ctrl+K in the editor with and without a selection and with the caret in a link; try the command and new-page shortcuts, including in an input and with a dialog open. Check a non-Latin or AltGraph layout and Cmd/Option on a Mac if available.
+- [ ] With TalkBack on the phone and a screen reader on the laptop, hear the active scope, results, errors and shortcut help; move through the list and dismiss it back to the opener, or the menu button when the drawer was closed.
+- [ ] With the real Joplin library, search and switch pages quickly, and type in the editor with the palette closed: neither action should feel held up by the palette.
+
+Runs B.5 to B.8 add their checks here.
 
 ## Phase 2
 

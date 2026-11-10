@@ -5,6 +5,7 @@ import { SEARCH_DEBOUNCE_MS } from '../stores/search'
 import { jsonResponse, mountAt } from '../testing/helpers'
 import { registerLinkShortcut } from '../editor/linkShortcutRegistry'
 import { fakeTree, outline } from '../testing/treeFixtures'
+import { useNotificationsStore } from '../stores/notifications'
 import type { SearchHit, SearchResponse, SearchSegment } from './types'
 
 const pages = outline(['Notebook', '  Weekly meeting', 'Ideas'])
@@ -43,19 +44,22 @@ const meeting = hit(
 )
 
 type Options = Parameters<typeof fakeTree>[0]
+type ExtraOptions = Omit<NonNullable<Options>, 'pages' | 'search'>
 
 async function shell(
   search: NonNullable<Options>['search'],
   locale: 'en' | 'nl' = 'en',
   path = '/',
+  extra: ExtraOptions = {},
+  attach = false,
 ) {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: query === '(min-width: 48rem)',
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }))
-  const server = fakeTree({ pages, search })
-  const mounted = await mountAt(RouterView, path, locale)
+  const server = fakeTree({ pages, search, ...extra })
+  const mounted = await mountAt(RouterView, path, locale, { attach })
   wrapper = mounted.wrapper
   await flushPromises()
   await vi.waitFor(() => expect(wrapper!.find('main').text().length).toBeGreaterThan(0))
@@ -70,6 +74,13 @@ const drawer = () =>
   document.body.querySelector('[role="dialog"]:not([data-testid="search-dialog"])')
 const input = () => document.body.querySelector<HTMLInputElement>('[data-testid="search-input"]')!
 const options = () => [...document.body.querySelectorAll('[role="option"]')]
+async function chooseTab(scope: 'pages' | 'tags' | 'commands') {
+  const tab = document.body.querySelector<HTMLButtonElement>(
+    `[data-testid="palette-tab-${scope}"]`,
+  )!
+  tab.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }))
+  await flushPromises()
+}
 /** Which result is highlighted, as the listbox marks it. */
 const active = () => options().findIndex((o) => o.hasAttribute('data-highlighted'))
 
@@ -78,8 +89,33 @@ async function openByShortcut(init: KeyboardEventInit = { ctrlKey: true }) {
   await flushPromises()
 }
 
+function includeNewPageInTree(server: ReturnType<typeof fakeTree>, wait?: Promise<void>) {
+  const original = server.fetch.getMockImplementation()!
+  server.fetch.mockImplementation(async (input, init) => {
+    const response = await original(input, init)
+    if (response.ok && init?.method === 'POST' && String(input) === '/api/workspaces/w1/pages') {
+      await wait
+      server.setPages([
+        ...pages,
+        {
+          id: 'new',
+          parentId: null,
+          title: '',
+          sortKey: 'k9',
+          version: 1,
+          updatedAt: '2026-11-09T12:00:00Z',
+        },
+      ])
+    }
+    return response
+  })
+}
+
 async function type(text: string) {
-  const field = input()
+  await typeInto(input(), text)
+}
+
+async function typeInto(field: HTMLInputElement, text: string) {
   field.value = text
   field.dispatchEvent(new Event('input', { bubbles: true }))
   await flushPromises()
@@ -98,17 +134,31 @@ const press = async (key: string) => {
 }
 
 describe('opening the search', () => {
-  it('opens with Ctrl+K and with Cmd+K, and with neither Alt nor Shift', async () => {
+  it('opens pages with Ctrl+K and Cmd+K, and commands with Ctrl+Alt+K', async () => {
     await shell(() => answer())
 
     await openByShortcut({ altKey: true, ctrlKey: true })
+    expect(dialog()).not.toBeNull()
+    expect(document.body.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe(
+      'Commands',
+    )
+    document.body
+      .querySelector<HTMLButtonElement>('button[aria-label="Close quick switcher"]')!
+      .click()
+    await flushPromises()
+
     await openByShortcut({ shiftKey: true, ctrlKey: true })
     await openByShortcut({})
     expect(dialog()).toBeNull()
 
     await openByShortcut({ ctrlKey: true })
     expect(dialog()).not.toBeNull()
-    document.body.querySelector<HTMLButtonElement>('button[aria-label="Close search"]')!.click()
+    expect(document.body.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe(
+      'Pages',
+    )
+    document.body
+      .querySelector<HTMLButtonElement>('button[aria-label="Close quick switcher"]')!
+      .click()
     await flushPromises()
     expect(dialog()).toBeNull()
 
@@ -162,8 +212,10 @@ describe('opening the search', () => {
       document.body.querySelector('[role="dialog"]')!.getAttribute('aria-labelledby'),
     ).toBeTruthy()
     expect(input().getAttribute('aria-label')).toBe('Pagina’s doorzoeken')
-    expect(input().getAttribute('placeholder')).toBe('Zoek in je pagina’s…')
-    expect(document.body.textContent).toContain('Typ minstens 2 letters om te zoeken.')
+    expect(input().getAttribute('placeholder')).toBe(
+      'Zoek pagina’s of kies een favoriet of onlangs geopende pagina…',
+    )
+    expect(document.body.textContent).toContain('Nog geen favorieten of onlangs geopende pagina’s.')
   })
 })
 
@@ -178,6 +230,403 @@ describe('searching as you type', () => {
       'Type at least 2 letters to search.',
     )
     expect(server.searches()).toEqual([])
+  })
+
+  describe('palette scopes', () => {
+    it('shows ordered favorites and recent pages once, with favorite pages omitted from Recent', async () => {
+      await shell(() => answer(), 'en', '/', {
+        favorites: ['Ideas', 'Weekly meeting'],
+        recent: [
+          { pageId: 'Ideas', openedAt: '2026-11-09T11:00:00Z' },
+          { pageId: 'Notebook', openedAt: '2026-11-09T10:00:00Z' },
+        ],
+      })
+
+      await openByShortcut()
+      await vi.waitFor(() => expect(options()).toHaveLength(3))
+
+      expect(options().map((option) => option.getAttribute('data-page-id'))).toEqual([
+        'Ideas',
+        'Weekly meeting',
+        'Notebook',
+      ])
+      expect(document.body.querySelector('#quick-favorites-heading')?.textContent).toBe('Favorites')
+      expect(document.body.querySelector('#quick-recent-heading')?.textContent).toBe(
+        'Recently opened',
+      )
+    })
+
+    it('loads tags only when selected, filters them by accent-folded name and opens the tag route', async () => {
+      const { server, router } = await shell(() => answer(), 'en', '/', {
+        tags: {
+          Ideas: [{ id: 't1', name: 'Café' }],
+          'Weekly meeting': [{ id: 't2', name: 'Work' }],
+        },
+      })
+
+      expect(server.fetch.mock.calls.some((call) => String(call[0]).endsWith('/tags'))).toBe(false)
+      await openByShortcut()
+      await chooseTab('tags')
+      await flushPromises()
+      await vi.waitFor(() =>
+        expect(document.body.querySelector('[data-testid="palette-input-tags"]')).not.toBeNull(),
+      )
+      await typeInto(
+        document.body.querySelector<HTMLInputElement>('[data-testid="palette-input-tags"]')!,
+        'CAFE',
+      )
+
+      expect(options().map((option) => option.textContent)).toEqual(['Café1 page'])
+      expect(server.searches()).toEqual([])
+      ;(options()[0] as HTMLElement).click()
+
+      await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('tag'))
+      expect(router.currentRoute.value.params.tagId).toBe('t1')
+      expect(dialog()).toBeNull()
+    })
+
+    it('does not replace the saved page query when switching to tags and commands', async () => {
+      const { server } = await shell(() => answer(meeting))
+      await openByShortcut()
+      await typeAndSearch('meeting')
+
+      await chooseTab('tags')
+      await typeInto(
+        document.body.querySelector<HTMLInputElement>('[data-testid="palette-input-tags"]')!,
+        'work',
+      )
+      await chooseTab('commands')
+      await typeInto(
+        document.body.querySelector<HTMLInputElement>('[data-testid="palette-input-commands"]')!,
+        'start',
+      )
+      await chooseTab('pages')
+
+      expect(input().value).toBe('meeting')
+      expect(server.searches()).toEqual(['meeting', 'meeting'])
+    })
+
+    it('surfaces and retries favorite and tag list errors in their own scopes', async () => {
+      const server = fakeTree({
+        pages,
+        favorites: ['Ideas'],
+        tags: { Ideas: [{ id: 't1', name: 'Work' }] },
+      })
+      const original = server.fetch.getMockImplementation()!
+      let favoritesFail = true
+      let tagsFail = true
+      server.fetch.mockImplementation(async (request, init) => {
+        const path = String(request)
+        if (favoritesFail && path.endsWith('/favorites'))
+          return jsonResponse(503, { code: 'server_error' })
+        if (tagsFail && path.endsWith('/tags')) return jsonResponse(503, { code: 'server_error' })
+        return original(request, init)
+      })
+      const mounted = await mountAt(RouterView, '/', 'en')
+      wrapper = mounted.wrapper
+      await flushPromises()
+      await vi.waitFor(() => expect(wrapper!.find('main').text().length).toBeGreaterThan(0))
+      await openByShortcut()
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain('Favorites could not be loaded.'),
+      )
+
+      favoritesFail = false
+      document.body.querySelector<HTMLButtonElement>('[role="alert"] button')!.click()
+      await vi.waitFor(() =>
+        expect(options().map((option) => option.getAttribute('data-page-id'))).toContain('Ideas'),
+      )
+
+      await chooseTab('tags')
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain('Tags could not be loaded.'),
+      )
+      tagsFail = false
+      document.body.querySelector<HTMLButtonElement>('[role="alert"] button')!.click()
+      await vi.waitFor(() =>
+        expect(options().some((option) => option.textContent?.includes('Work'))).toBe(true),
+      )
+    })
+
+    it('does not show stale favorites or recents after both refreshes fail', async () => {
+      const server = fakeTree({
+        pages,
+        favorites: ['Ideas'],
+        recent: [{ pageId: 'Weekly meeting', openedAt: '2026-11-09T11:00:00Z' }],
+      })
+      const original = server.fetch.getMockImplementation()!
+      let listsFail = false
+      server.fetch.mockImplementation(async (request, init) => {
+        const path = String(request)
+        if (listsFail && (path.endsWith('/favorites') || path.endsWith('/recent'))) {
+          return jsonResponse(503, { code: 'server_error' })
+        }
+        return original(request, init)
+      })
+      const mounted = await mountAt(RouterView, '/', 'en')
+      wrapper = mounted.wrapper
+      await flushPromises()
+      await vi.waitFor(() => expect(wrapper!.find('main').text().length).toBeGreaterThan(0))
+
+      await openByShortcut()
+      await vi.waitFor(() =>
+        expect(options().map((option) => option.getAttribute('data-page-id'))).toEqual([
+          'Ideas',
+          'Weekly meeting',
+        ]),
+      )
+      document.body
+        .querySelector<HTMLButtonElement>('button[aria-label="Close quick switcher"]')!
+        .click()
+      await flushPromises()
+
+      listsFail = true
+      await openByShortcut()
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain('Favorites could not be loaded.'),
+      )
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain('Recently opened pages could not be loaded.'),
+      )
+      expect(options().filter((option) => option.hasAttribute('data-page-id'))).toEqual([])
+    })
+
+    it('does not refresh the tree when list reads finish after the palette closes', async () => {
+      const { server } = await shell(() => answer(), 'en', '/', { favorites: ['Missing'] })
+      const original = server.fetch.getMockImplementation()!
+      let release!: () => void
+      const listsPending = new Promise<void>((resolve) => (release = resolve))
+      let listReads = 0
+      server.fetch.mockImplementation(async (request, init) => {
+        const path = String(request)
+        if (path.endsWith('/favorites') || path.endsWith('/recent')) {
+          listReads++
+          await listsPending
+        }
+        return original(request, init)
+      })
+      const pageTreeReads = () =>
+        server.fetch.mock.calls.filter((call) => String(call[0]).endsWith('/workspaces/w1/pages'))
+          .length
+
+      await openByShortcut()
+      await vi.waitFor(() => expect(listReads).toBe(2))
+      document.body
+        .querySelector<HTMLButtonElement>('button[aria-label="Close quick switcher"]')!
+        .click()
+      await flushPromises()
+      const readsWhenClosed = pageTreeReads()
+
+      release()
+      await flushPromises()
+      await flushPromises()
+
+      expect(pageTreeReads()).toBe(readsWhenClosed)
+    })
+
+    it('refreshes the tree when favorites contain a page it has not loaded', async () => {
+      const { server } = await shell(() => answer(), 'en', '/', {
+        favorites: ['Missing', 'Ideas'],
+      })
+      const readsBefore = server.fetch.mock.calls.filter((call) =>
+        String(call[0]).endsWith('/workspaces/w1/pages'),
+      ).length
+      await openByShortcut()
+      await vi.waitFor(() =>
+        expect(options().map((option) => option.getAttribute('data-page-id'))).toEqual(['Ideas']),
+      )
+
+      const readsAfter = server.fetch.mock.calls.filter((call) =>
+        String(call[0]).endsWith('/workspaces/w1/pages'),
+      ).length
+      expect(readsAfter).toBeGreaterThan(readsBefore)
+    })
+
+    it('surfaces and retries a failed tree refresh for missing favorite ids', async () => {
+      const { server } = await shell(() => answer(), 'en', '/', { favorites: ['Missing'] })
+      const original = server.fetch.getMockImplementation()!
+      let treeFail = true
+      server.fetch.mockImplementation(async (request, init) => {
+        if (treeFail && String(request).endsWith('/workspaces/w1/pages'))
+          return jsonResponse(503, { code: 'server_error' })
+        return original(request, init)
+      })
+      await openByShortcut()
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain('The page list could not be refreshed.'),
+      )
+
+      treeFail = false
+      document.body.querySelector<HTMLButtonElement>('[role="alert"] button')!.click()
+      await vi.waitFor(() =>
+        expect(document.body.querySelector('[data-testid="palette-pages-empty"]')).not.toBeNull(),
+      )
+    })
+
+    it('offers only permission-appropriate commands and executes available navigation commands', async () => {
+      const { router } = await shell(() => answer(), 'en', '/', { role: 'viewer' })
+      await openByShortcut({ ctrlKey: true, altKey: true })
+
+      const names = options().map((option) => option.textContent)
+      expect(names.some((name) => name?.includes('Create new page'))).toBe(false)
+      expect(names.some((name) => name?.includes('Import from Joplin'))).toBe(false)
+
+      ;(
+        options().find((option) => option.textContent?.includes('Open tags')) as HTMLElement
+      ).click()
+      await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('tags'))
+
+      expect(dialog()).toBeNull()
+    })
+
+    it('lets a viewer favorite the live current page using the existing store action', async () => {
+      const { server } = await shell(
+        () => answer(),
+        'en',
+        '/p/Weekly meeting',
+        { role: 'viewer', favorites: [] },
+        true,
+      )
+      await vi.waitFor(() =>
+        expect(wrapper!.find('[data-testid="page-title"]').exists()).toBe(true),
+      )
+      await openByShortcut({ ctrlKey: true, altKey: true })
+      await vi.waitFor(() =>
+        expect(
+          options().some((option) => option.textContent?.includes('Add current page to favorites')),
+        ).toBe(true),
+      )
+
+      ;(options().find((option) =>
+        option.textContent?.includes('Add current page to favorites'),
+      ) as HTMLElement | undefined)!.click()
+      await vi.waitFor(() =>
+        expect(
+          server.writes().some((write) => write.path === '/api/pages/Weekly%20meeting/favorite'),
+        ).toBe(true),
+      )
+      expect(server.favorites()).toContain('Weekly meeting')
+    })
+
+    it('does not offer the favorite command for a trashed page', async () => {
+      const { server } = await shell(
+        () => answer(),
+        'en',
+        '/p/Gone',
+        { trash: outline(['Gone']), favorites: [] },
+        true,
+      )
+      await vi.waitFor(() =>
+        expect(wrapper!.find('[data-testid="page-title"]').exists()).toBe(true),
+      )
+      await openByShortcut({ ctrlKey: true, altKey: true })
+
+      expect(options().some((option) => option.textContent?.includes('current page'))).toBe(false)
+      expect(server.searches()).toEqual([])
+    })
+  })
+
+  describe('palette commands', () => {
+    it('creates one top-level page from the direct shortcut', async () => {
+      const { server, router } = await shell(() => answer(), 'en', '/', {}, true)
+      includeNewPageInTree(server)
+
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'n',
+          code: 'KeyN',
+          ctrlKey: true,
+          altKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+
+      await vi.waitFor(() => expect(router.currentRoute.value.params.pageId).toBe('new'))
+      expect(
+        server.writes().filter((write) => write.path === '/api/workspaces/w1/pages'),
+      ).toHaveLength(1)
+    })
+
+    it('creates one top-level page from the palette and focuses its title', async () => {
+      const { server, router } = await shell(() => answer(), 'en', '/', {}, true)
+      includeNewPageInTree(server)
+      await openByShortcut({ ctrlKey: true, altKey: true })
+
+      ;(options()[0] as HTMLElement).click()
+
+      await vi.waitFor(() => expect(server.writes().length).toBeGreaterThan(0))
+      expect(
+        server.writes().filter((write) => write.path === '/api/workspaces/w1/pages'),
+      ).toHaveLength(1)
+      await vi.waitFor(() => expect(router.currentRoute.value.params.pageId).toBe('new'))
+      const title = wrapper!.get('[data-testid="page-title"]').element
+      await vi.waitFor(() => expect(document.activeElement).toBe(title))
+      expect(server.writes()[0]).toEqual({
+        method: 'POST',
+        path: '/api/workspaces/w1/pages',
+        body: { title: '', parentId: null, afterId: null, beforeId: null },
+      })
+    })
+
+    it('does not interrupt navigation or focus while creating, and offers an Open action', async () => {
+      let release!: () => void
+      const wait = new Promise<void>((resolve) => (release = resolve))
+      const { server, router } = await shell(() => answer(), 'en', '/', {}, true)
+      includeNewPageInTree(server, wait)
+      await openByShortcut({ ctrlKey: true, altKey: true })
+      ;(options()[0] as HTMLElement).click()
+      await vi.waitFor(() => expect(server.writes()).toHaveLength(1))
+
+      const otherControl = document.createElement('button')
+      document.body.append(otherControl)
+      otherControl.focus()
+      release()
+
+      await flushPromises()
+      await vi.waitFor(() =>
+        expect(useNotificationsStore().notices).toMatchObject([
+          { type: 'pageCreated', pageId: 'new', title: '' },
+        ]),
+      )
+      await vi.waitFor(() => expect(wrapper!.text()).toContain('Created “Untitled”.'))
+      expect(router.currentRoute.value.name).toBe('home')
+      expect(document.activeElement).toBe(otherControl)
+      ;[...document.querySelectorAll<HTMLButtonElement>('button')]
+        .find((button) => button.textContent?.trim() === 'Open')!
+        .click()
+      await vi.waitFor(() => expect(router.currentRoute.value.params.pageId).toBe('new'))
+    })
+
+    it('does not run the new-page shortcut from an input or while a dialog is open', async () => {
+      const { server } = await shell(() => answer())
+      await openByShortcut()
+      input().dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'n', ctrlKey: true, altKey: true, bubbles: true }),
+      )
+      expect(server.writes()).toEqual([])
+
+      dialog()!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'n', ctrlKey: true, altKey: true, bubbles: true }),
+      )
+      expect(server.writes()).toEqual([])
+    })
+
+    it('only starts one create when a shortcut is pressed while a palette create is pending', async () => {
+      let release!: () => void
+      const wait = new Promise<void>((resolve) => (release = resolve))
+      const { server } = await shell(() => answer())
+      includeNewPageInTree(server, wait)
+      await openByShortcut({ ctrlKey: true, altKey: true })
+      ;(options()[0] as HTMLElement).click()
+      await vi.waitFor(() => expect(server.writes()).toHaveLength(1))
+
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'n', ctrlKey: true, altKey: true, bubbles: true }),
+      )
+      expect(server.writes()).toHaveLength(1)
+      release()
+    })
   })
 
   it('searches 150 ms after the last key, once', async () => {
@@ -543,7 +992,9 @@ describe('choosing a page', () => {
     await shell(() => answer(meeting))
     await openByShortcut()
     await typeAndSearch('meeting')
-    document.body.querySelector<HTMLButtonElement>('button[aria-label="Close search"]')!.click()
+    document.body
+      .querySelector<HTMLButtonElement>('button[aria-label="Close quick switcher"]')!
+      .click()
     await flushPromises()
 
     await openByShortcut()
@@ -570,7 +1021,9 @@ describe('on a phone', () => {
     await wrapper.get('[data-testid="search-open"]').trigger('click')
     await flushPromises()
     expect(dialog()).not.toBeNull()
-    document.body.querySelector<HTMLButtonElement>('button[aria-label="Close search"]')!.click()
+    document.body
+      .querySelector<HTMLButtonElement>('button[aria-label="Close quick switcher"]')!
+      .click()
     await flushPromises()
 
     await wrapper.get('button[aria-label="Open the page list"]').trigger('click')
@@ -589,7 +1042,9 @@ describe('the shortcut', () => {
     const { server } = await shell(() => answer(meeting))
     await openByShortcut()
     await typeAndSearch('meeting')
-    document.body.querySelector<HTMLButtonElement>('button[aria-label="Close search"]')!.click()
+    document.body
+      .querySelector<HTMLButtonElement>('button[aria-label="Close quick switcher"]')!
+      .click()
     await flushPromises()
 
     await openByShortcut()

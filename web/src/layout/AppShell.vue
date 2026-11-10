@@ -13,7 +13,9 @@ import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import SearchDialog from '../search/SearchDialog.vue'
 import { editorTakesSearchShortcut } from '../editor/linkShortcutRegistry'
+import { availableCommands, type PaletteCommandId } from '../palette/commands'
 import { isSearchShortcut } from '../search/shortcut'
+import { isCommandPaletteShortcut, isNewPageShortcut } from '../search/commandShortcuts'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useAuthStore } from '../stores/auth'
 import { useCurrentPageStore } from '../stores/currentPage'
@@ -134,23 +136,161 @@ watch(wide, (isWide) => {
 
 /** Ctrl+K, or Cmd+K on a Mac, from anywhere in the app, also inside the editor. */
 async function onShortcut(event: KeyboardEvent) {
-  if (!isSearchShortcut(event)) return
-  // In the editor, with text selected or the caret in a link, it makes a link (run B.1b): the editor takes the key itself.
-  if (editorTakesSearchShortcut()) return
-  event.preventDefault()
-  if (drawerOpen.value) {
-    // Two dialogs do not share the focus: the drawer makes way, as for the Search row in it.
-    drawerOpen.value = false
-    await nextTick()
-  } else if (
-    document.querySelector(
-      '[role="dialog"]:not([data-testid="search-dialog"]), [role="alertdialog"]',
-    )
-  ) {
-    // Another dialog (moving a page, say) is being answered: it is finished or closed first.
+  if (isSearchShortcut(event)) {
+    // In the editor, with text selected or the caret in a link, it makes a link (run B.1b): the editor takes the key itself.
+    if (editorTakesSearchShortcut()) return
+    if (drawerOpen.value) {
+      event.preventDefault()
+      event.stopPropagation()
+      drawerOpen.value = false
+      await nextTick()
+    } else if (hasPaletteBlocker()) {
+      return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    search.show('pages')
     return
   }
-  search.show()
+
+  if (isCommandPaletteShortcut(event)) {
+    if (isEditableTarget(event.target)) return
+    if (drawerOpen.value) {
+      event.preventDefault()
+      event.stopPropagation()
+      drawerOpen.value = false
+      await nextTick()
+    } else if (hasPaletteBlocker()) {
+      return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    search.show('commands')
+    return
+  }
+
+  if (isNewPageShortcut(event)) {
+    if (
+      isEditableTarget(event.target) ||
+      hasOpenDialogOrMenu() ||
+      !tree.workspace ||
+      !tree.canEdit
+    ) {
+      return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    void createTopLevelPage()
+  }
+}
+
+function hasPaletteBlocker(): boolean {
+  return (
+    document.querySelector(
+      '[role="dialog"]:not([data-testid="search-dialog"]), [role="alertdialog"], [role="menu"]',
+    ) !== null
+  )
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      target.closest(
+        'input, textarea, select, [contenteditable]:not([contenteditable="false"])',
+      ) !== null)
+  )
+}
+
+function hasOpenDialogOrMenu(): boolean {
+  return document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]') !== null
+}
+
+let pageCreation: Promise<void> | null = null
+
+function createTopLevelPage(): Promise<void> {
+  if (pageCreation) return pageCreation
+  const request = createTopLevelPageOnce()
+  pageCreation = request
+  void request.then(
+    () => {
+      if (pageCreation === request) pageCreation = null
+    },
+    () => {
+      if (pageCreation === request) pageCreation = null
+    },
+  )
+  return request
+}
+
+async function createTopLevelPageOnce(): Promise<void> {
+  if (!tree.workspace || !tree.canEdit) return
+  const routeBefore = route.fullPath
+  search.hide()
+  await nextTick()
+  // The dialog is opened programmatically, so let its focus restoration finish before tracking the request.
+  await nextTick()
+  const focusBefore = document.activeElement
+
+  const result = await tree.create('', { parentId: null })
+  if (!result) return
+
+  const pageId = result.page.id
+  if (route.fullPath !== routeBefore || document.activeElement !== focusBefore) {
+    notifications.post({ type: 'pageCreated', pageId, title: result.page.title })
+    return
+  }
+
+  current.requestTitleFocus(pageId)
+  await router.push({ name: 'page', params: { pageId } })
+  if (route.name !== 'page' || route.params.pageId !== pageId) {
+    current.cancelTitleFocus(pageId)
+    notifications.post({ type: 'pageCreated', pageId, title: result.page.title })
+  }
+}
+
+function commandIsAvailable(id: PaletteCommandId): boolean {
+  const currentId = current.id
+  return availableCommands({
+    canEdit: tree.canEdit,
+    hasWorkspace: tree.workspace !== null,
+    hasLiveCurrentPage:
+      currentId !== null && !current.missing && !current.inTrash && tree.byId.has(currentId),
+    favoritesReady: favorites.loaded && favorites.loadError === null,
+    currentPageIsFavorite: currentId !== null && favorites.has(currentId),
+  }).some((command) => command.id === id)
+}
+
+async function dispatchCommand(id: PaletteCommandId) {
+  if (!commandIsAvailable(id)) return
+  if (id === 'shortcuts') {
+    search.showHelp()
+    return
+  }
+  search.hide()
+  drawerOpen.value = false
+  await nextTick()
+  switch (id) {
+    case 'newPage':
+      await createTopLevelPage()
+      break
+    case 'toggleFavorite':
+      if (current.id && !current.inTrash && !current.missing && tree.byId.has(current.id))
+        await favorites.toggle(current.id)
+      break
+    case 'home':
+      await router.push({ name: 'home' })
+      break
+    case 'tags':
+      await router.push({ name: 'tags' })
+      break
+    case 'trash':
+      await router.push({ name: 'trash' })
+      break
+    case 'import':
+      await router.push({ name: 'import' })
+      break
+  }
 }
 
 function show(id: string) {
@@ -245,7 +385,7 @@ function open(id: string) {
       </DialogPortal>
     </DialogRoot>
 
-    <SearchDialog />
+    <SearchDialog @command="dispatchCommand" />
 
     <NoticeToaster />
   </div>

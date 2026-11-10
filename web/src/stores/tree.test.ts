@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeTree, outline, workspace } from '../testing/treeFixtures'
+import { jsonResponse } from '../testing/helpers'
 import { useNotificationsStore } from './notifications'
 import { useTreeStore } from './tree'
 
@@ -76,6 +77,34 @@ describe('tree store: reading', () => {
     expect((await tree.fetchPage('A'))?.inTrash).toBe(false)
     expect((await tree.fetchPage('Gone'))?.inTrash).toBe(true)
     expect(await tree.fetchPage('ghost')).toBeNull()
+  })
+
+  it('ignores an older tree read that finishes after a newer one', async () => {
+    const { server, tree } = await started()
+    const original = server.fetch.getMockImplementation()!
+    let releaseOld!: () => void
+    const oldRead = new Promise<void>((resolve) => (releaseOld = resolve))
+    let pageReads = 0
+    server.fetch.mockImplementation(async (input, init) => {
+      if (String(input) === `/api/workspaces/${workspace.id}/pages`) {
+        pageReads++
+        if (pageReads === 1) {
+          await oldRead
+          return jsonResponse(200, { treeVersion: 2, pages: outline(['Old']) })
+        }
+        return jsonResponse(200, { treeVersion: 3, pages: outline(['New']) })
+      }
+      return original(input, init)
+    })
+
+    const older = tree.load()
+    await vi.waitFor(() => expect(pageReads).toBe(1))
+    await expect(tree.load()).resolves.toBe(true)
+    releaseOld()
+
+    await expect(older).resolves.toBe(false)
+    expect(tree.pages.map((page) => page.id)).toEqual(['New'])
+    expect(tree.treeVersion).toBe(3)
   })
 
   it('forgets everything on reset', async () => {

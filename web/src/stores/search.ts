@@ -11,6 +11,7 @@ export const MIN_SEARCH_LENGTH = 2
 export const SEARCH_DEBOUNCE_MS = 150
 
 export type SearchState = 'idle' | 'loading' | 'done' | 'error'
+export type PaletteScope = 'pages' | 'tags' | 'commands'
 
 /**
  * The search dialog's state: whether it is open, what was typed and what the server found. The text stays after the
@@ -21,6 +22,9 @@ export const useSearchStore = defineStore('search', () => {
   const tree = useTreeStore()
 
   const open = ref(false)
+  const scope = ref<PaletteScope>('pages')
+  const helpOpen = ref(false)
+  const scopeBeforeHelp = ref<PaletteScope>('pages')
   const query = ref('')
   const hits = ref<SearchHit[]>([])
   const more = ref(false)
@@ -34,17 +38,56 @@ export const useSearchStore = defineStore('search', () => {
   let controller: AbortController | undefined
   let latest = 0
 
-  function show() {
-    // Already open (the shortcut pressed again, or held down): nothing new to ask.
-    if (open.value || !tree.workspace) return
+  function show(nextScope: PaletteScope = 'pages') {
+    if (!tree.workspace) return
+    if (open.value) {
+      if (nextScope !== scope.value) setScope(nextScope)
+      return
+    }
     open.value = true
-    // The last search, found again: pages change.
-    if (query.value.trim().length >= MIN_SEARCH_LENGTH) flush()
+    helpOpen.value = false
+    scope.value = nextScope
+    if (nextScope === 'pages' && query.value.trim().length >= MIN_SEARCH_LENGTH) flush()
+  }
+
+  function setScope(nextScope: PaletteScope) {
+    if (scope.value === nextScope || helpOpen.value) return
+    if (scope.value === 'pages') {
+      clearTimeout(timer)
+      cancel()
+      if (state.value === 'loading') state.value = 'idle'
+    }
+    scope.value = nextScope
+    if (nextScope === 'pages' && open.value && query.value.trim().length >= MIN_SEARCH_LENGTH) {
+      flush()
+    }
+  }
+
+  function showHelp() {
+    if (!open.value || helpOpen.value) return
+    scopeBeforeHelp.value = scope.value
+    helpOpen.value = true
+    if (scope.value === 'pages') {
+      clearTimeout(timer)
+      cancel()
+      if (state.value === 'loading') state.value = 'idle'
+    }
+  }
+
+  function hideHelp() {
+    if (!helpOpen.value) return
+    helpOpen.value = false
+    scope.value = scopeBeforeHelp.value
+    if (scope.value === 'pages' && query.value.trim().length >= MIN_SEARCH_LENGTH) flush()
   }
 
   function hide() {
     open.value = false
     clearTimeout(timer)
+    cancel()
+    if (state.value === 'loading') state.value = 'idle'
+    helpOpen.value = false
+    scope.value = 'pages'
   }
 
   function setQuery(text: string) {
@@ -83,7 +126,8 @@ export const useSearchStore = defineStore('search', () => {
   async function run() {
     const workspace = tree.workspace
     const text = query.value.trim()
-    if (!workspace || text.length < MIN_SEARCH_LENGTH) return
+    if (!open.value || scope.value !== 'pages' || !workspace || text.length < MIN_SEARCH_LENGTH)
+      return
 
     cancel()
     const mine = latest
@@ -116,6 +160,9 @@ export const useSearchStore = defineStore('search', () => {
     cancel()
     clearTimeout(timer)
     open.value = false
+    scope.value = 'pages'
+    helpOpen.value = false
+    scopeBeforeHelp.value = 'pages'
     query.value = ''
     clear()
     state.value = 'idle'
@@ -123,6 +170,8 @@ export const useSearchStore = defineStore('search', () => {
 
   return {
     open,
+    scope,
+    helpOpen,
     query,
     hits,
     more,
@@ -130,6 +179,9 @@ export const useSearchStore = defineStore('search', () => {
     searchedFor,
     errorCode,
     show,
+    setScope,
+    showHelp,
+    hideHelp,
     hide,
     setQuery,
     flush,
