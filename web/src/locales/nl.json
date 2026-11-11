@@ -413,6 +413,8 @@
     "label": "Titel"
   },
   "page": {
+    "loadFailedTitle": "Deze pagina kon niet worden geladen",
+    "loading": "De pagina wordt geladen…",
     "notFound": "Deze pagina is niet gevonden",
     "backToStart": "Terug naar het begin",
     "inTrash": "Deze pagina staat in de prullenbak.",

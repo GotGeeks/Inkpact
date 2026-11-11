@@ -4,7 +4,6 @@ import {
   defineAsyncComponent,
   h,
   nextTick,
-  onMounted,
   onBeforeUnmount,
   ref,
   shallowRef,
@@ -14,6 +13,8 @@ import {
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError } from '../api'
+import { useOnline } from '../composables/useOnline'
+import { loginRoute } from '../router'
 import type { OfflineDocument } from '../offline/offlineDocument'
 import type { CachedPage } from '../offline/types'
 import { useAuthStore } from '../stores/auth'
@@ -55,7 +56,7 @@ const pageId = computed(() => String(route.params.pageId))
 const detail = ref<PageDetail | null>(null)
 const cached = shallowRef<CachedPage | null>(null)
 const document = shallowRef<OfflineDocument | null>(null)
-const browserOnline = ref(navigator.onLine)
+const browserOnline = useOnline()
 const editorReady = ref(false)
 const storageFailed = ref(false)
 const offlineMissing = ref(false)
@@ -68,12 +69,16 @@ const canReachApi = computed(() => browserOnline.value && !auth.offline)
 const retryCount = ref(0)
 let loadGeneration = 0
 let loadedId = ''
-const updateNetwork = () => (browserOnline.value = navigator.onLine)
-
-onMounted(() => {
-  window.addEventListener('online', updateNetwork)
-  window.addEventListener('offline', updateNetwork)
-})
+// Nothing to show yet: a placeholder, but only once the wait is long enough to notice, so a quick load does not flash.
+const slow = ref(false)
+let slowTimer: ReturnType<typeof setTimeout> | undefined
+function startSlowTimer(mine: number) {
+  clearTimeout(slowTimer)
+  slow.value = false
+  slowTimer = setTimeout(() => {
+    if (mine === loadGeneration) slow.value = true
+  }, 150)
+}
 
 function discardIfUnused(session: OfflineDocument, id: string) {
   if (id === pageId.value || sync.ownsDocument(session)) return
@@ -152,6 +157,7 @@ watch(
   async ([id, , isLocal, hasApi]) => {
     const mine = ++loadGeneration
     if (loadedId !== id) {
+      startSlowTimer(mine)
       detail.value = null
       cached.value = null
       document.value = null
@@ -227,8 +233,7 @@ watch(
   { immediate: true },
 )
 onBeforeUnmount(() => {
-  window.removeEventListener('online', updateNetwork)
-  window.removeEventListener('offline', updateNetwork)
+  clearTimeout(slowTimer)
   current.clear()
 })
 
@@ -247,11 +252,7 @@ async function retryUnavailable() {
   try {
     await auth.load()
     if (!auth.user) {
-      const redirect = route.fullPath
-      await router.replace({
-        name: 'login',
-        query: redirect && redirect !== '/' ? { redirect } : {},
-      })
+      await router.replace(loginRoute(route.fullPath))
       return
     }
     if (!tree.loaded) await tree.init()
@@ -284,10 +285,20 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
 
   <section
     v-else-if="loadFailed"
-    role="alert"
     class="mx-auto flex max-w-2xl flex-col gap-space-md p-margin md:p-margin-desktop"
   >
-    {{ t('offline.pageLoadFailed') }}
+    <h1 class="text-headline-xl-mobile md:text-headline-xl">{{ t('page.loadFailedTitle') }}</h1>
+    <p role="alert">{{ t('offline.pageLoadFailed') }}</p>
+    <button
+      type="button"
+      class="min-h-11 self-start rounded border border-border-strong px-space-lg"
+      @click="retryCount++"
+    >
+      {{ t('offline.retry') }}
+    </button>
+    <RouterLink :to="{ name: 'home' }" class="self-start text-primary underline">{{
+      t('page.backToStart')
+    }}</RouterLink>
   </section>
 
   <section
@@ -421,4 +432,17 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
     />
     <BacklinksPanel v-if="detail" :key="`backlinks-${detail.page.id}`" :page-id="detail.page.id" />
   </article>
+
+  <section
+    v-else-if="slow"
+    role="status"
+    aria-busy="true"
+    class="mx-auto flex max-w-3xl flex-col gap-space-lg p-margin md:p-margin-desktop"
+  >
+    <span class="sr-only">{{ t('page.loading') }}</span>
+    <div aria-hidden="true" class="h-10 w-2/3 animate-pulse rounded bg-surface-container-high" />
+    <div aria-hidden="true" class="h-4 w-full animate-pulse rounded bg-surface-container" />
+    <div aria-hidden="true" class="h-4 w-5/6 animate-pulse rounded bg-surface-container" />
+    <div aria-hidden="true" class="h-4 w-3/4 animate-pulse rounded bg-surface-container" />
+  </section>
 </template>

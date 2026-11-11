@@ -1,10 +1,20 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, type Router } from 'vue-router'
-import { createAppRouter, safeRedirect } from './router'
+import { createAppRouter, loginRoute, safeRedirect } from './router'
 import { freshInstall, signedIn, signedOut, state, stubApi } from './testing/helpers'
 
 afterEach(() => vi.unstubAllGlobals())
+
+describe('loginRoute', () => {
+  it('remembers where to come back to', () => {
+    expect(loginRoute('/p/abc?x=1')).toEqual({ name: 'login', query: { redirect: '/p/abc?x=1' } })
+  })
+
+  it.each([undefined, '', '/'])('has nothing to remember for %s', (from) => {
+    expect(loginRoute(from)).toEqual({ name: 'login', query: {} })
+  })
+})
 
 describe('safeRedirect', () => {
   it.each(['/', '/notes/123', '/notes/123?x=1#top', '/a/b/c'])('allows %s', (value) => {
