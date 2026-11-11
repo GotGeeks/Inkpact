@@ -3,6 +3,7 @@
 Self-hosted, multi-user notes app with real-time collaborative editing. Replaces Joplin for the maintainer first, then for other self-hosters. AGPL-3.0, no paid features.
 
 - Architecture and decisions: `docs/architecture.md` (frozen v1; change it only when implementation proves it wrong, in the same PR)
+- Detail that used to be in the plan: `docs/design-notes/` (import, re-import, links, tags, search, large pages, export, the offline copy). The plan links to each; read a note only when the run touches its subject
 - Designs: `docs/design/` (screenshots + `DESIGN.md` with the design tokens)
 - Current phase: **Phase 1B (daily-use polish)**. Phase 1A's runs are done. Manual testing (phone, Unraid behind Traefik, the phase gates) is deferred to one test pass before the first public release (run 2.10b, `docs/test-pass.md`): don't block a run on it; put such checks in the card's "For the test pass" section and add them to `docs/test-pass.md`. Do not build features from later phases unless the issue says so.
 
