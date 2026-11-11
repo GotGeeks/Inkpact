@@ -71,8 +71,8 @@ These hold for every change. Never weaken one to make something pass; stop and a
 
 1. **Tests with every change.** New logic gets unit tests in the same PR. Critical paths need thorough tests: sync, compaction, tree operations, permissions, Joplin import, sanitising. Compaction and tree operations also get property-based tests (FsCheck). Never delete or skip a failing test to get green.
 2. **No hard-coded user-facing strings.** Everything goes through vue-i18n with keys in both `en.json` and `nl.json`. English is the fallback. The server returns error codes, the client translates them. Format dates, numbers and sizes with `Intl`.
-3. **Strict CSP stays strict.** No inline scripts, no inline `style` attributes in templates, no `eval`, no `v-html` with unsanitised content, no external hosts. Use the Vue runtime-only build. A Playwright test fails on any CSP violation.
-4. **Styling is Tailwind only**, using the theme tokens from `DESIGN.md` (colors, type scale, spacing, radii). No arbitrary hex values or one-off CSS. Mobile-first.
+3. **Strict CSP stays strict.** No inline scripts, no inline `style` attributes in templates (the one exception: `:style` bindings for the position of a floating menu, never for colours or sizes), no `eval`, no `v-html` with unsanitised content, no external hosts. Use the Vue runtime-only build. A Playwright test fails on any CSP violation.
+4. **Styling is Tailwind only**, using the theme tokens from `docs/design/inkpact_slate/DESIGN.md` (colors, type scale, spacing, radii). No arbitrary hex values or one-off CSS. Mobile-first.
 5. **Security baseline from `docs/architecture.md` → "Security from day one".** In short: deny-by-default authorisation on every endpoint and WebSocket connection, sanitise all imported or pasted HTML, serve attachments safely, cookie auth with the Postgres-backed ticket store, Argon2id passwords.
 6. **pnpm only.** Ask before adding any dependency (npm or NuGet) and say why it is needed. Never add packages to `onlyBuiltDependencies` without asking.
 7. **Conventional commits with DCO sign-off**: `git commit -s -m "feat(editor): ..."`.
@@ -107,7 +107,7 @@ These hold for every change. Never weaken one to make something pass; stop and a
 
 ## Using the designs
 
-The Stitch designs in `docs/design/` are a **visual reference, not code**. Their HTML loads Tailwind from a CDN and uses inline styles, which break the CSP and the pnpm setup: never copy it. Rebuild components in Vue using the tokens from `DESIGN.md`.
+The Stitch designs in `docs/design/` are a **visual reference, not code**. Their HTML loads Tailwind from a CDN and uses inline styles, which break the CSP and the pnpm setup: never copy it. Rebuild components in Vue using the tokens from `docs/design/inkpact_slate/DESIGN.md`.
 
 Ignore these design elements; they are not in the plan:
 - Knowledge graph
