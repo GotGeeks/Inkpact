@@ -168,42 +168,90 @@ export async function openOfflineDatabase(
 
     async cleanup(maxCleanPages) {
       const transaction = database.transaction(['pages', 'snapshots', 'recoveries'], 'readwrite')
-      const pages = transaction.objectStore('pages')
-      const snapshots = transaction.objectStore('snapshots')
-      const byPage = snapshots.index('byPage')
-      const unconfirmed = snapshots.index('byPageAndUnconfirmed')
-      const recoveries = transaction.objectStore('recoveries').index('byPage')
-      const request = pages.getAll()
+      const stores = storesOf(transaction)
+      const request = stores.pages.getAll()
       let removed = 0
       request.onsuccess = () => {
         const candidates = (request.result as CachedPage[]).filter((page) => page.ready)
-        const clean: CachedPage[] = []
-        let remaining = candidates.length
-        for (const page of candidates) {
-          const pending = unconfirmed.count([...pageKey(page), 1])
-          const copies = recoveries.count(pageKey(page))
-          copies.onsuccess = () => {
-            if (pending.result === 0 && copies.result === 0) clean.push(page)
-            remaining--
-            if (remaining > 0) return
-            clean.sort((a, b) => b.lastOpened - a.lastOpened)
-            for (const old of clean.slice(maxCleanPages)) {
-              pages.delete(pageKey(old))
-              const cursor = byPage.openKeyCursor(IDBKeyRange.only(pageKey(old)))
-              cursor.onsuccess = () => {
-                const entry = cursor.result
-                if (!entry) return
-                snapshots.delete(entry.primaryKey)
-                entry.continue()
-              }
-              removed++
-            }
+        findClean(stores, candidates, (clean) => {
+          clean.sort((a, b) => b.lastOpened - a.lastOpened)
+          for (const old of clean.slice(maxCleanPages)) {
+            removePage(stores, old)
+            removed++
           }
-        }
+        })
       }
       await completed(transaction)
       return removed
     },
+
+    async forgetConfirmed(userId) {
+      const transaction = database.transaction(['pages', 'snapshots', 'recoveries'], 'readwrite')
+      const stores = storesOf(transaction)
+      // Every page key of this account: arrays sort after strings, so [userId, []] is above all of them.
+      const request = stores.pages.getAll(IDBKeyRange.bound([userId], [userId, []]))
+      let removed = 0
+      request.onsuccess = () => {
+        findClean(stores, request.result as CachedPage[], (clean) => {
+          for (const page of clean) {
+            removePage(stores, page)
+            removed++
+          }
+        })
+      }
+      await completed(transaction)
+      return removed
+    },
+  }
+}
+
+interface CleanupStores {
+  pages: IDBObjectStore
+  snapshots: IDBObjectStore
+  byPage: IDBIndex
+  unconfirmed: IDBIndex
+  recoveries: IDBIndex
+}
+
+function storesOf(transaction: IDBTransaction): CleanupStores {
+  const snapshots = transaction.objectStore('snapshots')
+  return {
+    pages: transaction.objectStore('pages'),
+    snapshots,
+    byPage: snapshots.index('byPage'),
+    unconfirmed: snapshots.index('byPageAndUnconfirmed'),
+    recoveries: transaction.objectStore('recoveries').index('byPage'),
+  }
+}
+
+/** The pages with neither an unconfirmed snapshot nor a recovery copy, found in the same transaction. */
+function findClean(
+  stores: CleanupStores,
+  candidates: CachedPage[],
+  done: (clean: CachedPage[]) => void,
+) {
+  if (candidates.length === 0) return done([])
+  const clean: CachedPage[] = []
+  let remaining = candidates.length
+  for (const page of candidates) {
+    const pending = stores.unconfirmed.count([...pageKey(page), 1])
+    const copies = stores.recoveries.count(pageKey(page))
+    copies.onsuccess = () => {
+      if (pending.result === 0 && copies.result === 0) clean.push(page)
+      remaining--
+      if (remaining === 0) done(clean)
+    }
+  }
+}
+
+function removePage(stores: CleanupStores, page: CachedPage) {
+  stores.pages.delete(pageKey(page))
+  const cursor = stores.byPage.openKeyCursor(IDBKeyRange.only(pageKey(page)))
+  cursor.onsuccess = () => {
+    const entry = cursor.result
+    if (!entry) return
+    stores.snapshots.delete(entry.primaryKey)
+    entry.continue()
   }
 }
 

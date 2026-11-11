@@ -62,9 +62,8 @@ const offlineMissing = ref(false)
 const retryFailed = ref(false)
 const loadFailed = ref(false)
 const missing = ref(false)
-const localOnly = computed(
-  () => auth.offline || sync.connection === 'offline' || !browserOnline.value,
-)
+// As in the shell: offline for real, not a socket that is reconnecting, so the title and tags do not come and go with it.
+const localOnly = computed(() => auth.offline || !browserOnline.value)
 const canReachApi = computed(() => browserOnline.value && !auth.offline)
 const retryCount = ref(0)
 let loadGeneration = 0
@@ -391,27 +390,28 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
       {{ t('sync.tooLarge') }}
     </p>
 
-    <!-- The title is metadata of the page tree, not part of the document. The content of a page in the trash stays editable. -->
+    <!-- The title is metadata of the page tree, not part of the document. The content of a page in the trash stays editable.
+         Offline it stays on the screen, read-only, so a title still being typed is kept and saved when the network is back. -->
     <TitleField
-      v-if="!localOnly && detail"
+      v-if="detail"
       ref="titleField"
       :key="`title-${detail.page.id}`"
       :page-id="detail.page.id"
       :title="detail.page.title"
-      :read-only="!tree.canEdit || detail.inTrash"
+      :read-only="localOnly || !tree.canEdit || detail.inTrash"
       @enter="editor?.focus()"
     />
     <h1 v-else class="text-headline-xl-mobile md:text-headline-xl">
       {{ shownTitle || t('tree.untitled') }}
     </h1>
     <PageTags
-      v-if="!localOnly && detail"
+      v-if="detail"
       :key="`tags-${detail.page.id}`"
       :page-id="detail.page.id"
       :tags="detail.tags"
-      :read-only="!tree.canEdit || detail.inTrash"
+      :read-only="localOnly || !tree.canEdit || detail.inTrash"
     />
-    <ChildPages v-if="!localOnly && detail" :page-id="detail.page.id" />
+    <ChildPages v-if="detail" :page-id="detail.page.id" />
     <PageEditor
       :key="shownId"
       ref="editor"
@@ -419,10 +419,6 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
       :read-only="!canEdit"
       :document="document"
     />
-    <BacklinksPanel
-      v-if="!localOnly && detail"
-      :key="`backlinks-${detail.page.id}`"
-      :page-id="detail.page.id"
-    />
+    <BacklinksPanel v-if="detail" :key="`backlinks-${detail.page.id}`" :page-id="detail.page.id" />
   </article>
 </template>

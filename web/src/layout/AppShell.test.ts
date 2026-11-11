@@ -3,6 +3,7 @@ import { RouterView } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, mountAt } from '../testing/helpers'
 import { useNotificationsStore } from '../stores/notifications'
+import { useSyncStore } from '../stores/sync'
 import { fakeTree, outline } from '../testing/treeFixtures'
 
 const pages = outline(['Notes', '  Ideas', 'Work'])
@@ -71,6 +72,28 @@ describe('AppShell on a wide screen', () => {
 
     expect(wrapper!.get('main h1').text()).toBe('Your session changed')
     expect(wrapper!.find('[data-testid="user-name"]').exists()).toBe(false)
+  })
+
+  it('keeps the sidebar and search while the sync socket reconnects, and leaves them only when the browser is offline', async () => {
+    screen(true)
+    await shell()
+    useSyncStore().connection = 'offline'
+    await flushPromises()
+
+    expect(wrapper!.find('aside').exists()).toBe(true)
+    expect(wrapper!.text()).not.toContain('Offline mode')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))
+    await flushPromises()
+    expect(document.body.querySelector('[data-testid="search-dialog"]')).not.toBeNull()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await flushPromises()
+
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    window.dispatchEvent(new Event('offline'))
+    await flushPromises()
+    expect(wrapper!.find('aside').exists()).toBe(false)
+    expect(wrapper!.text()).toContain('Offline mode')
+    vi.restoreAllMocks()
   })
 
   it('invites the first page when there are none', async () => {

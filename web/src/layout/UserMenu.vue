@@ -20,6 +20,7 @@ import { applyTheme, detectTheme, isTheme, themes, type Theme } from '../theme'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationsStore } from '../stores/notifications'
 import { useSettingsStore } from '../stores/settings'
+import { useOfflineStore } from '../stores/offline'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 
@@ -31,6 +32,7 @@ const settings = useSettingsStore()
 const tree = useTreeStore()
 const notifications = useNotificationsStore()
 const sync = useSyncStore()
+const offline = useOfflineStore()
 const router = useRouter()
 
 // Static keys, so the unused-keys lint rule can see them.
@@ -69,12 +71,19 @@ async function leave(everywhere: boolean) {
     notifications.post({ type: 'error', code: 'offline_storage_pending' })
     return
   }
+  const userId = auth.user?.id
   try {
     if (everywhere) await auth.logoutEverywhere()
     else await auth.logout()
   } catch (error) {
     notifications.post({ type: 'error', code: error instanceof ApiError ? error.code : 'unknown' })
     if (auth.user) return
+  }
+  // Signed out: the pages the server has leave this device too. Best effort, as the person is already signed out.
+  if (userId) {
+    await offline
+      .forgetAccount(userId)
+      .catch((error: unknown) => console.error('Cached pages could not be removed', error))
   }
   await router.replace({ name: 'login' })
 }

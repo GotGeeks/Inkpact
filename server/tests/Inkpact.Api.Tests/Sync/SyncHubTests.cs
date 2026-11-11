@@ -6,6 +6,7 @@ using Inkpact.Api.Sync;
 using Inkpact.Api.Tests.Testing;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using static Inkpact.Api.Tests.Testing.SyncTestClient;
@@ -123,6 +124,43 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
     public async Task A_socket_without_an_origin_is_refused()
     {
         await HandshakeFailsWithAsync(() => _jos.ConnectAsync(origin: null), HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task A_socket_names_its_account_in_a_subprotocol_which_the_server_answers_with()
+    {
+        WebSocketClient Client(params string[] protocols)
+        {
+            var client = _factory.Server.CreateWebSocketClient();
+            client.ConfigureRequest = request =>
+            {
+                request.Headers.Cookie = _jos.CookieHeader;
+                request.Headers.Origin = "http://localhost";
+            };
+            foreach (var protocol in protocols)
+            {
+                client.SubProtocols.Add(protocol);
+            }
+
+            return client;
+        }
+
+        var uri = new Uri("ws://localhost/api/sync");
+        await HandshakeFailsWithAsync(
+            () => Client(SyncEndpoints.UserProtocolPrefix + Guid.NewGuid()).ConnectAsync(uri, CancellationToken.None),
+            HttpStatusCode.Conflict);
+        await HandshakeFailsWithAsync(
+            () => Client(SyncEndpoints.UserProtocolPrefix + "not-a-guid").ConnectAsync(uri, CancellationToken.None),
+            HttpStatusCode.Conflict);
+        await HandshakeFailsWithAsync(
+            () => Client(SyncEndpoints.UserProtocolPrefix + _jos.UserId, SyncEndpoints.UserProtocolPrefix + Guid.NewGuid())
+                .ConnectAsync(uri, CancellationToken.None),
+            HttpStatusCode.Conflict);
+
+        using var socket = await Client(SyncEndpoints.UserProtocolPrefix + _jos.UserId).ConnectAsync(uri, CancellationToken.None);
+        socket.State.ShouldBe(WebSocketState.Open);
+        socket.SubProtocol.ShouldBe(SyncEndpoints.UserProtocolPrefix + _jos.UserId);
+        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
     }
 
     [Fact]

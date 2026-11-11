@@ -9,7 +9,10 @@
     "identityFailed": "Het offline account kon niet worden opgeslagen of gewist. Offline toegang is mogelijk niet beschikbaar of verouderd; deel dit browserprofiel niet.",
     "registrationFailed": "De offline app kon niet worden voorbereid of bijgewerkt. Houd dit tabblad open totdat je wijzigingen de server hebben bereikt.",
     "updatePendingEdits": "Er staat een update klaar. Wacht tot je wijzigingen de server hebben bereikt voordat je alle Inkpact-tabbladen sluit om bij te werken.",
-    "updateReady": "Er staat een update klaar. Sluit alle Inkpact-tabbladen en open Inkpact opnieuw om de update te gebruiken."
+    "updateReady": "Er staat een update klaar. Werk nu bij, of sluit alle Inkpact-tabbladen en open Inkpact opnieuw om de update te gebruiken.",
+    "updateNow": "Nu bijwerken",
+    "later": "Later",
+    "closeOtherTabs": "Er is nog een Inkpact-tabblad open met de oude versie. Sluit de andere tabbladen en werk dan bij."
   },
   "offline": {
     "accessRevokedPending": "Je niet-gesynchroniseerde wijzigingen staan nog op dit apparaat. Ze kunnen niet worden verstuurd zolang deze pagina niet beschikbaar is voor je account.",

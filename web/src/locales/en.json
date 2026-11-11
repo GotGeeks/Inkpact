@@ -9,7 +9,10 @@
     "identityFailed": "The offline account could not be saved or cleared. Offline access may be unavailable or out of date; do not share this browser profile.",
     "registrationFailed": "The offline app could not be prepared or updated. Keep this tab open until your edits reach the server.",
     "updatePendingEdits": "An update is ready. Wait until your changes reach the server before closing all Inkpact tabs to update.",
-    "updateReady": "An update is ready. Close all Inkpact tabs and open Inkpact again to use it."
+    "updateReady": "An update is ready. Update now, or close all Inkpact tabs and open Inkpact again to use it.",
+    "updateNow": "Update now",
+    "later": "Later",
+    "closeOtherTabs": "Another Inkpact tab is still open with the old version. Close the other tabs, then update."
   },
   "offline": {
     "accessRevokedPending": "Your unsynced changes are still on this device. They cannot be sent while this page is unavailable to your account.",

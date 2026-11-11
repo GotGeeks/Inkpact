@@ -50,7 +50,9 @@ export interface PageHandle {
 
 export interface SyncClientOptions {
   url: string
-  createSocket?: (url: string) => SocketLike
+  createSocket?: (url: string, protocols?: string[]) => SocketLike
+  /** WebSocket subprotocols to ask for: the account the documents belong to (`syncProtocols`). */
+  protocols?: string[]
   onStatus?: (status: ConnectionStatus) => void
   /** Called when anything about a page's handle changed: its state, `readOnly` or `unsent`. */
   onPageChange?: (pageId: string) => void
@@ -133,6 +135,11 @@ export class SyncClient {
   private attempt = 0
   private confirmationScheduled = false
   private readonly subscribing = new Set<string>()
+  /** Pages whose permission check could not be answered, asked again on their own backoff. */
+  private readonly checkRetries = new Map<
+    string,
+    { timer: ReturnType<typeof setTimeout> | null; ms: number }
+  >()
 
   private readonly onOffline = () => this.dropSocket()
   private readonly onOnline = () => this.reconnectNow()
@@ -314,6 +321,8 @@ export class SyncClient {
     this.stopHeartbeat()
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     this.reconnectTimer = null
+    for (const retry of this.checkRetries.values()) if (retry.timer) clearTimeout(retry.timer)
+    this.checkRetries.clear()
     for (const page of this.pages.values()) page.detach()
     this.pages.clear()
     this.closeSocket()
@@ -351,7 +360,10 @@ export class SyncClient {
   private openSocket() {
     let socket: SocketLike
     try {
-      socket = (this.options.createSocket ?? defaultSocket)(this.options.url)
+      socket = (this.options.createSocket ?? defaultSocket)(
+        this.options.url,
+        this.options.protocols,
+      )
     } catch {
       this.connectionLost(false)
       return
@@ -530,9 +542,11 @@ export class SyncClient {
           if (socket !== this.socket || this.pages.get(page.pageId) !== page) return
           this.subscribing.delete(page.pageId)
           if (access === 'retry') {
-            this.dropSocket()
+            // Only this page waits: the socket and the other pages on it carry on.
+            this.retryCheck(page, socket)
             return
           }
+          this.checkRetries.delete(page.pageId)
           if (access === 'stop') {
             this.ended = true
             this.closeSocket()
@@ -549,7 +563,7 @@ export class SyncClient {
           if (socket !== this.socket || this.pages.get(page.pageId) !== page) return
           this.subscribing.delete(page.pageId)
           console.error('The page could not be authorized for sync', error)
-          this.dropSocket()
+          this.retryCheck(page, socket)
         },
       )
       return
@@ -558,7 +572,28 @@ export class SyncClient {
     this.send(MessageType.Subscribe, page.pageId, Y.encodeStateVector(page.doc))
   }
 
+  /**
+   * A page's permission check could not be answered (the server or the network failed): it is asked again for that page
+   * alone, later, while the socket stays. A new socket asks for every page anyway.
+   */
+  private retryCheck(page: Page, socket: SocketLike | null) {
+    const retry = this.checkRetries.get(page.pageId) ?? { timer: null, ms: MIN_RECONNECT_MS }
+    if (retry.timer) clearTimeout(retry.timer)
+    const random = this.options.random ?? Math.random
+    const delay = retry.ms * (1 + (random() * 2 - 1) * JITTER)
+    retry.timer = setTimeout(() => {
+      retry.timer = null
+      if (socket !== this.socket || this.pages.get(page.pageId) !== page) return
+      this.sendSubscribe(page)
+    }, delay)
+    retry.ms = Math.min(retry.ms * 2, MAX_RECONNECT_MS)
+    this.checkRetries.set(page.pageId, retry)
+  }
+
   private release(page: Page) {
+    const retry = this.checkRetries.get(page.pageId)
+    if (retry?.timer) clearTimeout(retry.timer)
+    this.checkRetries.delete(page.pageId)
     this.pages.delete(page.pageId)
     if (page.state === 'synced') {
       // The server announces our presence removal to the remaining peers.
@@ -751,12 +786,19 @@ function unsyncedItems(doc: Y.Doc, serverVector: Uint8Array): Y.Item[] {
   return items
 }
 
-function defaultSocket(url: string): SocketLike {
-  return new WebSocket(url) as unknown as SocketLike
+function defaultSocket(url: string, protocols?: string[]): SocketLike {
+  return new WebSocket(url, protocols) as unknown as SocketLike
 }
 
 /** The sync socket on the page's own host, `wss:` under HTTPS. */
-export function syncUrl(location: Pick<Location, 'protocol' | 'host'>, userId?: string): string {
-  const url = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/sync`
-  return userId ? `${url}?user=${encodeURIComponent(userId)}` : url
+export function syncUrl(location: Pick<Location, 'protocol' | 'host'>): string {
+  return `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/sync`
+}
+
+/**
+ * The subprotocol that binds the socket to the account whose documents it carries (SyncEndpoints.UserProtocolPrefix
+ * on the server): a header, so the id is not in the address a proxy logs.
+ */
+export function syncProtocols(userId?: string): string[] | undefined {
+  return userId ? [`inkpact.user.${userId}`] : undefined
 }

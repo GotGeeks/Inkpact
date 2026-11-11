@@ -9,15 +9,50 @@ interface WorkerRegistration {
 interface WorkerContainer {
   readonly controller: ServiceWorker | null
   register(url: string): Promise<WorkerRegistration>
+  addEventListener(type: 'controllerchange' | 'message', listener: (event: Event) => void): void
 }
 
-const state = reactive({ updateReady: false, registrationFailed: false })
+const state = reactive({
+  updateReady: false,
+  registrationFailed: false,
+  /** "Update now" was refused: another Inkpact tab still runs the old version. */
+  otherTabsOpen: false,
+})
 export const pwaState = readonly(state)
 
-/** Updates wait for all old clients to leave; no tab is reloaded or taken over. */
-export async function registerPwa(container: WorkerContainer) {
+let waitingWorker: () => ServiceWorker | null = () => null
+let updating = false
+
+/**
+ * Asks the waiting worker to take over this tab, which then reloads with the new version. The caller offers it only
+ * when this tab has nothing unsaved; the worker refuses while another tab is open, as that tab still needs the old
+ * version's files. Never called by itself: an update is the person's choice.
+ */
+export function applyUpdate(): boolean {
+  const waiting = waitingWorker()
+  if (!waiting) return false
+  state.otherTabsOpen = false
+  updating = true
+  waiting.postMessage({ type: 'skip-waiting' })
+  return true
+}
+
+/** Updates wait for all old clients to leave, or for "Update now" in the only tab; no tab is taken over unasked. */
+export async function registerPwa(
+  container: WorkerContainer,
+  reload: () => void = () => window.location.reload(),
+) {
+  container.addEventListener('controllerchange', () => {
+    if (updating) reload()
+  })
+  container.addEventListener('message', (event) => {
+    if ((event as MessageEvent).data?.type !== 'close-other-tabs') return
+    updating = false
+    state.otherTabsOpen = true
+  })
   try {
     const registration = await container.register('/service-worker.js')
+    waitingWorker = () => registration.waiting
     const noticeWaiting = () => {
       if (registration.waiting && container.controller) state.updateReady = true
     }

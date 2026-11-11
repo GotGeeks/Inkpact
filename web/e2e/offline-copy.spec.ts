@@ -113,10 +113,9 @@ test('offline edits to a page larger than a sync message, as an imported note is
     .click()
   const id = await pageIdOf(rowFor(page, jex.titles.note))
 
-  // Initial sync includes receiving, applying and persisting several MiB before the editor is ready.
   const [a, b] = [
-    await openClient(browser, testInfo, baseURL, id, { timeout: 60_000 }),
-    await openClient(browser, testInfo, baseURL, id, { timeout: 60_000 }),
+    await openClient(browser, testInfo, baseURL, id),
+    await openClient(browser, testInfo, baseURL, id),
   ]
   await expect(a.editor).toContainText(jex.lastLine, { timeout: 60_000 })
   await expect(b.editor).toContainText(jex.lastLine, { timeout: 60_000 })
