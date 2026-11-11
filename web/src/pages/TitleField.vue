@@ -53,6 +53,14 @@ async function save() {
   await tree.rename(props.pageId, draft.value)
 }
 
+// A title typed just before the field became read-only (the network went) was not saved: it is, once it can be.
+watch(
+  () => props.readOnly,
+  (readOnly) => {
+    if (!readOnly && draft.value !== props.title) void save()
+  },
+)
+
 function onEnter() {
   void save()
   emit('enter')

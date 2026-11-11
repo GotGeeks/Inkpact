@@ -2,7 +2,13 @@ import * as Y from 'yjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { errorFrame, FakeSyncHub, syncFrame, textEdit } from '../testing/fakeSyncHub'
 import { encodeFrame, MessageType } from './protocol'
-import { SyncClient, type ConnectionStatus } from './syncClient'
+import {
+  SyncClient,
+  syncProtocols,
+  syncUrl,
+  type ConnectionStatus,
+  type SyncClientOptions,
+} from './syncClient'
 
 const page = '0a1b2c3d-0000-4000-8000-000000000001'
 const other = '0a1b2c3d-0000-4000-8000-000000000002'
@@ -137,6 +143,38 @@ describe('SyncClient', () => {
         client.destroy()
       },
     )
+
+    it('asks again for a page whose check failed, without dropping the socket or the other pages', async () => {
+      const hub = new FakeSyncHub()
+      const answers: Record<string, ('retry' | 'edit')[]> = { 'page-a': ['retry', 'edit'] }
+      const checks: string[] = []
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const client = new SyncClient({
+        url: 'ws://localhost/api/sync',
+        createSocket: hub.createSocket,
+        random: () => 0.5,
+        beforeSubscribe: async (pageId) => {
+          checks.push(pageId)
+          return answers[pageId]?.shift() ?? 'edit'
+        },
+      })
+      const first = client.subscribe('page-a')
+      const second = client.subscribe('page-b')
+      textEdit(first.doc, 'first')
+      textEdit(second.doc, 'second')
+      await tick()
+      expect(second.state).toBe('synced')
+      expect(first.state).toBe('syncing')
+
+      await tick(250)
+      await tick()
+      expect(hub.attempts).toBe(1)
+      expect(checks).toEqual(['page-a', 'page-b', 'page-a'])
+      expect(first.state).toBe('synced')
+      expect(serverText(hub, 'page-a')).toBe('first')
+      logged.mockRestore()
+      client.destroy()
+    })
 
     it('keeps sent updates unconfirmed until a later pong', async () => {
       const { hub, client } = start()
@@ -1072,3 +1110,36 @@ function varUint(value: number): number[] {
   out.push(value)
   return out
 }
+
+describe('the sync address', () => {
+  it('is the page host, with wss under HTTPS, and names the account in a subprotocol, not the address', () => {
+    expect(syncUrl({ protocol: 'https:', host: 'notes.example' })).toBe(
+      'wss://notes.example/api/sync',
+    )
+    expect(syncUrl({ protocol: 'http:', host: '10.0.0.2:8080' })).toBe(
+      'ws://10.0.0.2:8080/api/sync',
+    )
+    expect(syncProtocols('3f2504e0-4f89-41d3-9a0c-0305e82c3301')).toEqual([
+      'inkpact.user.3f2504e0-4f89-41d3-9a0c-0305e82c3301',
+    ])
+    expect(syncProtocols(undefined)).toBeUndefined()
+  })
+
+  it('opens its socket with the subprotocols it was given', async () => {
+    vi.useFakeTimers()
+    const hub = new FakeSyncHub()
+    const createSocket = vi.fn<NonNullable<SyncClientOptions['createSocket']>>(() =>
+      hub.createSocket(),
+    )
+    const client = new SyncClient({
+      url: 'ws://localhost/api/sync',
+      createSocket,
+      protocols: ['inkpact.user.u1'],
+    })
+    client.subscribe(page)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(createSocket).toHaveBeenCalledWith('ws://localhost/api/sync', ['inkpact.user.u1'])
+    client.destroy()
+    vi.useRealTimers()
+  })
+})

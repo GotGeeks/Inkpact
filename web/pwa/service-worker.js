@@ -7,11 +7,31 @@ self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(cacheName).then((cache) => cache.addAll(files)))
 })
 
+/** The one tab that asked for this update ("Update now"): it reloads as soon as this worker controls it. */
+let updateRequestedBy = null
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'skip-waiting' || !event.source) return
+  const requester = event.source
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      // Another tab still runs the old shell and may load its cached chunks: it is closed first.
+      if (windows.some((client) => client.id !== requester.id)) {
+        requester.postMessage({ type: 'close-other-tabs' })
+        return
+      }
+      updateRequestedBy = requester.id
+      await self.skipWaiting()
+    })(),
+  )
+})
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-      if (windows.length > 0) return
+      if (windows.some((client) => client.id !== updateRequestedBy)) return
 
       const names = await caches.keys()
       await Promise.all(
@@ -46,11 +66,14 @@ self.addEventListener('fetch', (event) => {
         return (await cache.match('/index.html')) ?? fetch(request)
       })(),
     )
-  } else if (staticFiles.has(url.pathname)) {
+  } else if (staticFiles.has(url.pathname) || url.pathname.startsWith('/assets/')) {
+    // An asset of an older shell (a tab still running it) is in that shell's cache, kept while such a tab is open.
     event.respondWith(
       (async () => {
         const cache = await caches.open(cacheName)
-        return (await cache.match(url.pathname)) ?? fetch(request)
+        return (
+          (await cache.match(url.pathname)) ?? (await caches.match(url.pathname)) ?? fetch(request)
+        )
       })(),
     )
   }

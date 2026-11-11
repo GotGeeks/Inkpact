@@ -52,9 +52,9 @@ const wide = useMediaQuery('(min-width: 48rem)', true)
 const drawerOpen = ref(false)
 const failed = ref(false)
 const browserOnline = ref(navigator.onLine)
-const localOnly = computed(
-  () => auth.offline || !browserOnline.value || sync.connection === 'offline',
-)
+// Offline for real: the app started without the server, or the browser has no network. Not a socket that is reconnecting
+// (a server restart, a phone waking up): the tree, search and the header stay while the sync client tries again.
+const localOnly = computed(() => auth.offline || !browserOnline.value)
 const routeReady = ref(auth.offline || tree.loaded)
 function updateNetwork() {
   browserOnline.value = navigator.onLine

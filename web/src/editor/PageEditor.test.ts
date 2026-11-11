@@ -210,6 +210,7 @@ describe('PageEditor', () => {
       listRecoveries: async () => [],
       deleteRecovery: async () => {},
       cleanup: async () => 0,
+      forgetConfirmed: async () => 0,
     }
     const document = await OfflineDocument.open(repository, metadata, false, () => {})
     hub.refusing = true

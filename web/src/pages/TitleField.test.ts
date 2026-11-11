@@ -117,6 +117,20 @@ describe('TitleField', () => {
     expect(rename).not.toHaveBeenCalled()
   })
 
+  it('keeps a title typed just before it became read-only (offline), and saves it once it can', async () => {
+    mountField()
+    await typeTitle('Typed before the network went')
+    await wrapper!.setProps({ readOnly: true })
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(rename).not.toHaveBeenCalled()
+    expect(field().element.value).toBe('Typed before the network went')
+
+    await wrapper!.setProps({ readOnly: false })
+    await flushPromises()
+    expect(rename).toHaveBeenCalledTimes(1)
+    expect(rename).toHaveBeenCalledWith('p1', 'Typed before the network went')
+  })
+
   it('saves a title that is still waiting when the page is left', async () => {
     mountField()
     await typeTitle('Late')

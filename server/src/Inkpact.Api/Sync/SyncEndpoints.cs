@@ -9,6 +9,12 @@ public static class SyncEndpoints
 {
     public const string Path = "/api/sync";
 
+    /// <summary>
+    /// The WebSocket subprotocol a client names its account with: <c>inkpact.user.</c> and the user id. A header, not
+    /// the address, so the id does not end up in a proxy's access log.
+    /// </summary>
+    public const string UserProtocolPrefix = "inkpact.user.";
+
     public static IServiceCollection AddSync(this IServiceCollection services, IConfiguration config)
     {
         var options = new SyncOptions();
@@ -49,8 +55,13 @@ public static class SyncEndpoints
         var userId = Guid.Parse(http.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         // A persisted document belongs to the account that opened it. The cookie may change in another tab between
         // the client's session check and this upgrade, so bind new clients to that account at the handshake too.
-        if (http.Request.Query.TryGetValue("user", out var expectedUser)
-            && (expectedUser.Count != 1 || !Guid.TryParse(expectedUser[0], out var expectedId) || expectedId != userId))
+        var userProtocols = http.WebSockets.WebSocketRequestedProtocols
+            .Where(p => p.StartsWith(UserProtocolPrefix, StringComparison.Ordinal)).ToList();
+        if (userProtocols.Count > 1
+            || (userProtocols.Count == 1 && !IsUser(userProtocols[0][UserProtocolPrefix.Length..], userId))
+            // A tab still running the client from before the subprotocol sent the id in the address.
+            || (http.Request.Query.TryGetValue("user", out var expectedUser)
+                && (expectedUser.Count != 1 || !IsUser(expectedUser[0], userId))))
         {
             return Results.Json(new ApiError("session_changed"), statusCode: StatusCodes.Status409Conflict);
         }
@@ -71,7 +82,8 @@ public static class SyncEndpoints
 
         try
         {
-            using var socket = await http.WebSockets.AcceptWebSocketAsync();
+            // A browser that asked for a subprotocol fails the handshake unless the answer names it.
+            using var socket = await http.WebSockets.AcceptWebSocketAsync(userProtocols.SingleOrDefault());
             await hub.RunAsync(socket, userId, sessionKey, http.RequestAborted);
         }
         finally
@@ -81,6 +93,8 @@ public static class SyncEndpoints
 
         return Results.Empty;
     }
+
+    private static bool IsUser(string? expected, Guid userId) => Guid.TryParse(expected, out var id) && id == userId;
 
     /// <summary>
     /// Whether the Origin header names this app as the browser sees it: the scheme after the forwarded headers, and the

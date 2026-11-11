@@ -5,6 +5,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { createAppI18n } from '../i18n'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationsStore } from '../stores/notifications'
+import { useOfflineStore } from '../stores/offline'
 import { useTreeStore } from '../stores/tree'
 import { fakeTree } from '../testing/treeFixtures'
 import UserMenu from './UserMenu.vue'
@@ -230,6 +231,26 @@ describe('UserMenu', () => {
 
     expect(server.writes().map((w) => w.path)).toEqual(['/api/auth/logout'])
     await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('login'))
+  })
+
+  it('removes the pages the server has from this device once signed out', async () => {
+    const { item, router } = await menu()
+    const forget = vi.spyOn(useOfflineStore(), 'forgetAccount').mockResolvedValue(3)
+
+    item('Sign out').click()
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('login'))
+
+    expect(forget).toHaveBeenCalledExactlyOnceWith('u1')
+  })
+
+  it('still goes to the login page when the device could not be cleared', async () => {
+    const { item, router } = await menu()
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(useOfflineStore(), 'forgetAccount').mockRejectedValue(new Error('blocked'))
+
+    item('Sign out').click()
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('login'))
+    expect(logged).toHaveBeenCalledWith('Cached pages could not be removed', expect.any(Error))
   })
 
   it('signs out everywhere', async () => {

@@ -99,6 +99,9 @@ class MemoryRepository implements OfflineRepository {
   async cleanup() {
     return 0
   }
+  async forgetConfirmed() {
+    return 0
+  }
 }
 
 describe('offline documents', () => {

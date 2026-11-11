@@ -27,6 +27,21 @@ export const useOfflineStore = defineStore('offline', () => {
   const lifecycleBySession = new WeakMap<OfflineDocument, { token: symbol; active: boolean }>()
   let repositoryPromise: Promise<OfflineRepository> | null = null
   let requestedPersistence = false
+  let watchingVisibility = false
+
+  /** A hidden tab may be closed or killed without a warning (a phone does): what waits to be saved is saved now. */
+  function watchVisibility() {
+    if (watchingVisibility || typeof document === 'undefined') return
+    watchingVisibility = true
+    const flushAll = () => {
+      for (const session of sessions.values()) session.flushNow()
+      for (const session of retained) session.flushNow()
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushAll()
+    })
+    window.addEventListener('pagehide', flushAll)
+  }
 
   const hasFailure = computed(
     () =>
@@ -71,6 +86,7 @@ export const useOfflineStore = defineStore('offline', () => {
       })
       sessions.set(key, session)
       lifecycleBySession.set(session, lifecycle)
+      watchVisibility()
       if (!requestedPersistence && navigator.storage?.persist) {
         requestedPersistence = true
         void navigator.storage.persist().catch((error: unknown) => {
@@ -139,6 +155,19 @@ export const useOfflineStore = defineStore('offline', () => {
     }
   }
 
+  /**
+   * On signing out: the account's pages that the server has are removed from this device, so the next person at the
+   * browser does not find them. Pages with unconfirmed edits or recovery copies stay, as removing them would lose work.
+   */
+  async function forgetAccount(userId: string): Promise<number> {
+    for (const session of [...sessions.values(), ...retained]) {
+      if (session.metadata.userId !== userId || !session.stopCaching()) continue
+      sessions.delete(keyOf(session.metadata))
+      retained.delete(session)
+    }
+    return (await repository()).forgetConfirmed(userId)
+  }
+
   function reportError(source: MaintenanceSource, error: unknown) {
     maintenanceErrors.value = new Map(maintenanceErrors.value).set(source, error)
   }
@@ -159,6 +188,7 @@ export const useOfflineStore = defineStore('offline', () => {
     statusFor,
     retry,
     retryAll,
+    forgetAccount,
     reportError,
     clearError,
   }

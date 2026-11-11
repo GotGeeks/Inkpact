@@ -13,6 +13,7 @@ import { useTreeStore } from './tree'
 import { newPageId } from '../sync/pageCopy'
 import {
   SyncClient,
+  syncProtocols,
   syncUrl,
   type ConnectionStatus,
   type PageHandle,
@@ -158,6 +159,23 @@ export const useSyncStore = defineStore('sync', () => {
     }
   }
 
+  /** The pages checked after one reconnect (the open one, others still sending) share one read of the workspaces. */
+  let workspacesRead: { expected: string; request: Promise<WorkspaceSummary[]> } | null = null
+  function readWorkspaces(expected: string): Promise<WorkspaceSummary[]> {
+    if (workspacesRead?.expected === expected) return workspacesRead.request
+    const request = api<WorkspaceSummary[]>(
+      'GET',
+      '/api/workspaces',
+      undefined,
+      undefined,
+      expected,
+    ).finally(() => {
+      if (workspacesRead?.request === request) workspacesRead = null
+    })
+    workspacesRead = { expected, request }
+    return request
+  }
+
   async function authorizePage(
     expected: string,
     mine: number,
@@ -172,7 +190,7 @@ export const useSyncStore = defineStore('sync', () => {
           undefined,
           expected,
         ),
-        api<WorkspaceSummary[]>('GET', '/api/workspaces', undefined, undefined, expected),
+        readWorkspaces(expected),
       ])
       if (mine !== generation || accountChanged.value) return 'stop'
       const workspace = workspaces.find((item) => item.id === detail.workspaceId)
@@ -258,7 +276,8 @@ export const useSyncStore = defineStore('sync', () => {
     const expected = clientUserId
     const mine = ++generation
     client = new SyncClient({
-      url: syncUrl(window.location, expected ?? undefined),
+      url: syncUrl(window.location),
+      protocols: syncProtocols(expected ?? undefined),
       beforeConnect: expected ? () => authorizeConnection(expected, mine) : undefined,
       beforeSubscribe: expected ? (pageId) => authorizePage(expected, mine, pageId) : undefined,
       onStatus: (status) => {

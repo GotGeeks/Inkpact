@@ -834,3 +834,115 @@ test('an expired session preserves pending edits until the same account signs in
   await otherContext.close()
   await context.close()
 })
+
+/** The ids of the pages this browser profile has cached. */
+async function cachedPageIds(page: import('@playwright/test').Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const request = indexedDB.open('inkpact-offline')
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    const transaction = database.transaction('pages', 'readonly')
+    const pages = transaction.objectStore('pages').getAll()
+    const ids = await new Promise<string[]>((resolve, reject) => {
+      transaction.oncomplete = () => resolve(pages.result.map((cached) => cached.pageId as string))
+      transaction.onabort = () => reject(transaction.error)
+    })
+    database.close()
+    return ids
+  })
+}
+
+test('signing out removes the pages the server has from the device, and keeps one with unsent edits', async ({
+  browser,
+  baseURL,
+}, testInfo) => {
+  // A session of its own: signing out ends it, and the other tests share the stored one.
+  const context = await browser.newContext({
+    ...(testInfo.project.use as BrowserContextOptions),
+    baseURL,
+    storageState: SIGNED_OUT,
+  })
+  const page = await context.newPage()
+  let cutSocket = false
+  const sockets: WebSocketRoute[] = []
+  await page.routeWebSocket(/\/api\/sync(?:\?.*)?$/, (route) => {
+    if (cutSocket) void route.close()
+    else {
+      sockets.push(route)
+      route.connectToServer()
+    }
+  })
+  await signInThroughTheForm(page)
+  await expect(page.getByRole('heading', { name: 'Welcome', exact: true })).toBeVisible()
+  const status = page.getByTestId('sync-status')
+  const synced = await newPage(page, unique(testInfo.project.name, 'Signed out synced'))
+  await expect(status).toHaveAttribute('data-local', 'saved')
+  await expect(status).toHaveAttribute('data-unsent', 'false')
+
+  const pending = await newPage(page, unique(testInfo.project.name, 'Signed out pending'))
+  await expect(status).toHaveAttribute('data-local', 'saved')
+  cutSocket = true
+  for (const socket of sockets) void socket.close()
+  await expect(status).toHaveAttribute('data-state', 'offline')
+  await page.getByTestId('editor').locator('.ProseMirror').click()
+  await page.keyboard.type('kept-for-later')
+  await expect(status).toHaveAttribute('data-unsent', 'true')
+  await expect(status).toHaveAttribute('data-local', 'saved')
+  expect(await cachedPageIds(page)).toEqual(expect.arrayContaining([synced, pending]))
+
+  await signOut(page)
+  await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible()
+  await expect.poll(() => cachedPageIds(page)).not.toContain(synced)
+  expect(await cachedPageIds(page)).toContain(pending)
+  await context.close()
+})
+
+test('Update now takes the waiting version in the only tab, and asks to close the others first', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'The worker lifecycle is checked on desktop.')
+  test.setTimeout(90_000)
+  await newPage(page, unique(testInfo.project.name, 'Update now'))
+  const status = page.getByTestId('sync-status')
+  await expect(status).toHaveAttribute('data-local', 'saved')
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined))
+  await page.reload()
+  await expect(status).toHaveAttribute('data-state', 'live')
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+  await page.evaluate(() => caches.open('inkpact-shell-obsolete-update-now'))
+  const second = await page.context().newPage()
+  await second.goto('/')
+  await expect(second.getByTestId('user-name').first()).toBeAttached()
+
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.register(`/service-worker.js?candidate=${Date.now()}`)
+  })
+  await expect
+    .poll(() =>
+      page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting),
+    )
+    .toBe(true)
+  await expect(page.getByTestId('pwa-update')).toContainText('An update is ready')
+  await page.getByRole('button', { name: 'Update now', exact: true }).click()
+  await expect(page.getByText('Close the other tabs, then update.')).toBeVisible()
+  expect(await page.evaluate(() => navigator.serviceWorker.controller!.scriptURL)).not.toContain(
+    'candidate=',
+  )
+
+  await second.close()
+  await page.getByRole('button', { name: 'Update now', exact: true }).click()
+  // The tab reloads: a check that meets the reload is simply asked again.
+  await expect
+    .poll(() =>
+      page.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? '').catch(() => ''),
+    )
+    .toContain('candidate=')
+  await expect(status).toHaveAttribute('data-state', 'live')
+  await expect
+    .poll(() => page.evaluate(() => caches.has('inkpact-shell-obsolete-update-now')))
+    .toBe(false)
+  // (The notice comes back here only because the app registers /service-worker.js again, a different address from the
+  // candidate this test made: in a real update the two are the same.)
+})

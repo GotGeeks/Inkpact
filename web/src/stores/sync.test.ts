@@ -7,6 +7,7 @@ import SyncStatus from '../sync/SyncStatus.vue'
 import { errorFrame, FakeSyncHub } from '../testing/fakeSyncHub'
 import { jsonResponse, mountAt, signedOut, state, stubApi } from '../testing/helpers'
 import { fakeTree, outline } from '../testing/treeFixtures'
+import { useAuthStore } from './auth'
 import { useNotificationsStore } from './notifications'
 import { useSyncStore } from './sync'
 
@@ -87,6 +88,45 @@ describe('the sync store', () => {
     sync.open(page)
     await flushPromises()
     expect(hub.attempts).toBe(2)
+    sync.destroy()
+  })
+
+  it('checks the pages of one reconnect with one read of the workspaces', async () => {
+    const user = { id: 'u1', email: 'jos@example.com', displayName: 'Jos', isAdmin: true }
+    const workspace = { id: 'w1', name: 'Private', role: 'owner' }
+    const detail = (id: string) => ({
+      page: { id, title: 'Page', parentId: null },
+      workspaceId: 'w1',
+      inTrash: false,
+      tags: [],
+    })
+    const fetchMock = stubApi([
+      state({ setupRequired: false, user, csrfToken: 't' }),
+      { method: 'GET', path: '/api/workspaces', respond: () => jsonResponse(200, [workspace]) },
+      { method: 'GET', path: `/api/pages/${page}`, respond: () => jsonResponse(200, detail(page)) },
+      {
+        method: 'GET',
+        path: `/api/pages/${otherPage}`,
+        respond: () => jsonResponse(200, detail(otherPage)),
+      },
+    ])
+    await useAuthStore().load()
+    const socket = vi.fn(function () {
+      return hub.createSocket()
+    })
+    vi.stubGlobal('WebSocket', socket)
+    const sync = useSyncStore()
+    sync.open(page)
+    sync.open(otherPage)
+    await vi.waitFor(() => expect(sync.display).toBe('live'))
+    // The account is a subprotocol, not part of the address a proxy logs.
+    expect(socket).toHaveBeenCalledWith('ws://localhost:3000/api/sync', ['inkpact.user.u1'])
+
+    const reads = (path: string) =>
+      fetchMock.mock.calls.filter(([input]) => String(input) === path).length
+    expect(reads('/api/workspaces')).toBe(1)
+    expect(reads(`/api/pages/${page}`)).toBe(1)
+    expect(reads(`/api/pages/${otherPage}`)).toBe(1)
     sync.destroy()
   })
 

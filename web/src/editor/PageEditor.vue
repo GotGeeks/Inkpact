@@ -2,7 +2,7 @@
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import type { Editor } from '@tiptap/core'
 import type { EditorView } from '@tiptap/pm/view'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ApiError } from '../api'
@@ -47,15 +47,9 @@ const sync = useSyncStore()
 const auth = useAuthStore()
 const tree = useTreeStore()
 const notifications = useNotificationsStore()
-const browserOnline = ref(navigator.onLine)
-const pagesAvailable = computed(
-  () => browserOnline.value && !auth.offline && sync.connection !== 'offline',
-)
-const updateNetwork = () => (browserOnline.value = navigator.onLine)
-onMounted(() => {
-  window.addEventListener('online', updateNetwork)
-  window.addEventListener('offline', updateNetwork)
-})
+// Linking to a page needs the workspace tree, which a page reopened offline from local storage does not have. A tree read
+// before the connection went keeps working: a link is only the page's id.
+const pagesAvailable = computed(() => !auth.offline)
 
 // The sync client makes the document, so that it can keep it alive while changes are still on their way after the
 // person left. The first paragraph is applied once, before the subscribe.
@@ -78,7 +72,8 @@ watch(
 const info = computed(() => sync.pages[props.pageId])
 
 // A page that has not been in step with the server yet may be empty only because its content has not arrived: typing
-// then would land in the first paragraph. Once it has been in step, or when there is plainly no server, typing is fine.
+// then would land in the first paragraph. Once it has been in step, or its content was saved on this device after a complete
+// Sync (B.6), typing is fine; a page never in step is not editable offline, as it would start from an empty document.
 const everSynced = ref(info.value?.state === 'synced' || !!props.document?.metadata.ready)
 watch(
   () => info.value?.state,
@@ -416,8 +411,6 @@ watch([() => tree.pages, () => tree.trash, () => tree.loaded], () => {
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('online', updateNetwork)
-  window.removeEventListener('offline', updateNetwork)
   stopLinkShortcut()
   dropFocusRequest()
   editor.value?.destroy()

@@ -42,4 +42,6 @@ export interface OfflineRepository {
   listRecoveries(userId: string): Promise<CachedRecovery[]>
   deleteRecovery(id: string): Promise<void>
   cleanup(maxCleanPages: number): Promise<number>
+  /** Removes the account's pages that the server has (no unconfirmed snapshot, no recovery copy), when it signs out. */
+  forgetConfirmed(userId: string): Promise<number>
 }
