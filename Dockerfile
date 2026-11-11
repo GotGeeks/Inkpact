@@ -34,7 +34,7 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
  && pnpm --filter sidecar deploy --prod /out
 
 # The server. The SDK tag is the one in global.json (rollForward is disabled there).
-FROM mcr.microsoft.com/dotnet/sdk:10.0.403@sha256:212fe4cb74627d5adf9817a4088906ae3edff1bd853bb27565d4b46731efe61e AS server
+FROM mcr.microsoft.com/dotnet/sdk:10.0.404@sha256:fe0fd4e93bd2fbb47c883b7a6369e5c8d3db8bf01cdc5981f6ee35fbdf3ff4fb AS server
 WORKDIR /src
 COPY global.json ./
 COPY server/Directory.Build.props server/Directory.Packages.props server/
@@ -47,7 +47,7 @@ COPY web/src/editor/allowList.json web/src/editor/
 COPY web/src/locales/en.json web/src/locales/nl.json web/src/locales/
 RUN dotnet publish server/src/Inkpact.Api/Inkpact.Api.csproj -c Release -o /out --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:1a48394b6f29d3a32c79d9edecd4abda0ecbe8776d567dbfc4590ed6979c740c AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:bfd912c83295ce66d4b706ebb8541b9f14259b0e76fbb88b2751f58ce2399d2e AS final
 
 # pg_dump 18: a migration backs the database up first and refuses to run without it, and a dump of a Postgres 18
 # server needs a client of the same major version, which the distribution does not have. curl is for the health check, libatomic1 for the Node binary.
