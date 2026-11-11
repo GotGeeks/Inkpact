@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer'
-import type { BrowserContextOptions, Locator, Page, TestInfo } from '@playwright/test'
+import type { BrowserContextOptions, FileChooser, Locator, Page, TestInfo } from '@playwright/test'
 import { expect, test } from './fixtures'
 import { closeDrawer, createPageNamed, pageIdOf } from './helpers'
 
@@ -90,6 +90,60 @@ test('on a phone, the toolbar adds an image', async ({ page }, testInfo) => {
   await (await chooser).setFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: PNG })
 
   await expectShown(imageIn(page))
+})
+
+test('a missing offline image does not prevent reading and editing the cached page', async ({
+  page,
+}, testInfo) => {
+  await openNewPage(page, unique(testInfo.project.name, 'Offline image'))
+  const editor = editorBody(page)
+  const status = page.getByTestId('sync-status')
+  await editor.click()
+  await page.keyboard.type('body before image')
+  await page.keyboard.press('Enter')
+  let chooser: FileChooser
+  if (testInfo.project.name === 'desktop') {
+    chooser = await chooseFromSlashMenu(page, 'image')
+  } else {
+    const opening = page.waitForEvent('filechooser')
+    await press(page.getByTestId('toolbar-image'), testInfo)
+    chooser = await opening
+  }
+  await chooser.setFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: PNG })
+  await expectShown(imageIn(page))
+  const src = (await imageIn(page).getAttribute('src'))!
+  await expect(status).toHaveAttribute('data-unsent', 'false')
+  await expect(status).toHaveAttribute('data-local', 'saved')
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined))
+  await page.reload()
+  await expect(status).toHaveAttribute('data-state', 'live')
+
+  await page.context().setOffline(true)
+  await expect(status).toHaveAttribute('data-state', 'offline')
+  await page.reload()
+  await expect(editor).toContainText('body before image')
+  await expect(editor).toHaveAttribute('contenteditable', 'true')
+  await expect(imageIn(page)).toHaveAttribute('src', src)
+  await expect
+    .poll(() =>
+      imageIn(page).evaluate(
+        (element: HTMLImageElement) => element.complete && element.naturalWidth,
+      ),
+    )
+    .toBe(0)
+  const cached = await page.evaluate(async (url) => {
+    const matches = await Promise.all(
+      (await caches.keys()).map(async (name) => (await caches.open(name)).match(url)),
+    )
+    return matches.some(Boolean)
+  }, src)
+  expect(cached).toBe(false)
+  await editor.locator('p').filter({ hasText: 'body before image' }).first().click()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' offline text')
+  await expect(editor).toContainText('body before image offline text')
+  await expect(status).toHaveAttribute('data-unsent', 'true')
+  await expect(status).toHaveAttribute('data-local', 'saved')
 })
 
 test('a file shows its name and size and downloads as it was', async ({ page }, testInfo) => {

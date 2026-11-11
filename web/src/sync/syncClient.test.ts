@@ -1,7 +1,7 @@
 import * as Y from 'yjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { errorFrame, FakeSyncHub, syncFrame, textEdit } from '../testing/fakeSyncHub'
-import { MessageType } from './protocol'
+import { encodeFrame, MessageType } from './protocol'
 import { SyncClient, type ConnectionStatus } from './syncClient'
 
 const page = '0a1b2c3d-0000-4000-8000-000000000001'
@@ -50,6 +50,141 @@ describe('SyncClient', () => {
   })
 
   describe('connecting and syncing', () => {
+    it('does not open a socket until the account check finishes', async () => {
+      const hub = new FakeSyncHub()
+      let allow!: (decision: 'allow') => void
+      const client = new SyncClient({
+        url: 'ws://localhost/api/sync',
+        createSocket: hub.createSocket,
+        beforeConnect: () => new Promise((resolve) => (allow = resolve)),
+      })
+      const handle = client.subscribe(page)
+      textEdit(handle.doc, 'waiting')
+      expect(hub.attempts).toBe(0)
+      allow('allow')
+      await tick()
+      expect(hub.attempts).toBe(1)
+      expect(serverText(hub)).toBe('waiting')
+      client.destroy()
+    })
+
+    it('does not subscribe or send local edits before the page permission check', async () => {
+      const hub = new FakeSyncHub()
+      let allow!: (access: 'edit') => void
+      const client = new SyncClient({
+        url: 'ws://localhost/api/sync',
+        createSocket: hub.createSocket,
+        beforeSubscribe: () => new Promise((resolve) => (allow = resolve)),
+      })
+      const handle = client.subscribe(page)
+      textEdit(handle.doc, 'private')
+      await tick()
+      expect(hub.sent(MessageType.Subscribe)).toHaveLength(0)
+      expect(hub.sent(MessageType.Update)).toHaveLength(0)
+      allow('edit')
+      await tick()
+      expect(serverText(hub)).toBe('private')
+      client.destroy()
+    })
+
+    it('keeps unsent edits locally when a permission check blocks a page', async () => {
+      const hub = new FakeSyncHub()
+      const client = new SyncClient({
+        url: 'ws://localhost/api/sync',
+        createSocket: hub.createSocket,
+        beforeSubscribe: async () => 'blocked',
+      })
+      const handle = client.subscribe(page, { unconfirmed: true })
+      textEdit(handle.doc, 'private')
+      await tick()
+      expect(handle.state).toBe('blocked')
+      expect(client.hasUnsent()).toBe(true)
+      expect(hub.sent(MessageType.Subscribe)).toHaveLength(0)
+      expect(hub.sent(MessageType.Update)).toHaveLength(0)
+      client.unsubscribe(page)
+      expect(client.get(page)).toBe(handle)
+      client.destroy()
+    })
+
+    it.each(['blocked', 'missing'] as const)(
+      'reauthorizes a %s page after the connection returns',
+      async (initialAccess) => {
+        const hub = new FakeSyncHub()
+        let access: 'blocked' | 'missing' | 'edit' = initialAccess
+        let checks = 0
+        const client = new SyncClient({
+          url: 'ws://localhost/api/sync',
+          createSocket: hub.createSocket,
+          random: () => 0.5,
+          beforeSubscribe: async () => {
+            checks++
+            return access
+          },
+        })
+        const handle = client.subscribe(page, { unconfirmed: true })
+        await tick()
+        expect(handle.state).toBe(initialAccess)
+
+        textEdit(handle.doc, 'restored')
+        access = 'edit'
+        hub.current.serverClose(1006)
+        await tick(250)
+        await tick()
+
+        expect(checks).toBe(2)
+        expect(handle.state).toBe('synced')
+        expect(serverText(hub)).toBe('restored')
+        client.destroy()
+      },
+    )
+
+    it('keeps sent updates unconfirmed until a later pong', async () => {
+      const { hub, client } = start()
+      hub.answerPings = false
+      const handle = client.subscribe(page)
+      await tick()
+      textEdit(handle.doc, 'pending')
+      await tick()
+      expect(handle.unconfirmed).toBe(true)
+      expect(client.hasUnsent()).toBe(true)
+      hub.current.deliver(new Uint8Array([MessageType.Pong]))
+      expect(handle.unconfirmed).toBe(false)
+      client.destroy()
+    })
+
+    it('does not confirm an update whose socket send failed', async () => {
+      const { hub, client } = start()
+      const handle = client.subscribe(page)
+      await tick()
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.spyOn(hub.current, 'send').mockImplementationOnce(() => {
+        throw new Error('socket send failed')
+      })
+      textEdit(handle.doc, 'not sent')
+      expect(client.connection).toBe('offline')
+      expect(handle.unconfirmed).toBe(true)
+      expect(client.hasUnsent()).toBe(true)
+      expect(logged).toHaveBeenCalled()
+      logged.mockRestore()
+      client.destroy()
+    })
+
+    it('does not confirm a rejected update after the page becomes unavailable', async () => {
+      const { hub, client } = start()
+      hub.answerPings = false
+      const handle = client.subscribe(page)
+      await tick()
+      textEdit(handle.doc, 'pending')
+      await tick()
+      hub.current.deliver(errorFrame(page, 'page_not_found'))
+      hub.current.deliver(new Uint8Array([MessageType.Pong]))
+      expect(handle.state).toBe('missing')
+      expect(handle.unconfirmed).toBe(true)
+      client.unsubscribe(page)
+      expect(client.get(page)).toBe(handle)
+      client.destroy()
+    })
+
     it('opens a socket and reports it', async () => {
       const { events, client } = start()
       expect(client.connection).toBe('connecting')
@@ -675,9 +810,16 @@ describe('SyncClient', () => {
       textEdit(handle.doc, 'a')
       await tick()
       expect(handle.readOnly).toBe(true)
+      expect(handle.state).toBe('blocked')
+      expect(handle.unconfirmed).toBe(true)
+      expect(client.hasUnsent()).toBe(true)
       textEdit(handle.doc, 'b')
+      await tick(3_000)
 
       expect(hub.sent(MessageType.Update)).toHaveLength(1)
+      expect(handle.unconfirmed).toBe(true)
+      client.unsubscribe(page)
+      expect(client.get(page)).toBe(handle)
       client.destroy()
     })
 
@@ -691,7 +833,7 @@ describe('SyncClient', () => {
       client.destroy()
     })
 
-    it('never sends an update for a read-only page, not even the diff after the sync', async () => {
+    it('never sends a read-only update and retains an unexpected local change', async () => {
       const { hub, client } = start()
       await tick()
       const handle = client.subscribe(page, {
@@ -701,9 +843,50 @@ describe('SyncClient', () => {
       await tick()
       textEdit(handle.doc, 'x')
 
-      expect(handle.state).toBe('synced')
+      expect(handle.state).toBe('blocked')
       expect(hub.sent(MessageType.Update)).toHaveLength(0)
-      expect(client.hasUnsent()).toBe(false)
+      expect(client.hasUnsent()).toBe(true)
+      client.unsubscribe(page)
+      expect(client.get(page)).toBe(handle)
+      client.destroy()
+    })
+
+    it('does not apply later server frames to a blocked document with rejected changes', async () => {
+      const { hub, client } = start()
+      hub.readOnly.add(page)
+      await tick()
+      const handle = client.subscribe(page)
+      await tick()
+      textEdit(handle.doc, 'rejected')
+      await tick()
+      expect(handle.state).toBe('blocked')
+
+      const remote = new Y.Doc()
+      Y.applyUpdate(remote, Y.encodeStateAsUpdate(handle.doc))
+      remote.getText('t').delete(0, remote.getText('t').length)
+      const deletion = Y.encodeStateAsUpdate(remote)
+      hub.current.deliver(encodeFrame(MessageType.Update, page, deletion))
+      hub.current.deliver(syncFrame(page, Y.encodeStateVector(remote), [deletion]))
+      expect(text(handle.doc)).toBe('rejected')
+      expect(handle.unconfirmed).toBe(true)
+      remote.destroy()
+      client.destroy()
+    })
+
+    it('keeps an unexpected read-only edit when the initial Sync arrives later', async () => {
+      const { hub, client } = start()
+      hub.holding = true
+      await tick()
+      const handle = client.subscribe(page, { readOnly: true })
+      await tick()
+      textEdit(handle.doc, 'local')
+      expect(handle.state).toBe('blocked')
+      hub.release()
+      await tick()
+      expect(handle.state).toBe('blocked')
+      expect(handle.unconfirmed).toBe(true)
+      expect(text(handle.doc)).toBe('local')
+      expect(hub.sent(MessageType.Update)).toHaveLength(0)
       client.destroy()
     })
   })
@@ -717,11 +900,15 @@ describe('SyncClient', () => {
 
       textEdit(handle.doc, 'x'.repeat(2.2 * 1024 * 1024))
       expect(handle.state).toBe('tooLarge')
+      expect(handle.unconfirmed).toBe(true)
+      expect(client.hasUnsent()).toBe(true)
       textEdit(handle.doc, 'more')
       await tick(60_000)
 
       expect(hub.sent(MessageType.Update)).toHaveLength(0)
       expect(hub.attempts).toBe(1)
+      client.unsubscribe(page)
+      expect(client.get(page)).toBe(handle)
       client.destroy()
     })
 
@@ -736,6 +923,8 @@ describe('SyncClient', () => {
       await tick()
 
       expect(handle.state).toBe('tooLarge')
+      expect(handle.unconfirmed).toBe(true)
+      expect(client.hasUnsent()).toBe(true)
       expect(hub.sent(MessageType.Update)).toHaveLength(0)
       client.destroy()
     })

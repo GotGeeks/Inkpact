@@ -219,9 +219,16 @@ describe('TrashView', () => {
 describe('StartPage', () => {
   it('creates a page and goes to it', async () => {
     const { server, router } = await open('/', { pages: [] })
-    await vi.waitFor(() => expect(wrapper!.find('main button').exists()).toBe(true))
+    await vi.waitFor(() =>
+      expect(wrapper!.findAll('main button').some((button) => button.text() === 'New page')).toBe(
+        true,
+      ),
+    )
 
-    await wrapper!.get('main button').trigger('click')
+    await wrapper!
+      .findAll('main button')
+      .find((button) => button.text() === 'New page')!
+      .trigger('click')
     await flushPromises()
 
     expect(server.writes()[0]).toMatchObject({

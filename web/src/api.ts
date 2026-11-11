@@ -29,6 +29,7 @@ async function send(
   path: string,
   body: unknown,
   signal?: AbortSignal,
+  expectedUserId?: string,
 ): Promise<Response> {
   // A file is sent as it is, for the one endpoint that takes one (an attachment upload); everything else is JSON.
   const file = body instanceof Blob ? body : undefined
@@ -37,6 +38,7 @@ async function send(
       ? { Accept: 'application/json' }
       : { 'Content-Type': file ? 'application/octet-stream' : 'application/json' }
   if (method !== 'GET' && csrfToken) headers[csrfHeader] = csrfToken
+  if (expectedUserId) headers['X-Inkpact-User'] = expectedUserId
 
   try {
     return await fetch(path, {
@@ -88,15 +90,16 @@ export async function api<T = void>(
   path: string,
   body?: unknown,
   signal?: AbortSignal,
+  expectedUserId?: string,
 ): Promise<T> {
-  let response = await send(method, path, body, signal)
+  let response = await send(method, path, body, signal, expectedUserId)
 
   if (response.status === 400 && method !== 'GET') {
     const error = await toError(response)
     if (error.code !== 'csrf_invalid') throw error
 
     await refreshCsrfToken()
-    response = await send(method, path, body, signal)
+    response = await send(method, path, body, signal, expectedUserId)
   }
 
   if (response.ok) {

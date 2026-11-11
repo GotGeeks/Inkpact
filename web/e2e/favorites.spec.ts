@@ -45,6 +45,7 @@ test('a page is starred from its header, is at the top of the sidebar after a re
   await expect(favoritesNav(page).getByRole('link', { name: title })).toBeVisible()
 
   // The server has it, so it is there after a reload (and on another device).
+  await expect.poll(async () => (await listed(page, 'favorites')).includes(id)).toBe(true)
   await page.reload()
   await expect(page.getByRole('button', { name: 'Favorite', exact: true })).toHaveAttribute(
     'aria-pressed',
@@ -116,8 +117,8 @@ test('the pages opened last are on the start page, the last one first, and leave
     page.locator(`[role="treeitem"][data-page-id="${secondId}"]`),
     'Move to trash',
   )
-  expect(await listed(page, 'recent')).not.toContain(secondId)
-  expect(await listed(page, 'favorites')).not.toContain(secondId)
+  await expect.poll(async () => await listed(page, 'recent')).not.toContain(secondId)
+  await expect.poll(async () => await listed(page, 'favorites')).not.toContain(secondId)
 
   await page
     .getByRole('region', { name: /Notifications/ })

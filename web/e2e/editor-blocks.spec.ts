@@ -314,21 +314,31 @@ test.describe('on a desktop, with a mouse (1.12b)', () => {
     return id
   }
 
-  test('the editor loads behind the page: the title is there before the editor', async ({
-    page,
-  }, testInfo) => {
-    const id = await openNewPage(page, unique(testInfo.project.name, 'Behind'))
-    let release: () => void = () => {}
-    const held = new Promise<void>((resolve) => (release = resolve))
-    await page.route('**/assets/PageEditor-*.js', async (route) => {
-      await held
-      await route.continue()
+  test.describe('lazy editor loading without service worker interception', () => {
+    test.use({ serviceWorkers: 'block' })
+
+    test('the editor loads behind the page: the title is there before the editor', async ({
+      page,
+    }, testInfo) => {
+      const id = await openNewPage(page, unique(testInfo.project.name, 'Behind'))
+      let release: () => void = () => {}
+      let requestHeld = false
+      const held = new Promise<void>((resolve) => (release = resolve))
+      await page.route('**/assets/PageEditor-*.js', async (route) => {
+        requestHeld = true
+        await held
+        await route.continue()
+      })
+      try {
+        await page.goto(`/p/${id}`)
+        await expect(page.getByTestId('page-title')).toBeVisible()
+        await expect.poll(() => requestHeld).toBe(true)
+        await expect(page.getByTestId('editor')).toHaveCount(0)
+      } finally {
+        release()
+      }
+      await expect(editorBody(page)).toBeVisible()
     })
-    await page.goto(`/p/${id}`)
-    await expect(page.getByTestId('page-title')).toBeVisible()
-    await expect(page.getByTestId('editor')).toHaveCount(0)
-    release()
-    await expect(editorBody(page)).toBeVisible()
   })
 
   test('Alt+Arrow moves a block, and a second browser sees it', async ({

@@ -79,6 +79,49 @@ public class PageEndpointTests(PostgresFixture postgres) : IClassFixture<Postgre
     }
 
     [Fact]
+    public async Task An_offline_copy_bound_to_another_account_is_not_created()
+    {
+        var ownerId = await UseDbAsync(db => db.Users.Select(user => user.Id).SingleAsync());
+        var id = Guid.NewGuid();
+        var response = await _owner.PostJsonAsync($"/api/workspaces/{_workspaceId}/pages", new
+        {
+            id,
+            title = "Offline copy",
+            content = Convert.ToBase64String([1, 2, 3]),
+            expectedUserId = Guid.NewGuid(),
+        });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        (await response.ReadErrorAsync()).ShouldBe(new ApiError("session_changed"));
+        (await UseDbAsync(db => db.Pages.AnyAsync(page => page.Id == id))).ShouldBeFalse();
+
+        response = await _owner.PostJsonAsync($"/api/workspaces/{_workspaceId}/pages", new
+        {
+            id,
+            title = "Offline copy",
+            content = Convert.ToBase64String([1, 2, 3]),
+            expectedUserId = ownerId,
+        });
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task A_bound_permission_read_cannot_use_another_accounts_cookie()
+    {
+        var ownerId = await UseDbAsync(db => db.Users.Select(user => user.Id).SingleAsync());
+        using var wrong = new HttpRequestMessage(HttpMethod.Get, $"/api/workspaces/{_workspaceId}/pages");
+        wrong.Headers.Add(ExpectedUserMiddleware.HeaderName, Guid.NewGuid().ToString());
+        var denied = await _owner.SendAsync(wrong);
+
+        denied.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        (await denied.ReadErrorAsync()).ShouldBe(new ApiError("session_changed"));
+
+        using var correct = new HttpRequestMessage(HttpMethod.Get, $"/api/workspaces/{_workspaceId}/pages");
+        correct.Headers.Add(ExpectedUserMiddleware.HeaderName, ownerId.ToString());
+        (await _owner.SendAsync(correct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task A_viewer_can_read_but_not_change_anything()
     {
         var page = await CreateAsync(_owner, "A");

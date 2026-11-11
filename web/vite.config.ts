@@ -1,9 +1,10 @@
 import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
+import { offlineShell } from './pwa/build'
 
 export default defineConfig({
-  plugins: [vue(), tailwindcss()],
+  plugins: [vue(), tailwindcss(), offlineShell()],
   define: {
     // Keep the build free of code paths the app does not use, and of devtools hooks.
     __VUE_I18N_LEGACY_API__: false,

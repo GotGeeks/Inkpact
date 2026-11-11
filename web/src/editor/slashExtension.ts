@@ -22,7 +22,11 @@ const pluginKey = new PluginKey('slashMenu')
  * are TipTap's; this decides what is listed (`suggestionMenu.ts` makes the keys work). Never in a code block or a
  * read-only editor.
  */
-export function createSlashExtension(state: SlashState, t: Translate) {
+export function createSlashExtension(
+  state: SlashState,
+  t: Translate,
+  available: (command: BlockCommand) => boolean = () => true,
+) {
   return Extension.create({
     name: 'slashMenu',
     addProseMirrorPlugins() {
@@ -34,7 +38,7 @@ export function createSlashExtension(state: SlashState, t: Translate) {
           char: '/',
           allowSpaces: false,
           allow: (editorState, range) => !editorState.doc.resolve(range.from).parent.type.spec.code,
-          items: (query) => filterCommands(query, t),
+          items: (query) => filterCommands(query, t).filter(available),
           command: (editor, range, command) => command.run(editor, range),
           listboxId: SLASH_LISTBOX_ID,
           optionId: slashOptionId,

@@ -1,5 +1,6 @@
 import { Extension, type Editor, type Range } from '@tiptap/core'
 import { PluginKey } from '@tiptap/pm/state'
+import { exitSuggestion } from '@tiptap/suggestion'
 import type { PageNode } from '../tree/types'
 import { inCode } from './linkRange'
 import { pageHref } from './links'
@@ -19,6 +20,10 @@ export function createPageMenuState(): PageMenuState {
 }
 
 const pluginKey = new PluginKey('pageLinkMenu')
+
+export function closePageMenu(editor: Editor) {
+  exitSuggestion(editor.view, pluginKey)
+}
 
 /**
  * Puts a link to a page where `range` is: the page's title as text, with a link mark whose address is `/p/<id>`, and the caret
@@ -46,6 +51,7 @@ export interface PageLinkOptions {
   currentPageId: () => string
   /** What a page without a title is called. */
   untitled: () => string
+  available?: () => boolean
 }
 
 /**
@@ -60,6 +66,7 @@ export function createPageLinkExtension({
   pages,
   currentPageId,
   untitled,
+  available,
 }: PageLinkOptions) {
   return Extension.create({
     name: 'pageLinkMenu',
@@ -72,6 +79,7 @@ export function createPageLinkExtension({
           char: '[[',
           allowSpaces: true,
           allow: (editorState, range) =>
+            available?.() !== false &&
             !inCode(editorState, range.from, range.to) &&
             // "[[plan]]" is finished: the second bracket closes what was begun.
             !editorState.doc.textBetween(range.from, range.to, ' ').includes(']'),

@@ -18,6 +18,8 @@ test('signing in works over plain http on a non-localhost name', async ({
 
   await signInThroughTheForm(page)
   await expectHome(page)
+  expect(await page.evaluate(() => window.isSecureContext)).toBe(false)
+  await expect(page.getByText('Offline reload and app installation require HTTPS.')).toBeVisible()
 
   // Without HTTPS the cookies have plain names and no Secure flag, so the browser keeps them.
   const cookies = await context.cookies()

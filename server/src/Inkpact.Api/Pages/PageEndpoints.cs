@@ -12,9 +12,10 @@ namespace Inkpact.Api.Pages;
 /// <summary>
 /// A new page. <c>Id</c> and <c>Content</c> are for a client that makes a page with content in one step (a copy of edits
 /// that would be lost): the id it chose, so that sending the same request again gives the same page rather than a second
-/// one, and the page's first Yjs update, in base64, stored with the page.
+/// one, and the page's first Yjs update, in base64, stored with the page. <c>ExpectedUserId</c> binds an offline copy
+/// to the account it belongs to if the browser's session changes before the request arrives.
 /// </summary>
-public sealed record CreatePageRequest(string? Title, Guid? ParentId, Guid? AfterId, Guid? BeforeId, Guid? Id = null, string? Content = null);
+public sealed record CreatePageRequest(string? Title, Guid? ParentId, Guid? AfterId, Guid? BeforeId, Guid? Id = null, string? Content = null, Guid? ExpectedUserId = null);
 
 public sealed record RenamePageRequest(string? Title, int? ExpectedVersion);
 
@@ -117,6 +118,12 @@ public static class PageEndpoints
     private static async Task<IResult> Create(
         Guid workspaceId, CreatePageRequest request, HttpContext http, TreeService tree, SyncOptions sync, CancellationToken cancellationToken)
     {
+        if (request.ExpectedUserId is { } expected
+            && (!Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var actual) || actual != expected))
+        {
+            return Results.Json(new ApiError("session_changed"), statusCode: StatusCodes.Status409Conflict);
+        }
+
         PageSeed? seed = null;
         if (request.Id is { } id)
         {
