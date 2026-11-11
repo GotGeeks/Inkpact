@@ -372,6 +372,51 @@ test('a page that does not exist', async ({ page }, testInfo) => {
   await scan(page, testInfo, 'page not found')
 })
 
+test('a page that is slow to load, and one that fails to load and is tried again', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/')
+  await createPageNamed(page, 'Slow and failing')
+  await closeDrawer(page)
+  const title = page.getByRole('textbox', { name: 'Title', exact: true })
+  await expect(title).toHaveValue('Slow and failing')
+  const id = new URL(page.url()).pathname.split('/').pop()!
+  // Back and forward inside the app, never a reload: after a reload the service worker has the page, and WebKit
+  // then sends the page's requests past the route below.
+  await page.goBack()
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome', exact: true })).toBeVisible()
+
+  let release = () => {}
+  const held = new Promise<void>((resolve) => (release = resolve))
+  let fail = true
+  await page.route(`**/api/pages/${id}`, async (route) => {
+    if (route.request().method() !== 'GET' || !fail) return route.continue()
+    await held
+    await route.fulfill({
+      status: 500,
+      contentType: 'application/json',
+      body: '{"code":"server_error"}',
+    })
+  })
+
+  await page.goForward()
+  await expect(page.getByRole('status').filter({ hasText: 'Loading the page…' })).toBeVisible()
+  await scan(page, testInfo, 'page loading')
+
+  release()
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'This page could not be loaded' }),
+  ).toBeVisible()
+  await scan(page, testInfo, 'page failed to load')
+
+  fail = false
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'This page could not be loaded' }),
+  ).toBeHidden()
+  await expect(title).toHaveValue('Slow and failing')
+})
+
 test('the search dialog, with results and without', async ({ page }, testInfo) => {
   const title = unique(testInfo, 'Searchable')
   await page.goto('/')

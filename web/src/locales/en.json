@@ -413,6 +413,8 @@
     "label": "Title"
   },
   "page": {
+    "loadFailedTitle": "This page could not be loaded",
+    "loading": "Loading the page…",
     "notFound": "This page could not be found",
     "backToStart": "Back to the start",
     "inTrash": "This page is in the trash.",

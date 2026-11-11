@@ -18,6 +18,8 @@ import { availableCommands, type PaletteCommandId } from '../palette/commands'
 import { isSearchShortcut } from '../search/shortcut'
 import { isCommandPaletteShortcut, isNewPageShortcut } from '../search/commandShortcuts'
 import { useMediaQuery } from '../composables/useMediaQuery'
+import { useOnline } from '../composables/useOnline'
+import { loginRoute } from '../router'
 import { useAuthStore } from '../stores/auth'
 import { useCurrentPageStore } from '../stores/currentPage'
 import { useFavoritesStore } from '../stores/favorites'
@@ -51,15 +53,13 @@ useKeepLostEdits()
 const wide = useMediaQuery('(min-width: 48rem)', true)
 const drawerOpen = ref(false)
 const failed = ref(false)
-const browserOnline = ref(navigator.onLine)
+const browserOnline = useOnline((online) => {
+  if (online && auth.offline) void revalidateSession()
+})
 // Offline for real: the app started without the server, or the browser has no network. Not a socket that is reconnecting
 // (a server restart, a phone waking up): the tree, search and the header stay while the sync client tries again.
 const localOnly = computed(() => auth.offline || !browserOnline.value)
 const routeReady = ref(auth.offline || tree.loaded)
-function updateNetwork() {
-  browserOnline.value = navigator.onLine
-  if (browserOnline.value && auth.offline) void revalidateSession()
-}
 let starting: Promise<void> | null = null
 
 const selectedId = computed(() => (route.name === 'page' ? String(route.params.pageId) : null))
@@ -129,16 +129,12 @@ onMounted(() => {
   const userId = auth.user?.id ?? auth.offlineUserId
   if (userId) void sync.loadRecoveries(userId)
   favorites.watchFocus()
-  window.addEventListener('offline', updateNetwork)
-  window.addEventListener('online', updateNetwork)
   window.addEventListener('storage', onStorage)
   // Capturing, so that the editor does not take the key first; the browser would otherwise use it for its own search.
   window.addEventListener('keydown', onShortcut, true)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onShortcut, true)
-  window.removeEventListener('offline', updateNetwork)
-  window.removeEventListener('online', updateNetwork)
   window.removeEventListener('storage', onStorage)
   search.reset()
   tree.reset()
@@ -172,11 +168,7 @@ watch(
       return
     }
     sync.destroy()
-    const redirect = route.fullPath
-    await router.replace({
-      name: 'login',
-      query: redirect && redirect !== '/' ? { redirect } : {},
-    })
+    await router.replace(loginRoute(route.fullPath))
   },
 )
 

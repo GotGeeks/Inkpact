@@ -21,6 +21,11 @@ export function safeRedirect(value: unknown): string | null {
   return value
 }
 
+/** The login page, coming back to `fullPath` after signing in (the start page needs no such note). */
+export function loginRoute(fullPath?: string): RouteLocationRaw {
+  return { name: 'login', query: fullPath && fullPath !== '/' ? { redirect: fullPath } : {} }
+}
+
 export function createAppRouter(history: RouterHistory = createWebHistory()): Router {
   const router = createRouter({
     history,
@@ -81,8 +86,7 @@ export function createAppRouter(history: RouterHistory = createWebHistory()): Ro
     if (!auth.user) {
       if (to.name === 'login') return true
       // The setup page is closed once an account exists.
-      const redirect = to.name === 'setup' ? undefined : to.fullPath
-      return { name: 'login', query: redirect && redirect !== '/' ? { redirect } : {} }
+      return loginRoute(to.name === 'setup' ? undefined : to.fullPath)
     }
 
     if (to.name === 'login' || to.name === 'setup') {
