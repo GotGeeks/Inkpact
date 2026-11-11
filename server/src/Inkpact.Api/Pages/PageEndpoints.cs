@@ -108,7 +108,7 @@ public static class PageEndpoints
     {
         if (await tree.GetPageAsync(pageId, cancellationToken) is not { } found)
         {
-            return NotFound();
+            return ApiResults.NotFound();
         }
 
         var pageTags = await tags.GetPageTagsAsync(pageId, cancellationToken);
@@ -121,7 +121,7 @@ public static class PageEndpoints
         if (request.ExpectedUserId is { } expected
             && (!Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var actual) || actual != expected))
         {
-            return Results.Json(new ApiError("session_changed"), statusCode: StatusCodes.Status409Conflict);
+            return ApiResults.Error(StatusCodes.Status409Conflict, "session_changed");
         }
 
         PageSeed? seed = null;
@@ -144,7 +144,7 @@ public static class PageEndpoints
                 }
             }
 
-            var userId = Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsed) ? parsed : (Guid?)null;
+            Guid? userId = http.UserId();
             seed = new PageSeed(id, content, userId);
         }
         else if (request.Content is not null)
@@ -171,8 +171,7 @@ public static class PageEndpoints
 
     private static IResult Respond(TreeResult<PageChange> result, int successStatus = StatusCodes.Status200OK) =>
         result.Error is { } error
-            ? Results.Json(new ApiError(error.Code, error.Field), statusCode: error.Status)
+            ? ApiResults.Error(error.Status, error.Code, error.Field)
             : Results.Json(result.Value, statusCode: successStatus);
 
-    private static IResult NotFound() => Results.Json(new ApiError("not_found"), statusCode: StatusCodes.Status404NotFound);
 }

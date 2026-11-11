@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Inkpact.Api.Auth;
 using Inkpact.Api.Permissions;
 using Inkpact.Api.Security;
@@ -67,7 +66,7 @@ public static class AttachmentEndpoints
         AttachmentDto? added;
         try
         {
-            var userId = Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : (Guid?)null;
+            var userId = http.UserId();
             added = await attachments.AddAsync(pageId, userId, name, http.Request.Body, cancellationToken);
         }
         catch (FileTooLargeException)
@@ -86,7 +85,7 @@ public static class AttachmentEndpoints
     {
         if (await attachments.OpenAsync(attachmentId, cancellationToken) is not { } opened)
         {
-            return Results.Json(new ApiError("not_found"), statusCode: StatusCodes.Status404NotFound);
+            return ApiResults.NotFound();
         }
 
         var (attachment, content) = opened;
@@ -107,9 +106,7 @@ public static class AttachmentEndpoints
             enableRangeProcessing: true);
     }
 
-    private static IResult TooLarge() =>
-        Results.Json(new ApiError("attachment_too_large"), statusCode: StatusCodes.Status413PayloadTooLarge);
+    private static IResult TooLarge() => ApiResults.Error(StatusCodes.Status413PayloadTooLarge, "attachment_too_large");
 
-    private static IResult Empty() =>
-        Results.Json(new ApiError("attachment_empty"), statusCode: StatusCodes.Status400BadRequest);
+    private static IResult Empty() => ApiResults.Error(StatusCodes.Status400BadRequest, "attachment_empty");
 }

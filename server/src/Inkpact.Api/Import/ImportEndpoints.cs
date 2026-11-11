@@ -109,12 +109,12 @@ public static class ImportEndpoints
 
         if (http.Request.ContentLength == 0)
         {
-            return Error("import_empty", StatusCodes.Status400BadRequest);
+            return ApiResults.Error(StatusCodes.Status400BadRequest, "import_empty");
         }
 
         if (copyTitle is not null && !ImportRunner.IsCopyTitle(copyTitle))
         {
-            return Error("import_copy_title_invalid", StatusCodes.Status400BadRequest);
+            return ApiResults.Error(StatusCodes.Status400BadRequest, "import_copy_title_invalid");
         }
 
         var importId = Guid.CreateVersion7();
@@ -127,14 +127,14 @@ public static class ImportEndpoints
             // decides when two uploads arrive at the same moment.
             if (await ReleaseLeftBehindAsync(db, queue, workspaceId, time, cancellationToken))
             {
-                return Error("import_in_progress", StatusCodes.Status409Conflict);
+                return ApiResults.Error(StatusCodes.Status409Conflict, "import_in_progress");
             }
 
             var import = new ImportRun
             {
                 Id = importId,
                 WorkspaceId = workspaceId,
-                UserId = Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null,
+                UserId = http.UserId(),
                 SourceType = ImportRunner.SourceType,
                 FileName = AttachmentFiles.CleanFileName(name),
                 CopyTitle = copyTitle,
@@ -149,7 +149,7 @@ public static class ImportEndpoints
             catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
             {
                 // Another upload took the place between the question above and this insert.
-                return Error("import_in_progress", StatusCodes.Status409Conflict);
+                return ApiResults.Error(StatusCodes.Status409Conflict, "import_in_progress");
             }
 
             var refused = await ReceiveFileAsync(http, options, importId, logger, cancellationToken);
@@ -198,7 +198,7 @@ public static class ImportEndpoints
             return Results.Ok(new OpenImport(false, null));
         }
 
-        var mine = Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) && active.UserId == userId;
+        var mine = active.UserId == http.UserId();
         return Results.Ok(new OpenImport(true, mine ? active.Id : null));
     }
 
@@ -252,13 +252,13 @@ public static class ImportEndpoints
             if (size == 0)
             {
                 File.Delete(path);
-                return Error("import_empty", StatusCodes.Status400BadRequest);
+                return ApiResults.Error(StatusCodes.Status400BadRequest, "import_empty");
             }
 
             if (!await JexArchive.LooksLikeTarAsync(path, cancellationToken))
             {
                 File.Delete(path);
-                return Error("import_invalid", StatusCodes.Status400BadRequest);
+                return ApiResults.Error(StatusCodes.Status400BadRequest, "import_invalid");
             }
 
             return null;
@@ -281,7 +281,7 @@ public static class ImportEndpoints
         var import = await db.Imports.AsNoTracking().SingleOrDefaultAsync(i => i.Id == importId, cancellationToken);
         if (import is null)
         {
-            return Error("not_found", StatusCodes.Status404NotFound);
+            return ApiResults.Error(StatusCodes.Status404NotFound, "not_found");
         }
 
         var ended = import.State is ImportStates.Completed or ImportStates.Failed;
@@ -322,7 +322,5 @@ public static class ImportEndpoints
         return total;
     }
 
-    private static IResult TooLarge() => Error("import_too_large", StatusCodes.Status413PayloadTooLarge);
-
-    private static IResult Error(string code, int status) => Results.Json(new ApiError(code), statusCode: status);
+    private static IResult TooLarge() => ApiResults.Error(StatusCodes.Status413PayloadTooLarge, "import_too_large");
 }

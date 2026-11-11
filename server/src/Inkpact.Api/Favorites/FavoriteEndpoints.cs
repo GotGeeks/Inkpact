@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Inkpact.Api.Auth;
 using Inkpact.Api.Pages;
 using Inkpact.Api.Permissions;
@@ -41,10 +40,6 @@ public static class FavoriteEndpoints
         return app;
     }
 
-    private static Guid UserId(HttpContext http) =>
-        Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : Guid.Empty;
-
-    private static IResult Error(int status, string code) => Results.Json(new ApiError(code), statusCode: status);
 
     /// <summary>Takes the person's user row for the rest of the transaction: their changes here run one at a time.</summary>
     private static Task LockUserAsync(InkpactDbContext db, Guid userId, CancellationToken cancellationToken) =>
@@ -53,7 +48,7 @@ public static class FavoriteEndpoints
     private static async Task<IResult> Star(
         Guid pageId, HttpContext http, InkpactDbContext db, TreeService tree, TimeProvider time, CancellationToken cancellationToken)
     {
-        var userId = UserId(http);
+        var userId = http.UserId();
         var workspaceId = await db.Pages.AsNoTracking().Where(p => p.Id == pageId).Select(p => p.WorkspaceId).SingleAsync(cancellationToken);
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -63,7 +58,7 @@ public static class FavoriteEndpoints
         // from the page alone, not the whole workspace's tree.
         if (!await tree.IsLiveAsync(pageId, cancellationToken))
         {
-            return Error(StatusCodes.Status409Conflict, "page_in_trash");
+            return ApiResults.Error(StatusCodes.Status409Conflict, "page_in_trash");
         }
 
         if (await db.Favorites.AnyAsync(f => f.UserId == userId && f.PageId == pageId, cancellationToken))
@@ -75,7 +70,7 @@ public static class FavoriteEndpoints
             f => f.UserId == userId && db.Pages.Any(p => p.Id == f.PageId && p.WorkspaceId == workspaceId), cancellationToken);
         if (count >= MaxFavorites)
         {
-            return Error(StatusCodes.Status409Conflict, "too_many_favorites");
+            return ApiResults.Error(StatusCodes.Status409Conflict, "too_many_favorites");
         }
 
         db.Favorites.Add(new Favorite { UserId = userId, PageId = pageId, CreatedAt = time.GetUtcNow() });
@@ -86,7 +81,7 @@ public static class FavoriteEndpoints
 
     private static async Task<IResult> Unstar(Guid pageId, HttpContext http, InkpactDbContext db, CancellationToken cancellationToken)
     {
-        var userId = UserId(http);
+        var userId = http.UserId();
         await db.Favorites.Where(f => f.UserId == userId && f.PageId == pageId).ExecuteDeleteAsync(cancellationToken);
         return Results.NoContent();
     }
@@ -94,7 +89,7 @@ public static class FavoriteEndpoints
     /// <summary>The ids of the person's favorite live pages (as the tree shows them: <c>live_pages</c>), in starring order.</summary>
     private static async Task<IResult> GetFavorites(Guid workspaceId, HttpContext http, InkpactDbContext db, CancellationToken cancellationToken)
     {
-        var userId = UserId(http);
+        var userId = http.UserId();
         var ids = await db.Database.SqlQuery<Guid>($"""
             SELECT f.page_id AS "Value"
             FROM favorites f JOIN live_pages({workspaceId}) live ON live.page_id = f.page_id
@@ -107,7 +102,7 @@ public static class FavoriteEndpoints
     private static async Task<IResult> Visit(
         Guid pageId, HttpContext http, InkpactDbContext db, TimeProvider time, CancellationToken cancellationToken)
     {
-        var userId = UserId(http);
+        var userId = http.UserId();
         var workspaceId = await db.Pages.AsNoTracking().Where(p => p.Id == pageId).Select(p => p.WorkspaceId).SingleAsync(cancellationToken);
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -135,7 +130,7 @@ public static class FavoriteEndpoints
     /// <summary>The person's opened live pages, newest first, at most <see cref="MaxVisits"/>.</summary>
     private static async Task<IResult> GetRecent(Guid workspaceId, HttpContext http, InkpactDbContext db, CancellationToken cancellationToken)
     {
-        var userId = UserId(http);
+        var userId = http.UserId();
         var rows = await db.Database.SqlQuery<VisitRow>($"""
             SELECT v.page_id AS "PageId", v.opened_at AS "OpenedAt"
             FROM page_visits v JOIN live_pages({workspaceId}) live ON live.page_id = v.page_id

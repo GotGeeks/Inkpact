@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Inkpact.Api.Auth;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +22,7 @@ public static class WorkspaceEndpoints
     /// <summary>The workspaces the signed-in user belongs to, with the role they have in each.</summary>
     private static async Task<IResult> ListWorkspaces(HttpContext http, InkpactDbContext db, CancellationToken cancellationToken)
     {
-        var userId = Guid.Parse(http.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = http.UserId();
         var memberships = await db.WorkspaceMembers.AsNoTracking()
             .Where(m => m.UserId == userId)
             .OrderBy(m => m.Workspace!.Name)
@@ -33,7 +33,7 @@ public static class WorkspaceEndpoints
 
     private static async Task<IResult> GetWorkspace(Guid workspaceId, HttpContext http, InkpactDbContext db, IPermissionService permissions, CancellationToken cancellationToken)
     {
-        var userId = Guid.Parse(http.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = http.UserId();
         var name = await db.Workspaces.AsNoTracking().Where(w => w.Id == workspaceId).Select(w => w.Name).SingleAsync(cancellationToken);
         var role = await permissions.GetWorkspaceRoleAsync(userId, workspaceId, cancellationToken);
         return Results.Ok(new WorkspaceSummary(workspaceId, name, RoleName(role)));
