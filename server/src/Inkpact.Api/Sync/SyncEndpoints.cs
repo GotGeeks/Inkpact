@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Inkpact.Api.Auth;
 using Inkpact.Api.Permissions;
 using Microsoft.AspNetCore.Authentication;
@@ -52,7 +51,7 @@ public static class SyncEndpoints
             return Results.Json(new ApiError("origin_invalid"), statusCode: StatusCodes.Status403Forbidden);
         }
 
-        var userId = Guid.Parse(http.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = http.UserId();
         // A persisted document belongs to the account that opened it. The cookie may change in another tab between
         // the client's session check and this upgrade, so bind new clients to that account at the handshake too.
         var userProtocols = http.WebSockets.WebSocketRequestedProtocols

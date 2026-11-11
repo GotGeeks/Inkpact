@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Inkpact.Api.Auth;
 using Inkpact.Api.Permissions;
 using Inkpact.Data.Entities;
@@ -42,7 +41,7 @@ public static class ExportEndpoints
         ILogger<ExportService> logger,
         CancellationToken cancellationToken)
     {
-        var userId = Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : (Guid?)null;
+        Guid? userId = http.UserId();
 
         async Task<Stream> StartAsync(string fileName, CancellationToken token)
         {

@@ -44,7 +44,7 @@ public static class PermissionEndpointExtensions
                 if (!Guid.TryParse(http.Request.RouteValues[requirement.RouteParameter]?.ToString(), out var id)
                     || !Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 {
-                    return NotFound();
+                    return ApiResults.NotFound();
                 }
 
                 var permissions = http.RequestServices.GetRequiredService<IPermissionService>();
@@ -61,13 +61,12 @@ public static class PermissionEndpointExtensions
                 // Some access, but not enough: 403.
                 if (role == WorkspaceRole.None)
                 {
-                    return NotFound();
+                    return ApiResults.NotFound();
                 }
 
                 return role < requirement.MinimumRole
-                    ? Results.Json(new ApiError("forbidden"), statusCode: StatusCodes.Status403Forbidden)
+                    ? ApiResults.Error(StatusCodes.Status403Forbidden, "forbidden")
                     : await next(context);
             });
 
-    private static IResult NotFound() => Results.Json(new ApiError("not_found"), statusCode: StatusCodes.Status404NotFound);
 }

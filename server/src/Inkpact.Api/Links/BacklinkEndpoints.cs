@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Inkpact.Api.Auth;
 using Inkpact.Api.Pages;
 using Inkpact.Api.Permissions;
 using Inkpact.Data;
@@ -27,7 +27,7 @@ public static class BacklinkEndpoints
     private static async Task<IResult> GetBacklinks(
         Guid pageId, HttpContext http, InkpactDbContext db, IPermissionService permissions, CancellationToken cancellationToken)
     {
-        var userId = Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsed) ? parsed : Guid.Empty;
+        var userId = http.UserId();
 
         // The page itself is never its own backlink, whatever the index holds.
         var sources = await db.PageLinks.AsNoTracking()

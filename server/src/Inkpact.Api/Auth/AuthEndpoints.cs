@@ -15,9 +15,6 @@ using Npgsql;
 
 namespace Inkpact.Api.Auth;
 
-/// <summary>An error the client translates: a stable code, and the field it belongs to when there is one.</summary>
-public sealed record ApiError(string Code, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Field = null);
-
 public sealed record SetupRequest(string? SetupCode, string? Email, string? DisplayName, string? Password, string? WorkspaceName);
 
 public sealed record LoginRequest(string? Email, string? Password);
@@ -65,12 +62,12 @@ public static class AuthEndpoints
     {
         if (await db.Users.AnyAsync(cancellationToken))
         {
-            return Error(StatusCodes.Status409Conflict, "setup_not_available");
+            return ApiResults.Error(StatusCodes.Status409Conflict, "setup_not_available");
         }
 
         if (!setupCode.Matches(request.SetupCode))
         {
-            return Error(StatusCodes.Status400BadRequest, "setup_code_invalid", "setupCode");
+            return ApiResults.Error(StatusCodes.Status400BadRequest, "setup_code_invalid", "setupCode");
         }
 
         var email = NormalizeEmail(request.Email);
@@ -80,22 +77,22 @@ public static class AuthEndpoints
 
         if (email is null)
         {
-            return Error(StatusCodes.Status400BadRequest, "email_invalid", "email");
+            return ApiResults.Error(StatusCodes.Status400BadRequest, "email_invalid", "email");
         }
 
         if (displayName.Length is 0 or > MaxNameLength)
         {
-            return Error(StatusCodes.Status400BadRequest, "display_name_invalid", "displayName");
+            return ApiResults.Error(StatusCodes.Status400BadRequest, "display_name_invalid", "displayName");
         }
 
         if (workspaceName.Length is 0 or > MaxNameLength)
         {
-            return Error(StatusCodes.Status400BadRequest, "workspace_name_invalid", "workspaceName");
+            return ApiResults.Error(StatusCodes.Status400BadRequest, "workspace_name_invalid", "workspaceName");
         }
 
         if (PasswordPolicy.Validate(password, email) is { } passwordError)
         {
-            return Error(StatusCodes.Status400BadRequest, passwordError, "password");
+            return ApiResults.Error(StatusCodes.Status400BadRequest, passwordError, "password");
         }
 
         // The slow part happens before the transaction opens.
@@ -110,7 +107,7 @@ public static class AuthEndpoints
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
             if (await db.Users.AnyAsync(cancellationToken))
             {
-                return Error(StatusCodes.Status409Conflict, "setup_not_available");
+                return ApiResults.Error(StatusCodes.Status409Conflict, "setup_not_available");
             }
 
             db.Users.Add(user);
@@ -123,7 +120,7 @@ public static class AuthEndpoints
         }
         catch (Exception exception) when (IsSerializationOrUniqueViolation(exception))
         {
-            return Error(StatusCodes.Status409Conflict, "setup_not_available");
+            return ApiResults.Error(StatusCodes.Status409Conflict, "setup_not_available");
         }
 
         await SignIn(http, user);
@@ -151,7 +148,7 @@ public static class AuthEndpoints
             hasher.VerifyDummy(password);
             await audit.WriteAsync(http, AuditEventTypes.LoginLocked, email: Typed(request.Email), cancellationToken: cancellationToken);
             http.Response.Headers.RetryAfter = RetryAfterSeconds(lockedFor);
-            return Error(StatusCodes.Status429TooManyRequests, "login_locked");
+            return ApiResults.Error(StatusCodes.Status429TooManyRequests, "login_locked");
         }
 
         var user = email is null
@@ -168,7 +165,7 @@ public static class AuthEndpoints
 
             await throttle.RecordFailureAsync(key, cancellationToken);
             await audit.WriteAsync(http, AuditEventTypes.LoginFailed, user?.Id, Typed(request.Email), cancellationToken: cancellationToken);
-            return Error(StatusCodes.Status401Unauthorized, "invalid_credentials");
+            return ApiResults.Error(StatusCodes.Status401Unauthorized, "invalid_credentials");
         }
 
         if (hasher.NeedsRehash(user.PasswordHash))
@@ -185,7 +182,7 @@ public static class AuthEndpoints
 
     private static async Task<IResult> Logout(HttpContext http, IAuditLog audit, CancellationToken cancellationToken)
     {
-        await audit.WriteAsync(http, AuditEventTypes.Logout, GetUserId(http.User), cancellationToken: cancellationToken);
+        await audit.WriteAsync(http, AuditEventTypes.Logout, http.UserId(), cancellationToken: cancellationToken);
         // The cookie handler removes this session's row from the store.
         await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Results.NoContent();
@@ -193,7 +190,7 @@ public static class AuthEndpoints
 
     private static async Task<IResult> LogoutEverywhere(HttpContext http, PostgresTicketStore store, IAuditLog audit, CancellationToken cancellationToken)
     {
-        var userId = GetUserId(http.User);
+        var userId = http.UserId();
         await audit.WriteAsync(http, AuditEventTypes.LogoutEverywhere, userId, cancellationToken: cancellationToken);
         await store.RemoveAllForUserAsync(userId);
         await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -223,14 +220,12 @@ public static class AuthEndpoints
             return null;
         }
 
-        var id = GetUserId(http.User);
+        var id = http.UserId();
         return await db.Users.AsNoTracking()
             .Where(u => u.Id == id)
             .Select(u => new CurrentUser(u.Id, u.Email, u.DisplayName, u.IsAdmin))
             .SingleOrDefaultAsync(cancellationToken);
     }
-
-    private static Guid GetUserId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     /// <summary>What was typed, shortened to what the audit table holds.</summary>
     private static string? Typed(string? email)
@@ -273,48 +268,4 @@ public static class AuthEndpoints
 
         return false;
     }
-
-    private static IResult Error(int status, string code, string? field = null) =>
-        Results.Json(new ApiError(code, field), statusCode: status);
-}
-
-/// <summary>
-/// API responses are never cached. Every state-changing API call must be JSON: a cross-site form or fetch cannot
-/// send that without a CORS preflight, which the app never allows. The one exception is an attachment upload
-/// (<see cref="AcceptsFileUpload"/>), which takes the raw file, and only as <c>application/octet-stream</c>.
-/// </summary>
-public static class JsonOnlyApi
-{
-    public static IApplicationBuilder UseJsonOnlyApi(this IApplicationBuilder app) =>
-        app.Use((context, next) =>
-        {
-            var request = context.Request;
-            if (request.Path.StartsWithSegments("/api"))
-            {
-                // Answers about who is signed in must never come from a cache. A file download sets its own
-                // header (revalidated on every use); its error answers still get this one.
-                context.Response.OnStarting(() =>
-                {
-                    var headers = context.Response.Headers;
-                    if (!(context.ServesUserFile() && headers.CacheControl.Count > 0))
-                    {
-                        headers.CacheControl = "no-store";
-                    }
-
-                    return Task.CompletedTask;
-                });
-            }
-
-            var expected = context.AcceptsFileUpload() ? AcceptsFileUpload.ContentType : "application/json";
-            var changesState = !HttpMethods.IsGet(request.Method) && !HttpMethods.IsHead(request.Method) && !HttpMethods.IsOptions(request.Method);
-            if (changesState
-                && request.Path.StartsWithSegments("/api")
-                && !(request.ContentType?.StartsWith(expected, StringComparison.OrdinalIgnoreCase) ?? false))
-            {
-                context.Response.StatusCode = StatusCodes.Status415UnsupportedMediaType;
-                return context.Response.WriteAsJsonAsync(new ApiError("unsupported_media_type"));
-            }
-
-            return next(context);
-        });
 }
