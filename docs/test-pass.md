@@ -86,6 +86,7 @@ This file collects everything that needs a person, a phone or the Unraid box. Ev
 - [ ] With the real Joplin library, search and switch pages quickly, and type in the editor with the palette closed: neither action should feel held up by the palette.
 
 ### B.5: version history, restore and retention
+_Not built yet: only the schema, retention job and policy API are in main. These checks wait for B.5's capture, preview, restore and settings interface._
 - [ ] On the laptop, change a page's title and content, wait for a version, preview and restore an earlier one, then restore the before-restore version. Check a picture and an internal link, and confirm tags and the page's place did not change.
 - [ ] Open the same page on the phone and laptop. Edit it on the phone with the tab kept open and offline, restore an older version on the laptop, then reconnect the phone: the offline text remains in the page or an announced copy. Also try restoring while the other device is editing.
 - [ ] In a spare test workspace, change the history windows and cap, turn history off and on, reload, and check the warning and availability of older versions. A non-owner cannot change the setting; do not use the real library to test destructive limits.

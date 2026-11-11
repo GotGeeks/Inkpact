@@ -34,4 +34,14 @@ public class HistoryExtensionsTests
         options.RetentionEnabled.ShouldBeFalse();
         options.RetentionInterval.ShouldBe(TimeSpan.FromMinutes(30));
     }
+
+    [Fact]
+    public void The_retention_worker_is_off_unless_configured_until_versions_are_captured()
+    {
+        var services = new ServiceCollection().AddHistory(new ConfigurationBuilder().Build());
+        var options = services.Single(s => s.ServiceType == typeof(HistoryOptions)).ImplementationInstance.ShouldBeOfType<HistoryOptions>();
+
+        options.RetentionEnabled.ShouldBeFalse();
+        options.RetentionInterval.ShouldBe(TimeSpan.FromHours(1));
+    }
 }
