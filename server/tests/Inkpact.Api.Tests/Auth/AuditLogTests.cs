@@ -110,11 +110,21 @@ public class AuditLogTests(PostgresFixture postgres) : IClassFixture<PostgresFix
     }
 
     [Fact]
-    public async Task A_very_long_typed_address_is_cut_to_what_the_table_holds()
+    public async Task A_very_long_typed_address_is_not_kept()
     {
         await NewClient().LoginAsync(email: new string('a', 600) + "@example.com", password: "x");
 
-        (await EventsAsync()).ShouldHaveSingleItem().Email!.Length.ShouldBe(320);
+        (await EventsAsync()).ShouldHaveSingleItem().Email.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Something_typed_in_the_email_field_that_is_not_an_address_is_not_kept()
+    {
+        await NewClient().SetupAsync();
+        await NewClient().LoginAsync(email: "my secret password", password: "wrong password");
+
+        var failure = (await EventsAsync()).Single(e => e.Type == AuditEventTypes.LoginFailed);
+        failure.Email.ShouldBeNull();
     }
 
     [Fact]
