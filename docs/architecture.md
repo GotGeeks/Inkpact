@@ -2,7 +2,7 @@
 
 Oct 22, 2026 · @Jos · v1.1, Oct 24, 2026: roadmap split into runs, model and effort per run added
 
-Frozen as v1 on 22 October 2026: this plan changes only when implementation uncovers a problem. v1.1 changes only how the work is executed (runs, models, effort), not what is built.
+Frozen as v1 on 22 October 2026: this plan changes only when implementation uncovers a problem. v1.1 changes only how the work is executed (runs, models, effort), not what is built. v1.2, Nov 11, 2026: the project review (`docs/review-2026-11-11.md`) split run B.5 into what is merged and what is not, and added runs B.9, B.10 and 2.9b and a line to run 2.2 for work that had no run.
 
 ## Vision and goals
 
@@ -213,10 +213,13 @@ The smallest version you can use daily instead of Joplin. Build login, tree, edi
 | B.2 | Tags in the UI (already stored by the import), with add/remove set operations | S·med |
 | B.3 | Favorites and recently opened notes; light and dark theme following the system setting | S·low |
 | B.4 | Quick switcher and command palette (Ctrl+K), keyboard shortcuts | S·med |
-| B.5 | Version history with restore and a retention setting; retention job | O·high → S·high |
+| B.5 | Version history, foundation only (merged in #122): the `page_versions` schema, the per-workspace policy API, the retention job (off by default) and the snapshot builder. Nothing captures a version yet | O·high → S·high |
+| B.5b | The rest of version history, after an Opus review of #122: automatic capture, the history panel with preview, restore with its safety version, and the owner's retention setting in the interface. The card is [`docs/runs/B.5.md`](runs/B.5.md) | O·high → S·high |
 | B.6 | PWA: installable, with an offline cache and IndexedDB Yjs state | O·high → S·med |
 | B.7 | Health endpoint, structured logging, documented backup and restore (pg\_dump plus the attachments volume), admin password reset via CLI | S·low |
 | B.8 | Release pipeline: release-please, versioned and signed images with SBOM and provenance, Unraid template and its automatic update, update check, migration upgrade test in CI | S·med |
+| B.9 | Account settings (added by the review of 2026-11-11, `docs/review-2026-11-11.md`): change your own password (the current one asked, every other session ended), change the display name, and the list of signed-in devices with "sign out this device". No run had these, and the session table already keeps what the list needs | O·high → S·med |
+| B.10 | A limit on what live edits can make of a page (same review): the sync hub refuses an update that would take a page's stored bytes past what a client can be sent (`Sync:MaxQueuedBytes`), with an error the editor shows, so a page cannot grow until nobody can open it | O·high → S·med |
 
 **Gate** (tested in the test pass, run 2.10b; phase 2 starts without it): nothing in daily use makes you miss Joplin.
 
@@ -225,7 +228,7 @@ The smallest version you can use daily instead of Joplin. Build login, tree, edi
 | Run | Delivers | Model |
 | --- | --- | --- |
 | 2.1 | Invite users; shared workspaces with owner, editor and viewer roles | S·high |
-| 2.2 | Permission resolution as designed: one function, one recursive query, per-request cache, table-driven test of every combination | O·high → S·high |
+| 2.2 | Permission resolution as designed: one function, one recursive query, per-request cache, table-driven test of every combination. Also (review of 2026-11-11): the sync hub reads a role once, when a page is subscribed, so a change of role or a removed member must reach the sockets that are open (re-check the subscriptions of that user, as logout closes their sockets) | O·high → S·high |
 | 2.3 | User shares: share dialog on any notebook or note in two clicks, "Shared with me" section in the sidebar, share entries in the audit log | S·high |
 | 2.4 | Share links for people without an account: view-only or edit, optional expiry and password, revocable | O·high → S·high |
 | 2.5 | To-do notes and the to-do overview: overdue, today, upcoming, completed, filterable per notebook | S·med |
@@ -233,6 +236,7 @@ The smallest version you can use daily instead of Joplin. Build login, tree, edi
 | 2.7 | Live cursors and presence via Yjs awareness; per-user history: who changed what, and when | S·med |
 | 2.8 | Optional OIDC login (Authentik, Authelia, Keycloak) | O·high → S·med |
 | 2.9 | Admin page: users, storage use, backups; per-user quotas and storage reports | S·med |
+| 2.9b | Deleting for good (added by the review of 2026-11-11; both were deferred without a run): trash retention (30 days by default, configurable) with "delete now" in the trash, and the daily job that removes stored files no page refers to after 30 days. Before it: a pasted attachment gets a row of its own on the page it is pasted into (see "Attachments") | O·high → S·high |
 | 2.10 | Before the first release: metrics endpoint, password reset by email, threat model document | O·high (threat model), S·med (rest) |
 | 2.10b | Manual test pass: every check in `docs/test-pass.md` and the gates of phases 1A, 1B and 2, on the Unraid box behind Traefik, a phone and the laptop; what it finds becomes bug-fix runs before 2.11. Then Joplin is retired | S·low to plan the pass; the fixes as 1.21+ |
 | 2.11 | First public release (v0.x): self-hosting docs, demo mode with screenshots, performance targets checked against the seeded data set | S·med |
