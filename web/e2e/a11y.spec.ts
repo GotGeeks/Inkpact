@@ -431,6 +431,8 @@ test('a page with the pages that link to it, and a link to a page in the trash',
 
   // The server indexes the links when it compacts the page, a few seconds after the import (see playwright.config.ts).
   await expect(async () => {
+    // Finish startup before reloading; aborting its fetches produces access-control errors in WebKit.
+    await expect(page.getByTestId('sync-status')).toHaveAttribute('data-state', 'live')
     await page.reload()
     await expect(page.getByTestId('backlinks')).toContainText(jex.titles.first, { timeout: 4_000 })
   }).toPass({ timeout: 90_000, intervals: [2_000] })

@@ -69,6 +69,8 @@ test('[[ makes a link to a page, which then lists the page it is on under "Linke
   // The server indexes the link when the page is compacted: the other page lists this one.
   await openPage(page, targetTitle)
   await expect(async () => {
+    // Finish startup before reloading; aborting its fetches produces access-control errors in WebKit.
+    await expect(page.getByTestId('sync-status')).toHaveAttribute('data-state', 'live')
     await page.reload()
     await expect(page.getByTestId('backlinks')).toContainText(sourceTitle, { timeout: 4_000 })
   }).toPass({ timeout: 90_000, intervals: [2_000] })

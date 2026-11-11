@@ -32,6 +32,7 @@ export async function openClient(
   testInfo: TestInfo,
   baseURL: string | undefined,
   pageId: string,
+  options: { timeout?: number } = {},
 ): Promise<Client> {
   const context = await browser.newContext({
     ...(testInfo.project.use as BrowserContextOptions),
@@ -54,8 +55,8 @@ export async function openClient(
   await page.goto(`/p/${pageId}`)
   const status = page.getByTestId('sync-status')
   const editor = page.getByTestId('editor').locator('.ProseMirror')
-  await expect(status).toHaveAttribute('data-state', 'live')
-  await expect(editor).toHaveAttribute('contenteditable', 'true')
+  await expect(status).toHaveAttribute('data-state', 'live', options)
+  await expect(editor).toHaveAttribute('contenteditable', 'true', options)
   return {
     context,
     page,
