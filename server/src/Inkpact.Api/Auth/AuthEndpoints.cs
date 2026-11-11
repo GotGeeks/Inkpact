@@ -227,12 +227,11 @@ public static class AuthEndpoints
             .SingleOrDefaultAsync(cancellationToken);
     }
 
-    /// <summary>What was typed, shortened to what the audit table holds.</summary>
-    private static string? Typed(string? email)
-    {
-        var trimmed = email?.Trim();
-        return string.IsNullOrEmpty(trimmed) ? null : trimmed.Length > MaxEmailLength ? trimmed[..MaxEmailLength] : trimmed;
-    }
+    /// <summary>
+    /// What was typed, but only when it is an email address: people sometimes type a password into this field,
+    /// and the audit table must not keep it.
+    /// </summary>
+    private static string? Typed(string? email) => NormalizeEmail(email) is null ? null : email!.Trim();
 
     private static string RetryAfterSeconds(TimeSpan wait) =>
         Math.Max(1, (int)Math.Ceiling(wait.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
