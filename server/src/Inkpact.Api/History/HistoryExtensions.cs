@@ -2,7 +2,10 @@ namespace Inkpact.Api.History;
 
 internal sealed class HistoryOptions
 {
-    public bool RetentionEnabled { get; set; } = true;
+    /// <summary>
+    /// Off until versions are captured (run B.5): with nothing to prune, the job would only read every workspace each round.
+    /// </summary>
+    public bool RetentionEnabled { get; set; }
 
     public TimeSpan RetentionInterval { get; set; } = TimeSpan.FromHours(1);
 }

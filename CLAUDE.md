@@ -79,7 +79,7 @@ These hold for every change. Never weaken one to make something pass; stop and a
 ## Backend conventions
 
 - .NET 10, minimal APIs, nullable reference types on, warnings as errors.
-- EF Core with Npgsql. Migrations are the only way to change the schema. Raw SQL only for recursive tree queries (also the search query, which reads the visible tree through the `live_pages` function) and for the compaction's advisory lock and its `for update` read of the snapshot row.
+- EF Core with Npgsql. Migrations are the only way to change the schema. Raw SQL only for recursive tree queries (also the search query, which reads the visible tree through the `live_pages` function) and for the compaction's advisory lock and its `for update` read of the snapshot row, and the history's advisory lock per workspace.
 - Every endpoint declares an authorisation policy; the single permission service resolves roles (rules in architecture → "Permission resolution").
 - Tests: xUnit, NSubstitute, Shouldly (not FluentAssertions), Testcontainers with real Postgres. No in-memory database provider.
 - Test classes run in parallel (6 at a time, `xunit.runner.json`). A class that needs Postgres takes `IClassFixture<PostgresFixture>` (one shared container, a database of its own per test); never a shared collection, which would run its classes one after another. A test that measures time gets `[Trait("Category", "Slow")]` and `[Collection(SlowCollection.Name)]`, so it runs after the rest, alone.
