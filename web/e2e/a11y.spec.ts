@@ -392,6 +392,52 @@ test('the search dialog, with results and without', async ({ page }, testInfo) =
   await scan(page, testInfo, 'search without results')
 })
 
+test('the palette: pages, tags, commands, the shortcut help and a list that could not be read', async ({
+  page,
+}, testInfo) => {
+  await openNewPage(page, unique(testInfo, 'Palette'))
+  async function openPalette() {
+    const open = page.getByTestId('search-open')
+    if (await open.isVisible()) await open.click()
+    else await page.getByTestId('search-row').click()
+    await expect(page.getByTestId('search-dialog')).toBeVisible()
+  }
+
+  await openPalette()
+  await expect(page.getByRole('group', { name: 'Recently opened' })).toBeVisible()
+  await expect(page.getByTestId('search-results')).not.toHaveAttribute('aria-busy', 'true')
+  await scan(page, testInfo, 'palette pages')
+
+  await page.getByRole('tab', { name: 'Tags' }).click()
+  await expect(page.locator('#palette-tags-results')).not.toHaveAttribute('aria-busy', 'true')
+  await scan(page, testInfo, 'palette tags')
+
+  await page.getByRole('tab', { name: 'Commands' }).click()
+  await expect(page.locator('#palette-commands-results').getByRole('option').first()).toBeVisible()
+  await scan(page, testInfo, 'palette commands')
+
+  await page.getByTestId('palette-shortcut-help').click()
+  await expect(page.getByRole('button', { name: 'Back to the palette' })).toBeVisible()
+  await scan(page, testInfo, 'palette shortcut help')
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('search-dialog')).toBeHidden()
+
+  await page.route('**/api/workspaces/*/favorites', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: '{"code":"server_error"}',
+        })
+      : route.continue(),
+  )
+  await openPalette()
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Favorites could not be loaded.' }),
+  ).toBeVisible()
+  await scan(page, testInfo, 'palette with a list that could not be read')
+})
+
 test('the move dialog', async ({ page }, testInfo) => {
   const row = await (async () => {
     await page.goto('/')

@@ -8,6 +8,8 @@ import {
   DialogTitle,
   ListboxContent,
   ListboxFilter,
+  ListboxGroup,
+  ListboxGroupLabel,
   ListboxItem,
   ListboxRoot,
   TabsContent,
@@ -506,19 +508,19 @@ const markClass = 'rounded-sm bg-primary-container/30 text-inherit'
                     data-testid="search-results"
                   >
                     <template v-if="text.length === 0">
-                      <section
+                      <!-- Groups of the listbox, named by their labels: a section or heading inside a listbox is not allowed. -->
+                      <ListboxGroup
                         v-if="
                           quickFavorites.length ||
                           (favoritesReady && recentReady && quickRecent.length > 0)
                         "
-                        aria-labelledby="quick-favorites-heading"
+                        data-testid="palette-favorites"
                       >
-                        <h2
-                          id="quick-favorites-heading"
+                        <ListboxGroupLabel
                           class="px-space-md py-space-xs text-label-xs text-on-surface-variant"
                         >
                           {{ t('palette.favorites') }}
-                        </h2>
+                        </ListboxGroupLabel>
                         <ListboxItem
                           v-for="page in quickFavorites"
                           :key="`favorite-${page.id}`"
@@ -541,20 +543,19 @@ const markClass = 'rounded-sm bg-primary-container/30 text-inherit'
                         >
                           {{ t('palette.noFavorites') }}
                         </p>
-                      </section>
-                      <section
+                      </ListboxGroup>
+                      <ListboxGroup
                         v-if="
                           quickRecent.length ||
                           (recentReady && favoritesReady && quickFavorites.length > 0)
                         "
-                        aria-labelledby="quick-recent-heading"
+                        data-testid="palette-recent"
                       >
-                        <h2
-                          id="quick-recent-heading"
+                        <ListboxGroupLabel
                           class="px-space-md py-space-xs text-label-xs text-on-surface-variant"
                         >
                           {{ t('palette.recent') }}
-                        </h2>
+                        </ListboxGroupLabel>
                         <ListboxItem
                           v-for="page in quickRecent"
                           :key="`recent-${page.id}`"
@@ -577,7 +578,7 @@ const markClass = 'rounded-sm bg-primary-container/30 text-inherit'
                         >
                           {{ t('palette.noRecent') }}
                         </p>
-                      </section>
+                      </ListboxGroup>
                     </template>
 
                     <ListboxItem
@@ -634,7 +635,11 @@ const markClass = 'rounded-sm bg-primary-container/30 text-inherit'
                       >{{ t('palette.favoritesFailed') }}
                       {{ errorMessage(favorites.loadError) }}</span
                     >
-                    <button class="shrink-0 underline" type="button" @click="retryPageLists">
+                    <button
+                      class="min-h-11 shrink-0 rounded px-space-sm underline focus-visible:outline-2 focus-visible:outline-primary md:min-h-9"
+                      type="button"
+                      @click="retryPageLists"
+                    >
                       {{ t('palette.retry') }}
                     </button>
                   </div>
@@ -646,7 +651,11 @@ const markClass = 'rounded-sm bg-primary-container/30 text-inherit'
                     <span
                       >{{ t('palette.recentFailed') }} {{ errorMessage(recent.loadError) }}</span
                     >
-                    <button class="shrink-0 underline" type="button" @click="retryPageLists">
+                    <button
+                      class="min-h-11 shrink-0 rounded px-space-sm underline focus-visible:outline-2 focus-visible:outline-primary md:min-h-9"
+                      type="button"
+                      @click="retryPageLists"
+                    >
                       {{ t('palette.retry') }}
                     </button>
                   </div>
@@ -656,7 +665,11 @@ const markClass = 'rounded-sm bg-primary-container/30 text-inherit'
                     role="alert"
                   >
                     <span>{{ t('palette.treeFailed') }}</span>
-                    <button class="shrink-0 underline" type="button" @click="retryPageLists">
+                    <button
+                      class="min-h-11 shrink-0 rounded px-space-sm underline focus-visible:outline-2 focus-visible:outline-primary md:min-h-9"
+                      type="button"
+                      @click="retryPageLists"
+                    >
                       {{ t('palette.retry') }}
                     </button>
                   </div>
@@ -778,7 +791,11 @@ const markClass = 'rounded-sm bg-primary-container/30 text-inherit'
                     class="flex items-center justify-between gap-space-md p-space-md text-body-sm text-error"
                   >
                     <span>{{ t('palette.tagsFailed') }} {{ errorMessage(tags.loadError) }}</span>
-                    <button class="shrink-0 underline" type="button" @click="retryTags">
+                    <button
+                      class="min-h-11 shrink-0 rounded px-space-sm underline focus-visible:outline-2 focus-visible:outline-primary md:min-h-9"
+                      type="button"
+                      @click="retryTags"
+                    >
                       {{ t('palette.retry') }}
                     </button>
                   </div>

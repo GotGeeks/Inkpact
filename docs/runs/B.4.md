@@ -107,6 +107,11 @@ These are the planning defaults for this run. They keep the existing search inst
 - Verification: `pnpm check:push` passed (1,985 non-slow backend tests), followed by full `pnpm check`: lint/type checks, web (74 files/1,490 tests), sidecar (7 files/152 tests), .NET formatting, the unfiltered backend suite including slow timing tests (1,989 passed, none skipped), and all Playwright projects (417 passed, 81 skipped). Playwright built the production bundle and ran against the real server with Postgres; CSP assertions remained enabled.
 - The first full run exposed a palette test assumption: its tag is not necessarily among the first eight in a populated workspace. The test now searches for its unique tag before selecting it; the subsequent full run passed.
 - Deferred: cross-platform layout, AltGraph, Mac Option, mobile on-screen keyboard and screen-reader checks remain in the manual test pass below; automated results do not certify those combinations.
+- **Review fixes (after merge, from the review of the Copilot runs):**
+  - Ctrl+Alt+K (Cmd+Option+K) now opens Commands from the editor and from fields too, the palette's own field included, where it switches to Commands. The card restricted only Ctrl+Alt+N to non-editable focus; the first build applied that rule to both.
+  - **Deviation from decision 3:** Windows reports Ctrl+Alt as AltGraph on a layout with AltGr, so the new-page shortcut never fired on US-International (AltGr+N types "ñ"). An AltGraph key is still left to text (a field or the editor), but taken outside text, where it types nothing. The test pass checks it on real layouts.
+  - The palette's Retry buttons have the 44-pixel touch target and a focus outline.
+  - Browser coverage the card asked for and the first build left out: the palette's scopes, shortcut help and a failed list in `a11y.spec.ts` (both themes, every device including 320 pixels); the empty field's recently opened pages and the saved search in `search.spec.ts`; tabs, a command, help and focus return by keyboard in `keyboard.spec.ts`; Ctrl+Alt+K from selected text in `make-links.spec.ts`; failed favorites and tags with Try again in `palette.spec.ts`.
 
 ## Out of scope
 

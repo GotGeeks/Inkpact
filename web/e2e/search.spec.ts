@@ -105,6 +105,35 @@ test('the arrow keys choose a result, and the last search is there when it opens
   await expect(page.getByRole('option')).toHaveCount(2)
 })
 
+test('an empty field offers the page opened last, no page twice, and the saved search comes back', async ({
+  page,
+}) => {
+  const token = word()
+  const visit = page.waitForResponse(
+    (r) => r.url().endsWith('/visit') && r.request().method() === 'POST',
+  )
+  const opened = await makePage(page, `Opened ${token}`)
+  await visit
+  await expect(page.getByTestId('sync-status')).toHaveAttribute('data-state', 'live')
+
+  await openSearch(page)
+  await expect(input(page)).toHaveValue('')
+  const results = page.getByTestId('search-results')
+  await expect(results.getByRole('group', { name: 'Recently opened' })).toBeVisible()
+  await expect(results.locator(`[data-page-id="${opened}"]`)).toHaveCount(1)
+  // Favorites and Recently opened together: a starred page is not listed again among the recent ones.
+  const ids = await results
+    .getByRole('option')
+    .evaluateAll((options) => options.map((option) => option.getAttribute('data-page-id')))
+  expect(new Set(ids).size).toBe(ids.length)
+
+  await input(page).fill(token)
+  await expect(page.getByRole('option')).toHaveCount(1)
+  await expect(results.getByRole('group', { name: 'Recently opened' })).toBeHidden()
+  await input(page).fill('')
+  await expect(results.locator(`[data-page-id="${opened}"]`)).toHaveCount(1)
+})
+
 test('it asks for more letters, and says when nothing is found', async ({ page }) => {
   await page.goto('/')
   await openSidebar(page)

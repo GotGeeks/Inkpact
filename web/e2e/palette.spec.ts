@@ -64,3 +64,44 @@ test('the command and new-page shortcuts open their intended actions', async ({
   await page.keyboard.press('Control+Alt+n')
   await expect(page.getByTestId('page-title')).toBeFocused()
 })
+
+test('a list that cannot be read says so with Try again, and the rest of the palette still works', async ({
+  page,
+}, testInfo) => {
+  const title = unique(testInfo.project.name)
+  await page.goto('/')
+  const row = await createPageNamed(page, title)
+  const pageId = await pageIdOf(row)
+  await row.click()
+  await closeDrawer(page)
+  await expect(page.getByTestId('page-title')).toHaveValue(title)
+
+  let failFavorites = true
+  let failTags = true
+  const refuse = { status: 500, contentType: 'application/json', body: '{"code":"server_error"}' }
+  await page.route('**/api/workspaces/*/favorites', (route) =>
+    failFavorites && route.request().method() === 'GET' ? route.fulfill(refuse) : route.continue(),
+  )
+  await page.route('**/api/workspaces/*/tags', (route) =>
+    failTags && route.request().method() === 'GET' ? route.fulfill(refuse) : route.continue(),
+  )
+
+  await openPalette(page)
+  const favoritesFailed = page
+    .getByRole('alert')
+    .filter({ hasText: 'Favorites could not be loaded.' })
+  await expect(favoritesFailed).toBeVisible()
+  // The recently opened pages were read: the page just opened is offered.
+  await expect(page.locator(`[role="option"][data-page-id="${pageId}"]`)).toHaveCount(1)
+  failFavorites = false
+  await favoritesFailed.getByRole('button', { name: 'Try again' }).click()
+  await expect(favoritesFailed).toBeHidden()
+
+  await page.getByRole('tab', { name: 'Tags' }).click()
+  const tagsFailed = page.getByRole('alert').filter({ hasText: 'Tags could not be loaded.' })
+  await expect(tagsFailed).toBeVisible()
+  failTags = false
+  await tagsFailed.getByRole('button', { name: 'Try again' }).click()
+  await expect(tagsFailed).toBeHidden()
+  await expect(page.getByRole('combobox', { name: 'Search tags' })).toBeVisible()
+})

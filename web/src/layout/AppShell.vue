@@ -217,8 +217,9 @@ async function onShortcut(event: KeyboardEvent) {
     return
   }
 
-  if (isCommandPaletteShortcut(event)) {
-    if (isEditableTarget(event.target)) return
+  const inText = isEditableTarget(event.target)
+  // From the editor and from fields too, the palette's own field included: there it switches to Commands.
+  if (isCommandPaletteShortcut(event, inText)) {
     if (drawerOpen.value) {
       event.preventDefault()
       event.stopPropagation()
@@ -233,13 +234,8 @@ async function onShortcut(event: KeyboardEvent) {
     return
   }
 
-  if (isNewPageShortcut(event)) {
-    if (
-      isEditableTarget(event.target) ||
-      hasOpenDialogOrMenu() ||
-      !tree.workspace ||
-      !tree.canEdit
-    ) {
+  if (isNewPageShortcut(event, inText)) {
+    if (inText || hasOpenDialogOrMenu() || !tree.workspace || !tree.canEdit) {
       return
     }
     event.preventDefault()
