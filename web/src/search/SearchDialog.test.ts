@@ -1,7 +1,7 @@
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RouterView } from 'vue-router'
-import { SEARCH_DEBOUNCE_MS } from '../stores/search'
+import { SEARCH_DEBOUNCE_MS, useSearchStore } from '../stores/search'
 import { jsonResponse, mountAt } from '../testing/helpers'
 import { registerLinkShortcut } from '../editor/linkShortcutRegistry'
 import { fakeTree, outline } from '../testing/treeFixtures'
@@ -250,10 +250,17 @@ describe('searching as you type', () => {
         'Weekly meeting',
         'Notebook',
       ])
-      expect(document.body.querySelector('#quick-favorites-heading')?.textContent).toBe('Favorites')
-      expect(document.body.querySelector('#quick-recent-heading')?.textContent).toBe(
-        'Recently opened',
-      )
+      // Groups of the listbox, each named by its label (a section or heading inside a listbox breaks its semantics).
+      const groupName = (testId: string) => {
+        const group = document.body.querySelector(`[data-testid="${testId}"]`)!
+        expect(group.getAttribute('role')).toBe('group')
+        return document.getElementById(group.getAttribute('aria-labelledby')!)?.textContent?.trim()
+      }
+      expect(groupName('palette-favorites')).toBe('Favorites')
+      expect(groupName('palette-recent')).toBe('Recently opened')
+      expect(
+        document.body.querySelector('[data-testid="palette-favorites"] [data-page-id="Ideas"]'),
+      ).not.toBeNull()
     })
 
     it('loads tags only when selected, filters them by accent-folded name and opens the tag route', async () => {
@@ -596,6 +603,52 @@ describe('searching as you type', () => {
         .find((button) => button.textContent?.trim() === 'Open')!
         .click()
       await vi.waitFor(() => expect(router.currentRoute.value.params.pageId).toBe('new'))
+    })
+
+    it('opens Commands with Ctrl+Alt+K from the editor, and switches to them from the palette field', async () => {
+      await shell(() => answer())
+      const editor = document.createElement('div')
+      editor.contentEditable = 'true'
+      document.body.append(editor)
+      editor.focus()
+      const key = { key: 'k', code: 'KeyK', ctrlKey: true, altKey: true, bubbles: true }
+      const fromEditor = new KeyboardEvent('keydown', { ...key, cancelable: true })
+      editor.dispatchEvent(fromEditor)
+      await flushPromises()
+      expect(fromEditor.defaultPrevented).toBe(true)
+      expect(document.body.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe(
+        'Commands',
+      )
+
+      useSearchStore().setScope('pages')
+      await flushPromises()
+      input().dispatchEvent(new KeyboardEvent('keydown', key))
+      await flushPromises()
+      expect(document.body.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe(
+        'Commands',
+      )
+      editor.remove()
+    })
+
+    it('leaves Ctrl+Alt+K to the text when the layout types a character with it (AltGr)', async () => {
+      await shell(() => answer())
+      const field = document.createElement('input')
+      document.body.append(field)
+      field.focus()
+      const event = new KeyboardEvent('keydown', {
+        key: 'k',
+        code: 'KeyK',
+        ctrlKey: true,
+        altKey: true,
+        bubbles: true,
+        cancelable: true,
+      })
+      vi.spyOn(event, 'getModifierState').mockImplementation((name) => name === 'AltGraph')
+      field.dispatchEvent(event)
+      await flushPromises()
+      expect(event.defaultPrevented).toBe(false)
+      expect(dialog()).toBeNull()
+      field.remove()
     })
 
     it('does not run the new-page shortcut from an input or while a dialog is open', async () => {

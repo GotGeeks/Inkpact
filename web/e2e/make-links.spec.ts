@@ -8,8 +8,10 @@ import { closeDrawer, createPageNamed, openSidebar, pageIdOf, rowFor } from './h
  * page after its compaction (the e2e server compacts a few seconds after the last edit, see playwright.config.ts).
  */
 
+// Random as well as the time: two workers of a project can make a page in the same millisecond, and a link to the other
+// page of the same title then fails the test.
 const unique = (testInfo: TestInfo, name: string) =>
-  `${name} ${testInfo.project.name} ${Date.now().toString(36)}`
+  `${name} ${testInfo.project.name} ${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 
 const editorBody = (page: Page) => page.getByTestId('editor').locator('.ProseMirror')
 
@@ -126,6 +128,24 @@ test('a page address typed into the text is stored as /p/<id>', async ({
 
 test.describe('Ctrl+K on selected text', () => {
   test.skip(({ isMobile }) => isMobile, 'a keyboard shortcut: the phone has the toolbar button')
+
+  test('Ctrl+Alt+K opens the commands from the text, and links nothing', async ({
+    page,
+  }, testInfo) => {
+    await newPage(page, unique(testInfo, 'Commands from text'))
+    await editorBody(page).click()
+    await page.keyboard.type('hello world')
+    await selectBack(page, 5)
+
+    await page.keyboard.press('ControlOrMeta+Alt+k')
+    await expect(page.getByTestId('search-dialog')).toBeVisible()
+    await expect(page.locator('[role="tab"][aria-selected="true"]')).toHaveText('Commands')
+    await expect(page.getByTestId('link-picker')).toBeHidden()
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('search-dialog')).toBeHidden()
+    await expect(editorBody(page)).toHaveText('hello world')
+    expect(await linksOf(page)).toEqual([])
+  })
 
   test('links it to a page or to a web address, and without a selection it opens search', async ({
     page,

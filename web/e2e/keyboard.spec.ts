@@ -177,3 +177,41 @@ test('skip link, a new page, rename, move, search, typing, export, trash and res
   await page.keyboard.press('Enter')
   await expect(page.locator('[role="treeitem"]').filter({ hasText: renamed })).toHaveCount(1)
 })
+
+test('the palette with the keyboard alone: its tabs, a command, the shortcut help, and the focus back where it was', async ({
+  page,
+}) => {
+  await page.goto('/')
+  const opener = page.getByTestId('search-row')
+  await expect(opener).toBeVisible()
+  await tabTo(page, opener)
+  await page.keyboard.press('Enter')
+  const dialog = page.getByTestId('search-dialog')
+  await expect(page.getByRole('combobox', { name: 'Search pages' })).toBeFocused()
+
+  // Back from the field to the tabs, which the arrow keys move between.
+  const pagesTab = page.getByRole('tab', { name: 'Pages' })
+  for (let i = 0; i < 5 && !(await isFocused(pagesTab)); i++) await page.keyboard.press('Shift+Tab')
+  await expect(pagesTab).toBeFocused()
+  await expectFocusShown(pagesTab)
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByRole('tab', { name: 'Tags' })).toHaveAttribute('aria-selected', 'true')
+  await page.keyboard.press('ArrowRight')
+  const commandsTab = page.getByRole('tab', { name: 'Commands' })
+  await expect(commandsTab).toHaveAttribute('aria-selected', 'true')
+
+  const commands = page.getByRole('combobox', { name: 'Search commands' })
+  await tabTo(page, commands, 5)
+  await page.keyboard.type('shortcut')
+  await expect(page.getByRole('option')).toHaveCount(1)
+  await page.keyboard.press('Enter')
+  const back = page.getByRole('button', { name: 'Back to the palette' })
+  await expect(back).toBeFocused()
+  await expect(dialog).toContainText('Ctrl+Alt+N')
+  await page.keyboard.press('Enter')
+  await expect(commands).toBeFocused()
+
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(opener).toBeFocused()
+})
