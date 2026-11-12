@@ -211,10 +211,12 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IClassFixtu
 
         await ImportAsync(Library("Changed in Joplin"));
 
-        var update = await editor.ReceiveAsync(MessageType.Update);
+        // A replacement comes as the announcement and a Sync that holds it, so that the client checks what it deletes.
+        (await editor.ReceiveAsync()).Type.ShouldBe(MessageType.Replaced);
+        var update = await editor.ReceiveAsync(MessageType.Sync);
         update.PageId.ShouldBe(plan.Id);
         // What the editor holds with the update applied.
-        (await Codec.CompactAsync([.. synced.Updates, update.Payload], default)).Text.Trim().ShouldBe("Changed in Joplin");
+        (await Codec.CompactAsync([.. synced.Updates, .. update.Updates], default)).Text.Trim().ShouldBe("Changed in Joplin");
         await editor.ExpectSilenceAsync();
     }
 
@@ -812,9 +814,11 @@ public sealed class ReimportContentTests(PostgresFixture postgres) : IClassFixtu
 
         await ImportAsync(Large("new ", 2600));
 
-        var update = await editor.ReceiveAsync(MessageType.Update);
+        // A replacement comes as the announcement and a Sync that holds it, so that the client checks what it deletes.
+        (await editor.ReceiveAsync()).Type.ShouldBe(MessageType.Replaced);
+        var update = await editor.ReceiveAsync(MessageType.Sync);
         update.PageId.ShouldBe(plan.Id);
-        var open = (await Codec.CompactAsync([.. synced.Updates, update.Payload], default)).Text.Trim();
+        var open = (await Codec.CompactAsync([.. synced.Updates, .. update.Updates], default)).Text.Trim();
         await using var later = await _jos.ConnectAsync();
         var fresh = (await Codec.CompactAsync((await later.SyncAsync(plan.Id)).Updates, default)).Text.Trim();
         open.ShouldStartWith("new ");

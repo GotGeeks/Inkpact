@@ -23,6 +23,7 @@ A message is `[varuint type][varstring pageId][payload]`. The page id is a UUID 
 | 5 | Ping | client | none, and no page id: the one byte |
 | 6 | Pong | server | none, and no page id: the one byte |
 | 7 | Error | server | `varstring`: an error code about this page |
+| 8 | Replaced | server | none: the Sync that follows replaces the page's whole content |
 
 A client may send only Subscribe, Unsubscribe, Update, Awareness and Ping. Anything else, an unknown type or bytes after the payload closes the connection as a protocol error.
 
@@ -36,6 +37,19 @@ A client may send only Subscribe, Unsubscribe, Update, Awareness and Ping. Anyth
 4. From then on both sides send Update messages as edits happen. The server stores an update before it relays it, so a peer never sees an update the log does not have.
 
 The role is read when the page is subscribed. A viewer receives updates; an Update from a viewer is answered with the error `read_only` and not stored.
+
+## When the server replaces a page's content
+
+The server sometimes makes an update itself that deletes every block of a page and writes new content: a Joplin re-import of a note that changed there, and a restored version (run B.5b). It is stored under the page's lock, only when no client's update was stored since the page was read, and then sent to everyone who has the page open as two messages, in this order:
+
+1. **Replaced**, with the page id.
+2. A **Sync** with the server's state vector right after the replacement and the replacement as its one update.
+
+It is a Sync and not an Update because a client checks a Sync and not an Update: before applying it, the client notes what it made that the server's state vector does not cover, and when the Sync deletes any of that text, it keeps the page as it was as a copy ([offline-copy.md](design-notes/offline-copy.md)). An update that was on its way when the page was replaced is stored after the replacement and is not in that state vector, so its text is found. A client that has the page open handles a Sync at any time, also one it did not ask for.
+
+Replaced widens that check. A client that knows it keeps the copy when it has **any** change the server has not confirmed (text, formatting, a deletion), whatever the Sync deletes: the replacement was made without it. The server reads and answers a socket in order, so a change is unconfirmed exactly when it is not in the replacement. With nothing unconfirmed, the client sends nothing back after this Sync.
+
+A client from before this message ignores a type it does not know, so a tab that was not reloaded still keeps text, but not a change that is only formatting or only a deletion. The same goes for a document that comes back from the browser's storage after the replacement: its Sync is an ordinary one. No text is lost in either case.
 
 ## Errors about one page
 

@@ -1377,7 +1377,7 @@ public sealed partial class ImportRunner(
 
         // Why the commit wrote nothing; whether it wrote is what the hub answers.
         var refused = Replaced.Written;
-        var written = await hub.PublishAsync(pageId, built.Update, async token =>
+        var written = await hub.PublishAsync(pageId, built.Update, built.StateVector, async token =>
         {
             await using var transaction = await db.Database.BeginTransactionAsync(token);
             // The tree's own lock, so the page cannot be put in the trash between this look and the write.

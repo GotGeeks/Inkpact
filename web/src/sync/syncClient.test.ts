@@ -714,6 +714,229 @@ describe('SyncClient', () => {
     })
   })
 
+  describe('a page the server replaces while it is open', () => {
+    function paragraphs(doc: Y.Doc): string[] {
+      return doc
+        .getXmlFragment('default')
+        .toArray()
+        .map((node) => ((node as Y.XmlElement).get(0) as Y.XmlText).toString())
+    }
+
+    function paragraph(text: string): Y.XmlElement {
+      const element = new Y.XmlElement('paragraph')
+      const content = new Y.XmlText()
+      content.insert(0, text)
+      element.insert(0, [content])
+      return element
+    }
+
+    function editOf(doc: Y.Doc, change: (fragment: Y.XmlFragment) => void): Uint8Array {
+      const before = Y.encodeStateVector(doc)
+      doc.transact(() => change(doc.getXmlFragment('default')))
+      return Y.encodeStateAsUpdate(doc, before)
+    }
+
+    const firstText = (doc: Y.Doc) =>
+      (doc.getXmlFragment('default').get(0) as Y.XmlElement).get(0) as Y.XmlText
+
+    /** A page with one paragraph, open and in step with the server. */
+    async function onAPage(options: { readOnly?: boolean } = {}) {
+      const started = start()
+      const author = new Y.Doc()
+      started.hub.store(
+        page,
+        editOf(author, (fragment) => fragment.insert(0, [paragraph('old')])),
+      )
+      if (options.readOnly) started.hub.readOnly.add(page)
+      await tick()
+      const handle = started.client.subscribe(page, { readOnly: options.readOnly })
+      await tick()
+      expect(paragraphs(handle.doc)).toEqual(['old'])
+      return { ...started, author, handle }
+    }
+
+    /** The replacement as the import or a restore makes it: every block deleted, the new content written. */
+    const replacement = (author: Y.Doc) =>
+      editOf(author, (fragment) => {
+        fragment.delete(0, fragment.length)
+        fragment.insert(0, [paragraph('new')])
+      })
+
+    /**
+     * The server publishes the replacement, and the client makes `change` before it hears of it: the change reaches the
+     * server after the replacement, as an update that was on its way does.
+     */
+    async function replaceWhile(
+      started: Awaited<ReturnType<typeof onAPage>>,
+      change: (doc: Y.Doc) => void,
+      announce = true,
+    ) {
+      const { hub, author, handle } = started
+      hub.holding = true
+      hub.publish(page, replacement(author), announce)
+      await tick()
+      change(handle.doc)
+      await tick()
+      hub.release()
+      await tick()
+      await tick()
+    }
+
+    it('keeps text that was on its way when the page was replaced, with the page as it was', async () => {
+      const started = await onAPage()
+      const { hub, client, events, handle } = started
+
+      await replaceWhile(started, (doc) => firstText(doc).insert(3, ' typed meanwhile'))
+
+      expect(paragraphs(handle.doc)).toEqual(['new'])
+      expect(paragraphs(hub.doc(page))).toEqual(['new'])
+      expect(events.lost.map((lost) => lost.pageId)).toEqual([page])
+      const before = new Y.Doc()
+      Y.applyUpdate(before, events.lost[0]!.before)
+      expect(paragraphs(before)).toEqual(['old typed meanwhile'])
+      expect(handle.unsent).toBe(false)
+      client.destroy()
+    })
+
+    it('keeps that text on a client that does not know the Replaced message', async () => {
+      const started = await onAPage()
+      const { client, events, handle } = started
+
+      await replaceWhile(started, (doc) => firstText(doc).insert(3, ' typed meanwhile'), false)
+
+      expect(paragraphs(handle.doc)).toEqual(['new'])
+      expect(events.lost).toHaveLength(1)
+      const before = new Y.Doc()
+      Y.applyUpdate(before, events.lost[0]!.before)
+      expect(paragraphs(before)).toEqual(['old typed meanwhile'])
+      client.destroy()
+    })
+
+    it('keeps the page as it was when only formatting was on its way', async () => {
+      const started = await onAPage()
+      const { client, events, handle } = started
+
+      await replaceWhile(started, (doc) => firstText(doc).format(0, 3, { bold: {} }))
+
+      expect(paragraphs(handle.doc)).toEqual(['new'])
+      expect(events.lost).toHaveLength(1)
+      const before = new Y.Doc()
+      Y.applyUpdate(before, events.lost[0]!.before)
+      expect(firstText(before).toDelta()).toEqual([{ insert: 'old', attributes: { bold: {} } }])
+      client.destroy()
+    })
+
+    it('keeps the page as it was when only a deletion was on its way', async () => {
+      const started = await onAPage()
+      const { client, events, handle } = started
+
+      await replaceWhile(started, (doc) => firstText(doc).delete(0, 1))
+
+      expect(paragraphs(handle.doc)).toEqual(['new'])
+      expect(events.lost).toHaveLength(1)
+      const before = new Y.Doc()
+      Y.applyUpdate(before, events.lost[0]!.before)
+      expect(paragraphs(before)).toEqual(['ld'])
+      client.destroy()
+    })
+
+    it('reports nothing for formatting or a deletion on a client that does not know the Replaced message', async () => {
+      // The limit that run B.5b accepts: no text is lost, and an old tab cannot be taught the message.
+      for (const change of [
+        (doc: Y.Doc) => firstText(doc).format(0, 3, { bold: {} }),
+        (doc: Y.Doc) => firstText(doc).delete(0, 1),
+      ]) {
+        const started = await onAPage()
+        await replaceWhile(started, change, false)
+
+        expect(paragraphs(started.handle.doc)).toEqual(['new'])
+        expect(started.events.lost).toEqual([])
+        started.client.destroy()
+      }
+    })
+
+    it('keeps a copy too when what was on its way is a block the replacement leaves alone', async () => {
+      // The replacement was made without it, so the page now has it beside the new content: the copy says so.
+      const started = await onAPage()
+      const { hub, client, events, handle } = started
+
+      await replaceWhile(started, (doc) =>
+        doc.getXmlFragment('default').insert(1, [paragraph('mine')]),
+      )
+
+      expect(paragraphs(handle.doc).sort()).toEqual(['mine', 'new'])
+      expect(paragraphs(hub.doc(page)).sort()).toEqual(['mine', 'new'])
+      expect(events.lost).toHaveLength(1)
+      client.destroy()
+    })
+
+    it('replaces the page and reports nothing when nothing was on its way', async () => {
+      const started = await onAPage()
+      const { hub, client, events, author, handle } = started
+
+      hub.publish(page, replacement(author))
+      await tick()
+      await tick()
+
+      expect(paragraphs(handle.doc)).toEqual(['new'])
+      expect(events.lost).toEqual([])
+      expect(handle.state).toBe('synced')
+      expect(hub.sent(MessageType.Update)).toEqual([])
+      client.destroy()
+    })
+
+    it('reports nothing when the change was confirmed before the page was replaced', async () => {
+      const started = await onAPage()
+      const { hub, client, events, author, handle } = started
+      firstText(handle.doc).insert(3, ' typed before')
+      await tick()
+      await tick()
+      expect(handle.unsent).toBe(false)
+      // The replacement was made from the page with that text in it.
+      Y.applyUpdate(author, Y.encodeStateAsUpdate(hub.doc(page)))
+
+      hub.publish(page, replacement(author))
+      await tick()
+      await tick()
+
+      expect(paragraphs(handle.doc)).toEqual(['new'])
+      expect(events.lost).toEqual([])
+      client.destroy()
+    })
+
+    it('reports nothing on a page the person may only read', async () => {
+      const started = await onAPage({ readOnly: true })
+      const { hub, client, events, author, handle } = started
+
+      hub.publish(page, replacement(author))
+      await tick()
+      await tick()
+
+      expect(paragraphs(handle.doc)).toEqual(['new'])
+      expect(events.lost).toEqual([])
+      client.destroy()
+    })
+
+    it('forgets the announcement when the connection is lost before its Sync arrives', async () => {
+      const started = await onAPage()
+      const { hub, client, events, handle } = started
+      // Only the announcement gets through; the connection goes before the Sync.
+      hub.current.deliver(encodeFrame(MessageType.Replaced, page))
+      hub.current.serverClose(1006)
+      // Typed offline into a block nobody deleted: an ordinary reconnect, with nothing to keep a copy for.
+      firstText(handle.doc).insert(3, ' offline')
+
+      await tick(250)
+      await tick()
+      await tick()
+
+      expect(paragraphs(handle.doc)).toEqual(['old offline'])
+      expect(paragraphs(hub.doc(page))).toEqual(['old offline'])
+      expect(events.lost).toEqual([])
+      client.destroy()
+    })
+  })
+
   describe('heartbeat and browser events', () => {
     it('pings every 3 seconds', async () => {
       const { hub, client } = start()

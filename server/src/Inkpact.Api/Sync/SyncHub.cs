@@ -64,14 +64,22 @@ public sealed class SyncHub(
     public int OpenConnections => _connections.Count;
 
     /// <summary>
-    /// Stores an update that the server itself made for a page (the Joplin import replacing a note's content) and relays it
-    /// to everyone who has the page open, the way an update from a client is. <paramref name="commit"/> does the storing,
-    /// in the caller's own transaction, so that the update and whatever else belongs with it are written together. It runs
+    /// Stores an update that the server itself made to replace a page's content (the Joplin import replacing a note, a
+    /// restored version) and relays it to everyone who has the page open. <paramref name="commit"/> does the storing, in
+    /// the caller's own transaction, so that the update and whatever else belongs with it are written together. It runs
     /// under the page's lock, so no client's update is stored meanwhile: what <paramref name="commit"/> reads of the page's
     /// log is the whole log until it returns. It returns false when it decided not to store the update after all; nothing is
     /// relayed then, nor when it throws. A page nobody has open is stored just the same. Returns whether it was published.
+    /// <para>
+    /// It is relayed as a Sync, not as an Update: <paramref name="stateVector"/> is the page's state vector right after the
+    /// replacement, and a client checks every Sync for changes of its own that the server does not have and that the Sync
+    /// deletes, keeping them as a copy. An ordinary Update is applied without that look, so text someone typed into a block
+    /// at that moment (stored after the replacement, into a block it deleted) would be gone without a word. The Replaced
+    /// message before it widens the check, on clients that know it, to changes that are no text (run B.5b).
+    /// </para>
     /// </summary>
-    public async Task<bool> PublishAsync(Guid pageId, byte[] update, Func<CancellationToken, Task<bool>> commit, CancellationToken cancellationToken)
+    public async Task<bool> PublishAsync(
+        Guid pageId, byte[] update, byte[] stateVector, Func<CancellationToken, Task<bool>> commit, CancellationToken cancellationToken)
     {
         var room = await EnterRoomAsync(pageId, cancellationToken);
         try
@@ -81,7 +89,10 @@ public sealed class SyncHub(
                 return false;
             }
 
-            room.Broadcast(Frame.Encode(MessageType.Update, pageId, update), except: null);
+            // In this order, under the page's lock: a socket is read and written in order, so nothing a client sends
+            // later is answered before these two.
+            room.Broadcast(Frame.EncodeReplaced(pageId), except: null);
+            room.Broadcast(Frame.EncodeSync(pageId, stateVector, [update]), except: null);
             return true;
         }
         finally

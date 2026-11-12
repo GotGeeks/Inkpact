@@ -29,6 +29,14 @@ public enum MessageType : byte
 
     /// <summary>Server: something about one page was refused. The payload is an error code for the client to translate.</summary>
     Error = 7,
+
+    /// <summary>
+    /// Server, no payload: the <see cref="Sync"/> that follows replaces the page's whole content (a Joplin re-import, a
+    /// restored version). A client that has any change the server has not confirmed keeps the page as it was as a copy,
+    /// whatever the Sync deletes. A client that does not know this type ignores it and still checks the Sync for text it
+    /// would lose (run B.5b).
+    /// </summary>
+    Replaced = 8,
 }
 
 /// <summary>Error codes in <see cref="MessageType.Error"/> frames.</summary>
@@ -102,6 +110,9 @@ public sealed record Frame(MessageType Type, Guid PageId, ReadOnlyMemory<byte> P
 
         return writer.ToArray();
     }
+
+    /// <summary><c>[type][pageId]</c>, no payload.</summary>
+    public static byte[] EncodeReplaced(Guid pageId) => Start(MessageType.Replaced, pageId).ToArray();
 
     public static byte[] EncodeError(Guid pageId, string code)
     {

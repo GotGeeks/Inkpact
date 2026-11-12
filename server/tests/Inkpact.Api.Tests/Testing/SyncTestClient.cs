@@ -213,6 +213,8 @@ public sealed class SyncTestClient(WebSocket socket) : IAsyncDisposable
                 return new Received(type, pageId, [], updates, null, null, null, stateVector);
             case MessageType.Error:
                 return new Received(type, pageId, [], [], reader.ReadVarString(), null, null);
+            case MessageType.Replaced:
+                return new Received(type, pageId, [], [], null, null, null);
             default:
                 return new Received(type, pageId, reader.ReadVarUint8Array().ToArray(), [], null, null, null);
         }

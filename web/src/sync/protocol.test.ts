@@ -71,6 +71,13 @@ describe('frames', () => {
     })
   })
 
+  it('reads the announcement of a replacement: the type and the page id, nothing else', () => {
+    expect(decodeFrame(new Uint8Array([8, ...idBytes()]))).toEqual({
+      type: MessageType.Replaced,
+      pageId,
+    })
+  })
+
   it('reads a pong, and ignores a type it does not know', () => {
     expect(decodeFrame(new Uint8Array([6]))).toEqual({ type: MessageType.Pong })
     expect(decodeFrame(new Uint8Array([42, 0]))).toBeNull()
