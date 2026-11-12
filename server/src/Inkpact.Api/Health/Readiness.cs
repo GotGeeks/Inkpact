@@ -83,6 +83,9 @@ public sealed class Readiness(IServiceScopeFactory scopes, YjsSidecar sidecar, T
         {
             await using var scope = scopes.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<InkpactDbContext>();
+            // Opened first, so that a database that is not there fails here. Asked for its migrations alone, a missing
+            // database reads as "no migration applied yet", which would answer migration_pending for a database that is gone.
+            await db.Database.OpenConnectionAsync(timeout.Token);
             var pending = await db.Database.GetPendingMigrationsAsync(timeout.Token);
             return pending.Any() ? ReadinessReport.MigrationPending : ReadinessReport.Ok;
         }
