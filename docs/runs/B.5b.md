@@ -2,7 +2,7 @@
 
 **Model:** O·high → S·high in the roadmap. Planned on Fable 5.2 on 2026-11-12 from a reading of #122's code against the B.5 card. Sync, restore and the client's lost-edit check are critical paths: `/code-review` at high on PRs 3 and 4 before they merge, at medium on the others.
 
-**Status:** Planned; the five questions were answered on 2026-11-12, each as recommended. Built in the order PR 3, 1, 2, 4, 5 (PR 3 first: it closes a gap that exists today).
+**Status:** In progress. The five questions were answered on 2026-11-12, each as recommended. Built in the order PR 3, 1, 2, 4, 5 (PR 3 first: it closes a gap that exists today). PR 3 is merged (#144); PR 1 (capture, list and preview endpoints) is described under **Handoff**; PRs 2, 4 and 5 are not started. History can be captured but not yet looked at in the interface, nor restored.
 
 This card plans what [`B.5.md`](B.5.md) left open. That card stays the statement of what version history must do (its "Decisions", "Done when" and "Tests" hold unless this card says otherwise); this one says how, in which order, and where the plan narrows or changes it.
 
@@ -132,6 +132,31 @@ All five were answered "yes, as recommended" by the maintainer on 2026-11-12.
 3. **The import's replacement changes with PR 3** (it also relays a Sync and `Replaced`). Recommended: yes; it closes a gap that exists today.
 4. **Where the history policy lives in the interface:** a new `/settings` screen that run B.9 shares. Recommended: yes, rather than a dialog from the user menu.
 5. **Capturing an existing library takes about two hours per 5,000 pages, in the background.** Recommended: accept. Faster means more sidecar time taken from people who are syncing.
+
+## Handoff
+
+### PR 1: capture, and the list and preview endpoints
+
+- **Schema** (`AddHistoryCapture`): `page_history_state`, `page_title_changes`, and `fingerprint` and `content_seq` on `page_versions`. No version existed before, so nothing is filled in.
+- **Capture:** [`HistoryCapture.cs`](../../server/src/Inkpact.Api/History/HistoryCapture.cs) and its worker, every 30 seconds, at most 20 pages a round, one at a time, oldest change first. A page is due when it has something that is in no version and is idle for two minutes, or its oldest such change is five minutes old, or a title waits. The version is written under the workspace's history lock with the policy read again: off writes nothing (and drops the titles that waited), an unchanged page (fingerprint, title and file text) only moves the cursor, a cap makes room from the oldest unprotected versions or records `full` and removes nothing.
+- **Renames:** `TreeService.RenameAsync` adds a `page_title_changes` row in its own transaction when the title really changes and history is on; the capture turns each into a version of kind `Rename` with the renamer and deletes the row in the version's transaction. A rename that commits while a capture is under way waits for the next one.
+- **Reading:** `GET /api/pages/{pageId}/versions` (newest first, 50 by default and 100 at most, a cursor of time and id, the page's history state) and `GET /api/pages/{pageId}/versions/{versionId}` (title and the editor's document; `404 version_not_found`, `409 version_unreadable`, `503 history_unavailable`). Viewer role on the page; a page in the trash can still be looked at.
+- **Retention is on by default** (`History:RetentionEnabled`), from this PR.
+- **Settings:** `History:CaptureEnabled`, `CaptureInterval`, `CapturesPerRound`, `CaptureIdleAfter`, `CaptureAtLatestAfter`, `CaptureMaxLiveBytes`; checked at start-up.
+
+**Where it differs from the plan above, and why:**
+
+1. **The cursor also counts updates** (`captured_updates`: those in the snapshot plus the live ones), and that count decides whether a page has something to capture. The plan's sequence number alone misses an update that commits late with a number below one already captured: it would stay out of every version until the page's next edit. `captured_seq` is still kept, and still decides which change is the oldest that is in no version.
+2. **A sidecar that is down does leave a mark on the one page that met it:** no failure code, so the list does not call it failed, but that page waits a minute, doubling to an hour at most. Without it a page that takes the sidecar down every time (a timeout kills the sidecar) would stay first in line and no other page would ever be captured. The round ends, as planned. The same wait applies to a page whose capture fails for a reason nobody foresaw; there the round goes on to the next page.
+3. **Its own limit instead of `Sync:MaxDiffBytes`** for "leave a long log to the compactor first": `History:CaptureMaxLiveBytes`, with the same default of 2 MiB. Changing the one does not change the other.
+4. **A version is never earlier than the page's newest version:** when its time would be, it gets the newest one's time plus a microsecond. A rename that waited for the capture after it would otherwise sort before that capture's version, and the page's newest version would carry a title the page no longer has.
+5. **The list's page size** is 50 by default, as planned, and can be asked up to 100.
+
+**Measured** (this laptop, real Postgres and sidecar): a capture of a page of 8.0 MB (7,600 paragraphs) takes 0.8 s from one live update and 0.4 s from its snapshot plus three live updates, so the sidecar is taken for under a second. The worker's query for due pages takes about 0.4 s on 10,000 pages (0.7 s when none is captured yet); it runs every 30 seconds.
+
+**Not in this PR:** nothing shows history in the interface (PR 2), and the per-page property test is a seeded schedule of edits, compactions in small batches, renames and captures against a full replay, not an FsCheck property; PR 4 extends it with restores and injected crashes and is the place to move it to FsCheck.
+
+**Checks:** see the pull request.
 
 ## For the test pass
 

@@ -88,6 +88,9 @@ public class InkpactFactory(
         // History retention tests run the job themselves unless they explicitly enable the worker.
         builder.UseSetting("History:RetentionEnabled", "False");
 
+        // And for the worker that makes versions: tests run a capture themselves.
+        builder.UseSetting("History:CaptureEnabled", "False");
+
         // The same for the job that indexes the links of pages that exist from before (run B.1): tests call it themselves.
         builder.UseSetting("Links:BackfillEnabled", "False");
 

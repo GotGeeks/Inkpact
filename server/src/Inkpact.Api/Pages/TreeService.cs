@@ -181,7 +181,13 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
         return new PageChange(ToDto(page), Conflict: false);
     }
 
-    public async Task<TreeResult<PageChange>> RenameAsync(Guid pageId, string? title, int? expectedVersion, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Gives a page another title. When the title really changes and the workspace keeps history, the new title is also
+    /// left for the history's capture worker (<see cref="PageTitleChange"/>): one insert in this transaction, so that two
+    /// renames in a row leave two versions without this lock ever waiting for the Yjs sidecar (run B.5b).
+    /// </summary>
+    public async Task<TreeResult<PageChange>> RenameAsync(
+        Guid pageId, string? title, int? expectedVersion, CancellationToken cancellationToken = default, Guid? changedBy = null)
     {
         var cleanTitle = CleanTitle(title);
         if (cleanTitle is null)
@@ -202,8 +208,21 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
         }
 
         var conflict = NoteConflict(page, "rename", expectedVersion);
+        var changed = page.Title != cleanTitle;
         page.Title = cleanTitle;
         Touch(page);
+        if (changed && await db.Workspaces.AnyAsync(w => w.Id == page.WorkspaceId && w.HistoryEnabled, cancellationToken))
+        {
+            db.PageTitleChanges.Add(new PageTitleChange
+            {
+                PageId = page.Id,
+                Title = cleanTitle,
+                PageVersion = page.Version,
+                ChangedAt = page.UpdatedAt,
+                ChangedBy = changedBy,
+            });
+        }
+
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return new PageChange(ToDto(page), conflict);

@@ -14,6 +14,7 @@ public enum PageVersionKind
 public class PageVersion
 {
     private byte[] _state = [];
+    private byte[] _fingerprint = [];
 
     private PageVersion()
     {
@@ -27,7 +28,9 @@ public class PageVersion
         DateTimeOffset createdAt,
         Guid? createdBy,
         PageVersionKind kind,
-        DateTimeOffset? protectedUntil = null)
+        DateTimeOffset? protectedUntil = null,
+        byte[]? fingerprint = null,
+        long contentSeq = 0)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(title);
@@ -41,6 +44,8 @@ public class PageVersion
         CreatedBy = createdBy;
         Kind = kind;
         ProtectedUntil = protectedUntil;
+        Fingerprint = fingerprint ?? [];
+        ContentSeq = contentSeq;
         PayloadBytes = checked(state.LongLength + Encoding.UTF8.GetByteCount(fileText));
     }
 
@@ -65,6 +70,19 @@ public class PageVersion
     public PageVersionKind Kind { get; private set; }
 
     public DateTimeOffset? ProtectedUntil { get; private set; }
+
+    /// <summary>
+    /// The Yjs fingerprint of the state (its state vector and delete set), to tell that a later capture would be the same
+    /// document. Empty for a version made before run B.5b, of which there are none.
+    /// </summary>
+    public byte[] Fingerprint
+    {
+        get => _fingerprint.ToArray();
+        private set => _fingerprint = value.ToArray();
+    }
+
+    /// <summary>The page's last stored sequence number when this state was observed.</summary>
+    public long ContentSeq { get; private set; }
 
     /// <summary>Bytes counted against the workspace cap: the Yjs state and the file-note search text.</summary>
     public long PayloadBytes { get; private set; }

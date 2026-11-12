@@ -119,6 +119,7 @@ app.MapHealthEndpoints();
 app.MapAuthEndpoints();
 app.MapWorkspaceEndpoints();
 app.MapHistoryPolicyEndpoints();
+app.MapHistoryEndpoints();
 app.MapPageEndpoints();
 app.MapSearchEndpoints();
 app.MapBacklinkEndpoints();

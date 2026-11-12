@@ -6,9 +6,11 @@ using System.Text;
 using System.Text.Json;
 using Inkpact.Api.Auth;
 using Inkpact.Api.Crdt;
+using Inkpact.Api.History;
 using Inkpact.Api.Tests.Import;
 using Inkpact.Api.Tests.Testing;
 using Inkpact.Data;
+using Inkpact.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -97,6 +99,30 @@ public class LogContentTests(PostgresFixture postgres) : IClassFixture<PostgresF
             clock.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(90), "the import did not end");
             await Task.Delay(100);
         }
+
+        // Versions (run B.5b): every page written and imported above is captured, with the title that waited from the
+        // rename, and one is read back. Then a page whose stored content is not a document, which no version can be made of.
+        var capture = factory.Services.GetRequiredService<HistoryCapture>();
+        Guid brokenId;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<InkpactDbContext>();
+            foreach (var id in await db.Pages.Select(p => p.Id).ToListAsync())
+            {
+                (await capture.CaptureAsync(id, default)).ShouldBe(HistoryCaptureOutcome.Captured);
+            }
+
+            (await db.PageVersions.Select(v => v.Title).ToListAsync()).ShouldContain($"{Marker} renamed");
+            var broken = await owner.PostJsonAsync($"/api/workspaces/{workspaceId}/pages", new { title = $"{Marker} broken" });
+            brokenId = (await broken.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("page").GetProperty("id").GetGuid();
+            db.PageUpdates.Add(new PageUpdate { PageId = brokenId, UserId = (await owner.GetStateAsync()).User!.Id, Data = Encoding.UTF8.GetBytes($"{Marker} is not an update"), CreatedAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+        }
+
+        (await capture.CaptureAsync(brokenId, default)).ShouldBe(HistoryCaptureOutcome.Unreadable);
+        var versions = await owner.GetFromJsonAsync<VersionList>($"/api/pages/{pageId}/versions");
+        (await owner.GetAsync($"/api/pages/{pageId}/versions/{versions!.Versions[0].Id}")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await owner.GetFromJsonAsync<VersionList>($"/api/pages/{brokenId}/versions"))!.State.ShouldBe(HistoryStates.Failed);
 
         factory.Logs.Entries.ShouldNotBeEmpty();
         factory.Logs.Entries
