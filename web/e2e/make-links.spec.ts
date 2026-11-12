@@ -35,7 +35,27 @@ async function openPage(page: Page, title: string) {
 
 /** Selects the last `count` characters before the caret, as a person does with the keyboard. */
 async function selectBack(page: Page, count: number) {
-  for (let i = 0; i < count; i++) await page.keyboard.press('Shift+ArrowLeft')
+  // The browser moves the selection at once, and the editor reads it a moment later (on `selectionchange`). An update of
+  // the editor in between puts the selection it had back, so keys a few milliseconds apart, as a test presses them, can
+  // lose part of the selection: "d" or "ld" instead of "world" (seen on the phone project under load). So each key waits
+  // until its step has landed, and the whole selection is made again from the end of the line when it was reset anyway.
+  const selected = () =>
+    page.evaluate(
+      () =>
+        new Promise<number>((resolve) =>
+          requestAnimationFrame(() =>
+            setTimeout(() => resolve(window.getSelection()?.toString().length ?? 0), 0),
+          ),
+        ),
+    )
+  await expect(async () => {
+    await page.keyboard.press('End')
+    for (let i = 1; i <= count; i++) {
+      await page.keyboard.press('Shift+ArrowLeft')
+      await expect.poll(selected, { timeout: 1000 }).toBe(i)
+    }
+    expect(await selected()).toBe(count)
+  }).toPass({ timeout: 10_000 })
 }
 
 /** The links of the page: text and address, in order. */
