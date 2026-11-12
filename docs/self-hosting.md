@@ -25,12 +25,102 @@ Browser storage is not a backup. Browsers may deny or evict it, private browsing
 
 Application updates do not force open tabs to reload. When an update is ready, Inkpact says so and offers **Update now** once nothing waits to reach the server; it updates only when that is the only Inkpact tab (another tab still runs the old version and needs its files), otherwise it asks you to close the others. Old shell caches are retained while any other Inkpact window is open, including a first-visit tab not yet controlled by a worker, and cleaned up when the update activates without them. Closing all Inkpact tabs and opening the app again also updates it.
 
-## What to back up
+## Backup and restore
 
-- **`inkpact-db`** (the Postgres volume): all notes and accounts. Back it up with `pg_dump` while running, or stop the stack and copy the volume.
-- **`inkpact-data`** (`/data`): the files added to pages (`/data/attachments`; `/data/imports` only holds an export while it is being imported and need not be backed up), the keys that protect sign-in sessions (`/data/keys`; lose them and everyone signs in again) and the dumps written before each database migration (`/data/backups`).
+Two things hold everything, and they belong together: a page refers to its files by id, and a file is only found again through the database.
 
-Back up the database and `/data` together: a page refers to its files by id, and a file is only found again through the database.
+- **The database** (`inkpact-db`, the Postgres volume): all notes and accounts.
+- **`/data`** (`inkpact-data`): the files added to pages (`/data/attachments`), the keys that protect sign-in sessions (`/data/keys`; lose them and everyone signs in again) and the dumps written before each database migration (`/data/backups`). `/data/imports` only holds an export while it is being imported and is left out.
+
+Browser storage (the offline copies) is not a backup.
+
+### Backing up
+
+Run these in the folder with `docker-compose.yml`, while the app runs. `pg_dump` reads one consistent state of the database, so nobody has to stop working.
+
+```bash
+mkdir -p backup
+docker compose exec -T postgres pg_dump -U inkpact --format=custom inkpact > backup/inkpact.dump
+docker compose exec -T app tar -C /data --exclude=./imports -cf - . > backup/data.tar
+```
+
+Copy the folder somewhere else than the disk Inkpact is on. The aim is to lose at most a day, so run it every night. A script that keeps the last 14:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+cd /mnt/user/appdata/inkpact            # the folder with docker-compose.yml
+target="/mnt/user/backups/inkpact/$(date +%Y-%m-%d)"
+mkdir -p "$target"
+docker compose exec -T postgres pg_dump -U inkpact --format=custom inkpact > "$target/inkpact.dump"
+docker compose exec -T app tar -C /data --exclude=./imports -cf - . > "$target/data.tar"
+ls -1d /mnt/user/backups/inkpact/*/ | head -n -14 | xargs -r rm -rf
+```
+
+Schedule it with cron (`0 3 * * * /path/to/inkpact-backup.sh`), or on Unraid with the User Scripts plugin (add the script, schedule "Daily").
+
+With a PostgreSQL you already run, `deploy/inkpact.sh backup [folder]` does the same two steps (into `deploy/backups/<time>` when no folder is named).
+
+### Restoring
+
+Use the same version of Inkpact that made the backup, or a newer one. A newer one migrates the database when it starts (and writes its own dump first). The database you restore into must be empty.
+
+```bash
+docker compose up -d --wait postgres      # the database alone; on a new machine it is empty
+docker compose run --rm --no-deps -T --entrypoint tar app -C /data -xf - < backup/data.tar
+docker compose exec -T postgres pg_restore -U inkpact -d inkpact --no-owner --role inkpact < backup/inkpact.dump
+docker compose up -d
+```
+
+On a machine where Inkpact has already run, the database is not empty. Stop the app and empty it first, then run the commands above:
+
+```bash
+docker compose stop app
+docker compose exec -T postgres dropdb -U inkpact --maintenance-db=postgres inkpact
+docker compose exec -T postgres createdb -U inkpact --maintenance-db=postgres inkpact
+```
+
+With a PostgreSQL you already run: `deploy/inkpact.sh restore <folder>`. It stops the app, refuses a database that is not empty (it never overwrites one), restores both parts and starts the app.
+
+**What a restore loses:** everything written after the backup was made. People stay signed in when `/data` was restored with it; without the keys in `/data/keys`, everyone signs in again. Offline edits on a device that the server had not received yet are sent when that device reconnects.
+
+**Checking it worked:** `curl http://<host>:8080/api/health/ready` says `"status":"ok"`, you can sign in, a page with a picture shows it, and search finds a word from a note.
+
+The CI of this repository follows these commands on every image it builds (`deploy/test-backup-restore.sh`): it makes a page with a tag and a file, backs up, removes the volumes, restores and checks that all of it is there.
+
+### The dumps before a migration
+
+Before a new version changes the database, the app writes a dump to `/data/backups`. They are never removed. They are part of `data.tar`, so they make each backup larger; delete the old ones when the version after them has run well for a while:
+
+```bash
+docker compose exec app sh -c 'ls -1t /data/backups/* | tail -n +4 | xargs -r rm --'   # keeps the newest three
+```
+
+## Health and logs
+
+- **`GET /api/health`** says whether the app's process answers. It reads nothing, so it is the check for "is it up".
+- **`GET /api/health/ready`** says whether it can do its work: `{"status":"ok","checks":{"database":"ok","sidecar":"ok"}}`. `degraded` (still `200`) means the part that reads the content of notes is not running: editing and sync go on, while search text, links and imports wait until it is back. `unhealthy` (`503`) means the database does not answer or is waiting for a migration. The answer says nothing else about the server, and is kept for five seconds.
+
+The container's own health check uses the second one, so `docker ps` and Unraid's Docker tab show **unhealthy** when the database is gone. Docker does not restart an unhealthy container; the state is there for you to see. The check waits five minutes after a start, so the dump before a migration of a large library does not count against it.
+
+**The log** (`docker compose logs app`, or Unraid's log viewer) has one line per entry, with the time in UTC. For a log collector (Loki, Graylog), set `Logging__Console__FormatterName: json` on the app: one JSON object per entry. A log line holds ids, counts, codes and durations, never the content of a note, a title, a search, a file name, an address someone typed, or a password. The one exception is the setup code, which is written to the log while there is no account yet. How long logs are kept is Docker's setting (its log driver), not Inkpact's.
+
+**The audit log** (logins, failed logins, exports, password resets) is a table in the database. Events older than 365 days are deleted once a day. `Audit__RetentionDays` changes that; `0` keeps everything.
+
+## A forgotten password
+
+There is no reset by email yet. Whoever can run a command in the container can set a new password for any account:
+
+```bash
+docker compose exec app dotnet Inkpact.Api.dll reset-password you@example.com
+```
+
+It asks for the new password twice, without showing it (12 to 128 characters). On Unraid, open the container's console and run the part from `dotnet`. With a PostgreSQL you already run: `deploy/inkpact.sh reset-password you@example.com`.
+
+- `--generate` makes a random password and prints it once.
+- `--password-stdin` reads it from standard input, for a script. The password is never given as an argument, where the shell's history and the process list would keep it.
+
+The account is signed out everywhere, and a login lockout of that address is cleared. A browser that still has a page open stops syncing within five minutes and then asks to sign in. The command needs the app to have started once on this version: it refuses a database with a migration waiting.
 
 ## Attachments
 
@@ -83,7 +173,7 @@ docker compose pull
 docker compose up -d
 ```
 
-When the new version changes the database, the app writes a `pg_dump` to `/data/backups` first and stops with a clear message if that fails, before it changes anything. Old dumps are not removed; delete them when you no longer need them.
+When the new version changes the database, the app writes a `pg_dump` to `/data/backups` first and stops with a clear message if that fails, before it changes anything. Old dumps are not removed; see "The dumps before a migration" for removing them.
 
 ## Behind a reverse proxy
 
@@ -122,7 +212,7 @@ Use the Docker Compose Manager plugin: add a stack, paste the compose file and t
 3. **`deploy/inkpact.sh build`**, then **`deploy/inkpact.sh up`**. The first build takes a few minutes; later ones reuse its layers.
 4. **`deploy/inkpact.sh setup-code`** shows the code for creating the administrator. Open `http://<host>:<INKPACT_PORT>` and create it.
 
-Afterwards, **`deploy/inkpact.sh update`** pulls `main` and runs `up`, which builds what changed (every `up` does, `pull_policy: build`) and restarts the app. A migration writes a dump to the data folder's `backups` first. `status`, `logs` and `down` do what they say; `down` leaves the database and the data folder alone. To go back to an earlier version, check out that commit and run `up` (a database that a newer version migrated stays migrated: restore its dump for that).
+Afterwards, **`deploy/inkpact.sh update`** pulls `main` and runs `up`, which builds what changed (every `up` does, `pull_policy: build`) and restarts the app. A migration writes a dump to the data folder's `backups` first. `status`, `logs` and `down` do what they say; `down` leaves the database and the data folder alone. `backup`, `restore` and `reset-password` are described under "Backup and restore" and "A forgotten password". To go back to an earlier version, check out that commit and run `up` (a database that a newer version migrated stays migrated: restore its dump for that).
 
 **Unraid, with the Docker Compose Manager plugin** (no script):
 

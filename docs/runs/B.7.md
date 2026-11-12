@@ -2,7 +2,7 @@
 
 **Model:** S·low in the roadmap; planned as S·med, because the run adds a command that writes a password hash and ends sessions, a job that deletes rows, a migration and an anonymous endpoint. Planned on Opus 5.5 high; builds on Sonnet 5.5 medium. `/code-review` at medium before the PR merges: the password reset is an authentication path. One PR, branch `feat/b7-operations`.
 
-**Status:** Planned.
+**Status:** Built (PR open). The questions were answered with the card's recommendations.
 
 ## Goal
 
@@ -109,3 +109,33 @@ The person who runs Inkpact can see whether it works, read its log, get their no
 - Stop Postgres while the app runs: Unraid's Docker tab shows Inkpact unhealthy, and healthy again after Postgres is back. Upgrade across a migration with the real library: the dump before it does not mark the container unhealthy.
 - Reset the password from the container console, sign in with it, and check that the other signed-in browser (the phone) is signed out within five minutes.
 - Read the app's log in Unraid's log viewer: one line per entry, nothing from a note in it.
+
+## Handoff
+
+Built on 2026-11-12 on branch `feat/b7-operations`, with the four questions answered as recommended (365 days, the readable log by default, no backup inside the app, the health check on `/ready`).
+
+**What was built**
+
+- `GET /api/health/ready` (`Health/Readiness.cs`), cached for five seconds, in the reviewed anonymous endpoints. The image's `HEALTHCHECK` calls it with a five-minute start period; `deploy/inkpact.sh status` reports both endpoints.
+- The log: one line, UTC, no colour codes (`appsettings.json`); JSON with scopes through `Logging__Console__FormatterName=json`. The rule about what a log line may hold is in `CLAUDE.md` and tested by `LogContentTests`.
+- Audit retention: `AuditRetention` and its daily worker (`Auth/AuditRetention.cs`), `Audit:RetentionDays`.
+- `reset-password` (`Auth/ResetPasswordCommand.cs`), and `deploy/inkpact.sh reset-password`.
+- `deploy/inkpact.sh backup` and `restore`; the guide's "Backup and restore", "Health and logs" and "A forgotten password"; `deploy/test-backup-restore.sh`, run by `image.yml` on the built image.
+
+**Where the build differs from the card**
+
+1. **The sidecar check sends no request.** The card asked for one small call within two seconds. The sidecar takes one request at a time, so a check would wait behind a long compaction and call a busy sidecar unavailable, and a call that times out is how a stuck sidecar gets killed. The check reads whether a process that passed its start-up check is there (`YjsSidecar.IsReady`).
+2. **The readiness check is its own small class, not ASP.NET Core's health checks.** The answer's exact shape and the five-second cache were simpler to get right and to test that way. No new package either way.
+3. **No migration.** The card said `audit_events` had no index on `occurred_at`. It has one (`InkpactDbContext`), so nothing was added.
+4. **`pg_restore --role` is not used by `deploy/inkpact.sh restore`:** it connects as the database's own user, so `--no-owner` alone gives that user everything. The guide's compose commands use `--no-owner --role inkpact` as the card says.
+5. **`deploy/inkpact.sh backup` and `restore` were not run**, by CI or while building: they need a PostgreSQL outside the stack. Their syntax is checked (`bash -n`); `shellcheck` was not available on the build machine and runs in CI. They are in the test pass.
+
+**Checked while building**
+
+- The backup and restore test ran against an image built from this branch: after `docker compose down -v` and a restore, sign-in, the page, its tag and the file's bytes were there.
+- `docker run --rm <image> reset-password` refuses without a database, starting nothing.
+
+**For the next run**
+
+- Run B.8 (the release pipeline) can add the Unraid template's health check on `/api/health/ready`.
+- Run 2.9 (admin page) reads the audit log: `password_reset` events have no address and no user agent.

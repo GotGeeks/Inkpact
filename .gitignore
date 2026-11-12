@@ -73,3 +73,6 @@ web/e2e/.auth/
 
 # The development server's data folder: keys, backups and attachments (the image keeps them on /data)
 server/src/Inkpact.Api/data/
+
+# Backups made by deploy/inkpact.sh backup
+deploy/backups/
