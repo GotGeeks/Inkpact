@@ -262,11 +262,49 @@ public class LoginThrottlingTests(PostgresFixture postgres) : IClassFixture<Post
 
 public class AddressRateLimitTests(PostgresFixture postgres) : IClassFixture<PostgresFixture>
 {
-    private async Task<(InkpactFactory Factory, HttpClient Client)> StartAsync(int perMinute)
+    private async Task<(InkpactFactory Factory, HttpClient Client)> StartAsync(int perMinute, int? forwardLimit = null)
     {
         // The proxy address is trusted, so X-Forwarded-For says which address each request really came from.
-        var factory = new InkpactFactory(await postgres.CreateDatabaseAsync(), remoteIp: "10.1.2.3", perAddressPerMinute: perMinute);
+        var settings = forwardLimit is { } limit
+            ? new Dictionary<string, string> { ["Network:ForwardLimit"] = limit.ToString(System.Globalization.CultureInfo.InvariantCulture) }
+            : null;
+        var factory = new InkpactFactory(await postgres.CreateDatabaseAsync(), remoteIp: "10.1.2.3", perAddressPerMinute: perMinute, settings: settings);
         return (factory, factory.CreateClient());
+    }
+
+    [Fact]
+    public async Task Behind_two_proxies_every_visitor_counts_as_the_outer_proxy_by_default()
+    {
+        var (factory, client) = await StartAsync(perMinute: 2);
+        await using var disposeFactory = factory;
+
+        // A tunnel (10.9.9.9) in front of the proxy: the header has the visitor first, then the tunnel.
+        (await LoginFromAsync(client, "203.0.113.5, 10.9.9.9", "a@example.com")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await LoginFromAsync(client, "203.0.113.6, 10.9.9.9", "b@example.com")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+
+        (await LoginFromAsync(client, "203.0.113.7, 10.9.9.9", "c@example.com")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public async Task With_a_forward_limit_of_two_each_visitor_behind_two_proxies_has_their_own_limit()
+    {
+        var (factory, client) = await StartAsync(perMinute: 2, forwardLimit: 2);
+        await using var disposeFactory = factory;
+
+        (await LoginFromAsync(client, "203.0.113.5, 10.9.9.9", "a@example.com")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await LoginFromAsync(client, "203.0.113.5, 10.9.9.9", "b@example.com")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+
+        (await LoginFromAsync(client, "203.0.113.5, 10.9.9.9", "c@example.com")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        (await LoginFromAsync(client, "203.0.113.6, 10.9.9.9", "d@example.com")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task A_forward_limit_below_one_stops_the_app_at_start_up()
+    {
+        var (factory, _) = (new InkpactFactory(await postgres.CreateDatabaseAsync(), settings: new Dictionary<string, string> { ["Network:ForwardLimit"] = "0" }), 0);
+        await using var disposeFactory = factory;
+
+        Should.Throw<InvalidOperationException>(() => factory.CreateClient()).Message.ShouldContain("Network:ForwardLimit");
     }
 
     private static async Task<HttpResponseMessage> LoginFromAsync(HttpClient client, string address, string email)

@@ -103,9 +103,19 @@ public static class AuthenticationSetup
         var trusted = config.GetSection("Network:TrustedProxies").Get<string[]>()
             ?? ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"];
 
+        // How many proxies stand in front of the app. One by default (Traefik). With two (a tunnel in front of
+        // Traefik) the visitor's address is one entry further back in X-Forwarded-For: with the limit at one, every
+        // visitor would have the tunnel's address and share its login attempts.
+        var forwardLimit = config.GetValue("Network:ForwardLimit", 1);
+        if (forwardLimit < 1)
+        {
+            throw new InvalidOperationException("Network:ForwardLimit must be 1 or more: the number of trusted proxies in front of the app.");
+        }
+
         services.Configure<ForwardedHeadersOptions>(options =>
         {
             options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            options.ForwardLimit = forwardLimit;
             options.KnownIPNetworks.Clear();
             options.KnownProxies.Clear();
             foreach (var network in trusted)

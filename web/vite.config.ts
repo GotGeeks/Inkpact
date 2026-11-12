@@ -15,7 +15,9 @@ export default defineConfig({
   server: {
     // `pnpm dev` talks to `dotnet run --project server/src/Inkpact.Api`. The dev server has no CSP
     // (Vite injects styles for hot reload), so the Playwright suite tests the built bundle instead.
-    proxy: { '/api': 'http://localhost:5036' },
+    // `ws`: the sync socket is `/api/sync`, and the short form does not pass WebSocket upgrades on. The Host header
+    // is passed on unchanged (no `changeOrigin`), as Traefik does: the server refuses a socket whose Origin is not its Host.
+    proxy: { '/api': { target: 'http://localhost:5036', ws: true } },
   },
   test: {
     environment: 'jsdom',
