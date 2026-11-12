@@ -13,6 +13,7 @@ import {
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError } from '../api'
+import AppButton from '../components/AppButton.vue'
 import { useOnline } from '../composables/useOnline'
 import { loginRoute } from '../router'
 import type { OfflineDocument } from '../offline/offlineDocument'
@@ -292,13 +293,9 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
     <h1 class="text-headline-xl-mobile md:text-headline-xl">{{ t('offline.unavailableTitle') }}</h1>
     <p>{{ t('offline.unavailable') }}</p>
     <p v-if="retryFailed" role="alert">{{ t('offline.retryFailed') }}</p>
-    <button
-      type="button"
-      class="min-h-11 self-start rounded border border-border-strong px-space-lg"
-      @click="retryUnavailable"
-    >
+    <AppButton class="self-start" @click="retryUnavailable">
       {{ t('offline.retry') }}
-    </button>
+    </AppButton>
   </section>
 
   <section
@@ -307,13 +304,9 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
   >
     <h1 class="text-headline-xl-mobile md:text-headline-xl">{{ t('page.loadFailedTitle') }}</h1>
     <p role="alert">{{ t('offline.pageLoadFailed') }}</p>
-    <button
-      type="button"
-      class="min-h-11 self-start rounded border border-border-strong px-space-lg"
-      @click="retryCount++"
-    >
+    <AppButton class="self-start" @click="retryCount++">
       {{ t('offline.retry') }}
-    </button>
+    </AppButton>
     <RouterLink :to="{ name: 'home' }" class="self-start text-primary underline">{{
       t('page.backToStart')
     }}</RouterLink>
@@ -325,13 +318,9 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
     class="mx-auto flex max-w-2xl flex-col gap-space-md p-margin md:p-margin-desktop"
   >
     <p>{{ t('offline.storageFailed') }}</p>
-    <button
-      type="button"
-      class="min-h-11 self-start rounded border border-border-strong px-space-lg"
-      @click="retryStorage"
-    >
+    <AppButton class="self-start" @click="retryStorage">
       {{ t('offline.retry') }}
-    </button>
+    </AppButton>
   </section>
 
   <section

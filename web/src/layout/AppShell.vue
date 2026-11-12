@@ -11,7 +11,9 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, wa
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import { ApiError } from '../api'
+import AppButton from '../components/AppButton.vue'
 import AppIcon from '../components/AppIcon.vue'
+import AppNotice from '../components/AppNotice.vue'
 import SearchDialog from '../search/SearchDialog.vue'
 import { editorTakesSearchShortcut } from '../editor/linkShortcutRegistry'
 import { availableCommands, type PaletteCommandId } from '../palette/commands'
@@ -376,22 +378,12 @@ function retryOfflineStorage() {
     </h1>
     <p role="alert">{{ t('offline.accountChanged') }}</p>
     <p v-if="sync.unsafeToLeave">{{ t('offline.accountUnsafe') }}</p>
-    <button
-      v-if="sync.unsafeToLeave"
-      type="button"
-      class="min-h-11 rounded border border-border-strong px-space-lg"
-      @click="retryOfflineStorage"
-    >
+    <AppButton v-if="sync.unsafeToLeave" @click="retryOfflineStorage">
       {{ t('offline.retry') }}
-    </button>
-    <button
-      type="button"
-      :disabled="sync.unsafeToLeave"
-      class="min-h-11 rounded border border-border-strong px-space-lg disabled:opacity-50"
-      @click="reloadAfterAccountChange"
-    >
+    </AppButton>
+    <AppButton :disabled="sync.unsafeToLeave" @click="reloadAfterAccountChange">
       {{ t('offline.continue') }}
-    </button>
+    </AppButton>
   </main>
   <div v-else class="flex h-dvh bg-surface-canvas text-on-surface">
     <a
@@ -438,45 +430,24 @@ function retryOfflineStorage() {
       </header>
 
       <main id="main" ref="main" class="min-h-0 flex-1 overflow-y-auto outline-none" tabindex="-1">
-        <p
-          v-if="localOnly"
-          role="status"
-          class="border-b border-border-subtle bg-surface-panel p-space-md text-body-sm"
-        >
-          {{ t('offline.limited') }}
-        </p>
-        <p
-          v-if="offline.evicted > 0"
-          role="status"
-          class="border-b border-border-subtle bg-surface-panel p-space-md text-body-sm"
-        >
-          {{ t('offline.evicted') }}
-        </p>
-        <div
-          v-if="offline.hasFailure"
-          role="alert"
-          class="border-b border-error bg-error-container p-space-md text-body-sm text-on-error-container"
-        >
-          <p>{{ t('offline.storageAttention') }}</p>
-          <button type="button" class="min-h-11 underline" @click="retryOfflineStorage">
-            {{ t('offline.retry') }}
-          </button>
-        </div>
-        <div
-          v-if="failed"
-          role="alert"
-          data-testid="shell-load-error"
-          class="m-margin flex flex-col items-start gap-space-md rounded border border-error bg-error-container p-space-lg text-on-error-container"
-        >
-          <p>{{ t('shell.loadFailed') }}</p>
-          <button
-            type="button"
-            class="min-h-11 rounded border border-on-error-container px-space-lg text-label-md md:min-h-9"
-            @click="start"
-          >
-            {{ t('shell.retry') }}
-          </button>
-        </div>
+        <AppNotice v-if="localOnly">{{ t('offline.limited') }}</AppNotice>
+        <AppNotice v-if="offline.evicted > 0">{{ t('offline.evicted') }}</AppNotice>
+        <AppNotice v-if="offline.hasFailure" tone="error">
+          {{ t('offline.storageAttention') }}
+          <template #action>
+            <AppButton variant="contained" @click="retryOfflineStorage">
+              {{ t('offline.retry') }}
+            </AppButton>
+          </template>
+        </AppNotice>
+        <AppNotice v-if="failed" tone="error" data-testid="shell-load-error">
+          {{ t('shell.loadFailed') }}
+          <template #action>
+            <AppButton variant="contained" @click="start">
+              {{ t('shell.retry') }}
+            </AppButton>
+          </template>
+        </AppNotice>
         <RouterView v-else-if="routeReady" />
       </main>
     </div>
