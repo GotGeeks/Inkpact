@@ -11,21 +11,27 @@ using Inkpact.Api.Search;
 using Inkpact.Api.Security;
 using Inkpact.Api.Sync;
 using Inkpact.Api.Favorites;
+using Inkpact.Api.Health;
 using Inkpact.Api.History;
 using Inkpact.Api.Tags;
 using Inkpact.Data;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.Logging.Console;
 using Microsoft.Net.Http.Headers;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+
+// The log is one line per entry (appsettings.json). Logging__Console__FormatterName=json gives a log collector one JSON
+// object per entry instead, with the scopes (the request's trace id) that the readable format leaves out.
+builder.Services.Configure<JsonConsoleFormatterOptions>(options => options.IncludeScopes = true);
 builder.Services.AddInkpactData(builder.Configuration);
 builder.Services.AddInkpactAuth(builder.Configuration);
 builder.Services.AddInkpactPolicies();
 builder.Services.AddCsrfProtection();
 builder.Services.AddLoginThrottling(builder.Configuration);
-builder.Services.AddScoped<IAuditLog, AuditLog>();
+builder.Services.AddAudit(builder.Configuration);
 builder.Services.AddScoped<TreeService>();
 builder.Services.AddScoped<TagService>();
 builder.Services.AddHistory(builder.Configuration);
@@ -36,6 +42,7 @@ builder.Services.AddSync(builder.Configuration);
 builder.Services.AddAttachments(builder.Configuration);
 builder.Services.AddImport(builder.Configuration);
 builder.Services.AddExport();
+builder.Services.AddHealth();
 
 var app = builder.Build();
 
@@ -99,8 +106,8 @@ app.UseCsrfProtection();
 app.UseAuthorization();
 
 // Every endpoint declares an authorisation policy; one that does not is denied by the fallback policy.
-// Health is the one anonymous endpoint, so it says so explicitly. The permission service arrives in run 1.06.
-app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
+// The health endpoints are anonymous, and say so explicitly.
+app.MapHealthEndpoints();
 app.MapAuthEndpoints();
 app.MapWorkspaceEndpoints();
 app.MapHistoryPolicyEndpoints();
