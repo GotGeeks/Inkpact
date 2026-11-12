@@ -63,8 +63,12 @@ public class HealthEndpointTests(PostgresFixture postgres) : IClassFixture<Postg
             .ShouldBe("{\"status\":\"ok\",\"checks\":{\"database\":\"ok\",\"sidecar\":\"ok\"}}");
     }
 
-    [Fact]
-    public async Task Ready_is_unhealthy_once_the_database_is_gone_but_only_after_the_cached_answer_has_aged()
+    // A database that is gone is met in two ways: a kept connection that breaks, or (none kept) a new one that is
+    // refused. Both must read as unavailable; the second once read as a migration that waits.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Ready_is_unhealthy_once_the_database_is_gone_but_only_after_the_cached_answer_has_aged(bool noConnectionKept)
     {
         var clock = new MutableTimeProvider(DateTimeOffset.UtcNow);
         var connectionString = await postgres.CreateDatabaseAsync();
@@ -73,6 +77,11 @@ public class HealthEndpointTests(PostgresFixture postgres) : IClassFixture<Postg
         (await client.GetAsync("/api/health/ready")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         await DropDatabaseAsync(connectionString);
+        if (noConnectionKept)
+        {
+            await using var sameString = new Npgsql.NpgsqlConnection(connectionString);
+            Npgsql.NpgsqlConnection.ClearPool(sameString);
+        }
 
         // Within the five seconds the answer is the one already made: the database is not asked again.
         clock.Advance(Readiness.CacheFor - TimeSpan.FromSeconds(1));
