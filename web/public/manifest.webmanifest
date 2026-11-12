@@ -1,6 +1,9 @@
 {
   "name": "Inkpact",
   "short_name": "Inkpact",
+  "id": "/",
+  "description": "Self-hosted notes with real-time sync between your devices.",
+  "lang": "en",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
