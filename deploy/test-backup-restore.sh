@@ -36,6 +36,7 @@ cleanup() {
 trap cleanup EXIT
 
 # One field of a JSON document on standard input, such as .page.id or .[0].id
+# shellcheck disable=SC2016 # the script is JavaScript: its $1 is a regular expression's, not the shell's
 field() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let v=JSON.parse(s);for(const k of process.argv[1].split(".").filter(Boolean))v=v[k.replace(/^\[(\d+)\]$/,"$1")];console.log(v)})' "$1"; }
 
 wait_until_ready() {

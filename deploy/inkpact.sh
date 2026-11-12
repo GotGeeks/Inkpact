@@ -38,7 +38,6 @@ load_env() {
   set +a
   [[ -n "${DB_HOST:-}" ]] || die "set DB_HOST in $env_file"
   [[ -n "${DB_PASSWORD:-}" ]] || die "set DB_PASSWORD in $env_file"
-  image="${INKPACT_IMAGE:-inkpact:local}"
   container="${INKPACT_CONTAINER:-inkpact}"
 }
 
