@@ -182,9 +182,10 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
     }
 
     /// <summary>
-    /// Gives a page another title. When the title really changes and the workspace keeps history, the new title is also
-    /// left for the history's capture worker (<see cref="PageTitleChange"/>): one insert in this transaction, so that two
-    /// renames in a row leave two versions without this lock ever waiting for the Yjs sidecar (run B.5b).
+    /// Gives a page another title. When the title really changes, the new title is also left for the history's capture
+    /// worker (<see cref="PageTitleChange"/>): one insert in this transaction, so that two renames in a row leave two
+    /// versions without this lock ever waiting for the Yjs sidecar (run B.5b). Whether the workspace keeps history is not
+    /// asked here: the worker drops the row when it does not, so that rule is in one place.
     /// </summary>
     public async Task<TreeResult<PageChange>> RenameAsync(
         Guid pageId, string? title, int? expectedVersion, CancellationToken cancellationToken = default, Guid? changedBy = null)
@@ -211,7 +212,7 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
         var changed = page.Title != cleanTitle;
         page.Title = cleanTitle;
         Touch(page);
-        if (changed && await db.Workspaces.AnyAsync(w => w.Id == page.WorkspaceId && w.HistoryEnabled, cancellationToken))
+        if (changed)
         {
             db.PageTitleChanges.Add(new PageTitleChange
             {

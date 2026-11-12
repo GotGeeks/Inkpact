@@ -40,9 +40,15 @@ public sealed class ReimportFieldsTests(PostgresFixture postgres) : ReimportHarn
         EntriesOf(import).ShouldBeEmpty();
         ImportBase.FromJson((await ItemOfAsync("plan")).Base)!.Title.ShouldBe("Plan, second version");
 
+        // As after a person's rename, the title waits for the history's capture: the body did not change, so nothing
+        // else would ever make a version with it (run B.5b).
+        var waiting = (await UseDbAsync(db => db.PageTitleChanges.AsNoTracking().Where(c => c.PageId == page.Id).ToListAsync())).ShouldHaveSingleItem();
+        (waiting.Title, waiting.PageVersion, waiting.ChangedBy).ShouldBe(("Plan, second version", page.Version, UserId));
+
         var again = await ImportAsync(Library("Plan, second version"));
         (CountsOf(again).AlreadyImported, CountsOf(again).Updated).ShouldBe((3, 0));
         (await PageOfAsync("plan")).Version.ShouldBe(page.Version);
+        (await UseDbAsync(db => db.PageTitleChanges.CountAsync(c => c.PageId == page.Id))).ShouldBe(1);
     }
 
     [Fact]

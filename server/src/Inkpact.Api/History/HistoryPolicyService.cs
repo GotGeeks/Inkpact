@@ -103,6 +103,17 @@ internal sealed class HistoryPolicyService(InkpactDbContext db, IPermissionServi
         workspace.HistoryExpiryDays = policy.ExpiryDays;
         workspace.HistoryCapBytes = policy.CapBytes;
         await db.SaveChangesAsync(cancellationToken);
+
+        // A page that got no version because the cap left no room is tried again at once: the cap, or what the windows
+        // keep, may be what just changed. Whether there is room now is for the capture to find out.
+        await db.PageHistoryStates
+            .Where(s => s.Failure == PageHistoryFailures.Full && db.Pages.Any(p => p.Id == s.PageId && p.WorkspaceId == workspaceId))
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(x => x.Failure, (string?)null)
+                    .SetProperty(x => x.FailedAt, (DateTimeOffset?)null)
+                    .SetProperty(x => x.NextAttemptAt, (DateTimeOffset?)null)
+                    .SetProperty(x => x.FailedAttempts, 0),
+                cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return new(HistoryPolicyUpdateStatus.Saved, HistoryPolicyDto.From(policy));
     }

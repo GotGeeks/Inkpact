@@ -548,6 +548,10 @@ namespace Inkpact.Data.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("captured_updates");
 
+                    b.Property<DateTimeOffset?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
                     b.Property<int>("FailedAttempts")
                         .HasColumnType("integer")
                         .HasColumnName("failed_attempts");
@@ -560,6 +564,10 @@ namespace Inkpact.Data.Migrations
                     b.Property<DateTimeOffset?>("NextAttemptAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("next_attempt_at");
+
+                    b.Property<int>("WaitingAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("waiting_attempts");
 
                     b.HasKey("PageId")
                         .HasName("pk_page_history_state");

@@ -54,6 +54,7 @@ internal sealed class HistoryCapture(
     /// <summary>Captures the pages that are due, oldest change first, one at a time. Returns how many it looked at.</summary>
     internal async Task<int> RunRoundAsync(CancellationToken cancellationToken)
     {
+        await DropTitlesWithoutHistoryAsync(cancellationToken);
         var pages = await DuePagesAsync(cancellationToken);
         var done = 0;
         foreach (var pageId in pages)
@@ -69,7 +70,7 @@ internal sealed class HistoryCapture(
                 // pages behind it waiting: the page is left alone for a while, as when the sidecar is down, and the
                 // round goes on. The exception's type only: its message may quote what it could not handle.
                 logger.LogError("The capture of page {PageId} failed: {Reason}", pageId, ex.GetType().Name);
-                await DeferAsync(pageId, failure: null, TimeSpan.FromMinutes(1), MaxUnavailableBackoff, cancellationToken);
+                await WaitAsync(pageId, cancellationToken);
                 done++;
                 continue;
             }
@@ -87,57 +88,102 @@ internal sealed class HistoryCapture(
     }
 
     /// <summary>
+    /// A title that was given while the workspace's history is off gets no version: the rename leaves its row without
+    /// asking, so that the rule is here alone, and this removes it. Also the rows that waited when history was turned off.
+    /// </summary>
+    internal async Task<int> DropTitlesWithoutHistoryAsync(CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.PageTitleChanges
+            .Where(c => db.Pages.Any(p => p.Id == c.PageId && db.Workspaces.Any(w => w.Id == p.WorkspaceId && !w.HistoryEnabled)))
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    /// <summary>
     /// The pages with something to capture that are due. A page has something to capture when it was given more updates
     /// than its newest version saw (<see cref="PageHistoryState.CapturedUpdates"/>): counted, not compared by sequence
-    /// number, because an update can commit late with a number below one that is already captured. Due is: idle (their newest live update is older than
-    /// <see cref="HistoryOptions.CaptureIdleAfter"/>), or changing for long (their oldest update that is in no version is
-    /// older than <see cref="HistoryOptions.CaptureAtLatestAfter"/>), or renamed. Not one that failed and is still
-    /// waiting, and not one with so many live updates that the compactor should get to it first.
+    /// number, because an update can commit late with a number below one that is already captured. Or when a title waits.
+    /// <para>
+    /// Due is: idle (the newest live update is older than <see cref="HistoryOptions.CaptureIdleAfter"/>), or changing for
+    /// long (the oldest update that is in no version is older than <see cref="HistoryOptions.CaptureAtLatestAfter"/>), or
+    /// renamed. The oldest update is looked for in the archive too: the compactor moves the updates of a page that is
+    /// typed in without a pause there every few minutes, and the live ones alone would always look young.
+    /// </para>
+    /// <para>
+    /// Not due: a page that failed and is still waiting, unless it is one that could not be read and was written to since;
+    /// and, for <see cref="HistoryOptions.CaptureLargeLogAfter"/>, a page with so many live updates that the compactor
+    /// should get to it first.
+    /// </para>
+    /// <para>
+    /// Only pages that can have something are looked at (a live update, a waiting title, or a snapshot with more updates
+    /// than were captured), so a library in which nothing changed costs three index reads, not a row per page.
+    /// </para>
     /// </summary>
     internal async Task<List<Guid>> DuePagesAsync(CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
         var idleBefore = now - options.CaptureIdleAfter;
         var longBefore = now - options.CaptureAtLatestAfter;
+        var largeBefore = now - options.CaptureLargeLogAfter;
         var maxLiveBytes = options.CaptureMaxLiveBytes;
+        var unreadable = PageHistoryFailures.Unreadable;
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.Pages.AsNoTracking()
-            .Where(p => db.Workspaces.Any(w => w.Id == p.WorkspaceId && w.HistoryEnabled))
-            .Select(p => new
+        var candidates = db.PageUpdates.Select(u => u.PageId)
+            .Union(db.PageTitleChanges.Select(c => c.PageId))
+            .Union(db.PageSnapshots
+                .Where(s => s.UpdateCount > (db.PageHistoryStates.Where(h => h.PageId == s.PageId).Select(h => (long?)h.CapturedUpdates).FirstOrDefault() ?? 0))
+                .Select(s => s.PageId));
+
+        var pages =
+            from p in db.Pages.AsNoTracking()
+            where candidates.Contains(p.Id) && db.Workspaces.Any(w => w.Id == p.WorkspaceId && w.HistoryEnabled)
+            from s in db.PageHistoryStates.Where(s => s.PageId == p.Id).DefaultIfEmpty()
+            select new
             {
                 p.Id,
-                Captured = db.PageHistoryStates.Where(s => s.PageId == p.Id).Select(s => (long?)s.CapturedSeq).FirstOrDefault() ?? 0,
-                CapturedUpdates = db.PageHistoryStates.Where(s => s.PageId == p.Id).Select(s => (long?)s.CapturedUpdates).FirstOrDefault() ?? 0,
-                NextAttemptAt = db.PageHistoryStates.Where(s => s.PageId == p.Id).Select(s => s.NextAttemptAt).FirstOrDefault(),
-                InSnapshot = db.PageSnapshots.Where(s => s.PageId == p.Id).Select(s => (long?)s.UpdateCount).FirstOrDefault() ?? 0,
+                Captured = (long?)s.CapturedSeq ?? 0,
+                CapturedUpdates = (long?)s.CapturedUpdates ?? 0,
+                NextAttemptAt = (DateTimeOffset?)s.NextAttemptAt,
+                s.Failure,
+                FailedAt = (DateTimeOffset?)s.FailedAt,
+                InSnapshot = db.PageSnapshots.Where(x => x.PageId == p.Id).Select(x => (long?)x.UpdateCount).FirstOrDefault() ?? 0,
+                SnapshotAt = db.PageSnapshots.Where(x => x.PageId == p.Id).Select(x => (DateTimeOffset?)x.UpdatedAt).FirstOrDefault(),
                 Live = db.PageUpdates.LongCount(u => u.PageId == p.Id),
                 NewestLiveAt = db.PageUpdates.Where(u => u.PageId == p.Id).Max(u => (DateTimeOffset?)u.CreatedAt),
                 LiveBytes = db.PageUpdates.Where(u => u.PageId == p.Id).Sum(u => (long?)u.Data.Length) ?? 0,
-                Renamed = db.PageTitleChanges.Any(c => c.PageId == p.Id),
+                RenamedAt = db.PageTitleChanges.Where(c => c.PageId == p.Id).Min(c => (DateTimeOffset?)c.ChangedAt),
+            };
+
+        return await pages
+            .Select(x => new
+            {
+                Page = x,
+                OldestLive = db.PageUpdates.Where(u => u.PageId == x.Id && u.Seq > x.Captured).Min(u => (DateTimeOffset?)u.CreatedAt),
+                OldestArchived = db.ArchivedPageUpdates.Where(u => u.PageId == x.Id && u.Seq > x.Captured).Min(u => (DateTimeOffset?)u.CreatedAt),
             })
             .Select(x => new
             {
-                x.Id,
-                x.CapturedUpdates,
-                x.NextAttemptAt,
-                x.InSnapshot,
-                x.Live,
-                x.NewestLiveAt,
-                x.LiveBytes,
-                x.Renamed,
-                OldestUncapturedAt = db.PageUpdates.Where(u => u.PageId == x.Id && u.Seq > x.Captured).Min(u => (DateTimeOffset?)u.CreatedAt),
+                x.Page,
+                OldestAt = x.OldestLive == null ? x.OldestArchived
+                    : x.OldestArchived == null || x.OldestLive < x.OldestArchived ? x.OldestLive : x.OldestArchived,
             })
-            .Where(x => (x.NextAttemptAt == null || x.NextAttemptAt <= now)
-                && x.LiveBytes <= maxLiveBytes
-                && (x.Renamed
-                    || (x.InSnapshot + x.Live > x.CapturedUpdates
-                        && (x.NewestLiveAt == null || x.NewestLiveAt <= idleBefore
-                            || (x.OldestUncapturedAt != null && x.OldestUncapturedAt <= longBefore)))))
-            // A page whose changes are all compacted has no time to sort on, and has waited longest.
-            .OrderBy(x => x.OldestUncapturedAt ?? DateTimeOffset.MinValue)
-            .ThenBy(x => x.Id)
-            .Select(x => x.Id)
+            .Where(x =>
+                // Waiting after a failure, unless the page could not be read and was written to since (not more often
+                // than a page that is typed in is captured).
+                (x.Page.NextAttemptAt == null || x.Page.NextAttemptAt <= now
+                    || (x.Page.Failure == unreadable && x.Page.FailedAt <= longBefore
+                        && (x.Page.NewestLiveAt > x.Page.FailedAt || x.Page.SnapshotAt > x.Page.FailedAt)))
+                // A long log is the compactor's first, for a while.
+                && (x.Page.LiveBytes <= maxLiveBytes
+                    || (x.OldestAt == null && x.Page.RenamedAt == null) || x.OldestAt <= largeBefore || x.Page.RenamedAt <= largeBefore)
+                && (x.Page.RenamedAt != null
+                    || (x.Page.InSnapshot + x.Page.Live > x.Page.CapturedUpdates
+                        && (x.Page.NewestLiveAt == null || x.Page.NewestLiveAt <= idleBefore || x.OldestAt <= longBefore))))
+            // A page whose changes carry no time any more (all compacted, the archive purged) has waited longest.
+            .OrderBy(x => x.OldestAt ?? x.Page.RenamedAt ?? DateTimeOffset.MinValue)
+            .ThenBy(x => x.Page.Id)
+            .Select(x => x.Page.Id)
             .Take(options.CapturesPerRound)
             .ToListAsync(cancellationToken);
     }
@@ -152,14 +198,14 @@ internal sealed class HistoryCapture(
         }
         catch (YjsUnavailableException)
         {
-            await DeferAsync(pageId, failure: null, TimeSpan.FromMinutes(1), MaxUnavailableBackoff, cancellationToken);
+            await WaitAsync(pageId, cancellationToken);
             return HistoryCaptureOutcome.SidecarUnavailable;
         }
         catch (Exception ex) when (ex is HistorySnapshotVerificationException or YjsRejectedException)
         {
             // The message of these names the page and the reason, never its content.
             logger.LogWarning("No version could be made of page {PageId}: {Reason}", pageId, ex.GetType().Name);
-            await DeferAsync(pageId, PageHistoryFailures.Unreadable, TimeSpan.FromHours(1), MaxUnreadableBackoff, cancellationToken);
+            await FailAsync(pageId, PageHistoryFailures.Unreadable, TimeSpan.FromHours(1), MaxUnreadableBackoff, cancellationToken);
             return HistoryCaptureOutcome.Unreadable;
         }
 
@@ -172,7 +218,7 @@ internal sealed class HistoryCapture(
         if (outcome == HistoryCaptureOutcome.Full)
         {
             logger.LogWarning("No version was made of page {PageId}: the history of workspace {WorkspaceId} is at its cap", pageId, snapshot.WorkspaceId);
-            await DeferAsync(pageId, PageHistoryFailures.Full, TimeSpan.FromHours(1), TimeSpan.FromHours(1), cancellationToken);
+            await FailAsync(pageId, PageHistoryFailures.Full, TimeSpan.FromHours(1), TimeSpan.FromHours(1), cancellationToken);
         }
 
         return outcome;
@@ -237,11 +283,30 @@ internal sealed class HistoryCapture(
                 fingerprint: snapshot.Fingerprint, contentSeq: snapshot.ContentSeq));
         }
 
-        if (versions.Count > 0 && policy.CapBytes is { } cap
-            && !await MakeRoomAsync(db, snapshot.WorkspaceId, versions.Sum(v => v.PayloadBytes), cap, cancellationToken))
+        if (versions.Count > 0 && policy.CapBytes is { } cap)
         {
-            await transaction.RollbackAsync(cancellationToken);
-            return HistoryCaptureOutcome.Full;
+            var now = time.GetUtcNow();
+            var stored = db.PageVersions.Where(v => db.Pages.Any(p => p.Id == v.PageId && p.WorkspaceId == snapshot.WorkspaceId));
+            var size = await stored.SumAsync(v => (long?)v.PayloadBytes, cancellationToken) ?? 0;
+            var kept = await stored.Where(v => v.ProtectedUntil > now).SumAsync(v => (long?)v.PayloadBytes, cancellationToken) ?? 0;
+
+            // Under a cap the oldest versions go first, and that holds for the ones about to be written too: when the
+            // titles that waited and the page as it is do not all fit, the earliest titles are left out. Each of them is
+            // a full copy of the page, so a few renames of a large page would otherwise never fit, and the page would get
+            // no version again.
+            while (versions.Count > 1 && versions.Sum(v => v.PayloadBytes) > cap - kept)
+            {
+                versions.RemoveAt(0);
+            }
+
+            var needed = versions.Sum(v => v.PayloadBytes);
+            if (needed > cap - kept)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return HistoryCaptureOutcome.Full;
+            }
+
+            await EvictAsync(stored, size + needed - cap, now, cancellationToken);
         }
 
         db.PageVersions.AddRange(versions);
@@ -257,8 +322,10 @@ internal sealed class HistoryCapture(
         state.CapturedSeq = Math.Max(state.CapturedSeq, snapshot.ContentSeq);
         state.CapturedUpdates = Math.Max(state.CapturedUpdates, snapshot.StoredUpdates);
         state.FailedAttempts = 0;
+        state.WaitingAttempts = 0;
         state.NextAttemptAt = null;
         state.Failure = null;
+        state.FailedAt = null;
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return versions.Count > 0 ? HistoryCaptureOutcome.Captured : HistoryCaptureOutcome.Unchanged;
@@ -290,22 +357,14 @@ internal sealed class HistoryCapture(
     }
 
     /// <summary>
-    /// Makes room under the cap for <paramref name="needed"/> bytes by removing the workspace's oldest versions that are not
-    /// protected. False when that is not enough; the caller then writes nothing and rolls back, so nothing was removed.
+    /// Removes the workspace's oldest versions that are not protected until <paramref name="excess"/> bytes are gone. The
+    /// caller has checked that there are that many, and holds the workspace's history lock.
     /// </summary>
-    private async Task<bool> MakeRoomAsync(InkpactDbContext db, Guid workspaceId, long needed, long cap, CancellationToken cancellationToken)
+    private static async Task EvictAsync(IQueryable<PageVersion> stored, long excess, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        if (needed > cap)
+        while (excess > 0)
         {
-            return false;
-        }
-
-        var now = time.GetUtcNow();
-        var versions = db.PageVersions.Where(v => db.Pages.Any(p => p.Id == v.PageId && p.WorkspaceId == workspaceId));
-        var size = await versions.SumAsync(v => (long?)v.PayloadBytes, cancellationToken) ?? 0;
-        while (size + needed > cap)
-        {
-            var oldest = await versions.AsNoTracking()
+            var oldest = await stored.AsNoTracking()
                 .Where(v => v.PayloadBytes > 0 && (v.ProtectedUntil == null || v.ProtectedUntil <= now))
                 .OrderBy(v => v.CreatedAt)
                 .ThenBy(v => v.Id)
@@ -314,31 +373,64 @@ internal sealed class HistoryCapture(
                 .ToListAsync(cancellationToken);
             if (oldest.Count == 0)
             {
-                return false;
+                throw new InvalidOperationException("The history has fewer unprotected bytes than were counted under its lock.");
             }
 
             var ids = new List<Guid>();
             foreach (var version in oldest)
             {
                 ids.Add(version.Id);
-                size -= version.PayloadBytes;
-                if (size + needed <= cap)
+                excess -= version.PayloadBytes;
+                if (excess <= 0)
                 {
                     break;
                 }
             }
 
-            await versions.Where(v => ids.Contains(v.Id)).ExecuteDeleteAsync(cancellationToken);
+            await stored.Where(v => ids.Contains(v.Id)).ExecuteDeleteAsync(cancellationToken);
         }
-
-        return true;
     }
 
     /// <summary>
-    /// Leaves the page alone for a while, twice as long after each attempt in a row, and notes why when there is a reason
-    /// that is the page's own. The cursor stays where it was.
+    /// Leaves the page alone for a while because something that is not the page's own went wrong (the sidecar did not
+    /// answer, or an error nobody foresaw): a minute, twice as long after each time in a row, an hour at most. What is
+    /// known about the page itself stays: a page that could not be read is still that, and its own count is not raised.
     /// </summary>
-    private async Task DeferAsync(Guid pageId, string? failure, TimeSpan first, TimeSpan longest, CancellationToken cancellationToken)
+    private async Task WaitAsync(Guid pageId, CancellationToken cancellationToken)
+    {
+        await NoteAsync(
+            pageId,
+            state =>
+            {
+                state.WaitingAttempts++;
+                var until = time.GetUtcNow() + Backoff(TimeSpan.FromMinutes(1), MaxUnavailableBackoff, state.WaitingAttempts);
+                state.NextAttemptAt = state.NextAttemptAt is { } already && already > until ? already : until;
+            },
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Notes why no version could be made of the page, and leaves it alone for a while: twice as long after each time in
+    /// a row for the same reason. The cursor stays where it was.
+    /// </summary>
+    private async Task FailAsync(Guid pageId, string failure, TimeSpan first, TimeSpan longest, CancellationToken cancellationToken)
+    {
+        await NoteAsync(
+            pageId,
+            state =>
+            {
+                state.FailedAttempts = state.Failure == failure ? state.FailedAttempts + 1 : 1;
+                state.Failure = failure;
+                state.FailedAt = time.GetUtcNow();
+                state.NextAttemptAt = state.FailedAt + Backoff(first, longest, state.FailedAttempts);
+            },
+            cancellationToken);
+    }
+
+    private static TimeSpan Backoff(TimeSpan first, TimeSpan longest, int attempts) =>
+        TimeSpan.FromTicks(Math.Min(first.Ticks * (1L << Math.Clamp(attempts - 1, 0, 20)), longest.Ticks));
+
+    private async Task NoteAsync(Guid pageId, Action<PageHistoryState> note, CancellationToken cancellationToken)
     {
         try
         {
@@ -350,10 +442,7 @@ internal sealed class HistoryCapture(
                 db.PageHistoryStates.Add(state);
             }
 
-            state.FailedAttempts++;
-            var wait = TimeSpan.FromTicks(Math.Min(first.Ticks * (1L << Math.Min(state.FailedAttempts - 1, 20)), longest.Ticks));
-            state.NextAttemptAt = time.GetUtcNow() + wait;
-            state.Failure = failure;
+            note(state);
             await db.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException)

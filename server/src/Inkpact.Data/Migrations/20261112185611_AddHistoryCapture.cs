@@ -34,8 +34,10 @@ namespace Inkpact.Data.Migrations
                     captured_seq = table.Column<long>(type: "bigint", nullable: false),
                     captured_updates = table.Column<long>(type: "bigint", nullable: false),
                     failed_attempts = table.Column<int>(type: "integer", nullable: false),
+                    waiting_attempts = table.Column<int>(type: "integer", nullable: false),
                     next_attempt_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    failure = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: true)
+                    failure = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: true),
+                    failed_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {

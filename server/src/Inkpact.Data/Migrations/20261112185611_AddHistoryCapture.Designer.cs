@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Inkpact.Data.Migrations
 {
     [DbContext(typeof(InkpactDbContext))]
-    [Migration("20261112181334_AddHistoryCapture")]
+    [Migration("20261112185611_AddHistoryCapture")]
     partial class AddHistoryCapture
     {
         /// <inheritdoc />
@@ -551,6 +551,10 @@ namespace Inkpact.Data.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("captured_updates");
 
+                    b.Property<DateTimeOffset?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
                     b.Property<int>("FailedAttempts")
                         .HasColumnType("integer")
                         .HasColumnName("failed_attempts");
@@ -563,6 +567,10 @@ namespace Inkpact.Data.Migrations
                     b.Property<DateTimeOffset?>("NextAttemptAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("next_attempt_at");
+
+                    b.Property<int>("WaitingAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("waiting_attempts");
 
                     b.HasKey("PageId")
                         .HasName("pk_page_history_state");

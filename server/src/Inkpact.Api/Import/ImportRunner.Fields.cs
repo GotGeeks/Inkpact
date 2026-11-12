@@ -290,6 +290,7 @@ public sealed partial class ImportRunner
         var now = time.GetUtcNow();
         var oldDue = page.DueAt;
 
+        var retitled = plan.Title is { } newTitle && newTitle.Value != page.Title;
         if (plan.Title is { } title)
         {
             page.Title = title.Value;
@@ -305,6 +306,20 @@ public sealed partial class ImportRunner
         if (plan.Title is not null || plan.Parent is not null)
         {
             page.Version++;
+        }
+
+        if (retitled)
+        {
+            // As a person's rename does: the title is left for the history's capture worker. Without it a note whose
+            // title alone changed in Joplin would have that title in no version until someone edits its body.
+            db.PageTitleChanges.Add(new PageTitleChange
+            {
+                PageId = page.Id,
+                Title = page.Title,
+                PageVersion = page.Version,
+                ChangedAt = now,
+                ChangedBy = run.UserId,
+            });
         }
 
         if (plan.IsTodo is { } isTodo)

@@ -22,14 +22,23 @@ public class PageHistoryState
     /// </summary>
     public long CapturedUpdates { get; set; }
 
-    /// <summary>How many attempts in a row failed. Zero after a capture.</summary>
+    /// <summary>How many attempts in a row failed for the reason in <see cref="Failure"/>. Zero after a capture.</summary>
     public int FailedAttempts { get; set; }
+
+    /// <summary>
+    /// How many attempts in a row were put off for a reason that is not the page's own: the sidecar did not answer, or an
+    /// error nobody foresaw. Counted apart, so that a sidecar that was down does not make a page's own failure wait longer.
+    /// </summary>
+    public int WaitingAttempts { get; set; }
 
     /// <summary>The page is left alone until then. Null when nothing failed.</summary>
     public DateTimeOffset? NextAttemptAt { get; set; }
 
-    /// <summary>One of <see cref="PageHistoryFailures"/>, or null.</summary>
+    /// <summary>One of <see cref="PageHistoryFailures"/>, or null. Stays through an attempt that was only put off.</summary>
     public string? Failure { get; set; }
+
+    /// <summary>When <see cref="Failure"/> was last met. A page that could not be read is tried again once it was written to after this.</summary>
+    public DateTimeOffset? FailedAt { get; set; }
 }
 
 public static class PageHistoryFailures

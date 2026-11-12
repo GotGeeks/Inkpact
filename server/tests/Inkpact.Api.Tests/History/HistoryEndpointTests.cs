@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Inkpact.Api.Auth;
 using Inkpact.Api.Crdt;
 using Inkpact.Api.History;
 using Inkpact.Api.Permissions;
@@ -233,6 +234,71 @@ public class HistoryEndpointTests(PostgresFixture postgres) : IClassFixture<Post
     }
 
     [Fact]
+    public async Task One_version_is_read_at_a_time_and_a_request_that_waits_too_long_is_told_to_come_back()
+    {
+        await using var factory = new InkpactFactory(
+            await postgres.CreateDatabaseAsync(),
+            sidecar: true,
+            settings: new Dictionary<string, string> { ["History:PreviewWait"] = "00:00:00.200" });
+        using var owner = await factory.SignedInClientAsync();
+        await factory.Services.GetRequiredService<YjsSidecar>().WaitUntilReadyAsync(new CancellationTokenSource(YjsSidecars.StartTimeout).Token);
+        var state = await factory.Services.GetRequiredService<IYjsCodec>().BuildAsync(Document, default);
+        Guid pageId;
+        PageVersion version;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<InkpactDbContext>();
+            var page = NewPage(await db.Workspaces.Select(w => w.Id).SingleAsync());
+            db.Pages.Add(page);
+            await db.SaveChangesAsync();
+            pageId = page.Id;
+            version = new PageVersion(pageId, state, "Page", "", Now, null, PageVersionKind.Automatic);
+            db.PageVersions.Add(version);
+            await db.SaveChangesAsync();
+        }
+
+        var gate = factory.Services.GetRequiredService<HistoryPreviewGate>();
+        using (await gate.EnterAsync(default))
+        {
+            var response = await owner.GetAsync(VersionPath(pageId, version.Id));
+            response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+            (await response.ReadErrorAsync()).Code.ShouldBe("history_unavailable");
+            // A version that is not there is said to be not there without waiting for a turn, and the list needs none.
+            (await owner.GetAsync(VersionPath(pageId, Guid.NewGuid()))).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+            (await owner.GetAsync(ListPath(pageId))).StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        // The turn is given back, also by a read that failed.
+        var read = await owner.GetAsync(VersionPath(pageId, version.Id));
+        read.StatusCode.ShouldBe(HttpStatusCode.OK);
+        // As every answer of the API: not kept by the browser.
+        read.Headers.CacheControl!.NoStore.ShouldBeTrue();
+        (await owner.GetAsync(VersionPath(pageId, version.Id))).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task A_changed_policy_lets_a_page_that_was_full_try_again_and_leaves_other_failures_as_they_are()
+    {
+        var unreadable = await AddPageAsync(_workspaceId);
+        await SetStateAsync(new PageHistoryState { PageId = _pageId, FailedAttempts = 2, NextAttemptAt = Now.AddHours(1), Failure = PageHistoryFailures.Full, FailedAt = Now });
+        await SetStateAsync(new PageHistoryState { PageId = unreadable, FailedAttempts = 2, NextAttemptAt = Now.AddHours(2), Failure = PageHistoryFailures.Unreadable, FailedAt = Now });
+        (await ListAsync(_pageId)).State.ShouldBe(HistoryStates.Full);
+
+        var message = new HttpRequestMessage(HttpMethod.Put, $"/api/workspaces/{_workspaceId}/history-policy")
+        {
+            Content = JsonContent.Create(new HistoryPolicyDto(true, 24, 30, 365, 64)),
+        };
+        message.Headers.Add(CsrfProtection.HeaderName, (await _owner.GetStateAsync()).CsrfToken);
+        (await _owner.SendAsync(message)).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        (await ListAsync(_pageId)).State.ShouldBe(HistoryStates.Ready);
+        var cleared = await UseDbAsync(db => db.PageHistoryStates.AsNoTracking().SingleAsync(s => s.PageId == _pageId));
+        (cleared.Failure, cleared.FailedAt, cleared.NextAttemptAt, cleared.FailedAttempts).ShouldBe((null, null, null, 0));
+        var kept = await UseDbAsync(db => db.PageHistoryStates.AsNoTracking().SingleAsync(s => s.PageId == unreadable));
+        (kept.Failure, kept.NextAttemptAt, kept.FailedAttempts).ShouldBe((PageHistoryFailures.Unreadable, Now.AddHours(2), 2));
+    }
+
+    [Fact]
     public async Task A_version_is_only_found_within_its_own_page()
     {
         var otherPage = await AddPageAsync(_workspaceId);
@@ -353,6 +419,23 @@ public class HistoryEndpointTests(PostgresFixture postgres) : IClassFixture<Post
         (change.PageId, change.Title, change.ChangedBy, change.ChangedAt).ShouldBe((_pageId, "A new title", _ownerId, Now));
         change.PageVersion.ShouldBe(await UseDbAsync(db => db.Pages.Where(p => p.Id == _pageId).Select(p => p.Version).SingleAsync()) - 1);
         (await ListAsync(_pageId)).State.ShouldBe(HistoryStates.Pending);
+    }
+
+    [Fact]
+    public async Task A_page_the_capture_only_put_off_and_one_it_still_cannot_read_are_told_apart()
+    {
+        // Put off because the sidecar was down, with what was known of the page kept: it is still one that cannot be read.
+        await SetStateAsync(new PageHistoryState
+        {
+            PageId = _pageId,
+            FailedAttempts = 1,
+            WaitingAttempts = 2,
+            NextAttemptAt = Now.AddHours(1),
+            Failure = PageHistoryFailures.Unreadable,
+            FailedAt = Now,
+        });
+        var list = await ListAsync(_pageId);
+        (list.State, list.Failure).ShouldBe((HistoryStates.Failed, PageHistoryFailures.Unreadable));
     }
 
     // ---- the worker, through the app as it runs ---------------------------------------------------------------------------

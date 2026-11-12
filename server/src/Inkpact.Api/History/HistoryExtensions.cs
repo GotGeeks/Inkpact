@@ -27,6 +27,18 @@ internal sealed class HistoryOptions
     /// after it, a capture reads one snapshot instead of replaying a long log.
     /// </summary>
     public long CaptureMaxLiveBytes { get; set; } = 2 * 1024 * 1024;
+
+    /// <summary>
+    /// How long such a page is left to the compactor. After it the page is captured from its long log: the compactor may
+    /// be off, or may not get the page compacted, and the page must not go without versions for that.
+    /// </summary>
+    public TimeSpan CaptureLargeLogAfter { get; set; } = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// How long a request for a version's content waits for the one before it. One is read at a time: each is a replay in
+    /// the sidecar, which takes one request at a time, and people who are editing wait behind it.
+    /// </summary>
+    public TimeSpan PreviewWait { get; set; } = TimeSpan.FromSeconds(10);
 }
 
 public static class HistoryExtensions
@@ -46,10 +58,10 @@ public static class HistoryExtensions
         }
 
         if (options.CapturesPerRound < 1 || options.CaptureIdleAfter < TimeSpan.Zero || options.CaptureAtLatestAfter < TimeSpan.Zero
-            || options.CaptureMaxLiveBytes < 0)
+            || options.CaptureMaxLiveBytes < 0 || options.CaptureLargeLogAfter < TimeSpan.Zero || options.PreviewWait < TimeSpan.Zero)
         {
             throw new InvalidOperationException(
-                "History:CapturesPerRound must be 1 or more, and History:CaptureIdleAfter, CaptureAtLatestAfter and CaptureMaxLiveBytes not negative.");
+                "History:CapturesPerRound must be 1 or more, and History:CaptureIdleAfter, CaptureAtLatestAfter, CaptureMaxLiveBytes, CaptureLargeLogAfter and PreviewWait not negative.");
         }
 
         services.AddSingleton(options);
@@ -59,6 +71,7 @@ public static class HistoryExtensions
         services.AddSingleton<IHistorySnapshotHooks, NoHistorySnapshotHooks>();
         services.AddSingleton<HistorySnapshotBuilder>();
         services.AddSingleton<HistoryCapture>();
+        services.AddSingleton<HistoryPreviewGate>();
         services.AddHostedService<HistoryCaptureWorker>();
         return services;
     }

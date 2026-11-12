@@ -43,6 +43,33 @@ public static class HistoryStates
 }
 
 /// <summary>
+/// Lets one version's content be read at a time. Reading it is a replay in the Yjs sidecar, which takes one request at a
+/// time: without this, someone going through a list of large versions would keep the sidecar busy, and everyone who opens
+/// a page meanwhile would wait behind them. With it, at most one such read is ever in the sidecar's queue.
+/// </summary>
+internal sealed class HistoryPreviewGate(HistoryOptions options)
+{
+    private readonly SemaphoreSlim _one = new(1, 1);
+
+    /// <summary>Waits for its turn. Null when the wait was too long; otherwise dispose it when done.</summary>
+    internal async Task<IDisposable?> EnterAsync(CancellationToken cancellationToken) =>
+        await _one.WaitAsync(options.PreviewWait, cancellationToken) ? new Turn(_one) : null;
+
+    private sealed class Turn(SemaphoreSlim one) : IDisposable
+    {
+        private int _released;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _released, 1) == 0)
+            {
+                one.Release();
+            }
+        }
+    }
+}
+
+/// <summary>
 /// Reading a page's history (run B.5b): the list, and one version's content. A viewer of the page may read both. A
 /// version is always looked up within the page of the address, so an id of another page's version is not found.
 /// </summary>
@@ -99,13 +126,26 @@ public static class HistoryEndpoints
         return Results.Ok(new VersionList(page, next, state, failure));
     }
 
-    private static async Task<IResult> Get(Guid pageId, Guid versionId, InkpactDbContext db, IYjsCodec codec, CancellationToken cancellationToken)
+    private static async Task<IResult> Get(
+        Guid pageId, Guid versionId, InkpactDbContext db, IYjsCodec codec, HistoryPreviewGate gate, CancellationToken cancellationToken)
     {
-        var version = await db.PageVersions.AsNoTracking()
-            .Where(v => v.Id == versionId && v.PageId == pageId)
-            .Select(v => new { v.Id, v.CreatedAt, v.Kind, v.Title, v.State })
-            .SingleOrDefaultAsync(cancellationToken);
+        var versions = db.PageVersions.AsNoTracking().Where(v => v.Id == versionId && v.PageId == pageId);
+        var version = await versions.Select(v => new { v.Id, v.CreatedAt, v.Kind, v.Title }).SingleOrDefaultAsync(cancellationToken);
         if (version is null)
+        {
+            return ApiResults.Error(StatusCodes.Status404NotFound, "version_not_found");
+        }
+
+        // The content is not left to the browser's cache to save a second read: answers of the API are never cached
+        // (JsonOnlyApi). The panel keeps what it has shown for as long as it is open.
+        using var turn = await gate.EnterAsync(cancellationToken);
+        if (turn is null)
+        {
+            return ApiResults.Error(StatusCodes.Status503ServiceUnavailable, "history_unavailable");
+        }
+
+        var state = await versions.Select(v => v.State).SingleOrDefaultAsync(cancellationToken);
+        if (state is null)
         {
             return ApiResults.Error(StatusCodes.Status404NotFound, "version_not_found");
         }
@@ -113,7 +153,7 @@ public static class HistoryEndpoints
         YjsRead read;
         try
         {
-            read = await codec.ReadAsync([version.State], cancellationToken);
+            read = await codec.ReadAsync([state], cancellationToken);
         }
         catch (YjsUnavailableException)
         {

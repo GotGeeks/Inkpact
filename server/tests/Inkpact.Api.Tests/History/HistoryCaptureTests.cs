@@ -122,12 +122,68 @@ public class HistoryCaptureTests(PostgresFixture postgres, YjsSidecarFixture yjs
     {
         var pageId = await EditedPageAsync();
         _options.CaptureMaxLiveBytes = 10;
-        Clock.Advance(TimeSpan.FromHours(1));
+        Clock.Advance(_options.CaptureLargeLogAfter - TimeSpan.FromSeconds(1));
 
         (await Capture().DuePagesAsync(default)).ShouldBeEmpty();
 
         (await CreateCompactor().CompactAsync(pageId, default)).ShouldBe(CompactionResult.Compacted);
         (await Capture().DuePagesAsync(default)).ShouldBe([pageId]);
+    }
+
+    [Fact]
+    public async Task A_page_with_a_long_log_the_compactor_never_gets_to_is_captured_after_an_hour_and_so_is_its_rename()
+    {
+        var pageId = await EditedPageAsync();
+        var renamed = await EditedPageAsync(4, 2);
+        (await Capture().CaptureAsync(renamed, default)).ShouldBe(HistoryCaptureOutcome.Captured);
+        await AppendAsync(renamed, EditStreams.Get(8, 2).Skip(4));
+        _options.CaptureMaxLiveBytes = 10;
+        Clock.Advance(TimeSpan.FromMinutes(30));
+        await RenameAsync(renamed, "Renamed");
+
+        // Nobody compacts. Within the hour both wait, the rename too: it would be a replay of the same long log.
+        Clock.Advance(TimeSpan.FromMinutes(29));
+        (await Capture().DuePagesAsync(default)).ShouldBeEmpty();
+
+        Clock.Advance(TimeSpan.FromMinutes(1));
+        (await Capture().DuePagesAsync(default)).ShouldBe([pageId, renamed]);
+        (await Capture().RunRoundAsync(default)).ShouldBe(2);
+        (await VersionsAsync(pageId)).Count.ShouldBe(1);
+        (await VersionsAsync(renamed)).Select(v => v.Kind).ShouldBe([PageVersionKind.Automatic, PageVersionKind.Rename]);
+    }
+
+    [Fact]
+    public async Task A_page_typed_in_without_a_pause_is_due_after_five_minutes_also_when_the_compactor_keeps_taking_its_updates()
+    {
+        // An edit every half minute, and a compaction of everything live right before each: what is live is never older
+        // than half a minute, and the page is never idle.
+        var stream = EditStreams.Get(14, 3);
+        var pageId = await AddPageAsync();
+        await AppendAsync(pageId, [stream[0]]);
+        for (var i = 1; i < stream.Count; i++)
+        {
+            Clock.Advance(TimeSpan.FromSeconds(30));
+            (await CreateCompactor().CompactAsync(pageId, default)).ShouldBe(CompactionResult.Compacted);
+            await AppendAsync(pageId, [stream[i]]);
+            var due = await Capture().DuePagesAsync(default);
+            if (Clock.GetUtcNow() - Start < _options.CaptureAtLatestAfter)
+            {
+                due.ShouldBeEmpty($"after {Clock.GetUtcNow() - Start}");
+            }
+            else
+            {
+                // The oldest change that is in no version is in the archive by now, and still counts.
+                due.ShouldBe([pageId], $"after {Clock.GetUtcNow() - Start}");
+            }
+        }
+
+        (await Capture().RunRoundAsync(default)).ShouldBe(1);
+        (await VersionsAsync(pageId)).Count.ShouldBe(1);
+
+        // From that version on the five minutes start again.
+        Clock.Advance(TimeSpan.FromSeconds(30));
+        await AppendAsync(pageId, EditStreams.Get(16, 3).Skip(14));
+        (await Capture().DuePagesAsync(default)).ShouldBeEmpty();
     }
 
     [Fact]
@@ -426,15 +482,46 @@ public class HistoryCaptureTests(PostgresFixture postgres, YjsSidecarFixture yjs
     }
 
     [Fact]
-    public async Task A_rename_to_the_same_title_or_with_history_off_leaves_nothing_to_capture()
+    public async Task A_rename_to_the_same_title_leaves_nothing_and_one_made_with_history_off_is_dropped_by_the_next_round()
     {
         var pageId = await AddPageAsync();
         await RenameAsync(pageId, "Page");
+        await using (var db = CreateContext())
+        {
+            (await db.PageTitleChanges.CountAsync()).ShouldBe(0);
+        }
+
         await SetPolicyAsync(enabled: false);
         await RenameAsync(pageId, "Renamed while off");
 
-        await using var db = CreateContext();
-        (await db.PageTitleChanges.CountAsync()).ShouldBe(0);
+        (await Capture().RunRoundAsync(default)).ShouldBe(0);
+
+        await using var after = CreateContext();
+        (await after.PageTitleChanges.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task A_title_that_waited_when_history_was_turned_off_is_not_made_a_version_of_when_it_is_turned_on_again()
+    {
+        var pageId = await EditedPageAsync();
+        var other = await EditedPageAsync(4, 2);
+        (await Capture().CaptureAsync(pageId, default)).ShouldBe(HistoryCaptureOutcome.Captured);
+        await RenameAsync(pageId, "Renamed before it was off");
+        await SetPolicyAsync(enabled: false);
+
+        // No page of the workspace is due, and the rounds still clear what waited.
+        (await Capture().RunRoundAsync(default)).ShouldBe(0);
+        await using (var db = CreateContext())
+        {
+            (await db.PageTitleChanges.CountAsync()).ShouldBe(0);
+        }
+
+        Clock.Advance(TimeSpan.FromDays(30));
+        await SetPolicyAsync(enabled: true);
+
+        // Only the page that has content in no version; the renamed one has nothing dated a month ago to add.
+        (await Capture().DuePagesAsync(default)).ShouldBe([other]);
+        (await VersionsAsync(pageId)).Select(v => v.Kind).ShouldBe([PageVersionKind.Automatic]);
     }
 
     [Fact]
@@ -542,6 +629,30 @@ public class HistoryCaptureTests(PostgresFixture postgres, YjsSidecarFixture yjs
     }
 
     [Fact]
+    public async Task Under_a_cap_that_fits_one_version_several_titles_that_waited_leave_the_newest_and_the_page_is_not_full()
+    {
+        var pageId = await EditedPageAsync();
+        (await Capture().CaptureAsync(pageId, default)).ShouldBe(HistoryCaptureOutcome.Captured);
+        var size = (await VersionsAsync(pageId)).Single().PayloadBytes;
+        await RenameAsync(pageId, "Second");
+        await RenameAsync(pageId, "Third");
+        await RenameAsync(pageId, "Fourth");
+        Clock.Advance(TimeSpan.FromMinutes(1));
+
+        // Room for one copy of the page and a half, not for the three that the renames would be.
+        await SetPolicyAsync(capBytes: size + size / 2);
+
+        (await Capture().CaptureAsync(pageId, default)).ShouldBe(HistoryCaptureOutcome.Captured);
+
+        // The earliest titles went, as the oldest versions do under a cap; so did the first version, to make room.
+        (await VersionsAsync(pageId)).Select(v => (v.Kind, v.Title)).ShouldBe([(PageVersionKind.Rename, "Fourth")]);
+        (await StateAsync(pageId))!.Failure.ShouldBeNull();
+        await using var db = CreateContext();
+        (await db.PageTitleChanges.CountAsync()).ShouldBe(0);
+        (await Capture().DuePagesAsync(default)).ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task A_cap_that_leaves_no_room_writes_nothing_removes_nothing_and_says_full()
     {
         var pageId = await EditedPageAsync();
@@ -603,6 +714,71 @@ public class HistoryCaptureTests(PostgresFixture postgres, YjsSidecarFixture yjs
 
         // The log names the page and the kind of failure, and nothing of the page.
         _log.Entries.Where(e => e.Level == LogLevel.Warning).ShouldAllBe(e => e.Message.Contains(pageId.ToString()));
+    }
+
+    [Fact]
+    public async Task A_page_that_could_not_be_read_is_tried_again_once_it_was_written_to_and_not_before()
+    {
+        var stream = EditStreams.Get(12, 8);
+        var pageId = await AddPageAsync();
+        await AppendAsync(pageId, stream.Take(8));
+        var codec = Substitute.For<IYjsCodec>();
+        codec.BuildAsync(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(new byte[] { 1 });
+        codec.CompactAsync(Arg.Any<IReadOnlyList<byte[]>>(), Arg.Any<CancellationToken>())
+            .Returns(new YjsCompaction([1], [1], [1], [2], "", []));
+        (await Capture(codec).CaptureAsync(pageId, default)).ShouldBe(HistoryCaptureOutcome.Unreadable);
+
+        // Nothing changed: it waits its hour.
+        Clock.Advance(TimeSpan.FromMinutes(30));
+        (await Capture().DuePagesAsync(default)).ShouldBeEmpty();
+
+        // Someone writes to it, which may have taken out what could not be read: the page is tried again, as any page
+        // whose oldest change in no version is more than five minutes old.
+        await AppendAsync(pageId, stream.Skip(8));
+        (await Capture().DuePagesAsync(default)).ShouldBe([pageId]);
+
+        // Still unreadable: it waits again, from now, and the same content does not bring it back.
+        (await Capture(codec).CaptureAsync(pageId, default)).ShouldBe(HistoryCaptureOutcome.Unreadable);
+        Clock.Advance(TimeSpan.FromMinutes(30));
+        (await Capture().DuePagesAsync(default)).ShouldBeEmpty();
+
+        (await Capture().CaptureAsync(pageId, default)).ShouldBe(HistoryCaptureOutcome.Captured);
+        var state = (await StateAsync(pageId)).ShouldNotBeNull();
+        (state.Failure, state.FailedAt, state.FailedAttempts, state.NextAttemptAt).ShouldBe((null, null, 0, null));
+    }
+
+    [Fact]
+    public async Task A_sidecar_that_is_down_neither_forgets_that_a_page_could_not_be_read_nor_makes_it_wait_longer_for_that()
+    {
+        var pageId = await EditedPageAsync();
+        var down = Substitute.For<IYjsCodec>();
+        down.BuildAsync(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).ThrowsAsync(new YjsUnavailableException("down"));
+        var broken = Substitute.For<IYjsCodec>();
+        broken.BuildAsync(Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<CancellationToken>()).Returns(new byte[] { 1 });
+        broken.CompactAsync(Arg.Any<IReadOnlyList<byte[]>>(), Arg.Any<CancellationToken>())
+            .Returns(new YjsCompaction([1], [1], [1], [2], "", []));
+
+        // Five times the sidecar is down, each wait twice the one before.
+        for (var i = 0; i < 5; i++)
+        {
+            (await Capture(down).CaptureAsync(pageId, default)).ShouldBe(HistoryCaptureOutcome.SidecarUnavailable);
+        }
+
+        var waiting = (await StateAsync(pageId)).ShouldNotBeNull();
+        (waiting.Failure, waiting.FailedAttempts, waiting.WaitingAttempts).ShouldBe((null, 0, 5));
+        waiting.NextAttemptAt.ShouldBe(Clock.GetUtcNow() + TimeSpan.FromMinutes(16));
+
+        // The first time it cannot be read, it waits the first hour, not the thirty-second.
+        (await Capture(broken).CaptureAsync(pageId, default)).ShouldBe(HistoryCaptureOutcome.Unreadable);
+        var failed = (await StateAsync(pageId)).ShouldNotBeNull();
+        (failed.Failure, failed.FailedAttempts).ShouldBe((PageHistoryFailures.Unreadable, 1));
+        failed.NextAttemptAt.ShouldBe(Clock.GetUtcNow() + TimeSpan.FromHours(1));
+
+        // And the sidecar being down after that leaves the page what it is: one that cannot be read.
+        (await Capture(down).CaptureAsync(pageId, default)).ShouldBe(HistoryCaptureOutcome.SidecarUnavailable);
+        var after = (await StateAsync(pageId)).ShouldNotBeNull();
+        (after.Failure, after.FailedAttempts, after.FailedAt).ShouldBe((PageHistoryFailures.Unreadable, 1, Clock.GetUtcNow()));
+        after.NextAttemptAt.ShouldBe(Clock.GetUtcNow() + TimeSpan.FromHours(1));
     }
 
     [Fact]
