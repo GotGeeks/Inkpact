@@ -47,7 +47,9 @@ describe('the tab title', () => {
 
     // A rename elsewhere.
     server.setPages([pages[0]!, { ...pages[1]!, title: 'Work, renamed', version: 2 }, blank])
-    // The server's tree version moves on with every change; the page view reads the page again when it does.
+    // The tab reads the tree again, and the server's tree version moves on with every change (the fake's does not):
+    // the page view reads the page again when the tree has it at another version.
+    await useTreeStore().load()
     useTreeStore().treeVersion++
     await flushPromises()
     expect(document.title).toBe('Work, renamed – Inkpact')
