@@ -39,7 +39,7 @@ describe('convergence', () => {
   })
 
   it.each(Array.from({ length: SEEDS }, (_, i) => i + 1))(
-    'three clients with random edits, outages and mode changes end with the same document (seed %i)',
+    'three clients with random edits, outages, mode changes and replacements end with the same document (seed %i)',
     async (seed) => {
       const random = mulberry32(seed)
       const pick = (n: number) => Math.floor(random() * n)
@@ -86,6 +86,24 @@ describe('convergence', () => {
         }
       }
 
+      // The server replaces the page's whole content, as an import or a restored version does: made from what the
+      // server has, published as a Sync, with or without the announcement (an old tab does not know it).
+      let replacements = 0
+      const replace = (announce: boolean) => {
+        const scratch = new Y.Doc()
+        Y.applyUpdate(scratch, Y.encodeStateAsUpdate(hub.doc(pageId)))
+        const before = Y.encodeStateVector(scratch)
+        scratch.transact(() => {
+          const text = scratch.getText('t')
+          text.delete(0, text.length)
+          text.insert(0, `[${++replacements}]`)
+        })
+        const update = Y.encodeStateAsUpdate(scratch, before)
+        scratch.destroy()
+        Y.applyUpdate(oracle, update)
+        hub.publish(pageId, update, announce)
+      }
+
       for (let step = 0; step < STEPS; step++) {
         const peer = peers[pick(CLIENTS)]!
         const roll = random()
@@ -106,6 +124,8 @@ describe('convergence', () => {
           if (peer.client.get(pageId) === undefined) peer.handle = null
         } else if (roll < 0.9) {
           open(peer)
+        } else if (roll < 0.94) {
+          replace(random() < 0.5)
         } else {
           await vi.advanceTimersByTimeAsync(pick(4000))
           continue

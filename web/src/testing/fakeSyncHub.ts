@@ -164,6 +164,21 @@ export class FakeSyncHub {
     Y.applyUpdate(this.doc(pageId), update)
   }
 
+  /**
+   * Stores an update the server made itself to replace a page's content, the way the real hub's `PublishAsync` does: the
+   * `Replaced` message, then a Sync with the state vector after it and the update. `announce: false` leaves `Replaced`
+   * out, which is what a tab running a client from before that message sees.
+   */
+  publish(pageId: string, update: Uint8Array, announce = true) {
+    this.store(pageId, update)
+    const stateVector = Y.encodeStateVector(this.doc(pageId))
+    for (const socket of this.sockets) {
+      if (!socket.subscribed.has(pageId)) continue
+      if (announce) socket.reply(encoding.toUint8Array(frameHead(MessageType.Replaced, pageId)))
+      socket.reply(syncFrame(pageId, stateVector, [update]))
+    }
+  }
+
   /** Releases what was held back, in order. */
   release() {
     this.holding = false

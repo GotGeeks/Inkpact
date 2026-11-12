@@ -655,8 +655,11 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
 
     // ---- updates the server makes itself (the import replacing a note) -----------------------------------------------------
 
+    /// <summary>What the caller says the page's state vector is after its update; the hub passes it on as it is.</summary>
+    private static readonly byte[] After = Bytes("state vector after");
+
     private Task<bool> StoreAsync(Guid pageId, string text) =>
-        Hub.PublishAsync(pageId, Bytes(text), async token =>
+        Hub.PublishAsync(pageId, Bytes(text), After, async token =>
         {
             await using var scope = _factory.Services.CreateAsyncScope();
             var store = scope.ServiceProvider.GetRequiredService<PageUpdateStore>();
@@ -675,8 +678,8 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
 
         await StoreAsync(page, "from the import");
 
-        ShouldBeUpdate(await first.ReceiveAsync(MessageType.Update), page, "from the import");
-        ShouldBeUpdate(await second.ReceiveAsync(MessageType.Update), page, "from the import");
+        await ShouldBeReplacementAsync(first, page, "from the import");
+        await ShouldBeReplacementAsync(second, page, "from the import");
         (await StoredAsync(page)).Select(u => u.Data).ShouldBe([Bytes("from the import")]);
     }
 
@@ -688,11 +691,11 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
         await client.JoinAsync(page);
 
         await Should.ThrowAsync<InvalidOperationException>(() =>
-            Hub.PublishAsync(page, Bytes("never stored"), _ => throw new InvalidOperationException("the database is gone"), CancellationToken.None));
+            Hub.PublishAsync(page, Bytes("never stored"), After, _ => throw new InvalidOperationException("the database is gone"), CancellationToken.None));
 
         await client.ExpectSilenceAsync();
-        await Hub.PublishAsync(page, Bytes("after"), _ => Task.FromResult(true), CancellationToken.None);
-        ShouldBeUpdate(await client.ReceiveAsync(MessageType.Update), page, "after");
+        await Hub.PublishAsync(page, Bytes("after"), After, _ => Task.FromResult(true), CancellationToken.None);
+        await ShouldBeReplacementAsync(client, page, "after");
     }
 
     [Fact]
@@ -702,7 +705,7 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
         var client = await ConnectAsync();
         await client.JoinAsync(page);
 
-        (await Hub.PublishAsync(page, Bytes("not after all"), _ => Task.FromResult(false), CancellationToken.None)).ShouldBeFalse();
+        (await Hub.PublishAsync(page, Bytes("not after all"), After, _ => Task.FromResult(false), CancellationToken.None)).ShouldBeFalse();
 
         await client.ExpectSilenceAsync();
     }
@@ -715,7 +718,7 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
         await cancelled.CancelAsync();
 
         await Should.ThrowAsync<OperationCanceledException>(() =>
-            Hub.PublishAsync(page, Bytes("never"), _ => Task.FromResult(true), cancelled.Token));
+            Hub.PublishAsync(page, Bytes("never"), After, _ => Task.FromResult(true), cancelled.Token));
 
         await WaitUntilAsync(() => Hub.OpenPages == 0);
         (await StoredAsync(page)).ShouldBeEmpty();
@@ -740,7 +743,7 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
         var committing = new TaskCompletionSource();
         var release = new TaskCompletionSource();
 
-        var publishing = Hub.PublishAsync(page, Bytes("one"), async token =>
+        var publishing = Hub.PublishAsync(page, Bytes("one"), After, async token =>
         {
             committing.SetResult();
             await release.Task;
@@ -758,7 +761,7 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
         var relayed = synced.Count == 0;
         if (relayed)
         {
-            ShouldBeUpdate(await client.ReceiveAsync(MessageType.Update), page, "one");
+            await ShouldBeReplacementAsync(client, page, "one");
         }
         else
         {
@@ -766,6 +769,50 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
         }
 
         await client.ExpectSilenceAsync();
+    }
+
+    /// <summary>The next two messages are the replacement: Replaced, then a Sync with the state vector after it and the one update.</summary>
+    private static async Task ShouldBeReplacementAsync(SyncTestClient client, Guid pageId, string text)
+    {
+        var replaced = await client.ReceiveAsync();
+        replaced.Type.ShouldBe(MessageType.Replaced, replaced.ToString());
+        replaced.PageId.ShouldBe(pageId);
+
+        var sync = await client.ReceiveAsync();
+        sync.Type.ShouldBe(MessageType.Sync, sync.ToString());
+        sync.PageId.ShouldBe(pageId);
+        sync.StateVector.ShouldBe(After);
+        sync.Updates.ShouldBe([Bytes(text)]);
+    }
+
+    [Fact]
+    public async Task An_update_a_client_sent_while_a_replacement_was_published_is_stored_after_it_and_answered_after_it()
+    {
+        var page = await CreatePageAsync();
+        var client = await ConnectAsync();
+        await client.JoinAsync(page);
+        var committing = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+
+        var publishing = Hub.PublishAsync(page, Bytes("replacement"), After, async token =>
+        {
+            committing.SetResult();
+            await release.Task;
+            await using var scope = _factory.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<PageUpdateStore>().AppendAsync(page, _jos.UserId, Bytes("replacement"), token);
+            return true;
+        }, CancellationToken.None);
+        await committing.Task;
+        // Typed while the replacement is being written: the hub holds the page, so this waits its turn.
+        await client.SendUpdateAsync(page, Bytes("typed meanwhile"));
+        await client.SendAsync([(byte)MessageType.Ping]);
+        release.SetResult();
+        (await publishing).ShouldBeTrue();
+
+        // The client hears of the replacement before its own update is confirmed, so it still counts as unconfirmed.
+        await ShouldBeReplacementAsync(client, page, "replacement");
+        (await client.ReceiveAsync()).Type.ShouldBe(MessageType.Pong);
+        (await StoredAsync(page)).Select(u => u.Data).ShouldBe([Bytes("replacement"), Bytes("typed meanwhile")]);
     }
 
     private static void ShouldBeUpdate(Received received, Guid pageId, string text)

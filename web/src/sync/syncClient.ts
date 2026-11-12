@@ -66,6 +66,8 @@ export interface SyncClientOptions {
    * A Sync deleted changes of this client that the server did not have yet: text typed offline into a block that was
    * deleted meanwhile (by another person, or by an import that replaced the page). Yjs deletes such text with its block,
    * so it would be gone without a word. `before` is the page as it was just before, with those changes, as one update.
+   * Also when the server replaced the page's whole content (a re-import, a restored version) while this client had any
+   * change the server had not confirmed, text or not: the replacement was made without it.
    */
   onEditsLost?: (pageId: string, before: Uint8Array) => void
   /** Recheck the account and page permissions before each socket attempt. */
@@ -106,6 +108,11 @@ interface Page extends PageHandle {
    * certainly received, because the server reads one socket in order.
    */
   confirmAt: number | null
+  /**
+   * The server said that the Sync it sends next replaces the page's whole content (`Replaced`). Cleared by that Sync,
+   * and by a new subscribe, whose Sync is an ordinary one.
+   */
+  replacing: boolean
   detach(): void
 }
 
@@ -280,6 +287,7 @@ export class SyncClient {
       firstSyncBytes: 0,
       leaving: false,
       confirmAt: null,
+      replacing: false,
       detach() {
         doc.off('update', onUpdate)
         awareness.off('update', onAwareness)
@@ -533,6 +541,8 @@ export class SyncClient {
 
   private sendSubscribe(page: Page) {
     if (!this.isOpen() || page.state === 'tooLarge') return
+    // Whatever the old connection announced went with it: the Sync that answers this is an ordinary one.
+    page.replacing = false
     if (this.options.beforeSubscribe) {
       if (this.subscribing.has(page.pageId)) return
       this.subscribing.add(page.pageId)
@@ -621,6 +631,9 @@ export class SyncClient {
       case MessageType.Update:
         if (page.state !== 'blocked') Y.applyUpdate(page.doc, frame.payload, remoteOrigin)
         break
+      case MessageType.Replaced:
+        page.replacing = true
+        break
       case MessageType.Awareness:
         applyAwarenessUpdate(page.awareness, frame.payload, remoteOrigin)
         break
@@ -653,13 +666,20 @@ export class SyncClient {
       scratch.destroy()
     }
 
+    // A Sync that replaces the whole page was made without anything this client has not had confirmed: text, but also
+    // formatting or a deletion, which the items below do not show. The server stored nothing of this client between
+    // making the replacement and sending it, and answers a socket in order, so "not confirmed" is exactly "not in it".
+    const replacing = page.replacing
+    const replacedUnderChanges = replacing && !page.readOnly && page.unconfirmed
+    page.replacing = false
     // What this client made that the server does not have yet, and the page as it is, in case the Sync deletes some of it.
     const unsynced = page.readOnly ? [] : unsyncedItems(page.doc, serverVector)
-    const before = unsynced.length > 0 ? Y.encodeStateAsUpdate(page.doc) : null
+    const before =
+      unsynced.length > 0 || replacedUnderChanges ? Y.encodeStateAsUpdate(page.doc) : null
     // In diff mode one update, in log mode the stored ones, each in its own apply (one transaction can lose a deletion,
     // run 0.5).
     for (const update of updates) Y.applyUpdate(page.doc, update, remoteOrigin)
-    if (before && unsynced.some((item) => item.deleted))
+    if (before && (replacedUnderChanges || unsynced.some((item) => item.deleted)))
       this.options.onEditsLost?.(page.pageId, before)
 
     if (page.state === 'tooLarge' || page.state === 'missing') return
@@ -668,7 +688,12 @@ export class SyncClient {
     // hammered at full speed.
     this.reconnectMs = MIN_RECONNECT_MS
 
-    if (!page.readOnly) {
+    // After a replacement with nothing of this client's on its way, the server lacks nothing. The update below would
+    // still not be empty (Yjs writes the whole delete set into every update), and every client that has the page open
+    // would store one more row after each replacement, which makes the page look edited to the next import.
+    const nothingToSend =
+      replacing && !replacedUnderChanges && !hasStructsBeyond(page.doc, serverVector)
+    if (!page.readOnly && !nothingToSend) {
       const missing = Y.encodeStateAsUpdate(page.doc, serverVector)
       if (missing.length > EMPTY_UPDATE_LENGTH) this.sendUpdate(page, missing)
     }
@@ -784,6 +809,15 @@ function unsyncedItems(doc: Y.Doc, serverVector: Uint8Array): Y.Item[] {
     }
   })
   return items
+}
+
+/** Whether the document holds any item, of any client, that the server's state vector does not cover. */
+function hasStructsBeyond(doc: Y.Doc, serverVector: Uint8Array): boolean {
+  const known = Y.decodeStateVector(serverVector)
+  for (const [client, clock] of Y.decodeStateVector(Y.encodeStateVector(doc))) {
+    if (clock > (known.get(client) ?? 0)) return true
+  }
+  return false
 }
 
 function defaultSocket(url: string, protocols?: string[]): SocketLike {

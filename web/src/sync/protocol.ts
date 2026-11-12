@@ -13,6 +13,11 @@ export const MessageType = {
   /** The whole message is this one byte: the answer to a ping. */
   Pong: 6,
   Error: 7,
+  /**
+   * From the server, with a page id and nothing else: the Sync that follows replaces the page's whole content (a Joplin
+   * re-import, a restored version).
+   */
+  Replaced: 8,
 } as const
 
 /** The server closes a message over this size (`Sync:MaxMessageBytes`, 2 MiB) with code 1009. */
@@ -32,6 +37,7 @@ export type IncomingFrame =
       updates: Uint8Array[]
     }
   | { type: typeof MessageType.Error; pageId: string; code: string }
+  | { type: typeof MessageType.Replaced; pageId: string }
   | { type: typeof MessageType.Pong }
 
 export function encodeFrame(
@@ -63,7 +69,8 @@ export function decodeFrame(data: Uint8Array): IncomingFrame | null {
     type !== MessageType.Update &&
     type !== MessageType.Awareness &&
     type !== MessageType.Sync &&
-    type !== MessageType.Error
+    type !== MessageType.Error &&
+    type !== MessageType.Replaced
   ) {
     return null
   }
@@ -82,5 +89,7 @@ export function decodeFrame(data: Uint8Array): IncomingFrame | null {
     }
     case MessageType.Error:
       return { type, pageId, code: decoding.readVarString(decoder) }
+    case MessageType.Replaced:
+      return { type, pageId }
   }
 }
