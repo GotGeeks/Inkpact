@@ -139,6 +139,9 @@ export default defineConfig({
           // needs a link in the index does not wait for minutes.
           Compaction__IdleAfter: '00:00:03',
           Compaction__PollInterval: '00:00:02',
+          // The history's capture keeps its own pace (two idle minutes). At the pace above, other tests of the suite timed
+          // out: one to four a run in three runs, none in a run without it (run B.5b). A capture replays a page three times
+          // in the sidecar, which takes one request at a time; history.spec.ts answers for the versions itself instead.
         },
       },
 })

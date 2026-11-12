@@ -24,7 +24,7 @@ const starred = computed(() => favorites.has(props.pageId))
     :disabled="inTrash && !starred"
     data-testid="favorite-toggle"
     :class="[
-      'flex size-11 items-center justify-center rounded hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-60 md:size-9',
+      'flex size-11 shrink-0 items-center justify-center rounded hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-60 md:size-9',
       starred ? 'text-primary [&_svg]:fill-current' : 'text-on-surface-variant',
     ]"
     @click="favorites.toggle(pageId)"

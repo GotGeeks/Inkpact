@@ -494,6 +494,96 @@ test('the move dialog', async ({ page }, testInfo) => {
   await scan(page, testInfo, 'move dialog')
 })
 
+test('the history panel: its versions, one version, and every state it can be in', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000)
+  const id = await openNewPage(page, unique(testInfo, 'History panel'))
+  // The server's answers, made up here so every state can be shown without waiting for versions. Intercepted without a
+  // reload: after one the service worker has the page, and WebKit then sends its requests past the route.
+  const versions = [
+    {
+      id: '0a1b2c3d-0000-4000-8000-0000000000b2',
+      createdAt: '2026-11-12T11:30:00Z',
+      kind: 'rename',
+      title: 'Plans, renamed',
+      createdBy: { id: '0a1b2c3d-0000-4000-8000-0000000000aa', displayName: 'Someone' },
+      bytes: 120,
+    },
+    {
+      id: '0a1b2c3d-0000-4000-8000-0000000000b1',
+      createdAt: '2026-11-12T10:00:00Z',
+      kind: 'automatic',
+      title: 'Plans',
+      createdBy: null,
+      bytes: 110,
+    },
+  ]
+  let list: { status: number; body: object } = {
+    status: 200,
+    body: { versions, next: 'more', state: 'pending', failure: null },
+  }
+  let detail: { status: number; body: object } = {
+    status: 200,
+    body: {
+      ...versions[1],
+      content: {
+        type: 'doc',
+        content: [
+          { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Then' }] },
+          { type: 'paragraph', content: [{ type: 'text', text: 'What the page said then.' }] },
+        ],
+      },
+    },
+  }
+  await page.route(
+    (url) => url.pathname === `/api/pages/${id}/versions`,
+    (route) => route.fulfill({ status: list.status, json: list.body }),
+  )
+  await page.route(
+    (url) => url.pathname.startsWith(`/api/pages/${id}/versions/`),
+    (route) => route.fulfill({ status: detail.status, json: detail.body }),
+  )
+  const panel = page.getByRole('dialog')
+  const open = async (state: string) => {
+    await page.getByRole('button', { name: 'Page history' }).click()
+    await expect(panel).toBeVisible()
+    await expect(panel.getByText(/Loading the history/)).toBeHidden()
+    await scan(page, testInfo, `history panel (${state})`)
+  }
+  const close = async () => {
+    await panel.getByRole('button', { name: 'Close the history' }).click()
+    await expect(panel).toBeHidden()
+  }
+
+  await open('pending, with older versions to show')
+  await panel.getByTestId('version-row').nth(1).click()
+  await expect(panel.getByTestId('version-content')).toContainText('What the page said then.')
+  await scan(page, testInfo, 'history panel with a version')
+
+  detail = { status: 503, body: { code: 'history_unavailable' } }
+  // On a narrow screen the version is shown in place of the list.
+  const back = panel.getByRole('button', { name: 'Back to the versions' })
+  if (await back.isVisible()) await back.click()
+  await panel.getByTestId('version-row').nth(0).click()
+  await expect(panel.getByRole('alert')).toContainText('cannot be shown right now')
+  await scan(page, testInfo, 'history panel, a version that cannot be shown')
+  await close()
+
+  for (const state of ['failed', 'full'] as const) {
+    list = { status: 200, body: { versions, next: null, state, failure: null } }
+    await open(state)
+    await close()
+  }
+  list = { status: 200, body: { versions: [], next: null, state: 'off', failure: null } }
+  await open('off, without versions')
+  await close()
+  list = { status: 500, body: { code: 'server_error' } }
+  await open('could not be loaded')
+  await expect(panel.getByRole('alert')).toContainText('The history could not be loaded.')
+  await close()
+})
+
 test('the account menu and the import page', async ({ page }, testInfo) => {
   await page.goto('/')
   await openUserMenu(page)

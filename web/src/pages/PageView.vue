@@ -14,6 +14,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError } from '../api'
 import AppButton from '../components/AppButton.vue'
+import AppIcon from '../components/AppIcon.vue'
 import { useOnline } from '../composables/useOnline'
 import { loginRoute } from '../router'
 import type { OfflineDocument } from '../offline/offlineDocument'
@@ -42,6 +43,9 @@ const PageEditor = defineAsyncComponent({
   loadingComponent: { render: () => h('div', { class: 'min-h-48', 'aria-busy': 'true' }) },
   delay: 0,
 })
+
+// The history panel (run B.5b) has its own editor for a version's content: loaded when it is first opened.
+const HistoryPanel = defineAsyncComponent(() => import('../history/HistoryPanel.vue'))
 
 const { t } = useI18n()
 const route = useRoute()
@@ -283,6 +287,23 @@ async function retryUnavailable() {
   }
 }
 const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
+
+// Open for the page it was opened on: another page closes it.
+const historyOpen = ref(false)
+const historyButton = useTemplateRef<HTMLButtonElement>('historyButton')
+/**
+ * The focus goes back to the button, also where a tap does not focus a button (Safari on an iPhone): the dialog would
+ * otherwise give it back to what had it before, which there is nothing.
+ */
+async function closeHistory() {
+  historyOpen.value = false
+  await nextTick()
+  historyButton.value?.focus()
+}
+watch(pageId, () => (historyOpen.value = false))
+watch(localOnly, (isLocal) => {
+  if (isLocal) historyOpen.value = false
+})
 </script>
 
 <template>
@@ -368,12 +389,27 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
       </button>
     </div>
 
+    <!-- One line: the buttons keep their size, and on the narrowest phones the status shortens its words. Wrapping would
+         move the page down and up again each time the status changes while someone types. -->
     <div class="flex items-center justify-end gap-space-sm">
       <FavoriteButton
         v-if="!localOnly && detail"
         :page-id="detail.page.id"
         :in-trash="detail.inTrash"
       />
+      <!-- Every member can look at a page's history, also of a page in the trash; it needs the server. -->
+      <button
+        v-if="!localOnly && detail"
+        ref="historyButton"
+        type="button"
+        :aria-label="t('history.open')"
+        aria-haspopup="dialog"
+        data-testid="history-open"
+        class="flex size-11 shrink-0 items-center justify-center rounded text-on-surface-variant hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-primary md:size-9"
+        @click="historyOpen = true"
+      >
+        <AppIcon name="history" class="size-5" />
+      </button>
       <SyncStatus :page-id="shownId" />
     </div>
 
@@ -438,6 +474,12 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
       :document="document"
     />
     <BacklinksPanel v-if="detail" :key="`backlinks-${detail.page.id}`" :page-id="detail.page.id" />
+    <HistoryPanel
+      v-if="historyOpen && detail"
+      :page-id="detail.page.id"
+      :page-title="detail.page.title"
+      @close="closeHistory"
+    />
   </article>
 
   <section

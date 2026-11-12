@@ -2,7 +2,7 @@
 
 **Model:** O·high → S·high in the roadmap. Planned on Fable 5.2 on 2026-11-12 from a reading of #122's code against the B.5 card. Sync, restore and the client's lost-edit check are critical paths: `/code-review` at high on PRs 3 and 4 before they merge, at medium on the others.
 
-**Status:** In progress. The five questions were answered on 2026-11-12, each as recommended. Built in the order PR 3, 1, 2, 4, 5 (PR 3 first: it closes a gap that exists today). PR 3 is merged (#144); PR 1 (capture, list and preview endpoints) is described under **Handoff**; PRs 2, 4 and 5 are not started. History can be captured but not yet looked at in the interface, nor restored.
+**Status:** In progress. The five questions were answered on 2026-11-12, each as recommended. Built in the order PR 3, 1, 2, 4, 5 (PR 3 first: it closes a gap that exists today). PR 3 (#144) and PR 1 (#145) are merged; PR 2 (the read-only history panel) is described under **Handoff**; PRs 4 and 5 are not started. History can be captured and looked at, not yet restored.
 
 This card plans what [`B.5.md`](B.5.md) left open. That card stays the statement of what version history must do (its "Decisions", "Done when" and "Tests" hold unless this card says otherwise); this one says how, in which order, and where the plan narrows or changes it.
 
@@ -159,6 +159,27 @@ All five were answered "yes, as recommended" by the maintainer on 2026-11-12.
 **Not in this PR:** nothing shows history in the interface (PR 2), and the per-page property test is a seeded schedule of edits, compactions in small batches, renames and captures against a full replay, not an FsCheck property; PR 4 extends it with restores and injected crashes and is the place to move it to FsCheck.
 
 **Review:** `/code-review` on 2026-11-12 gave ten findings; all are fixed in this PR (the five-minute rule against the compactor, several renames under a cap, a title a re-import takes, titles that waited when history was turned off, one failure wiping another, a long log nobody compacts, failures that outlast their cause, the cost of the due query, the rename's extra query, and previews taking the sidecar). One part of a fix was taken back: letting the browser keep a version's content (an `ETag`) would go against "answers of the API are never cached".
+
+**Checks:** see the pull request.
+
+### PR 2: the history panel, read-only
+
+- **Where:** a History button (a clock) in the page's header, beside the star, for every member and also for a page in the trash; not shown while the tab is offline, since the history is read from the server. It opens [`HistoryPanel.vue`](../../web/src/history/HistoryPanel.vue), loaded the first time it is opened.
+- **The panel:** a Reka dialog, full screen on a phone and a sheet at the side from `md`. The list on one side (newest first, when, what kind, who for a rename, the title then; "Show older versions" for the next 50), the chosen version on the other. On a phone they take turns, with "Back to the versions" and the focus moved to the version's heading and back to its row. Closing gives the focus back to the History button, also on an iPhone, where a tap does not focus a button.
+- **States:** loading, could not be loaded (with Try again), no versions (also with history off), and a notice for `pending`, `failed` (said at once), `full` and `off`. A version that cannot be shown says why: the sidecar is busy (Try again), the version is gone, it holds something this app cannot display, or it could not be loaded.
+- **The version's content:** [`VersionPreview.vue`](../../web/src/history/VersionPreview.vue), a second TipTap editor, read-only, from the same `createExtensions` without a Yjs document (the `doc` option is now optional and leaves Collaboration out). So the same schema and the same link rule when rendered (`isAllowedLink`), pictures and files by id from the app's own address, and links to pages in the trash struck through. A click on a link does nothing in the preview.
+- **What the panel keeps:** [`useVersionHistory.ts`](../../web/src/history/useVersionHistory.ts) keeps each version's content once read, for as long as the panel is open, as PR 1's handoff asked (answers of the API are `no-store`). An answer for a page the panel is no longer about is dropped. The list is read once when the panel opens; it does not refresh itself while open.
+- **e2e:** [`history.spec.ts`](../../web/e2e/history.spec.ts) is the journey on the four devices and [`a11y.spec.ts`](../../web/e2e/a11y.spec.ts) has the panel's states, both with the versions answered by the test (`page.route`), not made by the server. A capture as fast as compaction's in the e2e server (3 idle seconds) was tried first: the rest of the suite then timed out, one to four tests a run in three runs, against none in a run without it. A capture replays a page three times in the sidecar, which takes one request at a time; that is my reading of why, not something the log showed. So the e2e server keeps the capture's own pace, and the real capture-to-panel path is covered by the server's worker test (`HistoryEndpointTests`, through the hub). PR 4's restore makes versions at once, and should bring a journey with real versions.
+- **Other e2e tests made sturdier**, since the suite's shared workspace grows with every spec: the sidebar size check in `tree-ui.spec.ts` measures in one pass instead of one round trip per control, `openSidebar` waits up to 15 seconds for the drawer, and the import test that waits for another device's import gets the 150 seconds its own retry asks for (its 30-second default cut the 120-second retry short).
+
+**Where it differs from the plan above, and why:**
+
+1. **A composable, not a store:** the panel's state lives as long as the panel and belongs to nothing else, so it is `useVersionHistory`, not a Pinia store.
+2. **Nothing is chosen when the panel opens:** each version shown is a replay in the sidecar (PR 1, finding 10), so none is read until the person picks one.
+3. **A new page's first version is a rename:** a page made through "New page" is named by a rename, which the capture turns into a version of kind `Rename` with the page as it was then (empty, or with what was typed meanwhile). That is what PR 1 builds; the panel shows it as it is. Worth a look in PR 5, when restore makes the list something people act on.
+4. **The header's buttons keep their size, and the status pill gives way:** with a third item in the header, the star and the clock shrank below 44 pixels on a 320-pixel screen. They now keep their size (`shrink-0`, also on the star), and the sync status shortens its words with an ellipsis when there is no room; a screen reader still hears all of it. Letting the row wrap instead was tried and dropped: the pill then moved to a line of its own whenever its text grew ("saving on this device"), and the page jumped while someone typed, which an iPhone test caught.
+
+**Not in this PR:** restore (PRs 4 and 5). A viewer's view of the panel is not tested end to end, as the e2e suite has one account; the button has no role check and the endpoints' roles are tested on the server.
 
 **Checks:** see the pull request.
 

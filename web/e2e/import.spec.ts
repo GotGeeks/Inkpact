@@ -163,6 +163,8 @@ test('the import page is in Dutch for someone who chose Dutch', async ({ page },
 
 test('a file that is not a Joplin export is refused with a message', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'the message is the same on every device')
+  // As long as the tries below may take: the test's usual 30 seconds ended them early while other imports ran.
+  test.setTimeout(150_000)
   await openImportPage(page)
 
   // Another device's import may be running in the shared workspace: then the answer is that one, and this tries again.
