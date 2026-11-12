@@ -68,6 +68,14 @@ jobs:
           grep -qE "^FROM mcr\.microsoft\.com/dotnet/sdk:${pinned}@" Dockerfile \
             || { echo "::error::global.json pins .NET SDK ${pinned}, but the Dockerfile's dotnet/sdk image is another version"; exit 1; }
 
+      # The backup and restore commands of docs/self-hosting.md, followed against a stack of this image: a page, a tag
+      # and a file are there again after the volumes are removed and the backup is put back (run B.7).
+      - name: Backup and restore
+        run: |
+          set -euo pipefail
+          shellcheck deploy/inkpact.sh deploy/test-backup-restore.sh
+          INKPACT_IMAGE="$LOCAL_IMAGE" deploy/test-backup-restore.sh
+
       # All findings, for the Security tab. The gate below decides what fails.
       - name: Scan, all findings
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0

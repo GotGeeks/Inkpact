@@ -21,7 +21,8 @@ public class EndpointPolicyTests(PostgresFixture postgres) : IClassFixture<Postg
     /// <summary>Method and route pattern of every endpoint that anyone may call without signing in. Add to it only with a reason.</summary>
     internal static readonly IReadOnlyList<string> ReviewedAnonymousEndpoints =
     [
-        "GET /api/health", // the container health check
+        "GET /api/health", // the container health check: is the process there
+        "GET /api/health/ready", // can it do its work: three words (database, sidecar), cached for five seconds, nothing else about the server
         "GET /api/auth/state", // says whether to show setup or login, and hands out the CSRF token
         "POST /api/auth/setup", // first-run account, protected by the setup code and closed afterwards
         "POST /api/auth/login", // throttled per address and per email

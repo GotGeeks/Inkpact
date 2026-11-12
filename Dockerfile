@@ -87,8 +87,10 @@ VOLUME /data
 EXPOSE 8080
 USER app
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:8080/api/health || exit 1
+# Ready, not only running: unhealthy when the database does not answer (Docker does not restart it; `docker ps` and
+# Unraid's Docker tab show it). The start period covers the dump before a migration of a large library.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5m --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8080/api/health/ready || exit 1
 
 LABEL org.opencontainers.image.title="Inkpact" \
       org.opencontainers.image.description="Self-hosted, multi-user notes with real-time collaborative editing" \

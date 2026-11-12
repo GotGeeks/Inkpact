@@ -33,6 +33,9 @@ public static class AuditEventTypes
     public const string Logout = "logout";
     public const string LogoutEverywhere = "logout_everywhere";
 
+    /// <summary>A new password was set from the command line (<c>reset-password</c>). No address: it came from the console.</summary>
+    public const string PasswordReset = "password_reset";
+
     /// <summary>Someone took the export of a workspace: all of its pages and files.</summary>
     public const string WorkspaceExported = "workspace_exported";
 }

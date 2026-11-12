@@ -7,8 +7,11 @@
 #   deploy/inkpact.sh up           build what changed, and start or restart the app
 #   deploy/inkpact.sh update       git pull, then up
 #   deploy/inkpact.sh setup-code   the code for creating the administrator, while there is no account yet
-#   deploy/inkpact.sh status       the container, and whether the app answers
+#   deploy/inkpact.sh status       the container, whether the app answers and whether it is ready
 #   deploy/inkpact.sh logs         follow the app's log
+#   deploy/inkpact.sh backup [folder]     the database and the data folder into a new folder (default: backups/<time>)
+#   deploy/inkpact.sh restore <folder>    put a backup back; the database must be empty
+#   deploy/inkpact.sh reset-password <email> [--generate | --password-stdin]   a new password for an account
 #   deploy/inkpact.sh down         stop and remove the container (the database and the data folder stay)
 set -euo pipefail
 
@@ -35,7 +38,6 @@ load_env() {
   set +a
   [[ -n "${DB_HOST:-}" ]] || die "set DB_HOST in $env_file"
   [[ -n "${DB_PASSWORD:-}" ]] || die "set DB_PASSWORD in $env_file"
-  image="${INKPACT_IMAGE:-inkpact:local}"
   container="${INKPACT_CONTAINER:-inkpact}"
 }
 
@@ -122,17 +124,68 @@ cmd_setup_code() {
 
 cmd_status() {
   compose ps
-  if curl -fsS "http://localhost:${INKPACT_PORT:-8080}/api/health" >/dev/null 2>&1; then
-    echo "The app answers on port ${INKPACT_PORT:-8080}."
-  else
+  local url="http://localhost:${INKPACT_PORT:-8080}/api/health"
+  if ! curl -fsS "$url" >/dev/null 2>&1; then
     echo "The app does not answer on port ${INKPACT_PORT:-8080} yet (deploy/inkpact.sh logs)."
+    return
   fi
+  echo "The app answers on port ${INKPACT_PORT:-8080}."
+  # 200 with "ok" or "degraded" (the Yjs sidecar is not there: editing works, search text and imports wait), 503
+  # when the database does not answer. The body says which.
+  local ready
+  ready="$(curl -sS "$url/ready" 2>/dev/null || true)"
+  echo "Ready: ${ready:-no answer}"
+}
+
+# Runs a PostgreSQL client tool from the app's image against the configured database. The password goes in through
+# the environment, never on a command line.
+pg_tool() {
+  local tool="$1"
+  shift
+  compose run --rm --no-deps -T -e PGPASSWORD="$DB_PASSWORD" --entrypoint "$tool" app \
+    -h "$DB_HOST" -p "${DB_PORT:-5432}" -U "${DB_USER:-inkpact}" "$@"
+}
+
+cmd_backup() {
+  local folder="${1:-$here/backups/$(date -u +%Y%m%dT%H%M%SZ)}"
+  [[ ! -e "$folder" ]] || die "$folder exists already: name a new folder"
+  mkdir -p "$folder"
+  # Safe while the app runs: pg_dump reads one consistent state of the database.
+  pg_tool pg_dump --format=custom -d "${DB_NAME:-inkpact}" >"$folder/inkpact.dump"
+  # /data without the uploads that are being imported: the files of pages, the session keys, the dumps before migrations.
+  compose run --rm --no-deps -T --entrypoint tar app -C /data --exclude=./imports -cf - . >"$folder/data.tar"
+  echo "Backup written to $folder (inkpact.dump and data.tar). Keep the two together."
+}
+
+cmd_restore() {
+  local folder="${1:-}"
+  [[ -n "$folder" ]] || die "which backup? deploy/inkpact.sh restore <folder>"
+  [[ -f "$folder/inkpact.dump" && -f "$folder/data.tar" ]] || die "$folder has no inkpact.dump and data.tar"
+
+  compose stop app >/dev/null 2>&1 || true
+  local tables
+  tables="$(pg_tool psql -d "${DB_NAME:-inkpact}" -tAc "select count(*) from pg_tables where schemaname = 'public'")"
+  [[ "${tables//[[:space:]]/}" == 0 ]] \
+    || die "the database ${DB_NAME:-inkpact} is not empty. A restore never overwrites: drop and create it again (DROP DATABASE, CREATE DATABASE ... OWNER ${DB_USER:-inkpact}), then run this again."
+
+  compose run --rm --no-deps -T --entrypoint tar app -C /data -xf - <"$folder/data.tar"
+  pg_tool pg_restore --no-owner -d "${DB_NAME:-inkpact}" <"$folder/inkpact.dump"
+  cmd_up
+  echo "Restored from $folder. A newer app than the one that made the backup migrates the database when it starts."
+}
+
+cmd_reset_password() {
+  [[ $# -ge 1 ]] || die "which account? deploy/inkpact.sh reset-password <email>"
+  # With a terminal the password is asked for without showing it; without one, use --password-stdin or --generate.
+  local tty=(-i)
+  if [[ -t 0 ]]; then tty=(-it); fi
+  docker exec "${tty[@]}" "$container" dotnet Inkpact.Api.dll reset-password "$@"
 }
 
 main() {
   local command="${1:-}"
   [[ -n "$command" ]] || {
-    sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 1
   }
   load_env
@@ -144,6 +197,9 @@ main() {
     setup-code) cmd_setup_code ;;
     status) cmd_status ;;
     logs) compose logs -f app ;;
+    backup) cmd_backup "${2:-}" ;;
+    restore) cmd_restore "${2:-}" ;;
+    reset-password) cmd_reset_password "${@:2}" ;;
     down) compose down ;;
     *) die "unknown command '$command' (run it without one for the list)" ;;
   esac

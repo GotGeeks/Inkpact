@@ -104,6 +104,14 @@ _Not built yet: only the schema, retention job and policy API are in main. These
 - [ ] In a disposable multi-user workspace when available, downgrade or revoke a user's access while that user has a pending offline edit. On reconnect, confirm the edit stays on the device and is not sent; restore edit access and check that the original account can recover it. Also confirm a viewer can read a previously confirmed page but cannot edit it.
 - [ ] If using an HTTP LAN install, confirm it still works online and does not claim PWA installation or service-worker caching support.
 
+### B.7: health, logs, backup and restore, password reset
+- [ ] On Unraid, schedule the nightly backup with User Scripts (the script in the self-hosting guide), let it run, then restore it into a spare stack within an hour: notes, tags, attachments and sign-in are there.
+- [ ] Stop Postgres while the app runs: Unraid's Docker tab shows Inkpact unhealthy, and healthy again after Postgres is back. Upgrade across a migration with the real library: the dump before it does not mark the container unhealthy.
+- [ ] Reset the password from the container console, sign in with it, and check that the other signed-in browser (the phone) is signed out within five minutes.
+- [ ] Read the app's log in Unraid's log viewer: one line per entry, nothing from a note in it.
+- [ ] With a PostgreSQL you already run: `deploy/inkpact.sh backup`, then `restore` into an emptied database. These two commands were not run by CI or while building (only their syntax was checked).
+
+Run B.8 adds its checks here.
 ### The review of 2026-11-11
 - [ ] With the device in dark mode, start the installed app (laptop and phone): note whether the title bar and the first screen are light until the page has loaded (the manifest has one theme colour, the light one). If it flashes, that is a finding for a fix run.
 - [ ] Read the whole interface in Dutch once. 13 strings are the same in English and Dutch; most are names (Inkpact, Joplin), but note any that should have been translated.

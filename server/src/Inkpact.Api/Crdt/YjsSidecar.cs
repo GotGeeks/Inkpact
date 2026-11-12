@@ -34,6 +34,9 @@ public sealed class YjsSidecar(SidecarOptions options, string contentRoot, TimeP
     /// <summary>The session that can take calls, if there is one. A process that was killed or has exited is not one.</summary>
     private SidecarSession? Ready => _ready is { IsUsable: true } session ? session : null;
 
+    /// <summary>Whether a process that passed its start-up check is there to take calls. For the readiness check.</summary>
+    public bool IsReady => Ready is not null;
+
     /// <summary>How many processes were started, successfully or not.</summary>
     internal int Starts => Volatile.Read(ref _starts);
 
