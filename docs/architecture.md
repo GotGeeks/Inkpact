@@ -42,7 +42,7 @@ Inkpact runs as exactly one application instance. The sync hub keeps connection 
 | Editor | TipTap (ProseMirror) with the Yjs collaboration extension, Notion-style block handles and a slash menu | Proven rich editor, works in mobile browsers |
 | Frontend | Vue 3 (Composition API), TypeScript, Vite, Pinia, pnpm workspaces | Official TipTap bindings (@tiptap/vue-3); same bundle for web and desktop |
 | Styling | Tailwind CSS v4 with headless components (Reka UI) | Utility-first, easy responsive layouts and a light and a dark theme from the same tokens, no component-library lock-in |
-| i18n | vue-i18n on the client, IStringLocalizer on the server | English and Dutch from the first commit |
+| i18n | vue-i18n on the client; the server returns codes and writes no language of its own | English and Dutch from the first commit |
 | Testing | xUnit, NSubstitute, Testcontainers, Vitest, Vue Test Utils, Playwright | Unit tests for everything, plus integration and end-to-end |
 | Desktop | Electron (phase 3) | Reuses the web bundle |
 | Deployment | Docker image + compose file, Unraid template | Fits your Traefik-fronted Unraid setup |
@@ -396,7 +396,7 @@ The whole repository is licensed AGPL-3.0, so anyone running a modified version,
 - `web/` — TypeScript client (Vue 3 + Vite + Pinia), TipTap + Yjs editor, shared by web and desktop
 - `desktop/` — Electron shell around `web/` (phase 3)
 - `deploy/` — `docker-compose.yml` (app, Postgres; Redis joins when something needs it), Unraid template XML
-- `docs/` — architecture notes, sync protocol, self-hosting guide, run cards in `docs/runs/`
+- `docs/` — architecture notes, sync protocol (`docs/sync-protocol.md`), self-hosting guide, run cards in `docs/runs/`
 - `CLAUDE.md` — build and test commands, conventions and the run rules, kept short so every run loads it cheaply
 
 **Tooling**
@@ -472,7 +472,7 @@ Every feature ships with unit tests, every user-facing string goes through i18n,
 
 - English and Dutch from the first commit; English is the fallback language
 - Client: vue-i18n with one JSON file per language; no hard-coded strings, enforced by the vue-i18n ESLint plugin (missing or unused keys fail the build)
-- Server: API errors return codes that the client translates; emails and other server texts use IStringLocalizer with .resx files
+- Server: API errors return codes that the client translates. The server has no texts of its own so far: the few it writes (the export's README) come from the client's `en.json` and `nl.json`, built into the server. How emails get their texts is decided when email arrives (run 2.6 or 2.10)
 - Dates, numbers and file sizes formatted with `Intl` in the user's locale
 - Language follows the browser, with a per-device override in the user menu (kept in the browser, as built)
 
