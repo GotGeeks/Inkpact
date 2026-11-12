@@ -20,6 +20,14 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Net.Http.Headers;
 
+// A command instead of the app: a new password for an account (run B.7). It reads the app's own configuration
+// (appsettings and the environment) and opens the database; no web server, no worker and no migration start.
+if (ResetPasswordCommand.IsCommand(args))
+{
+    var configuration = WebApplication.CreateBuilder().Configuration;
+    return await ResetPasswordCommand.RunAsync(args, configuration, CommandConsole.System(), TimeProvider.System);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 
@@ -131,6 +139,7 @@ app.MapFallbackToFile("index.html", new StaticFileOptions { OnPrepareResponse = 
     .AllowAnonymous();
 
 app.Run();
+return 0;
 
 static void SetCacheHeaders(StaticFileResponseContext context)
 {
