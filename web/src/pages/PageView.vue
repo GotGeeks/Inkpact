@@ -28,6 +28,7 @@ import BacklinksPanel from './BacklinksPanel.vue'
 import ChildPages from './ChildPages.vue'
 import FavoriteButton from './FavoriteButton.vue'
 import PageTags from './PageTags.vue'
+import { shownPageIsCurrent } from './pageFreshness'
 import TitleField from './TitleField.vue'
 import type { PageDetail } from '../tree/types'
 
@@ -154,7 +155,24 @@ async function prepareOnline(found: PageDetail, userId: string, mine: number) {
 // Read again when the page changes and when anything in the tree does, so a rename or a trash shows here at once.
 watch(
   [pageId, () => tree.treeVersion, localOnly, canReachApi, retryCount],
-  async ([id, , isLocal, hasApi]) => {
+  async ([id, version, isLocal, hasApi, retry], previous) => {
+    // A change somewhere else in the tree (another page renamed, a new page) says nothing about this page: the tree
+    // has it at the version on the screen, so it is not fetched again.
+    const onlyTheTreeChanged =
+      previous !== undefined &&
+      version !== previous[1] &&
+      id === previous[0] &&
+      isLocal === previous[2] &&
+      hasApi === previous[3] &&
+      retry === previous[4]
+    if (
+      onlyTheTreeChanged &&
+      loadedId === id &&
+      editorReady.value &&
+      shownPageIsCurrent(detail.value, tree.byId.get(id))
+    ) {
+      return
+    }
     const mine = ++loadGeneration
     if (loadedId !== id) {
       startSlowTimer(mine)
