@@ -16,7 +16,10 @@ internal sealed record HistorySnapshot(
     int MetadataVersion,
     DateTimeOffset ObservedAt,
     byte[] State,
-    byte[] DocumentJson);
+    byte[] DocumentJson,
+    long ContentSeq,
+    byte[] Fingerprint,
+    long StoredUpdates);
 
 internal sealed class HistorySnapshotVerificationException(string message, Exception? inner = null) : Exception(message, inner);
 
@@ -39,6 +42,9 @@ internal sealed class HistorySnapshotBuilder(
 {
     private static readonly byte[] EmptyDocument = Encoding.UTF8.GetBytes("""{"type":"doc"}""");
 
+    /// <summary>The fixed first-paragraph update: the same bytes for every page, so the sidecar is asked once.</summary>
+    private byte[]? _firstParagraph;
+
     internal async Task<HistorySnapshot?> BuildAsync(Guid pageId, CancellationToken cancellationToken)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
@@ -57,7 +63,7 @@ internal sealed class HistorySnapshotBuilder(
         await transaction.CommitAsync(cancellationToken);
 
         // Even a never-opened page starts with this fixed update on every client.
-        var firstParagraph = await codec.BuildAsync(EmptyDocument, cancellationToken);
+        var firstParagraph = _firstParagraph ??= await codec.BuildAsync(EmptyDocument, cancellationToken);
         IReadOnlyList<byte[]> inputs = [firstParagraph, .. content.Inputs];
         var merged = await codec.CompactAsync(inputs, cancellationToken);
         if (merged.State.Length == 0 || merged.ReplayFingerprint.Length == 0
@@ -92,7 +98,9 @@ internal sealed class HistorySnapshotBuilder(
             throw new HistorySnapshotVerificationException($"The history state of page {pageId} cannot be read as document JSON.", ex);
         }
 
-        return new(pageId, page.WorkspaceId, page.Title, page.FileText, page.Version, observedAt, merged.State, saved.Json);
+        return new(
+            pageId, page.WorkspaceId, page.Title, page.FileText, page.Version, observedAt, merged.State, saved.Json,
+            content.LastSeq, merged.ReplayFingerprint, content.StoredUpdates);
     }
 
     private static bool IsDocument(JsonElement value) =>

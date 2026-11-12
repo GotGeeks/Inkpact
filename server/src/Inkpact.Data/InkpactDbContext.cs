@@ -25,6 +25,10 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
 
     public DbSet<PageVersion> PageVersions => Set<PageVersion>();
 
+    public DbSet<PageHistoryState> PageHistoryStates => Set<PageHistoryState>();
+
+    public DbSet<PageTitleChange> PageTitleChanges => Set<PageTitleChange>();
+
     public DbSet<ArchivedPageUpdate> ArchivedPageUpdates => Set<ArchivedPageUpdate>();
 
     public DbSet<PageLink> PageLinks => Set<PageLink>();
@@ -179,6 +183,26 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             version.HasOne<User>().WithMany().HasForeignKey(v => v.CreatedBy).OnDelete(DeleteBehavior.SetNull);
             version.HasIndex(v => new { v.PageId, v.CreatedAt, v.Id }).IsDescending(false, true, true);
             version.HasIndex(v => v.CreatedAt);
+            version.Property(v => v.Fingerprint).IsRequired().HasDefaultValueSql("'\\x'::bytea");
+            version.Property(v => v.ContentSeq).HasDefaultValue(0L);
+        });
+
+        modelBuilder.Entity<PageHistoryState>(state =>
+        {
+            state.ToTable("page_history_state");
+            state.HasKey(s => s.PageId);
+            state.Property(s => s.Failure).HasMaxLength(32);
+            state.HasOne<Page>().WithOne().HasForeignKey<PageHistoryState>(s => s.PageId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PageTitleChange>(change =>
+        {
+            change.ToTable("page_title_changes");
+            change.Property(c => c.Id).UseIdentityAlwaysColumn();
+            change.Property(c => c.Title).HasMaxLength(500).IsRequired();
+            change.HasOne<Page>().WithMany().HasForeignKey(c => c.PageId).OnDelete(DeleteBehavior.Cascade);
+            change.HasOne<User>().WithMany().HasForeignKey(c => c.ChangedBy).OnDelete(DeleteBehavior.SetNull);
+            change.HasIndex(c => new { c.PageId, c.Id });
         });
 
         modelBuilder.Entity<PageLink>(link =>

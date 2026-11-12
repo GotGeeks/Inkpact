@@ -37,7 +37,7 @@ public sealed class PageUpdateStore(IDbContextFactory<InkpactDbContext> dbFactor
     {
         var snapshot = await db.PageSnapshots.AsNoTracking()
             .Where(s => s.PageId == pageId)
-            .Select(s => new { s.State, s.Watermark })
+            .Select(s => new { s.State, s.Watermark, s.UpdateCount })
             .SingleOrDefaultAsync(cancellationToken);
         // All live rows, not those above the watermark: a row still in the log has not been merged, and rows can commit
         // out of sequence order (see the compactor).
@@ -47,7 +47,7 @@ public sealed class PageUpdateStore(IDbContextFactory<InkpactDbContext> dbFactor
             .Select(u => new { u.Seq, u.Data })
             .ToListAsync(cancellationToken);
         var lastSeq = Math.Max(snapshot?.Watermark ?? 0, rows.Count == 0 ? 0 : rows[^1].Seq);
-        return new PageContent(snapshot?.State, [.. rows.Select(r => r.Data)], lastSeq);
+        return new PageContent(snapshot?.State, [.. rows.Select(r => r.Data)], lastSeq) { StoredUpdates = (snapshot?.UpdateCount ?? 0) + rows.Count };
     }
 }
 
@@ -60,4 +60,11 @@ public sealed record PageContent(byte[]? Snapshot, IReadOnlyList<byte[]> Updates
 {
     /// <summary>What to hand the codec, or to send a client in log mode: the snapshot first, then the updates.</summary>
     public IReadOnlyList<byte[]> Inputs => Snapshot is null ? Updates : [Snapshot, .. Updates];
+
+    /// <summary>
+    /// How many updates the page was ever given: those the snapshot holds and those still live. A compaction leaves it as
+    /// it is, and every update stored later raises it, also one whose sequence number is below <see cref="LastSeq"/>
+    /// because it committed late. The history's capture tells by it whether a page has something that is in no version.
+    /// </summary>
+    public long StoredUpdates { get; init; }
 }

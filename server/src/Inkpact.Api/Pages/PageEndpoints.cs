@@ -157,8 +157,8 @@ public static class PageEndpoints
         return Respond(await tree.CreateAsync(workspaceId, request.Title, position, seed, cancellationToken), StatusCodes.Status201Created);
     }
 
-    private static async Task<IResult> Rename(Guid pageId, RenamePageRequest request, TreeService tree, CancellationToken cancellationToken) =>
-        Respond(await tree.RenameAsync(pageId, request.Title, request.ExpectedVersion, cancellationToken));
+    private static async Task<IResult> Rename(Guid pageId, RenamePageRequest request, HttpContext http, TreeService tree, CancellationToken cancellationToken) =>
+        Respond(await tree.RenameAsync(pageId, request.Title, request.ExpectedVersion, cancellationToken, changedBy: http.UserId()));
 
     private static async Task<IResult> Move(Guid pageId, MovePageRequest request, TreeService tree, CancellationToken cancellationToken) =>
         Respond(await tree.MoveAsync(pageId, new Position(request.ParentId, request.AfterId, request.BeforeId), request.ExpectedVersion, cancellationToken));
