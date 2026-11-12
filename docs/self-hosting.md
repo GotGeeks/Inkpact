@@ -177,7 +177,7 @@ When the new version changes the database, the app writes a `pg_dump` to `/data/
 
 ## Behind a reverse proxy
 
-The proxy must terminate HTTPS and send `X-Forwarded-Proto`, (Traefik sends `wss` for the sync WebSocket, which the app reads as `https`) and must pass the `Host` header through unchanged (the sync WebSocket checks that the `Origin` matches). The app trusts forwarded headers from the private ranges (10/8, 172.16/12, 192.168/16), which covers Docker and Unraid. For a proxy outside those, uncomment `Network__TrustedProxies__0` in the compose file. WebSockets need no extra proxy setting.
+The proxy must terminate HTTPS and send `X-Forwarded-Proto`, (Traefik sends `wss` for the sync WebSocket, which the app reads as `https`) and must pass the `Host` header through unchanged (the sync WebSocket checks that the `Origin` matches). The app trusts forwarded headers from the private ranges (10/8, 172.16/12, 192.168/16), which covers Docker and Unraid. For a proxy outside those, uncomment `Network__TrustedProxies__0` in the compose file. The app expects one proxy in front of it. With two (a Cloudflare or Tailscale tunnel in front of Traefik, for example), set `Network__ForwardLimit` to `2`: otherwise every visitor appears to come from the outer proxy and they share one login limit (ten attempts a minute). WebSockets need no extra proxy setting.
 
 The app sets its own security headers, including a strict Content-Security-Policy. Add only HSTS in the proxy.
 

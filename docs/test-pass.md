@@ -112,6 +112,13 @@ _Not built yet: only the schema, retention job and policy API are in main. These
 - [ ] With a PostgreSQL you already run: `deploy/inkpact.sh backup`, then `restore` into an emptied database. These two commands were not run by CI or while building (only their syntax was checked).
 
 Run B.8 adds its checks here.
+### The review of 2026-11-11
+- [ ] With the device in dark mode, start the installed app (laptop and phone): note whether the title bar and the first screen are light until the page has loaded (the manifest has one theme colour, the light one). If it flashes, that is a finding for a fix run.
+- [ ] Read the whole interface in Dutch once. 13 strings are the same in English and Dutch; most are names (Inkpact, Joplin), but note any that should have been translated.
+- [ ] If the install sits behind two proxies (a tunnel in front of Traefik), set `Network__ForwardLimit` to `2`, make a wrong login from two networks and check that the audit log shows two different addresses, neither of them the tunnel's.
+- [ ] On an Android phone, look at the installed app's icon: without a maskable icon Android crops the plain one into a circle. Note whether it looks cut off.
+
+Runs B.7 and B.8 add their checks here.
 
 ## Phase 2
 

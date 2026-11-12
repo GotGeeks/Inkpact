@@ -2,6 +2,10 @@
 
 Self-hosted, multi-user notes app with real-time collaborative editing. AGPL-3.0, no paid features. Work in progress: see `docs/architecture.md` for the plan.
 
+## Status
+
+Inkpact is not released yet. What works today: accounts and login, notebooks and notes in a tree, the editor with real-time sync between devices, attachments, search, tags, favorites, links between notes with backlinks, importing from Joplin (JEX) and exporting to Markdown, and offline use as an installed app (PWA). Not there yet: version history (only its foundation is merged), sharing with other people, to-dos and reminders in the interface, and the desktop app. The roadmap, with what each run delivers, is in `docs/architecture.md`.
+
 ## Run it with Docker
 
 ```bash

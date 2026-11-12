@@ -26,6 +26,43 @@ public sealed class ThrottleOptions
 
     /// <summary>No failure for this long and the count starts again.</summary>
     public TimeSpan ResetAfter { get; set; } = TimeSpan.FromHours(24);
+
+    /// <summary>
+    /// The options as configured, checked: a value that is no number, or one that would lock everybody out or nobody,
+    /// stops the app at start-up instead of being passed over.
+    /// </summary>
+    public static ThrottleOptions From(IConfiguration config)
+    {
+        var section = config.GetSection(SectionName);
+        var defaults = new ThrottleOptions();
+        var options = new ThrottleOptions
+        {
+            PerAddressPerMinute = Number(section, nameof(PerAddressPerMinute), defaults.PerAddressPerMinute),
+            FailuresBeforeLock = Number(section, nameof(FailuresBeforeLock), defaults.FailuresBeforeLock),
+            FirstLock = TimeSpan.FromSeconds(Number(section, "FirstLockSeconds", (int)defaults.FirstLock.TotalSeconds)),
+            MaxLock = TimeSpan.FromSeconds(Number(section, "MaxLockSeconds", (int)defaults.MaxLock.TotalSeconds)),
+        };
+
+        if (options.MaxLock < options.FirstLock)
+        {
+            throw new InvalidOperationException($"{SectionName}:MaxLockSeconds must not be less than {SectionName}:FirstLockSeconds.");
+        }
+
+        return options;
+    }
+
+    private static int Number(IConfigurationSection section, string key, int fallback)
+    {
+        var text = section[key];
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return fallback;
+        }
+
+        return int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var value) && value >= 1
+            ? value
+            : throw new InvalidOperationException($"{SectionName}:{key} must be a whole number of 1 or more, not \"{text}\".");
+    }
 }
 
 /// <summary>
@@ -107,12 +144,7 @@ public static class ThrottlingSetup
 {
     public static IServiceCollection AddLoginThrottling(this IServiceCollection services, IConfiguration config)
     {
-        var options = new ThrottleOptions();
-        var section = config.GetSection(ThrottleOptions.SectionName);
-        if (int.TryParse(section[nameof(ThrottleOptions.PerAddressPerMinute)], out var perAddress)) options.PerAddressPerMinute = perAddress;
-        if (int.TryParse(section[nameof(ThrottleOptions.FailuresBeforeLock)], out var failures)) options.FailuresBeforeLock = failures;
-        if (int.TryParse(section["FirstLockSeconds"], out var firstLock)) options.FirstLock = TimeSpan.FromSeconds(firstLock);
-        if (int.TryParse(section["MaxLockSeconds"], out var maxLock)) options.MaxLock = TimeSpan.FromSeconds(maxLock);
+        var options = ThrottleOptions.From(config);
 
         services.AddSingleton(options);
         services.AddScoped<LoginThrottling>();

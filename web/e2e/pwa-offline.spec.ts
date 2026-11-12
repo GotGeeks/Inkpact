@@ -155,6 +155,9 @@ test('the shell cache contains no API data and an uncached page reconnects witho
     return response.json()
   })
   expect(manifest.name).toBe('Inkpact')
+  // A stable id, so that a later change of the start address does not make the installed app a different app.
+  expect(manifest.id).toBe('/')
+  expect(manifest.description).not.toBe('')
   expect(manifest.icons.map((icon: { sizes: string }) => icon.sizes)).toEqual(
     expect.arrayContaining(['192x192', '512x512']),
   )

@@ -13,6 +13,7 @@ import {
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError } from '../api'
+import AppButton from '../components/AppButton.vue'
 import { useOnline } from '../composables/useOnline'
 import { loginRoute } from '../router'
 import type { OfflineDocument } from '../offline/offlineDocument'
@@ -28,6 +29,7 @@ import BacklinksPanel from './BacklinksPanel.vue'
 import ChildPages from './ChildPages.vue'
 import FavoriteButton from './FavoriteButton.vue'
 import PageTags from './PageTags.vue'
+import { shownPageIsCurrent } from './pageFreshness'
 import TitleField from './TitleField.vue'
 import type { PageDetail } from '../tree/types'
 
@@ -154,7 +156,24 @@ async function prepareOnline(found: PageDetail, userId: string, mine: number) {
 // Read again when the page changes and when anything in the tree does, so a rename or a trash shows here at once.
 watch(
   [pageId, () => tree.treeVersion, localOnly, canReachApi, retryCount],
-  async ([id, , isLocal, hasApi]) => {
+  async ([id, version, isLocal, hasApi, retry], previous) => {
+    // A change somewhere else in the tree (another page renamed, a new page) says nothing about this page: the tree
+    // has it at the version on the screen, so it is not fetched again.
+    const onlyTheTreeChanged =
+      previous !== undefined &&
+      version !== previous[1] &&
+      id === previous[0] &&
+      isLocal === previous[2] &&
+      hasApi === previous[3] &&
+      retry === previous[4]
+    if (
+      onlyTheTreeChanged &&
+      loadedId === id &&
+      editorReady.value &&
+      shownPageIsCurrent(detail.value, tree.byId.get(id))
+    ) {
+      return
+    }
     const mine = ++loadGeneration
     if (loadedId !== id) {
       startSlowTimer(mine)
@@ -274,13 +293,9 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
     <h1 class="text-headline-xl-mobile md:text-headline-xl">{{ t('offline.unavailableTitle') }}</h1>
     <p>{{ t('offline.unavailable') }}</p>
     <p v-if="retryFailed" role="alert">{{ t('offline.retryFailed') }}</p>
-    <button
-      type="button"
-      class="min-h-11 self-start rounded border border-border-strong px-space-lg"
-      @click="retryUnavailable"
-    >
+    <AppButton class="self-start" @click="retryUnavailable">
       {{ t('offline.retry') }}
-    </button>
+    </AppButton>
   </section>
 
   <section
@@ -289,13 +304,9 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
   >
     <h1 class="text-headline-xl-mobile md:text-headline-xl">{{ t('page.loadFailedTitle') }}</h1>
     <p role="alert">{{ t('offline.pageLoadFailed') }}</p>
-    <button
-      type="button"
-      class="min-h-11 self-start rounded border border-border-strong px-space-lg"
-      @click="retryCount++"
-    >
+    <AppButton class="self-start" @click="retryCount++">
       {{ t('offline.retry') }}
-    </button>
+    </AppButton>
     <RouterLink :to="{ name: 'home' }" class="self-start text-primary underline">{{
       t('page.backToStart')
     }}</RouterLink>
@@ -307,13 +318,9 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
     class="mx-auto flex max-w-2xl flex-col gap-space-md p-margin md:p-margin-desktop"
   >
     <p>{{ t('offline.storageFailed') }}</p>
-    <button
-      type="button"
-      class="min-h-11 self-start rounded border border-border-strong px-space-lg"
-      @click="retryStorage"
-    >
+    <AppButton class="self-start" @click="retryStorage">
       {{ t('offline.retry') }}
-    </button>
+    </AppButton>
   </section>
 
   <section
