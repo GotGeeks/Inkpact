@@ -2,7 +2,7 @@
 
 **Model:** O·high → S·high in the roadmap. Planned on Fable 5.2 on 2026-11-12 from a reading of #122's code against the B.5 card. Sync, restore and the client's lost-edit check are critical paths: `/code-review` at high on PRs 3 and 4 before they merge, at medium on the others.
 
-**Status:** Planned. Five PRs, in the order below. Nothing is built.
+**Status:** Planned; the five questions were answered on 2026-11-12, each as recommended. Built in the order PR 3, 1, 2, 4, 5 (PR 3 first: it closes a gap that exists today).
 
 This card plans what [`B.5.md`](B.5.md) left open. That card stays the statement of what version history must do (its "Decisions", "Done when" and "Tests" hold unless this card says otherwise); this one says how, in which order, and where the plan narrows or changes it.
 
@@ -124,6 +124,8 @@ The B.5 card's list holds. Where each part lands:
 - New dependencies. None is needed as planned; ask first if one turns out to be.
 
 ## Questions
+
+All five were answered "yes, as recommended" by the maintainer on 2026-11-12.
 
 1. **A rename version's body is the body when the worker captures it, not at the instant of the rename.** Recommended: yes. Both titles are kept, which is what the architecture asks; the exact body at the rename would need a sidecar call inside the tree's lock.
 2. **Formatting-only and deletion-only changes that had not reached the server are protected on a current client only**, not on a tab running the old client nor in an offline document opened later. Recommended: accept, and say so in the docs. No text is lost in these cases. The alternative is to refuse a restore while any old client has the page open, which a forgotten tab on a phone would block for as long as it stays open.
