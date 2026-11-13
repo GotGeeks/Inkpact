@@ -19,6 +19,8 @@ services:
       # Network__ForwardLimit: 2
       # The largest file that can be added to a page, in bytes (default 50 MB).
       # Attachments__MaxFileSize: 52428800
+      # Once a day the app asks GitHub for its newest release, to tell the administrator about an update. This stops it.
+      # UpdateCheck__Enabled: 'false'
     ports:
       - '${INKPACT_PORT:-8080}:8080'
     volumes:

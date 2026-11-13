@@ -220,7 +220,7 @@ The smallest version you can use daily instead of Joplin. Build login, tree, edi
 | B.5b | The rest of version history, after an Opus review of #122: automatic capture, the history panel with preview, restore with its safety version, and the owner's retention setting in the interface. The cards are [`docs/runs/B.5.md`](runs/B.5.md) (what it must do) and [`docs/runs/B.5b.md`](runs/B.5b.md) (the plan: five PRs) | O·high → S·high |
 | B.6 | PWA: installable, with an offline cache and IndexedDB Yjs state | O·high → S·med |
 | B.7 | Health endpoint, structured logging, documented backup and restore (pg\_dump plus the attachments volume), admin password reset via CLI | S·low |
-| B.8 | Release pipeline: release-please, versioned and signed images with SBOM and provenance, Unraid template and its automatic update, update check, migration upgrade test in CI | S·med |
+| B.8 | Release pipeline: release-please, versioned and signed images with SBOM and provenance, Unraid template and its automatic update, update check, migration upgrade test in CI. The card is [`docs/runs/B.8.md`](runs/B.8.md) (three PRs) | S·med |
 | B.9 | Account settings (added by the review of 2026-11-11, `docs/review-2026-11-11.md`): change your own password (the current one asked, every other session ended), change the display name, and the list of signed-in devices with "sign out this device". No run had these, and the session table already keeps what the list needs | O·high → S·med |
 | B.10 | A limit on what live edits can make of a page (same review): the sync hub refuses an update that would take a page's stored bytes past what a client can be sent (`Sync:MaxQueuedBytes`), with an error the editor shows, so a page cannot grow until nobody can open it | O·high → S·med |
 

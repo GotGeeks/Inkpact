@@ -200,6 +200,13 @@ docker compose up -d
 
 When the new version changes the database, the app writes a `pg_dump` to `/data/backups` first and stops with a clear message if that fails, before it changes anything. Old dumps are not removed; see "The dumps before a migration" for removing them.
 
+**Which version runs:** **Settings → About Inkpact** says so, for everyone signed in.
+
+**The update notice:** once a day the app asks GitHub for Inkpact's newest release. When it is newer than the running version, the administrator sees it under Settings in the account menu, and **Settings** links to its release notes.
+
+- **What is sent:** one request to `api.github.com` for the public release list, which names the app and its version. Nothing about your install, your users or your notes. The browser never contacts GitHub itself.
+- **Turning it off:** set `UpdateCheck__Enabled` to `false` (it is in the compose file, commented out). A build without a version (see "Building the image yourself") never asks.
+
 ## Behind a reverse proxy
 
 The proxy must terminate HTTPS and send `X-Forwarded-Proto`, (Traefik sends `wss` for the sync WebSocket, which the app reads as `https`) and must pass the `Host` header through unchanged (the sync WebSocket checks that the `Origin` matches). The app trusts forwarded headers from the private ranges (10/8, 172.16/12, 192.168/16), which covers Docker and Unraid. For a proxy outside those, uncomment `Network__TrustedProxies__0` in the compose file. The app expects one proxy in front of it. With two (a Cloudflare or Tailscale tunnel in front of Traefik, for example), set `Network__ForwardLimit` to `2`: otherwise every visitor appears to come from the outer proxy and they share one login limit (ten attempts a minute). WebSockets need no extra proxy setting.
@@ -263,3 +270,5 @@ networks:
 docker build -t inkpact .
 INKPACT_IMAGE=inkpact docker compose up -d
 ```
+
+Such an image says it is a development build (`0.0.0-dev`) and never looks for updates. To give it a version, build it with `--build-arg INKPACT_VERSION=0.1.0`, which is what the published images are built with.

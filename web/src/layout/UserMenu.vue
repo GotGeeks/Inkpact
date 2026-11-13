@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from 'reka-ui'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
@@ -23,6 +23,7 @@ import { useSettingsStore } from '../stores/settings'
 import { useOfflineStore } from '../stores/offline'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
+import { useVersionStore } from '../stores/version'
 
 const emit = defineEmits<{ navigate: [] }>()
 
@@ -33,7 +34,14 @@ const tree = useTreeStore()
 const notifications = useNotificationsStore()
 const sync = useSyncStore()
 const offline = useOfflineStore()
+const versions = useVersionStore()
 const router = useRouter()
+
+// Only the administrator is told of a newer release (run B.8): they are the one who can install it. Nobody else asks.
+onMounted(() => {
+  if (auth.user?.isAdmin) void versions.load()
+})
+const update = computed(() => (auth.user?.isAdmin ? (versions.info?.update ?? null) : null))
 
 // Static keys, so the unused-keys lint rule can see them.
 const names = computed(() => ({ en: t('language.en'), nl: t('language.nl') }))
@@ -177,10 +185,24 @@ const item =
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator class="my-space-xs h-px bg-border-subtle" />
-        <DropdownMenuItem v-if="tree.workspace" :class="item" @select="openSettings">{{
-          t('user.settings')
-        }}</DropdownMenuItem>
-        <DropdownMenuSeparator v-if="tree.workspace" class="my-space-xs h-px bg-border-subtle" />
+        <template v-if="tree.workspace">
+          <DropdownMenuItem
+            :aria-describedby="update ? 'update-hint' : undefined"
+            data-testid="settings-item"
+            :class="item"
+            @select="openSettings"
+            >{{ t('user.settings') }}</DropdownMenuItem
+          >
+          <!-- For the administrator, while a newer release is out: the settings screen says more. -->
+          <DropdownMenuLabel
+            v-if="update"
+            id="update-hint"
+            class="flex items-center gap-space-xs px-space-md pb-space-xs text-label-xs text-primary"
+            ><span aria-hidden="true" class="size-2 shrink-0 rounded-full bg-primary"></span
+            >{{ t('user.updateAvailable', { version: update.version }) }}</DropdownMenuLabel
+          >
+          <DropdownMenuSeparator class="my-space-xs h-px bg-border-subtle" />
+        </template>
         <DropdownMenuItem v-if="tree.canEdit" :class="item" @select="openImport">{{
           t('import.menu')
         }}</DropdownMenuItem>

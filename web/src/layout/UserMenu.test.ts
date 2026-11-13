@@ -207,6 +207,41 @@ describe('UserMenu', () => {
     expect(document.querySelector('[role="menu"] > p')).toBeNull()
   })
 
+  it('tells the administrator under Settings that a newer release is out', async () => {
+    await menu('owner', {
+      version: {
+        version: '0.1.0',
+        development: false,
+        update: {
+          version: '0.2.0',
+          url: 'https://github.com/GotGeeks/Inkpact/releases/tag/v0.2.0',
+        },
+      },
+    })
+
+    const entry = document.body.querySelector<HTMLElement>('[data-testid="settings-item"]')!
+    const hint = document.getElementById(entry.getAttribute('aria-describedby')!)
+    expect(entry.textContent?.trim()).toBe('Settings')
+    expect(hint?.textContent?.trim()).toBe('Inkpact 0.2.0 is out')
+  })
+
+  it('says nothing under Settings while there is no newer release', async () => {
+    const { server } = await menu()
+
+    const entry = document.body.querySelector<HTMLElement>('[data-testid="settings-item"]')!
+    expect(entry.getAttribute('aria-describedby')).toBeNull()
+    expect(document.body.textContent).not.toContain('is out')
+    expect(
+      server.fetch.mock.calls.filter(([path]) => String(path) === '/api/version'),
+    ).toHaveLength(1)
+  })
+
+  it('does not ask for the version for someone who is not the administrator', async () => {
+    const { server } = await menu('editor', { isAdmin: false })
+
+    expect(server.fetch.mock.calls.some(([path]) => String(path) === '/api/version')).toBe(false)
+  })
+
   it('asks for the README of the export in Dutch after the language is switched', async () => {
     const { item, trigger } = await menu()
     const clicked: string[] = []

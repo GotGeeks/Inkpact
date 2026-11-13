@@ -599,7 +599,8 @@
     "signedInAs": "Ingelogd als {email}",
     "logout": "Uitloggen",
     "logoutEverywhere": "Overal uitloggen",
-    "settings": "Instellingen"
+    "settings": "Instellingen",
+    "updateAvailable": "Inkpact {version} is uit"
   },
   "export": {
     "menu": "Alles exporteren",
@@ -738,6 +739,17 @@
         "cap": "De grens is een heel aantal MiB, van 1 tot {max}.",
         "policy": "Deze instellingen kunnen niet worden opgeslagen. Controleer de getallen."
       }
+    },
+    "about": {
+      "title": "Over Inkpact",
+      "version": "Versie {version}",
+      "development": "Een ontwikkelversie, zonder versienummer.",
+      "loadFailed": "De versie kon niet worden geladen.",
+      "updateTitle": "Inkpact {version} is uit",
+      "releaseNotes": "Wat er nieuw is in {version}",
+      "newTab": "(opent in een nieuw tabblad)",
+      "howUnraid": "Op Unraid: kies in het tabblad Docker Check for updates, en daarna Apply update.",
+      "howCompose": "Met Docker Compose, in de map van het compose-bestand:"
     }
   }
 }

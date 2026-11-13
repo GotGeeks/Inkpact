@@ -7,6 +7,7 @@ import SubmitButton from '../components/SubmitButton.vue'
 import { useErrorMessage } from '../errors'
 import { formatFileSize } from '../fileSize'
 import { useTreeStore } from '../stores/tree'
+import AboutSection from './AboutSection.vue'
 import {
   MAXIMUM_CAP_MIB,
   policyProblem,
@@ -17,8 +18,8 @@ import {
 } from './historyPolicy'
 
 /**
- * The settings of the workspace (run B.5b, review finding 5.6): for now one section, its history. Every member can read
- * it; only the owner can change it. Run B.9 adds the person's own account here.
+ * The settings of the workspace (run B.5b, review finding 5.6): its history, which every member can read and only the
+ * owner can change, and which Inkpact runs (run B.8). Run B.9 adds the person's own account here.
  */
 const { t, locale } = useI18n()
 const message = useErrorMessage()
@@ -303,5 +304,7 @@ const field =
         </p>
       </form>
     </section>
+
+    <AboutSection />
   </section>
 </template>
