@@ -19,6 +19,7 @@ public class UpdateCheckTests
 
     private readonly FakeGitHub _github = new();
     private readonly CapturingLogger<UpdateCheck> _logger = new();
+    private readonly CapturingLogger<UpdateCheckWorker> _workerLogger = new();
 
     private UpdateCheck Check(string version = "0.1.0", UpdateCheckOptions? options = null) =>
         new(_github.Factory(), AppVersion.Of(version), options ?? new UpdateCheckOptions(), _logger);
@@ -147,6 +148,21 @@ public class UpdateCheckTests
     }
 
     [Fact]
+    public async Task Keeps_the_last_good_answer_when_the_connection_breaks_while_the_answer_is_read()
+    {
+        var check = Check();
+        _github.Answer(HttpStatusCode.OK, Release());
+        await check.CheckAsync(CancellationToken.None);
+
+        // The headers came; the body stops half way, as when GitHub or a proxy resets the connection.
+        _github.AnswerCutOff();
+        await check.CheckAsync(CancellationToken.None);
+
+        check.Update.ShouldBe(new AvailableUpdate("0.2.0", ReleasePage));
+        _logger.Entries.ShouldHaveSingleItem().Message.ShouldContain("cut off (ResponseEnded)");
+    }
+
+    [Fact]
     public async Task A_cancellation_ends_it()
     {
         _github.Hang();
@@ -242,7 +258,7 @@ public class UpdateCheckTests
         _github.Answer(HttpStatusCode.OK, Release());
         var options = new UpdateCheckOptions { FirstCheckAfter = TimeSpan.Zero, Interval = TimeSpan.FromMilliseconds(50) };
         var check = Check(options: options);
-        using var worker = new UpdateCheckWorker(check, options, TimeProvider.System);
+        using var worker = new UpdateCheckWorker(check, options, TimeProvider.System, _workerLogger);
 
         await worker.StartAsync(CancellationToken.None);
         await WaitUntilAsync(() => _github.Requests.Count >= 3);
@@ -252,11 +268,29 @@ public class UpdateCheckTests
     }
 
     [Fact]
+    public async Task The_worker_keeps_asking_after_a_failure_the_check_does_not_expect_and_the_app_keeps_running()
+    {
+        // Something the check does not catch, in every round: the worker must not end (which would stop the host).
+        _github.Fail(new InvalidOperationException("marker of the failure"));
+        var options = new UpdateCheckOptions { FirstCheckAfter = TimeSpan.Zero, Interval = TimeSpan.FromMilliseconds(50) };
+        using var worker = new UpdateCheckWorker(Check(options: options), options, TimeProvider.System, _workerLogger);
+
+        await worker.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => _github.Requests.Count >= 3);
+
+        worker.ExecuteTask.ShouldNotBeNull().IsCompleted.ShouldBeFalse();
+        await worker.StopAsync(CancellationToken.None);
+        worker.ExecuteTask.IsFaulted.ShouldBeFalse();
+        _workerLogger.Entries.ShouldNotBeEmpty();
+        _workerLogger.Entries.ShouldAllBe(e => e.Level == LogLevel.Error && e.Message.Contains("InvalidOperationException") && !e.Message.Contains("marker"));
+    }
+
+    [Fact]
     public async Task The_worker_waits_before_its_first_question()
     {
         _github.Answer(HttpStatusCode.OK, Release());
         var options = new UpdateCheckOptions { FirstCheckAfter = TimeSpan.FromHours(1) };
-        using var worker = new UpdateCheckWorker(Check(options: options), options, TimeProvider.System);
+        using var worker = new UpdateCheckWorker(Check(options: options), options, TimeProvider.System, _workerLogger);
 
         await worker.StartAsync(CancellationToken.None);
         await Task.Delay(200);
@@ -270,7 +304,7 @@ public class UpdateCheckTests
     {
         _github.Answer(HttpStatusCode.OK, Release());
         var options = new UpdateCheckOptions { Enabled = false, FirstCheckAfter = TimeSpan.Zero, Interval = TimeSpan.FromMilliseconds(10) };
-        using var worker = new UpdateCheckWorker(Check(options: options), options, TimeProvider.System);
+        using var worker = new UpdateCheckWorker(Check(options: options), options, TimeProvider.System, _workerLogger);
 
         await worker.StartAsync(CancellationToken.None);
         await Task.Delay(200);
@@ -362,6 +396,10 @@ public class UpdateCheckTests
 
         public void Fail(Exception error) => _respond = _ => Task.FromException<HttpResponseMessage>(error);
 
+        /// <summary>A 200 whose body breaks off part way, as .NET reports a connection reset after the headers.</summary>
+        public void AnswerCutOff() =>
+            _respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new CutOffContent() });
+
         public void Hang() => _respond = async cancellationToken =>
         {
             await Task.Delay(Timeout.Infinite, cancellationToken);
@@ -372,6 +410,61 @@ public class UpdateCheckTests
         {
             _requests.Enqueue(request);
             return _respond(cancellationToken);
+        }
+    }
+
+    /// <summary>A body that ends early: a stream that gives a few bytes, then throws what SocketsHttpHandler throws.</summary>
+    private sealed class CutOffContent : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
+            throw new InvalidOperationException("Read as a stream only.");
+
+        protected override Task<Stream> CreateContentReadStreamAsync() => Task.FromResult<Stream>(new CutOffStream());
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
+
+        private sealed class CutOffStream : Stream
+        {
+            private bool _gave;
+
+            public override bool CanRead => true;
+
+            public override bool CanSeek => false;
+
+            public override bool CanWrite => false;
+
+            public override long Length => throw new NotSupportedException();
+
+            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+            public override int Read(byte[] buffer, int offset, int count) =>
+                ReadAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
+
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                if (_gave)
+                {
+                    throw new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely.");
+                }
+
+                _gave = true;
+                "{\"tag_"u8.CopyTo(buffer.Span);
+                return ValueTask.FromResult(6);
+            }
+
+            public override void Flush()
+            {
+            }
+
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+            public override void SetLength(long value) => throw new NotSupportedException();
+
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
         }
     }
 
