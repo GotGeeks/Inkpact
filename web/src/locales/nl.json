@@ -87,6 +87,7 @@
     "too_many_pages": "Er zijn te veel pagina's tegelijk open. Sluit er een en probeer het opnieuw.",
     "forbidden": "Dat mag je niet doen.",
     "not_found": "Dat is niet gevonden.",
+    "history_open_failed": "De geschiedenis kon niet worden geopend. Laad de pagina opnieuw en probeer het nog eens.",
     "export_unavailable": "De export kan nu niet worden gemaakt, omdat het deel van de server dat de pagina’s leest niet beschikbaar is. Probeer het zo opnieuw.",
     "csrf_invalid": "De pagina was verouderd. Laad hem opnieuw en probeer het nog eens.",
     "title_invalid": "De titel mag hooguit 500 tekens hebben.",

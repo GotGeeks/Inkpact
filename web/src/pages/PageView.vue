@@ -26,6 +26,7 @@ import { useRecentStore } from '../stores/recent'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import SyncStatus from '../sync/SyncStatus.vue'
+import { useHistoryPanel } from '../history/useHistoryPanel'
 import BacklinksPanel from './BacklinksPanel.vue'
 import ChildPages from './ChildPages.vue'
 import FavoriteButton from './FavoriteButton.vue'
@@ -43,9 +44,6 @@ const PageEditor = defineAsyncComponent({
   loadingComponent: { render: () => h('div', { class: 'min-h-48', 'aria-busy': 'true' }) },
   delay: 0,
 })
-
-// The history panel (run B.5b) has its own editor for a version's content: loaded when it is first opened.
-const HistoryPanel = defineAsyncComponent(() => import('../history/HistoryPanel.vue'))
 
 const { t } = useI18n()
 const route = useRoute()
@@ -288,21 +286,27 @@ async function retryUnavailable() {
 }
 const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
 
-// Open for the page it was opened on: another page closes it.
-const historyOpen = ref(false)
+// The history panel (run B.5b): its code is fetched when it is first asked for, and it is open for the page it was opened
+// on. Another page closes it, and so does anything that takes the page away (the panel goes with it, see the template).
+const {
+  component: historyPanel,
+  open: historyOpen,
+  loading: historyLoading,
+  show: showHistory,
+  hide: hideHistory,
+} = useHistoryPanel(pageId)
 const historyButton = useTemplateRef<HTMLButtonElement>('historyButton')
 /**
  * The focus goes back to the button, also where a tap does not focus a button (Safari on an iPhone): the dialog would
  * otherwise give it back to what had it before, which there is nothing.
  */
 async function closeHistory() {
-  historyOpen.value = false
+  hideHistory()
   await nextTick()
   historyButton.value?.focus()
 }
-watch(pageId, () => (historyOpen.value = false))
 watch(localOnly, (isLocal) => {
-  if (isLocal) historyOpen.value = false
+  if (isLocal) hideHistory()
 })
 </script>
 
@@ -404,9 +408,10 @@ watch(localOnly, (isLocal) => {
         type="button"
         :aria-label="t('history.open')"
         aria-haspopup="dialog"
+        :aria-busy="historyLoading || undefined"
         data-testid="history-open"
         class="flex size-11 shrink-0 items-center justify-center rounded text-on-surface-variant hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-primary md:size-9"
-        @click="historyOpen = true"
+        @click="showHistory"
       >
         <AppIcon name="history" class="size-5" />
       </button>
@@ -474,11 +479,15 @@ watch(localOnly, (isLocal) => {
       :document="document"
     />
     <BacklinksPanel v-if="detail" :key="`backlinks-${detail.page.id}`" :page-id="detail.page.id" />
-    <HistoryPanel
-      v-if="historyOpen && detail"
+    <!-- When the page goes (not found, failed, offline), the panel goes with it: it must not come back by itself with the
+         page, so its state is cleared when it is unmounted, whatever the reason. -->
+    <component
+      :is="historyPanel"
+      v-if="historyOpen && historyPanel && detail"
       :page-id="detail.page.id"
       :page-title="detail.page.title"
       @close="closeHistory"
+      @vue:unmounted="hideHistory"
     />
   </article>
 

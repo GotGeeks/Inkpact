@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { createAppI18n, type Locale } from '../i18n'
+import { useTreeStore } from '../stores/tree'
 import { jsonResponse, stubApi, type Route } from '../testing/helpers'
 import HistoryPanel from './HistoryPanel.vue'
 import type { HistoryState, VersionDetail, VersionList, VersionSummary } from './types'
@@ -66,13 +67,16 @@ function stubScreen(wide: boolean) {
   }))
 }
 
+let i18n = createAppI18n('en')
+
 async function open(routes: Route[], locale: Locale = 'en') {
   const fetchMock = stubApi(routes)
   const pinia = createPinia()
   setActivePinia(pinia)
+  i18n = createAppI18n(locale)
   wrapper = mount(HistoryPanel, {
     props: { pageId, pageTitle: 'Plans, renamed' },
-    global: { plugins: [pinia, createAppI18n(locale)] },
+    global: { plugins: [pinia, i18n] },
     attachTo: document.body,
   })
   await flushPromises()
@@ -320,9 +324,11 @@ describe('HistoryPanel', () => {
 
   it('on a phone shows the version in place of the list, with the focus on it, and goes back to the row it came from', async () => {
     stubScreen(false)
+    // An id with a quote and a backslash: the row is still found again (the id goes into a selector).
+    const odd = { ...middle, id: 'v"2\\' }
     await open([
-      get(listPath, () => jsonResponse(200, list([newest, middle]))),
-      get(versionPath('v2'), () => jsonResponse(200, detailOf(middle, 'Then'))),
+      get(listPath, () => jsonResponse(200, list([newest, odd]))),
+      get(versionPath(encodeURIComponent(odd.id)), () => jsonResponse(200, detailOf(odd, 'Then'))),
     ])
     const listSection = panel().querySelector('[data-testid="version-list"]')!.parentElement!
     expect(listSection.classList.contains('hidden')).toBe(false)
@@ -339,6 +345,119 @@ describe('HistoryPanel', () => {
     await flushPromises()
     expect(preview().classList.contains('hidden')).toBe(true)
     expect(document.activeElement).toBe(rows()[1])
+  })
+
+  it('takes a click on a link in a version, so the browser does not follow it', async () => {
+    const linked = {
+      ...detailOf(middle, ''),
+      content: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              {
+                type: 'text',
+                text: 'elsewhere',
+                marks: [{ type: 'link', attrs: { href: 'https://example.com/' } }],
+              },
+            ],
+          },
+        ],
+      },
+    }
+    await open([
+      get(listPath, () => jsonResponse(200, list([middle]))),
+      get(versionPath('v2'), () => jsonResponse(200, linked)),
+    ])
+    rows()[0]!.click()
+    await flushPromises()
+
+    const link = preview().querySelector('a')!
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })
+    link.dispatchEvent(click)
+
+    expect(click.defaultPrevented).toBe(true)
+    // Nor with Ctrl, which on the page opens a new tab.
+    const newTab = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      ctrlKey: true,
+    })
+    link.dispatchEvent(newTab)
+    expect(newTab.defaultPrevented).toBe(true)
+  })
+
+  it('strikes a link through when the page it points to goes to the trash while the version is shown, and not when it comes back', async () => {
+    const target = '0a1b2c3d-0000-4000-8000-0000000000cc'
+    const linked = {
+      ...detailOf(middle, ''),
+      content: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              {
+                type: 'text',
+                text: 'the other page',
+                marks: [{ type: 'link', attrs: { href: `/p/${target}` } }],
+              },
+            ],
+          },
+        ],
+      },
+    }
+    await open([
+      get(listPath, () => jsonResponse(200, list([middle]))),
+      get(versionPath('v2'), () => jsonResponse(200, linked)),
+    ])
+    const tree = useTreeStore()
+    const node = {
+      id: target,
+      parentId: null,
+      title: 'Other',
+      sortKey: 'a0',
+      version: 1,
+      updatedAt: '2026-11-12T10:00:00Z',
+    }
+    tree.$patch({ loaded: true, pages: [node], trash: [] })
+    rows()[0]!.click()
+    await flushPromises()
+    const struck = () => preview().querySelector('[data-broken-link="trash"]') !== null
+
+    expect(struck()).toBe(false)
+    tree.$patch({ pages: [], trash: [{ ...node, deletedAt: '2026-11-12T11:00:00Z' }] })
+    await flushPromises()
+    expect(struck()).toBe(true)
+    expect(preview().querySelector('[data-broken-link="trash"]')!.classList).toContain(
+      'line-through',
+    )
+
+    tree.$patch({ pages: [node], trash: [] })
+    await flushPromises()
+    expect(struck()).toBe(false)
+  })
+
+  it('shows a version in the language the person switches to while it is open', async () => {
+    await open([
+      get(listPath, () => jsonResponse(200, list([middle]))),
+      get(versionPath('v2'), () => jsonResponse(200, detailOf(middle, 'Then'))),
+    ])
+    rows()[0]!.click()
+    await flushPromises()
+    expect(preview().querySelector('.ProseMirror')!.getAttribute('aria-label')).toBe(
+      'The content of this version',
+    )
+
+    i18n.global.locale.value = 'nl'
+    await flushPromises()
+
+    expect(preview().querySelector('.ProseMirror')!.getAttribute('aria-label')).toBe(
+      'De inhoud van deze versie',
+    )
+    expect(text(preview().querySelector('.ProseMirror'))).toBe('Then')
   })
 
   it('leaves the focus in the list when the version shows beside it', async () => {

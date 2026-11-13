@@ -87,6 +87,7 @@
     "too_many_pages": "Too many pages are open at once. Close one and try again.",
     "forbidden": "You are not allowed to do that.",
     "not_found": "That could not be found.",
+    "history_open_failed": "The history could not be opened. Reload the page and try again.",
     "export_unavailable": "The export cannot be made right now, because the part of the server that reads the pages is not available. Try again in a moment.",
     "csrf_invalid": "The page was out of date. Reload it and try again.",
     "title_invalid": "The title can be at most 500 characters.",

@@ -1,11 +1,9 @@
-import { effectScope, nextTick, ref } from 'vue'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse } from '../testing/helpers'
 import type { VersionList, VersionSummary } from './types'
 import { useVersionHistory } from './useVersionHistory'
 
-const pageA = '0a1b2c3d-0000-4000-8000-00000000000a'
-const pageB = '0a1b2c3d-0000-4000-8000-00000000000b'
+const pageId = '0a1b2c3d-0000-4000-8000-00000000000a'
 
 function version(id: string, minutesAgo = 0): VersionSummary {
   return {
@@ -21,6 +19,14 @@ function version(id: string, minutesAgo = 0): VersionSummary {
 function listOf(versions: VersionSummary[], next: string | null = null): VersionList {
   return { versions, next, state: 'ready', failure: null }
 }
+
+const detailOf = (id: string) => ({
+  id,
+  createdAt: version(id).createdAt,
+  kind: 'automatic',
+  title: 'Then',
+  content: { type: 'doc' },
+})
 
 /** Answers the requests in the order they are asked, each when the test says so. */
 function controlledFetch() {
@@ -39,37 +45,18 @@ function controlledFetch() {
   return { calls, fetchMock }
 }
 
-const flush = async () => {
-  for (let i = 0; i < 5; i++) await Promise.resolve()
-  await nextTick()
-}
-
-let stop: () => void = () => {}
-
-function start(pageId = pageA) {
-  const id = ref(pageId)
-  const scope = effectScope()
-  const history = scope.run(() => useVersionHistory(id))!
-  stop = () => scope.stop()
-  return { id, history }
-}
-
-beforeEach(() => {
-  vi.unstubAllGlobals()
-})
 afterEach(() => {
-  stop()
   vi.unstubAllGlobals()
 })
 
 describe('useVersionHistory', () => {
   it('reads the first page of versions, newest first as the server gives them, and where the history stands', async () => {
     const { calls } = controlledFetch()
-    const { history } = start()
+    const history = useVersionHistory(pageId)
 
     const loading = history.load()
     expect(history.list.loading).toBe(true)
-    expect(calls[0]!.url).toBe(`/api/pages/${pageA}/versions?limit=50`)
+    expect(calls[0]!.url).toBe(`/api/pages/${pageId}/versions?limit=50`)
     calls[0]!.resolve(
       jsonResponse(200, {
         ...listOf([version('v2'), version('v1', 5)], 'cursor-1'),
@@ -87,7 +74,7 @@ describe('useVersionHistory', () => {
 
   it('reads older versions with the cursor, adds them after the others once, and stops when there are none', async () => {
     const { calls } = controlledFetch()
-    const { history } = start()
+    const history = useVersionHistory(pageId)
     const first = history.load()
     calls[0]!.resolve(jsonResponse(200, listOf([version('v3'), version('v2', 1)], 'c/1')))
     await first
@@ -96,7 +83,7 @@ describe('useVersionHistory', () => {
     // A second press while the first is on its way asks nothing.
     void history.loadMore()
     expect(calls).toHaveLength(2)
-    expect(calls[1]!.url).toBe(`/api/pages/${pageA}/versions?limit=50&before=c%2F1`)
+    expect(calls[1]!.url).toBe(`/api/pages/${pageId}/versions?limit=50&before=c%2F1`)
     // v2 was made again at the edge of the two pages while the person read: shown once.
     calls[1]!.resolve(jsonResponse(200, listOf([version('v2', 1), version('v1', 2)])))
     await more
@@ -109,7 +96,7 @@ describe('useVersionHistory', () => {
 
   it('keeps the versions it has when older ones cannot be read, and says so until they can', async () => {
     const { calls } = controlledFetch()
-    const { history } = start()
+    const history = useVersionHistory(pageId)
     const first = history.load()
     calls[0]!.resolve(jsonResponse(200, listOf([version('v2')], 'c1')))
     await first
@@ -130,7 +117,7 @@ describe('useVersionHistory', () => {
 
   it('says why the first page could not be read, and reads it when asked again', async () => {
     const { calls } = controlledFetch()
-    const { history } = start()
+    const history = useVersionHistory(pageId)
 
     const failing = history.load()
     calls[0]!.resolve(jsonResponse(500, { code: 'server_error' }))
@@ -145,52 +132,60 @@ describe('useVersionHistory', () => {
     expect(history.list.loaded).toBe(true)
   })
 
-  it('drops an answer for the page it was asked about once another page is asked about', async () => {
+  it('drops older versions that arrive after the list was read again', async () => {
     const { calls } = controlledFetch()
-    const { id, history } = start()
-    void history.load()
+    const history = useVersionHistory(pageId)
+    const first = history.load()
+    calls[0]!.resolve(jsonResponse(200, listOf([version('v3')], 'c1')))
+    await first
 
-    id.value = pageB
-    await nextTick()
-    // The new page is asked about at once; the old answer arrives last and changes nothing.
-    expect(calls[1]!.url).toBe(`/api/pages/${pageB}/versions?limit=50`)
-    calls[1]!.resolve(jsonResponse(200, listOf([version('b1')])))
-    await flush()
-    calls[0]!.resolve(jsonResponse(200, listOf([version('a1'), version('a0')], 'old')))
-    await flush()
+    const more = history.loadMore()
+    const again = history.load()
+    expect(history.list.loadingMore).toBe(false)
+    calls[2]!.resolve(jsonResponse(200, listOf([version('v4'), version('v3')], 'c2')))
+    await again
+    calls[1]!.resolve(jsonResponse(200, listOf([version('v1', 9)])))
+    await more
 
-    expect(history.list.versions.map((v) => v.id)).toEqual(['b1'])
-    expect(history.list.next).toBeNull()
+    expect(history.list.versions.map((v) => v.id)).toEqual(['v4', 'v3'])
+    expect(history.list.next).toBe('c2')
   })
 
   it('reads a version once and keeps it, also when it is opened again', async () => {
     const { calls } = controlledFetch()
-    const { history } = start()
+    const history = useVersionHistory(pageId)
 
     const opening = history.open('v1')
     expect(history.details.get('v1')).toEqual({ status: 'loading' })
     // Asked again while on its way: one request.
     void history.open('v1')
     expect(calls).toHaveLength(1)
-    expect(calls[0]!.url).toBe(`/api/pages/${pageA}/versions/v1`)
-    const detail = {
-      id: 'v1',
-      createdAt: version('v1').createdAt,
-      kind: 'automatic',
-      title: 'Then',
-      content: { type: 'doc' },
-    }
-    calls[0]!.resolve(jsonResponse(200, detail))
+    expect(calls[0]!.url).toBe(`/api/pages/${pageId}/versions/v1`)
+    calls[0]!.resolve(jsonResponse(200, detailOf('v1')))
     await opening
 
-    expect(history.details.get('v1')).toEqual({ status: 'ready', detail })
+    expect(history.details.get('v1')).toEqual({ status: 'ready', detail: detailOf('v1') })
     await history.open('v1')
     expect(calls).toHaveLength(1)
   })
 
+  it('finishes reading a version when the list is read again meanwhile', async () => {
+    const { calls } = controlledFetch()
+    const history = useVersionHistory(pageId)
+
+    const opening = history.open('v1')
+    const reading = history.load()
+    calls[1]!.resolve(jsonResponse(200, listOf([version('v1')])))
+    await reading
+    calls[0]!.resolve(jsonResponse(200, detailOf('v1')))
+    await opening
+
+    expect(history.details.get('v1')?.status).toBe('ready')
+  })
+
   it('says why a version could not be read, and reads it again when asked', async () => {
     const { calls } = controlledFetch()
-    const { history } = start()
+    const history = useVersionHistory(pageId)
 
     const failing = history.open('v1')
     calls[0]!.resolve(jsonResponse(503, { code: 'history_unavailable' }))
@@ -199,37 +194,8 @@ describe('useVersionHistory', () => {
 
     const again = history.open('v1')
     expect(calls).toHaveLength(2)
-    calls[1]!.resolve(
-      jsonResponse(200, {
-        id: 'v1',
-        createdAt: '',
-        kind: 'automatic',
-        title: '',
-        content: { type: 'doc' },
-      }),
-    )
+    calls[1]!.resolve(jsonResponse(200, detailOf('v1')))
     await again
     expect(history.details.get('v1')?.status).toBe('ready')
-  })
-
-  it('forgets what it read about a page, and drops a version that arrives late, once another page is asked about', async () => {
-    const { calls } = controlledFetch()
-    const { id, history } = start()
-    const opening = history.open('v1')
-
-    id.value = pageB
-    await nextTick()
-    calls[0]!.resolve(
-      jsonResponse(200, {
-        id: 'v1',
-        createdAt: '',
-        kind: 'automatic',
-        title: '',
-        content: { type: 'doc' },
-      }),
-    )
-    await opening
-
-    expect(history.details.size).toBe(0)
   })
 })

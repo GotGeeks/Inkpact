@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import type { JSONContent } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
-import { onBeforeUnmount, ref } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { formatFileSize } from '../fileSize'
+import { useContentOptions } from '../editor/contentOptions'
 import { editorClasses } from '../editor/editorClasses'
 import { createExtensions } from '../editor/extensions'
-import { useTreeStore } from '../stores/tree'
-import type { LinkTarget } from '../editor/brokenLinks'
 
 /**
- * A version's content, read-only, in an editor of its own built from the page editor's extensions: the same schema, the
- * same rules for links (an address is checked when it is rendered) and for files (by id, from the app's own address). It
- * has no Yjs document and no socket, so nothing it does reaches the page that is open.
+ * A version's content, read-only, in an editor of its own built from the page editor's extensions and its content options
+ * (`useContentOptions`): the same schema, the same rules for links (an address is checked when it is rendered, a link to a
+ * page in the trash is struck through) and for files (by id, from the app's own address). It has no Yjs document and no
+ * socket, so nothing it does reaches the page that is open.
+ *
+ * Its words (the label, a checkbox's, a file's) are set when it is made: the panel makes it again when the language changes.
  */
 const props = defineProps<{
   content: JSONContent
@@ -20,30 +21,22 @@ const props = defineProps<{
   label: string
 }>()
 
-const { t, locale } = useI18n()
-const tree = useTreeStore()
+const { t } = useI18n()
+const options = useContentOptions()
 
 /** The content does not fit this app's schema (a newer app made it): it is not shown in part. */
 const unreadable = ref(false)
 
-function linkTarget(pageId: string): LinkTarget {
-  if (!tree.loaded || tree.byId.has(pageId)) return 'live'
-  return tree.trash.some((page) => page.id === pageId) ? 'trash' : 'unavailable'
-}
-
 const editor = useEditor({
   extensions: createExtensions({
     placeholder: '',
-    checkboxLabel: (checked) => (checked ? t('editor.checkboxDone') : t('editor.checkboxNotDone')),
-    brokenLinks: {
-      stateOf: linkTarget,
-      describe: (state) =>
-        state === 'trash' ? t('editor.link.inTrash') : t('editor.link.unavailable'),
-    },
-    files: {
-      formatSize: (bytes) => formatFileSize(bytes, locale.value),
-      downloadLabel: (fileName, size) => t('editor.attachment.download', { name: fileName, size }),
-    },
+    checkboxLabel: options.checkboxLabel,
+    brokenLinks: options.brokenLinks,
+    files: options.files,
+    // A click on a link is taken and does nothing: the panel is for looking at a version, and leaving the page from it
+    // (or a new tab, or the mail program for a mailto: link) is not what a click there means. Without this the browser
+    // would follow the link, as the editor is read-only.
+    openLink: () => {},
   }),
   content: props.content,
   editable: false,
@@ -52,15 +45,11 @@ const editor = useEditor({
   enableContentCheck: true,
   onContentError: () => (unreadable.value = true),
   editorProps: {
-    attributes: {
-      role: 'document',
-      'aria-label': props.label,
-      class: editorClasses,
-    },
+    attributes: { role: 'document', 'aria-label': props.label, class: editorClasses },
   },
 })
-
-onBeforeUnmount(() => editor.value?.destroy())
+// useEditor destroys the editor when the component goes.
+options.keepLinksCurrent(editor)
 </script>
 
 <template>

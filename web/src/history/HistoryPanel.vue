@@ -8,7 +8,7 @@ import {
   DialogRoot,
   DialogTitle,
 } from 'reka-ui'
-import { computed, nextTick, onMounted, ref, toRef, useTemplateRef } from 'vue'
+import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppButton from '../components/AppButton.vue'
 import AppIcon from '../components/AppIcon.vue'
@@ -28,7 +28,8 @@ const props = defineProps<{ pageId: string; pageTitle: string }>()
 const emit = defineEmits<{ close: [] }>()
 
 const { t, locale } = useI18n()
-const history = useVersionHistory(toRef(props, 'pageId'))
+// Made for one page: the page view closes the panel when another page opens.
+const history = useVersionHistory(props.pageId)
 const { list, details } = history
 const wide = useMediaQuery('(min-width: 48rem)', true)
 
@@ -116,7 +117,8 @@ async function backToList() {
   const id = selectedId.value
   selectedId.value = null
   await nextTick()
-  listElement.value?.querySelector<HTMLElement>(`[data-version-id="${id}"]`)?.focus()
+  if (id)
+    listElement.value?.querySelector<HTMLElement>(`[data-version-id="${CSS.escape(id)}"]`)?.focus()
 }
 
 const row =
@@ -255,8 +257,9 @@ const row =
                 <p class="text-headline-lg" data-testid="version-title">
                   {{ selectedDetail.detail.title || t('tree.untitled') }}
                 </p>
+                <!-- Made again in another language: its words are set when it is made. -->
                 <VersionPreview
-                  :key="selected.id"
+                  :key="`${selected.id}-${locale}`"
                   :content="selectedDetail.detail.content"
                   :label="t('history.preview.label')"
                 />
