@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/GotGeeks/Inkpact/compare/v0.1.0...v0.1.1) (2026-11-13)
+
+
+### Fixes
+
+* **deploy:** run the latest release, correct the image's labels, and ask for cosign 3 (B.8) ([#157](https://github.com/GotGeeks/Inkpact/issues/157)) ([09af11e](https://github.com/GotGeeks/Inkpact/commit/09af11eb4c414aef00215254e969b6b0403edbbd))
+
 ## 0.1.0 (2026-11-13)
 
 
