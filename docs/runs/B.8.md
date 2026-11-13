@@ -82,7 +82,7 @@ A release is one merge: merging the release PR tags the version, writes the chan
    - **The sync:** `unraid-sync.yml` copies the template into `joszz/unraid-community-apps` (`templates/inkpact.xml`), with only its `TemplateURL` changed to that copy. It opens a pull request there, with the same App's token (installed on that repository too), whenever `deploy/unraid/inkpact.xml` changes on main. The maintainer merges it, as with GarageStack today.
    - **Switched off for now:** it runs only when the repository variable `UNRAID_CA_SYNC` is `true`, which stays off until the first public release (run 2.11). A template in that repository is listed in Community Apps for everyone. Until then, the maintainer installs from the template's raw URL in this repository.
    - **Template updates:** the template tracks `latest`, so a release needs no change to it, and Unraid's own update check finds a new image.
-9. **The compose file's image becomes `latest`.** `edge` stays documented for a test instance. This PR merges just before the first release is cut (see "After the run"), so `latest` exists from then on.
+9. **The compose file's image becomes `latest` once the first release is out** (step 5 of "After the run"). Until then `latest` does not exist and a pull of it fails, so the compose file and the Unraid template run `edge` (review finding 4). `edge` stays documented for a test instance.
 10. **No new npm or NuGet package.** New GitHub Actions, pinned by SHA as the others are, and moved by Dependabot's `github-actions` entry:
     - `googleapis/release-please-action`;
     - `sigstore/cosign-installer`;
@@ -107,6 +107,7 @@ A release is one merge: merging the release PR tags the version, writes the chan
    - `cosign verify` against the identity the guide gives;
    - the SBOM and provenance (`docker buildx imagetools inspect --format '{{json .SBOM}}'`).
 4. Edit the release notes with the "What is in 0.1.0" summary.
+5. Switch the compose file and the Unraid template from `edge` to `latest`, in one small PR (`UnraidTemplateTests` wants them on the same tag), and change the guide's "Which image" to match.
 
 ## Done when
 
@@ -233,6 +234,15 @@ A release is one merge: merging the release PR tags the version, writes the chan
 - **Web:** the store, the About section, the menu.
 - **Playwright:** `settings.spec.ts` (the development build; an answered update in the menu and on the screen) and `a11y.spec.ts` (both, scanned).
 
+**Review:** `/code-review` (medium) on 2026-11-13, over the three PRs, gave ten findings. The five that are this PR's are fixed in it:
+1. **A connection that broke while the answer was read stopped the app.** `HttpIOException` escaped the check and the worker, and a background service that throws stops the host. The check now catches it, and the worker logs any failure of a round it does not expect, then asks again at the next.
+2. **Version text with other digits threw.** The pattern used `\d`, which in .NET takes any Unicode digit (`١`), and `int.Parse` then threw. It uses `[0-9]` now.
+3. **One person's request was another's.** A request on its way was shared whoever asked, so someone who signed in meanwhile got no answer; it is kept per person now.
+4. **The client copied the development-build rule.** It is the server's word now (`development` in `/api/version`), and the rule itself was wrong: an edge build made before the first release is `0.0.0+edge.<sha>`, which counted as a developer's build and would never have heard of 0.1.0. Only an unstamped build (`0.0.0-dev`) is one now.
+5. **The client repeated the release-page rule.** It is the server's alone now; the client refuses only a link that is not `https:`, as Vue puts an `href` in as it is.
+
+The other five are fixed in PRs 2 and 3.
+
 ### PR 2: the pipeline
 
 - **[`image.yml`](../../.github/workflows/image.yml)**, one path for `edge` and releases:
@@ -246,7 +256,7 @@ A release is one merge: merging the release PR tags the version, writes the chan
 - **[`release-please-config.json`](../../release-please-config.json)** and `.release-please-manifest.json`: release type `simple`, first version `0.1.0`, `bump-minor-pre-major`, `bootstrap-sha` at the merge of #151, the changelog sections of decision 3 (without "Security": commitlint has no such type, so security fixes are `fix`).
 - **[`deploy/test-upgrade.sh`](../../deploy/test-upgrade.sh):** decision 6, with the history capture's round set to two seconds and the update check off in a compose override of its own.
 - **`ci.yml`:** the DCO check skips the release pull request: an account ending in `[bot]` (only a GitHub App's can), on a `release-please--` branch.
-- **The compose file** runs `latest`.
+- **The compose file** stays on `edge` until the first release (review finding 4; see "After the run").
 - **Docs:**
   - the guide's "Updating" (`latest`, the version tags, `edge`, images following the release) and "Verifying the image" (`cosign verify`, SBOM, provenance);
   - architecture ("Database migrations", "Main and releases");
@@ -268,6 +278,14 @@ A release is one merge: merging the release PR tags the version, writes the chan
 - **`image-version.sh`** run locally for a push, a release, and a version that is not x.y.z.
 
 **Not checked:** the release itself and the arm64 build run only on GitHub, after the merge. The first release (see "After the run") is their test; its outcome goes here.
+
+**Review** (the same `/code-review`; this PR's four findings, fixed in it):
+1. **The compose file ran `latest`, which does not exist before the first release:** a fresh `docker compose up` failed. It runs `edge` until then ("After the run", step 5).
+2. **A manual run on any branch published `edge`,** with a signature the guide's `cosign verify` refuses. `image-version.sh` publishes only from `refs/heads/main`; elsewhere it builds and checks.
+3. **A rescan or a manual run could cancel a merge's `edge` waiting to publish:** a concurrency group holds one waiting run, and they shared it. Each now has a group of its own.
+4. **The DCO check skipped the whole release pull request,** so a person's commit pushed onto it was never checked. The check runs there too, and skips only the release bot's own commits, known by name and noreply address both.
+
+`scripts.test.mjs` now runs both scripts: `check-dco.sh` in throwaway repositories (signed, unsigned, the bot, someone else on the release branch, look-alikes of the bot), and `image-version.sh` with a fake `docker` (a merge, a release, a bad version, manual runs on main and elsewhere, a pull request).
 
 ### PR 3: the Unraid template
 

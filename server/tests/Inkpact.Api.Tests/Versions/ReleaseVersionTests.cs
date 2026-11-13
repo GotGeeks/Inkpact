@@ -34,6 +34,10 @@ public class ReleaseVersionTests
     [InlineData("1.0.0\n")]
     [InlineData("9999999999.0.0")]
     [InlineData("latest")]
+    // Digits of other scripts: \d would take them, and int.Parse would then throw.
+    [InlineData("v1.0.١")]
+    [InlineData("१.0.0")]
+    [InlineData("1.０.0")]
     public void Refuses_what_is_not_a_version(string? text)
     {
         ReleaseVersion.TryParse(text, out _).ShouldBeFalse();
@@ -76,7 +80,11 @@ public class ReleaseVersionTests
 
     [Theory]
     [InlineData("0.0.0-dev", true)]
-    [InlineData("0.0.0", true)]
+    [InlineData("0.0.0-dev+x", true)]
+    // An edge build before the first release: stamped, so it asks, and hears of 0.1.0.
+    [InlineData("0.0.0+edge.abc1234", false)]
+    [InlineData("0.0.0", false)]
+    [InlineData("0.0.0-rc.1", false)]
     [InlineData("0.0.1", false)]
     [InlineData("0.1.0+edge.abc", false)]
     public void Knows_a_build_that_was_not_stamped(string text, bool development)

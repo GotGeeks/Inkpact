@@ -3,15 +3,16 @@
 #   version  the version stamped into the image: a release's x.y.z, or <manifest version>+edge.<short sha> for main
 #   release  true for a release
 #   tags     the tags to publish, one per line: x.y.z, x.y and latest for a release; edge and sha-<short sha> otherwise
-#   publish  true when the images are pushed: a release, a push to main, or a manual run that asks for it
+#   publish  true when the images are pushed: a release, a push to main, or a manual run on main that asks for it
 #   from     the image the upgrade test starts from: the newest release (latest), or edge while there is none
 #
-# Reads RELEASE (the release's version, empty otherwise), EVENT (github.event_name), PUBLISH_INPUT (a manual run's
-# choice), SHA (the commit) and IMAGE (ghcr.io/<owner>/<repository>, lower case).
+# Reads RELEASE (the release's version, empty otherwise), EVENT (github.event_name), REF (github.ref), PUBLISH_INPUT (a
+# manual run's choice), SHA (the commit) and IMAGE (ghcr.io/<owner>/<repository>, lower case).
 set -euo pipefail
 
 release="${RELEASE:-}"
 event="${EVENT:?Set EVENT}"
+ref="${REF:?Set REF}"
 sha="${SHA:?Set SHA}"
 image="${IMAGE:?Set IMAGE}"
 short="${sha:0:7}"
@@ -32,6 +33,12 @@ else
     workflow_dispatch) publish="${PUBLISH_INPUT:-false}" ;;
     *) publish=false ;;
   esac
+  # edge is main, and main only: a manual run on another branch builds and checks, and publishes nothing (its signature
+  # would name that branch, which the guide's cosign verify refuses).
+  if [[ "$publish" == true && "$ref" != refs/heads/main ]]; then
+    echo "::notice::$ref is not main: built and checked, not published."
+    publish=false
+  fi
 fi
 
 # The newest release once there is one; its database is what a user upgrades from.
