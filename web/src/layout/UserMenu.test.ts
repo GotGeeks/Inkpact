@@ -211,6 +211,7 @@ describe('UserMenu', () => {
     await menu('owner', {
       version: {
         version: '0.1.0',
+        development: false,
         update: {
           version: '0.2.0',
           url: 'https://github.com/GotGeeks/Inkpact/releases/tag/v0.2.0',

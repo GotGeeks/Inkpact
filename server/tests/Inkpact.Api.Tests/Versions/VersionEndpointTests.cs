@@ -57,7 +57,7 @@ public class VersionEndpointTests(PostgresFixture postgres) : IClassFixture<Post
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync();
         JsonSerializer.Deserialize<VersionDto>(body, JsonSerializerOptions.Web)
-            .ShouldBe(new VersionDto("0.1.0", new AvailableUpdate("0.2.0", ReleasePage)));
+            .ShouldBe(new VersionDto("0.1.0", false, new AvailableUpdate("0.2.0", ReleasePage)));
         _github.Requests.Count.ShouldBe(1);
     }
 
@@ -85,7 +85,19 @@ public class VersionEndpointTests(PostgresFixture postgres) : IClassFixture<Post
 
         var version = await member.GetFromJsonAsync<VersionDto>("/api/version", JsonSerializerOptions.Web);
 
-        version.ShouldBe(new VersionDto("0.1.0", null));
+        version.ShouldBe(new VersionDto("0.1.0", false, null));
+    }
+
+    [Fact]
+    public async Task Says_when_it_is_a_development_build()
+    {
+        // The factory as the tests build it: not stamped.
+        var admin = _factory.CreateClient();
+        (await admin.SetupAsync()).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var version = await admin.GetFromJsonAsync<VersionDto>("/api/version", JsonSerializerOptions.Web);
+
+        version.ShouldBe(new VersionDto(AppVersion.Development, true, null));
     }
 
     [Fact]

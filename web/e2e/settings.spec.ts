@@ -48,7 +48,9 @@ test('the administrator is told of a newer release, in the menu and in the setti
   // Answered before the app loads: on WebKit a reload is served by the service worker, past page.route.
   const notes = 'https://github.com/GotGeeks/Inkpact/releases/tag/v0.2.0'
   await page.route('**/api/version', (route) =>
-    route.fulfill({ json: { version: '0.1.0', update: { version: '0.2.0', url: notes } } }),
+    route.fulfill({
+      json: { version: '0.1.0', development: false, update: { version: '0.2.0', url: notes } },
+    }),
   )
   await page.goto('/')
   await openUserMenu(page)

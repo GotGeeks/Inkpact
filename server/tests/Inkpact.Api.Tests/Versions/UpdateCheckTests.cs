@@ -75,6 +75,18 @@ public class UpdateCheckTests
         check.Update.ShouldBe(new AvailableUpdate("0.1.1", ReleasePage));
     }
 
+    [Fact]
+    public async Task An_edge_build_made_before_the_first_release_is_told_of_it()
+    {
+        _github.Answer(HttpStatusCode.OK, Release("v0.1.0"));
+        var check = Check("0.0.0+edge.abc1234");
+
+        await check.CheckAsync(CancellationToken.None);
+
+        check.Active.ShouldBeTrue();
+        check.Update.ShouldBe(new AvailableUpdate("0.1.0", ReleasePage));
+    }
+
     [Theory]
     [InlineData(true, false)]
     [InlineData(false, true)]

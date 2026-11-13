@@ -139,7 +139,10 @@ export function fakeTree(
       if (path === '/api/workspaces')
         return jsonResponse(200, [{ ...workspace, role: initial.role ?? 'owner' }])
       if (path === '/api/version')
-        return jsonResponse(200, initial.version ?? { version: '0.1.0', update: null })
+        return jsonResponse(
+          200,
+          initial.version ?? { version: '0.1.0', development: false, update: null },
+        )
       if (path === `/api/workspaces/${workspace.id}/pages`)
         return jsonResponse(200, { treeVersion: 1, pages })
       if (path === `/api/workspaces/${workspace.id}/trash`) return jsonResponse(200, trash)
