@@ -1,6 +1,7 @@
 import { vi, type Mock } from 'vitest'
 import { jsonResponse } from './helpers'
 import type { SearchResponse } from '../search/types'
+import type { VersionInfo } from '../stores/version'
 import type { TagPagesResponse, TagRef, WorkspaceTag } from '../tags/types'
 import type { PageChange, PageNode, WorkspaceSummary } from '../tree/types'
 
@@ -80,6 +81,10 @@ export function fakeTree(
     favorites?: string[]
     /** The pages the person opened, newest first; none without it. */
     recent?: { pageId: string; openedAt: string }[]
+    /** Whether the person signed in is the administrator; they are without it. */
+    isAdmin?: boolean
+    /** What `/api/version` answers; version 0.1.0 without an update without it. */
+    version?: VersionInfo
   } = {},
 ): FakeTree {
   let pages = initial.pages ?? []
@@ -122,12 +127,19 @@ export function fakeTree(
       if (path === '/api/auth/state') {
         return jsonResponse(200, {
           setupRequired: false,
-          user: { id: 'u1', email: 'jos@example.com', displayName: 'Jos', isAdmin: true },
+          user: {
+            id: 'u1',
+            email: 'jos@example.com',
+            displayName: 'Jos',
+            isAdmin: initial.isAdmin ?? true,
+          },
           csrfToken: 'token',
         })
       }
       if (path === '/api/workspaces')
         return jsonResponse(200, [{ ...workspace, role: initial.role ?? 'owner' }])
+      if (path === '/api/version')
+        return jsonResponse(200, initial.version ?? { version: '0.1.0', update: null })
       if (path === `/api/workspaces/${workspace.id}/pages`)
         return jsonResponse(200, { treeVersion: 1, pages })
       if (path === `/api/workspaces/${workspace.id}/trash`) return jsonResponse(200, trash)

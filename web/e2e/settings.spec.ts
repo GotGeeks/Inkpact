@@ -29,6 +29,42 @@ test('the settings are reached from the account menu and show the history policy
   await expect(page.getByTestId('history-usage')).toContainText('Versions take')
 })
 
+test('the settings say which Inkpact runs', async ({ page }) => {
+  await page.goto('/')
+  await openUserMenu(page)
+  await page.getByRole('menuitem', { name: 'Settings', exact: true }).click()
+  await closeDrawer(page)
+
+  // The e2e server is built without a version, as a developer's build is, and never asks GitHub.
+  await expect(page.getByTestId('app-version')).toHaveText(
+    'A development build, without a version.',
+  )
+  await expect(page.getByTestId('update')).toHaveCount(0)
+})
+
+test('the administrator is told of a newer release, in the menu and in the settings', async ({
+  page,
+}) => {
+  // Answered before the app loads: on WebKit a reload is served by the service worker, past page.route.
+  const notes = 'https://github.com/GotGeeks/Inkpact/releases/tag/v0.2.0'
+  await page.route('**/api/version', (route) =>
+    route.fulfill({ json: { version: '0.1.0', update: { version: '0.2.0', url: notes } } }),
+  )
+  await page.goto('/')
+  await openUserMenu(page)
+  await expect(page.getByText('Inkpact 0.2.0 is out')).toBeVisible()
+  await page.getByRole('menuitem', { name: 'Settings', exact: true }).click()
+  await closeDrawer(page)
+
+  await expect(page.getByTestId('app-version')).toHaveText('Version 0.1.0')
+  const update = page.getByTestId('update')
+  await expect(update.getByRole('heading', { name: 'Inkpact 0.2.0 is out' })).toBeVisible()
+  await expect(update.getByRole('link', { name: /What is new in 0\.2\.0/ })).toHaveAttribute(
+    'href',
+    notes,
+  )
+})
+
 test('numbers that cannot be saved are named, and a change that removes versions asks first', async ({
   page,
 }) => {

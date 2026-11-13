@@ -113,7 +113,14 @@ _Built in run B.5b: capture (PR 1), the panel (PR 2), the protection of typing d
 - [ ] Read the app's log in Unraid's log viewer: one line per entry, nothing from a note in it.
 - [ ] With a PostgreSQL you already run: `deploy/inkpact.sh backup`, then `restore` into an emptied database. These two commands were not run by CI or while building (only their syntax was checked).
 
-Run B.8 adds its checks here.
+### B.8: releases, the Unraid template and the update check
+_PR 1 (the version and the update check) is built; the release pipeline (PR 2) and the Unraid template (PR 3) follow._
+- [ ] Signed in as the administrator with an older version running, the account menu says a newer one is out, and the settings screen links to its notes. As another account (from phase 2), neither says so.
+- [ ] With `UpdateCheck__Enabled=false`, the container makes no request to `api.github.com` (the router's or Pi-hole's log).
+- [ ] Install Inkpact on Unraid from the template's URL with a PostgreSQL 18 container: the `chown`, the connection string, the setup code. The Docker tab shows it healthy, and it works behind Traefik.
+- [ ] After the next release, Unraid's "Check for updates" offers it; updating keeps notes, attachments and sign-in, and a dump appears in `/data/backups` when the release has a migration.
+- [ ] `cosign verify` of the installed tag on the laptop, with the guide's command.
+- [ ] At 2.11: switch `UNRAID_CA_SYNC` on, merge the first sync PR in the CA repository, and find Inkpact in Community Apps.
 ### The review of 2026-11-11
 - [ ] With the device in dark mode, start the installed app (laptop and phone): note whether the title bar and the first screen are light until the page has loaded (the manifest has one theme colour, the light one). If it flashes, that is a finding for a fix run.
 - [ ] Read the whole interface in Dutch once. 13 strings are the same in English and Dutch; most are names (Inkpact, Joplin), but note any that should have been translated.

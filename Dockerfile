@@ -45,7 +45,13 @@ COPY server/src server/src
 # The import's allow-list and the words of the export's README are the client's, built into the server.
 COPY web/src/editor/allowList.json web/src/editor/
 COPY web/src/locales/en.json web/src/locales/nl.json web/src/locales/
-RUN dotnet publish server/src/Inkpact.Api/Inkpact.Api.csproj -c Release -o /out --no-restore
+# The version the app says it is (run B.8): a release's (0.1.0) or a build of main's (0.1.0+edge.abc1234). The assembly
+# version takes only the numbers; the whole text is the informational version, which the app reads. Without it, a
+# developer's build: 0.0.0-dev.
+ARG INKPACT_VERSION=0.0.0-dev
+RUN case "$INKPACT_VERSION" in *[!0-9A-Za-z.+-]*|'') echo "INKPACT_VERSION is not a version: $INKPACT_VERSION" >&2; exit 1;; esac \
+ && dotnet publish server/src/Inkpact.Api/Inkpact.Api.csproj -c Release -o /out --no-restore \
+      "-p:Version=${INKPACT_VERSION%%[-+]*}" "-p:InformationalVersion=$INKPACT_VERSION"
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:bfd912c83295ce66d4b706ebb8541b9f14259b0e76fbb88b2751f58ce2399d2e AS final
 

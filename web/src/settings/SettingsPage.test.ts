@@ -243,7 +243,7 @@ describe('SettingsPage', () => {
     expect(text(document.querySelector('[role="alert"]'))).toContain(
       'The history settings could not be loaded.',
     )
-    expect(document.body.querySelector('[role="status"]')).toBeNull()
+    expect(byTestId('history-settings')!.querySelector('[role="status"]')).toBeNull()
     vi.stubGlobal('fetch', server('owner'))
     buttonNamed('Try again')!.click()
     await flushPromises()

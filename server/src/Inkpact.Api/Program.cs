@@ -14,6 +14,7 @@ using Inkpact.Api.Favorites;
 using Inkpact.Api.Health;
 using Inkpact.Api.History;
 using Inkpact.Api.Tags;
+using Inkpact.Api.Versions;
 using Inkpact.Data;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
@@ -51,6 +52,7 @@ builder.Services.AddAttachments(builder.Configuration);
 builder.Services.AddImport(builder.Configuration);
 builder.Services.AddExport();
 builder.Services.AddHealth();
+builder.Services.AddVersions(builder.Configuration);
 
 var app = builder.Build();
 
@@ -116,6 +118,7 @@ app.UseAuthorization();
 // Every endpoint declares an authorisation policy; one that does not is denied by the fallback policy.
 // The health endpoints are anonymous, and say so explicitly.
 app.MapHealthEndpoints();
+app.MapVersionEndpoints();
 app.MapAuthEndpoints();
 app.MapWorkspaceEndpoints();
 app.MapHistoryPolicyEndpoints();

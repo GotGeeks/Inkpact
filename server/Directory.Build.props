@@ -6,6 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- The version a build says it is (run B.8). The image stamps the real one (the Dockerfile's INKPACT_VERSION, as
+         -p:Version and -p:InformationalVersion); any other build is a developer's, which never asks for updates. The
+         commit is not appended: an edge build carries it in its version already. -->
+    <Version>0.0.0-dev</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <!-- NuGetAudit still reports a known vulnerability on restore, but as a warning that does not fail the build:
          a new advisory published overnight must not turn every server pull request red. The `audit` job in
          .github/workflows/security.yml decides (moderate or worse in the shipped projects, high or worse in tests). -->

@@ -617,6 +617,32 @@ test('the settings screen, a number it cannot save and its warning', async ({ pa
   await page.getByTestId('policy-warning').getByRole('button', { name: 'Cancel' }).click()
 })
 
+test('the account menu and the settings screen while a newer release is out', async ({
+  page,
+}, testInfo) => {
+  // The e2e server is a development build and never asks GitHub: the update is answered here.
+  await page.route('**/api/version', (route) =>
+    route.fulfill({
+      json: {
+        version: '0.1.0',
+        update: {
+          version: '0.2.0',
+          url: 'https://github.com/GotGeeks/Inkpact/releases/tag/v0.2.0',
+        },
+      },
+    }),
+  )
+  await page.goto('/')
+  await openUserMenu(page)
+  await expect(page.getByText('Inkpact 0.2.0 is out')).toBeVisible()
+  await scan(page, testInfo, 'account menu with a newer release')
+
+  await page.getByRole('menuitem', { name: 'Settings', exact: true }).click()
+  await closeDrawer(page)
+  await expect(page.getByTestId('update')).toBeVisible()
+  await scan(page, testInfo, 'settings with a newer release')
+})
+
 test('the account menu and the import page', async ({ page }, testInfo) => {
   await page.goto('/')
   await openUserMenu(page)

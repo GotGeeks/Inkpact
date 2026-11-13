@@ -599,7 +599,8 @@
     "signedInAs": "Signed in as {email}",
     "logout": "Sign out",
     "logoutEverywhere": "Sign out everywhere",
-    "settings": "Settings"
+    "settings": "Settings",
+    "updateAvailable": "Inkpact {version} is out"
   },
   "export": {
     "menu": "Export everything",
@@ -738,6 +739,17 @@
         "cap": "The limit is a whole number of MiB, from 1 to {max}.",
         "policy": "These settings cannot be saved. Check the numbers."
       }
+    },
+    "about": {
+      "title": "About Inkpact",
+      "version": "Version {version}",
+      "development": "A development build, without a version.",
+      "loadFailed": "The version could not be loaded.",
+      "updateTitle": "Inkpact {version} is out",
+      "releaseNotes": "What is new in {version}",
+      "newTab": "(opens in a new tab)",
+      "howUnraid": "On Unraid: in the Docker tab, choose Check for updates, then Apply update.",
+      "howCompose": "With Docker Compose, in the folder of its compose file:"
     }
   }
 }
