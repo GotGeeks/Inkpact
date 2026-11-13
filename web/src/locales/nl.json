@@ -598,7 +598,8 @@
     "menu": "{name}, accountmenu",
     "signedInAs": "Ingelogd als {email}",
     "logout": "Uitloggen",
-    "logoutEverywhere": "Overal uitloggen"
+    "logoutEverywhere": "Overal uitloggen",
+    "settings": "Instellingen"
   },
   "export": {
     "menu": "Alles exporteren",
@@ -629,7 +630,8 @@
     "editsTooLarge": "Wat je offline in “{title}” typte, is elders weggehaald, en de pagina is te groot om er een kopie van te bewaren.",
     "openCopy": "Open de kopie",
     "openCopyAlt": "Open de kopie van je offline wijzigingen aan “{title}”",
-    "dismiss": "Sluiten"
+    "dismiss": "Sluiten",
+    "versionRestored": "“{title}” is terug zoals het toen was. Wat het daarvoor was, blijft bewaard in de geschiedenis."
   },
   "favorites": {
     "navLabel": "Favorieten",
@@ -675,6 +677,66 @@
       "unavailable": "Deze versie kan nu niet worden getoond. Probeer het zo opnieuw.",
       "notFound": "Deze versie wordt niet meer bewaard.",
       "failed": "Deze versie kon niet worden geladen."
+    },
+    "keptUntil": "Bewaard tot ten minste {time}",
+    "restore": {
+      "action": "Deze versie terugzetten",
+      "confirmTitle": "Deze versie terugzetten?",
+      "replaces": "De inhoud en titel van de pagina worden die van deze versie. Wat de pagina nu is, blijft bewaard in de geschiedenis, dus dit kan ongedaan worden gemaakt.",
+      "keeps": "De plek in de boom, de tags, favorieten en takeninstellingen blijven zoals ze zijn.",
+      "confirm": "Terugzetten",
+      "busy": "Terugzetten…",
+      "cancel": "Annuleren",
+      "refresh": "Vernieuwen",
+      "pageChanged": "De pagina is veranderd sinds de geschiedenis werd gelezen. Vernieuw en kies opnieuw.",
+      "inTrash": "De pagina staat in de prullenbak. Zet hem eerst terug uit de prullenbak.",
+      "historyOff": "De geschiedenis staat uit voor deze werkruimte, dus de pagina zoals die nu is kan nergens worden bewaard. De eigenaar kan de geschiedenis aanzetten.",
+      "full": "De geschiedenis van deze werkruimte is vol, dus de pagina zoals die nu is kan niet worden bewaard. De eigenaar kan de grens verhogen.",
+      "attachmentMissing": "Een afbeelding of bestand in deze versie is er niet meer, dus deze versie kan niet worden teruggezet.",
+      "tooLarge": "De pagina zou te groot worden om te openen, dus deze versie kan niet worden teruggezet.",
+      "pageUnreadable": "De pagina zoals die nu is kan niet worden teruggelezen, dus kan niet worden bewaard. Er is niets veranderd.",
+      "forbidden": "Je mag deze pagina niet meer bewerken.",
+      "failed": "De versie kon niet worden teruggezet. Er is niets veranderd."
+    }
+  },
+  "settings": {
+    "title": "Instellingen",
+    "loading": "Instellingen laden…",
+    "retry": "Opnieuw proberen",
+    "save": "Opslaan",
+    "saving": "Opslaan…",
+    "saved": "Opgeslagen.",
+    "cancel": "Annuleren",
+    "history": {
+      "title": "Geschiedenis van deze werkruimte",
+      "description": "Eerdere versies van elke pagina, bewaard een paar minuten nadat die verandert. De geschiedenis is geen back-up: ze staat in dezelfde database.",
+      "loadFailed": "De instellingen van de geschiedenis konden niet worden geladen.",
+      "ownerOnly": "Alleen de eigenaar van de werkruimte kan deze wijzigen.",
+      "enabled": "Versies van pagina’s bewaren",
+      "offNote": "Er worden geen nieuwe versies bewaard. De versies die er zijn blijven, en worden uitgedund zoals hieronder.",
+      "windows": "Hoe lang versies worden bewaard",
+      "granular": "Elke versie, gedurende (uren)",
+      "daily": "Daarna de nieuwste van elke dag, tot (dagen)",
+      "expiry": "Daarna de nieuwste van elke week, tot (dagen); oudere worden verwijderd",
+      "capTitle": "Grens aan de grootte",
+      "capped": "Begrenzen wat de geschiedenis mag innemen",
+      "capMiB": "Grens (MiB)",
+      "capCounts": "De grens telt de inhoud van de versies, niet afbeeldingen en bestanden. Is ze bereikt, dan gaan de oudste versies eerst, ook als ze jonger zijn dan hierboven.",
+      "used": "Versies nemen {used} in.",
+      "usedOfCap": "Versies nemen {used} van {cap} in.",
+      "warningTitle": "Versies verwijderen?",
+      "warning": "Kortere termijnen of een lagere grens verwijderen binnen het uur de versies die er niet meer in passen. Later verhogen brengt die niet terug.",
+      "saveAnyway": "Opslaan en verwijderen",
+      "capBelowProtected": "De grens is lager dan wat beschermde versies innemen (de pagina vóór het terugzetten, een dag bewaard). Kies een hogere grens, of wacht een dag.",
+      "invalid": {
+        "granular": "Bewaar elke versie een heel aantal uren, van 1 tot 87600.",
+        "daily": "Bewaar er één per dag een heel aantal dagen, van 1 tot 3650.",
+        "dailyBeforeGranular": "Eén per dag moet minstens zo lang duren als elke versie.",
+        "expiry": "Bewaar er één per week een heel aantal dagen, tot 3650.",
+        "expiryBeforeDaily": "Eén per week moet minstens zo lang duren als één per dag.",
+        "cap": "De grens is een heel aantal MiB, 1 of meer.",
+        "policy": "Deze instellingen kunnen niet worden opgeslagen. Controleer de getallen."
+      }
     }
   }
 }

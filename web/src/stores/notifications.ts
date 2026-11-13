@@ -16,6 +16,8 @@ export type Notice =
   | { type: 'editsWaiting'; title: string }
   /** The copy of such edits is larger than the server takes (a page too large to open), so it cannot be made. */
   | { type: 'editsTooLarge'; title: string }
+  /** A version of the page was restored (run B.5b); what was there before is kept in its history. */
+  | { type: 'versionRestored'; pageId: string; title: string }
 
 export type PostedNotice = Notice & { id: number }
 

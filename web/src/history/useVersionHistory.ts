@@ -1,6 +1,12 @@
 import { reactive, shallowReactive } from 'vue'
 import { api, ApiError } from '../api'
-import type { HistoryState, VersionDetail, VersionSummary, VersionList } from './types'
+import type {
+  HistoryState,
+  RestoreAnswer,
+  VersionDetail,
+  VersionSummary,
+  VersionList,
+} from './types'
 
 /** One version's content as the panel has it: on its way, there, or why it is not. */
 export type DetailState =
@@ -36,7 +42,20 @@ export function useVersionHistory(pageId: string) {
     moreError: null as string | null,
     /** The first page was read at least once. */
     loaded: false,
+    /** The page's content mark when the list was read (see the server's ContentMark), for a restore to send back. */
+    pageContent: '',
   })
+  const restoring = reactive({
+    /** A restore is on its way: one at a time. */
+    busy: false,
+    /** Why the last restore was refused: its error code. */
+    error: null as string | null,
+  })
+  /**
+   * The operation id of a restore that has not had a final answer, per version: a request whose answer was lost (the
+   * network) is asked again under the same id, and the server answers it once, without restoring twice.
+   */
+  const pendingOperations = new Map<string, string>()
   const details = shallowReactive(new Map<string, DetailState>())
 
   // Raised by every read of the first page: older versions that arrive after it would add to a list read again, and are
@@ -62,6 +81,7 @@ export function useVersionHistory(pageId: string) {
       list.next = answer.next
       list.state = answer.state
       list.failure = answer.failure
+      list.pageContent = answer.pageContent
       list.loaded = true
     } catch (error) {
       if (mine !== listGeneration) return
@@ -110,5 +130,38 @@ export function useVersionHistory(pageId: string) {
     }
   }
 
-  return { list, details, load, loadMore, open }
+  /**
+   * Restores a version, against the page as the list saw it and the page's metadata version as the page view has it.
+   * Resolves with the answer, or null when it was refused (`restoring.error` says why). One at a time.
+   */
+  async function restore(
+    versionId: string,
+    expectedVersion: number,
+  ): Promise<RestoreAnswer | null> {
+    if (restoring.busy) return null
+    restoring.busy = true
+    restoring.error = null
+    const operationId = pendingOperations.get(versionId) ?? crypto.randomUUID()
+    pendingOperations.set(versionId, operationId)
+    try {
+      const answer = await api<RestoreAnswer>(
+        'POST',
+        `${path}/${encodeURIComponent(versionId)}/restore`,
+        { operationId, expectedContent: list.pageContent, expectedVersion },
+      )
+      pendingOperations.delete(versionId)
+      return answer
+    } catch (error) {
+      const code = codeOf(error)
+      // The server may have done it without the answer arriving: the same id asks for its answer. Any other answer is
+      // final, and the next try is a new restore.
+      if (code !== 'network_error' && code !== 'server_error') pendingOperations.delete(versionId)
+      restoring.error = code
+      return null
+    } finally {
+      restoring.busy = false
+    }
+  }
+
+  return { list, details, restoring, load, loadMore, open, restore }
 }

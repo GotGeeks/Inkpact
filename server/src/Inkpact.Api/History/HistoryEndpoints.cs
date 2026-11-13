@@ -12,8 +12,12 @@ namespace Inkpact.Api.History;
 /// <summary>Who made a version, when that is one person: a rename, a restore. Null for an automatic version.</summary>
 public sealed record VersionAuthor(Guid Id, string DisplayName);
 
-/// <summary>A version in the list: everything but its content.</summary>
-public sealed record VersionSummary(Guid Id, DateTimeOffset CreatedAt, string Kind, string Title, VersionAuthor? CreatedBy, long Bytes);
+/// <summary>
+/// A version in the list: everything but its content. <paramref name="ProtectedUntil"/> is set while no retention or cap
+/// removes it: the page as it was before a restore, kept for a day.
+/// </summary>
+public sealed record VersionSummary(
+    Guid Id, DateTimeOffset CreatedAt, string Kind, string Title, VersionAuthor? CreatedBy, long Bytes, DateTimeOffset? ProtectedUntil = null);
 
 /// <summary>
 /// One page of a page's versions, newest first. <paramref name="Next"/> asks for the page after it. <paramref name="State"/>
@@ -116,6 +120,7 @@ public static class HistoryEndpoints
                 v.CreatedBy,
                 AuthorName = db.Users.Where(u => u.Id == v.CreatedBy).Select(u => u.DisplayName).FirstOrDefault(),
                 v.PayloadBytes,
+                v.ProtectedUntil,
             })
             .Take(take + 1)
             .ToListAsync(cancellationToken);
@@ -124,7 +129,8 @@ public static class HistoryEndpoints
             .Select(v => new VersionSummary(
                 v.Id, v.CreatedAt, KindName(v.Kind), v.Title,
                 v.CreatedBy is { } author && v.AuthorName is not null ? new VersionAuthor(author, v.AuthorName) : null,
-                v.PayloadBytes))
+                v.PayloadBytes,
+                v.ProtectedUntil))
             .ToList();
         var next = rows.Count > take ? WriteCursor(page[^1].CreatedAt, page[^1].Id) : null;
         var stored = await ContentMark.ReadAsync(db, pageId, cancellationToken);

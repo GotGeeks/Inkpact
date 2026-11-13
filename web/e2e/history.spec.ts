@@ -3,13 +3,12 @@ import { expect, test } from './fixtures'
 import { closeDrawer, createPageNamed, pageIdOf } from './helpers'
 
 /**
- * A page's history (run B.5b, the read-only panel): the panel lists a page's versions and shows one, and looking at a
- * version changes nothing on the page.
+ * A page's history (run B.5b): the panel lists a page's versions and shows one, looking at a version changes nothing on
+ * the page, and restoring one puts it back.
  *
- * The versions are answered here, not made by the server: the e2e server keeps the capture at its own pace (two idle
- * minutes, see playwright.config.ts), and a faster one made the rest of the suite time out. That versions are captured
- * and listed through the real hub and sidecar is a server test (`HistoryEndpointTests`, the worker test). Run B.5b's
- * restore makes versions at once, and brings a journey with real versions.
+ * Most tests answer for the versions themselves: the e2e server keeps the capture at its own pace (two idle minutes, see
+ * playwright.config.ts), and a faster one made the rest of the suite time out. One test, on the desktop, waits for a real
+ * capture and restores real versions.
  */
 
 const unique = (testInfo: TestInfo, name: string) =>
@@ -85,6 +84,7 @@ async function answerVersions(page: Page, pageId: string, title: string) {
           next: null,
           state: 'ready',
           failure: null,
+          pageContent: '0.0',
         },
       }),
   )
@@ -158,6 +158,115 @@ test("a page's versions are listed and one is looked at, without changing the pa
   await expect(page.getByTestId('sync-status')).toHaveAttribute('data-state', 'live')
 })
 
+test('a version is restored after a confirmation: the panel closes and a notice says where the page as it was went', async ({
+  page,
+}, testInfo) => {
+  const title = unique(testInfo, 'Restore')
+  const pageId = await newPage(page, title)
+  await answerVersions(page, pageId, title)
+  let asked: Record<string, unknown> | null = null
+  await page.route(
+    (url) =>
+      url.pathname.endsWith('/restore') &&
+      url.pathname.startsWith(`/api/pages/${pageId}/versions/`),
+    async (route) => {
+      asked = route.request().postDataJSON() as Record<string, unknown>
+      await route.fulfill({
+        json: { beforeVersionId: 'b', restoreVersionId: 'r', title, version: 1 },
+      })
+    },
+  )
+  const open = page.getByRole('button', { name: 'Page history' })
+  await open.click()
+  await rows(page).nth(2).click()
+  await panel(page).getByRole('button', { name: 'Restore this version' }).click()
+  const confirm = panel(page).getByTestId('restore-confirm')
+  await expect(confirm.getByRole('heading', { name: 'Restore this version?' })).toBeFocused()
+
+  await confirm.getByRole('button', { name: 'Restore', exact: true }).click()
+
+  await expect(panel(page)).toBeHidden()
+  await expect(open).toBeFocused()
+  // The toast itself, not the copy a screen reader is given.
+  await expect(
+    page
+      .getByRole('region', { name: /^Notifications/ })
+      .getByText(`“${title}” is back as it was then.`),
+  ).toBeVisible()
+  expect(asked).toMatchObject({
+    expectedContent: expect.any(String),
+    expectedVersion: expect.any(Number),
+  })
+})
+
+test('a real version is restored, and so is the page as it was before it', async ({
+  page,
+  isMobile,
+}, testInfo) => {
+  test.skip(
+    isMobile || testInfo.project.name !== 'desktop',
+    'one real journey: it waits for a real capture',
+  )
+  // The capture keeps its own pace here: two idle minutes, then a round every thirty seconds.
+  test.setTimeout(330_000)
+  const title = unique(testInfo, 'Real restore')
+  const pageId = await newPage(page, title)
+  await editorBody(page).click()
+  await page.keyboard.type('The words of then')
+
+  await expect
+    .poll(
+      async () => {
+        const list = (await (await page.request.get(`/api/pages/${pageId}/versions`)).json()) as {
+          versions: unknown[]
+          state: string
+        }
+        return list.state === 'ready' ? list.versions.length : 0
+      },
+      { timeout: 240_000, intervals: [5_000] },
+    )
+    .toBeGreaterThan(0)
+  await editorBody(page).press('End')
+  await page.keyboard.type(', and the words of now')
+  await expect(editorBody(page)).toHaveText('The words of then, and the words of now')
+  // Stored before the history is read: otherwise its content mark is already out of date, and the restore says so.
+  await expect(page.getByTestId('sync-status')).toHaveAttribute('data-unsent', 'false')
+
+  const open = page.getByRole('button', { name: 'Page history' })
+  await open.click()
+  await expect(rows(page)).toHaveCount(1)
+  await rows(page).first().click()
+  await expect(panel(page).getByTestId('version-content').locator('.ProseMirror')).toHaveText(
+    'The words of then',
+  )
+  await panel(page).getByRole('button', { name: 'Restore this version' }).click()
+  await panel(page)
+    .getByTestId('restore-confirm')
+    .getByRole('button', { name: 'Restore', exact: true })
+    .click()
+
+  // The content comes back through sync; the page as it was is kept, for a day, and can be restored in turn.
+  await expect(panel(page)).toBeHidden()
+  await expect(editorBody(page)).toHaveText('The words of then')
+  await open.click()
+  await expect(rows(page)).toHaveCount(3)
+  await expect(rows(page).nth(0)).toContainText('Restored')
+  await expect(rows(page).nth(1)).toContainText('Before a restore')
+  await expect(rows(page).nth(1)).toContainText('Kept at least until')
+  await rows(page).nth(1).click()
+  await expect(panel(page).getByTestId('version-content').locator('.ProseMirror')).toHaveText(
+    'The words of then, and the words of now',
+  )
+  await panel(page).getByRole('button', { name: 'Restore this version' }).click()
+  await panel(page)
+    .getByTestId('restore-confirm')
+    .getByRole('button', { name: 'Restore', exact: true })
+    .click()
+
+  await expect(panel(page)).toBeHidden()
+  await expect(editorBody(page)).toHaveText('The words of then, and the words of now')
+})
+
 test('a page without versions says so, and the history closes when another page is opened', async ({
   page,
 }, testInfo) => {
@@ -170,7 +279,10 @@ test('a page without versions says so, and the history closes when another page 
   // without versions for long enough to look at.
   await page.route(
     (url) => url.pathname === `/api/pages/${pageId}/versions`,
-    (route) => route.fulfill({ json: { versions: [], next: null, state: 'ready', failure: null } }),
+    (route) =>
+      route.fulfill({
+        json: { versions: [], next: null, state: 'ready', failure: null, pageContent: '0.0' },
+      }),
   )
 
   await page.getByRole('button', { name: 'Page history' }).click()

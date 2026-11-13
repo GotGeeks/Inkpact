@@ -99,6 +99,16 @@ describe('NoticeToaster', () => {
     expect(text).not.toContain('Keep this tab open')
   })
 
+  it('says a version was restored and where the page as it was went', async () => {
+    const { notices, shown } = await toaster()
+
+    notices.post({ type: 'versionRestored', pageId: 'p1', title: 'Plan' })
+
+    expect((await shown()).join(' ')).toContain(
+      '“Plan” is back as it was then. What it was before is kept in its history.',
+    )
+  })
+
   it('says it in Dutch', async () => {
     const { notices, shown } = await toaster('nl')
 

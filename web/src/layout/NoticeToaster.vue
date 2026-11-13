@@ -40,6 +40,8 @@ function text(notice: PostedNotice): string {
       return t('notices.editsWaiting', { title })
     case 'editsTooLarge':
       return t('notices.editsTooLarge', { title })
+    case 'versionRestored':
+      return t('notices.versionRestored', { title })
   }
 }
 

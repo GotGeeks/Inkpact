@@ -60,6 +60,11 @@ function chooseTheme(next: unknown) {
   applyTheme(next)
 }
 
+async function openSettings() {
+  emit('navigate')
+  await router.push({ name: 'settings' })
+}
+
 async function openImport() {
   // On a phone the menu sits in the drawer, which has to make way for the page.
   emit('navigate')
@@ -172,6 +177,10 @@ const item =
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator class="my-space-xs h-px bg-border-subtle" />
+        <DropdownMenuItem v-if="tree.workspace" :class="item" @select="openSettings">{{
+          t('user.settings')
+        }}</DropdownMenuItem>
+        <DropdownMenuSeparator v-if="tree.workspace" class="my-space-xs h-px bg-border-subtle" />
         <DropdownMenuItem v-if="tree.canEdit" :class="item" @select="openImport">{{
           t('import.menu')
         }}</DropdownMenuItem>
