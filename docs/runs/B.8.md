@@ -315,3 +315,7 @@ The other five are fixed in PRs 2 and 3.
 **Not checked:**
 - **The sync against the CA repository:** it needs the App. Try it once with `workflow_dispatch` and `UNRAID_CA_SYNC=true` against a branch, then switch it off again, or leave it for 2.11.
 - **A real Unraid install:** it is in the test pass.
+
+**Review** (the same `/code-review`; this PR's two findings, fixed in it):
+1. **An empty "Trusted proxy" broke the app.** Unraid passes a template's field even when it is empty, the configuration then gives `['']` (checked), and `IPNetwork.Parse("")` threw. That also replaced the default private ranges. Blank entries are now left out, and with none left the defaults stay (`AuthCookieTests`).
+2. **The template ran `latest`, which does not exist before the first release.** It runs `edge` like the compose file, and `UnraidTemplateTests` checks that both name the same image, so step 5 of "After the run" switches them together.

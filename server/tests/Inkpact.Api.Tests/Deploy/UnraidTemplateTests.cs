@@ -21,10 +21,15 @@ public partial class UnraidTemplateTests
     private static string Text(string element) => Template.Element(element)?.Value.Trim() ?? "";
 
     [Fact]
-    public void Runs_the_latest_release_from_this_repository()
+    public void Runs_the_image_the_compose_file_runs_from_this_repository()
     {
+        // edge until the first release, then latest: both move together (run B.8, "After the run").
+        var compose = ComposeImage().Match(Compose);
+        compose.Success.ShouldBeTrue("the compose file names its default image");
+
         Template.Name.LocalName.ShouldBe("Container");
-        Text("Repository").ShouldBe("ghcr.io/gotgeeks/inkpact:latest");
+        Text("Repository").ShouldBe(compose.Groups["image"].Value);
+        Text("Repository").ShouldStartWith("ghcr.io/gotgeeks/inkpact:");
         Text("Name").ShouldBe("Inkpact");
         Text("TemplateURL").ShouldBe("https://raw.githubusercontent.com/GotGeeks/Inkpact/main/deploy/unraid/inkpact.xml");
         Text("Privileged").ShouldBe("false");
@@ -102,6 +107,9 @@ public partial class UnraidTemplateTests
         requires.ShouldContain("PostgreSQL 18");
         requires.ShouldContain("CREATE DATABASE inkpact OWNER inkpact");
     }
+
+    [GeneratedRegex(@"image: \$\{INKPACT_IMAGE:-(?<image>[^}]+)\}")]
+    private static partial Regex ComposeImage();
 
     [GeneratedRegex(@"^\s*#?\s*(?<name>[A-Z][A-Za-z0-9]*(?:__[A-Za-z0-9]+)+):", RegexOptions.Multiline)]
     private static partial Regex ComposeSetting();

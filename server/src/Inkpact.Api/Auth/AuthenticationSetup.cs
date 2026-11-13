@@ -100,8 +100,15 @@ public static class AuthenticationSetup
         // Behind Traefik the app sees HTTP from the proxy; X-Forwarded-Proto says what the browser used.
         // Only trusted addresses may set it. The default covers loopback and the private ranges, which is
         // where Docker and Unraid networks live. Nobody else can reach the app directly in a normal install.
-        var trusted = config.GetSection("Network:TrustedProxies").Get<string[]>()
-            ?? ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"];
+        // A blank entry is no range: Unraid passes a template's field even when it is left empty
+        // (Network__TrustedProxies__0=''). It is left out, and with nothing left the defaults stay.
+        var configured = (config.GetSection("Network:TrustedProxies").Get<string?[]>() ?? [])
+            .Where(range => !string.IsNullOrWhiteSpace(range))
+            .Select(range => range!.Trim())
+            .ToArray();
+        string[] trusted = configured.Length > 0
+            ? configured
+            : ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"];
 
         // How many proxies stand in front of the app. One by default (Traefik). With two (a tunnel in front of
         // Traefik) the visitor's address is one entry further back in X-Forwarded-For: with the limit at one, every
