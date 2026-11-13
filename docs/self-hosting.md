@@ -122,6 +122,31 @@ It asks for the new password twice, without showing it (12 to 128 characters). O
 
 The account is signed out everywhere, and a login lockout of that address is cleared. A browser that still has a page open stops syncing within five minutes and then asks to sign in. The command needs the app to have started once on this version: it refuses a database with a migration waiting.
 
+## Version history
+
+Inkpact keeps earlier versions of every page: a few minutes after a page stops changing (at the latest five minutes into
+a long edit), and at every rename. Open a page's history from the clock in its header, look at a version, and restore it.
+A restore puts back the content and the title, and keeps the page as it was in a version of its own for at least a day,
+so a restore can be undone the same way. The page's place, tags, favorites and to-do settings are not touched.
+
+**History is not a backup.** It lives in the same database as the pages: a lost database or volume takes it along. Keep
+the backups described above.
+
+The owner of the workspace sets how much is kept under **Settings** (in the account menu); everyone else can read it.
+
+- **Every version** for the first hours (24 by default), **then the newest of each day** until a number of days (30),
+  **then the newest of each week** until a number of days (365). Older versions are removed, within the hour.
+- **A size limit** (off by default) counts the versions' content, including the text of notes kept as files, and not
+  pictures, files or what Postgres adds. When it is reached, the oldest versions go first, also ones younger than the
+  windows above; the page before a restore is protected for its day.
+- **Turning history off** keeps no new versions; the versions there are stay and are thinned as before. Restoring needs
+  history on, as it keeps the page as it was.
+- Shortening a window or lowering the limit asks first: the versions that no longer fit are removed, and raising the
+  numbers later does not bring them back.
+
+After an upgrade from a version without history, existing pages get their first version in the background, oldest change
+first: about two hours per 5,000 pages, without slowing editing down.
+
 ## Attachments
 
 A file added to a page is stored once per content (by its SHA-256), however often it is added, under `/data/attachments`. One file may be 50 MB; set `Attachments__MaxFileSize` (in bytes) in the compose file's `environment` to change that. To keep attachments on another disk, mount a second volume at `/data/attachments`, writable by UID 1654. If you change the limit and run behind a proxy, check that the proxy allows request bodies of that size too.

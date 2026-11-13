@@ -52,6 +52,33 @@ public class HistoryPolicyEndpointTests(PostgresFixture postgres) : IClassFixtur
         (await _owner.GetFromJsonAsync<HistoryPolicyDto>(Path(_workspaceId))).ShouldBe(Default);
     }
 
+    [Fact]
+    public async Task The_usage_counts_the_workspace_s_versions_and_what_of_them_is_protected_and_nothing_of_another()
+    {
+        (await _owner.GetFromJsonAsync<HistoryUsageDto>(UsagePath(_workspaceId))).ShouldBe(new HistoryUsageDto(0, 0));
+        var other = await OtherWorkspaceAsync(WorkspaceRole.Viewer);
+        await UseDbAsync(async db =>
+        {
+            var page = new Page { WorkspaceId = _workspaceId, Title = "Page", SortKey = "a0", CreatedAt = Now, UpdatedAt = Now };
+            var elsewhere = new Page { WorkspaceId = other, Title = "Elsewhere", SortKey = "a0", CreatedAt = Now, UpdatedAt = Now };
+            db.Pages.AddRange(page, elsewhere);
+            await db.SaveChangesAsync();
+            db.PageVersions.AddRange(
+                new PageVersion(page.Id, new byte[100], "Page", "abc", Now, null, PageVersionKind.Automatic),
+                new PageVersion(page.Id, new byte[50], "Page", "", Now, null, PageVersionKind.BeforeRestore, protectedUntil: Now.AddHours(1)),
+                new PageVersion(page.Id, new byte[20], "Page", "", Now, null, PageVersionKind.BeforeRestore, protectedUntil: Now.AddHours(-1)),
+                new PageVersion(elsewhere.Id, new byte[999], "Elsewhere", "", Now, null, PageVersionKind.Automatic));
+            return await db.SaveChangesAsync();
+        });
+
+        (await _owner.GetFromJsonAsync<HistoryUsageDto>(UsagePath(_workspaceId))).ShouldBe(new HistoryUsageDto(173, 50));
+        // A viewer of the other workspace reads its usage too; a stranger to it does not.
+        (await _owner.GetFromJsonAsync<HistoryUsageDto>(UsagePath(other))).ShouldBe(new HistoryUsageDto(999, 0));
+        (await _owner.GetAsync(UsagePath(Guid.NewGuid()))).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    private static string UsagePath(Guid workspaceId) => $"/api/workspaces/{workspaceId}/history-usage";
+
     [Theory]
     [InlineData(WorkspaceRole.Viewer)]
     [InlineData(WorkspaceRole.Editor)]

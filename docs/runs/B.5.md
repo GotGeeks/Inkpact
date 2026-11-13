@@ -2,7 +2,7 @@
 
 **Model:** O·high → S·high in the roadmap. This is a critical sync and data-safety run: have the plan or the finished code reviewed on Opus at high before the PR merges, as the roadmap requires.
 
-**Status:** Not done. The foundation (schema, retention job, policy API and a tested snapshot builder) was merged to main in #122 before the review this card requires; history viewing and restore are **not** available yet. Run [`B.5b`](B.5b.md) builds the rest in five PRs; its capture PR makes versions in the background and turns the retention worker on (see that card's handoff). Until its restore PR is in, do not rely on history to get an edit back.
+**Status:** Built in run [`B.5b`](B.5b.md) (its handoff says what was built, how, and where it differs from this card). This card stays the statement of what version history must do.
 
 ## Goal
 

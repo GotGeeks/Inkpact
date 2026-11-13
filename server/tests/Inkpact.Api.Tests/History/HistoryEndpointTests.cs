@@ -71,6 +71,8 @@ public class HistoryEndpointTests(PostgresFixture postgres) : IClassFixture<Post
             ("automatic", "First", 10),
         ]);
         list.Versions[0].CreatedAt.ShouldBe(Now);
+        // Only the version before a restore is protected, and says until when.
+        list.Versions.Select(v => v.ProtectedUntil).ShouldBe([null, Now.AddHours(23), null, null]);
         // Who it was, when it was one person; nobody for a version that can hold several people's edits.
         var ownerName = await UseDbAsync(db => db.Users.Where(u => u.Id == _ownerId).Select(u => u.DisplayName).SingleAsync());
         list.Versions[2].CreatedBy.ShouldBe(new VersionAuthor(_ownerId, ownerName));

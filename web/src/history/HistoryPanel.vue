@@ -14,7 +14,7 @@ import AppButton from '../components/AppButton.vue'
 import AppIcon from '../components/AppIcon.vue'
 import AppNotice from '../components/AppNotice.vue'
 import { useMediaQuery } from '../composables/useMediaQuery'
-import type { VersionSummary } from './types'
+import type { RestoreAnswer, VersionSummary } from './types'
 import { useVersionHistory } from './useVersionHistory'
 import VersionPreview from './VersionPreview.vue'
 
@@ -22,15 +22,27 @@ import VersionPreview from './VersionPreview.vue'
  * A page's history (run B.5b): its versions, newest first, and one of them to look at. Full screen on a phone, a sheet at
  * the side from the `md` breakpoint. On a phone the list and the version take turns; from `md` they are side by side.
  * Looking at a version changes nothing: it is shown by an editor of its own (VersionPreview), not by the page's.
- * Restoring one comes later in the same run.
+ * Restoring one asks first, says what it replaces and what it leaves, and is one request at a time.
  */
-const props = defineProps<{ pageId: string; pageTitle: string }>()
-const emit = defineEmits<{ close: [] }>()
+const props = withDefaults(
+  defineProps<{
+    pageId: string
+    pageTitle: string
+    /** The page's metadata version as the page view has it: a restore is refused when the title or place changed since. */
+    pageVersion?: number
+    /** The person may edit the page. */
+    canEdit?: boolean
+    /** The page is in the trash, or below a page that is: restored from the trash first. */
+    inTrash?: boolean
+  }>(),
+  { pageVersion: 0, canEdit: false, inTrash: false },
+)
+const emit = defineEmits<{ close: []; restored: [answer: RestoreAnswer] }>()
 
 const { t, locale } = useI18n()
 // Made for one page: the page view closes the panel when another page opens.
 const history = useVersionHistory(props.pageId)
-const { list, details } = history
+const { list, details, restoring } = history
 const wide = useMediaQuery('(min-width: 48rem)', true)
 
 const selectedId = ref<string | null>(null)
@@ -44,6 +56,85 @@ const previewHeading = useTemplateRef<HTMLElement>('previewHeading')
 const listElement = useTemplateRef<HTMLElement>('listElement')
 
 onMounted(() => void history.load())
+
+// ---- restoring -----------------------------------------------------------------------------------------------------------
+
+/** Why a version cannot be restored here, for an editor; null when it can. A viewer is told nothing: the button is not there. */
+const restoreBlocked = computed(() => {
+  if (props.inTrash) return t('history.restore.inTrash')
+  if (list.state === 'off') return t('history.restore.historyOff')
+  return null
+})
+/** The confirmation is showing, for the version that is chosen. */
+const confirming = ref(false)
+const confirmHeading = useTemplateRef<HTMLElement>('confirmHeading')
+const restoreButton = useTemplateRef<InstanceType<typeof AppButton>>('restoreButton')
+
+async function askToRestore() {
+  restoring.error = null
+  confirming.value = true
+  await nextTick()
+  confirmHeading.value?.focus()
+}
+
+async function cancelRestore() {
+  confirming.value = false
+  await nextTick()
+  ;(restoreButton.value?.$el as HTMLElement | undefined)?.focus()
+}
+
+async function confirmRestore() {
+  const version = selected.value
+  if (!version) return
+  const answer = await history.restore(version.id, props.pageVersion)
+  if (answer) {
+    confirming.value = false
+    emit('restored', answer)
+  }
+}
+
+/** The page changed since the list was read: the list is read again, and the version stays on the screen. */
+async function refreshAfterChange() {
+  restoring.error = null
+  confirming.value = false
+  await history.load()
+}
+
+function restoreError(code: string): string {
+  switch (code) {
+    case 'page_changed':
+      return t('history.restore.pageChanged')
+    case 'page_in_trash':
+      return t('history.restore.inTrash')
+    case 'history_off':
+      return t('history.restore.historyOff')
+    case 'history_full':
+      return t('history.restore.full')
+    case 'version_not_found':
+      return t('history.preview.notFound')
+    case 'version_unreadable':
+      return t('history.versionUnreadable')
+    case 'attachment_missing':
+      return t('history.restore.attachmentMissing')
+    case 'content_too_large':
+      return t('history.restore.tooLarge')
+    case 'page_unreadable':
+      return t('history.restore.pageUnreadable')
+    case 'history_unavailable':
+      return t('history.preview.unavailable')
+    case 'forbidden':
+      return t('history.restore.forbidden')
+    default:
+      return t('history.restore.failed')
+  }
+}
+
+/** Until when a version is kept whatever the retention says: only the page as it was before a restore. */
+function keptUntil(version: VersionSummary): string | null {
+  return version.protectedUntil && new Date(version.protectedUntil) > new Date()
+    ? t('history.keptUntil', { time: when(version.protectedUntil) })
+    : null
+}
 
 const timeFormat = computed(
   () => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }),
@@ -104,6 +195,8 @@ function previewError(code: string): string {
 const canRetry = (code: string) => code !== 'version_unreadable' && code !== 'version_not_found'
 
 async function choose(version: VersionSummary) {
+  confirming.value = false
+  restoring.error = null
   selectedId.value = version.id
   void history.open(version.id)
   // On a phone the list goes away for the version: the focus goes with it, to the version's heading.
@@ -193,6 +286,9 @@ const row =
                   <span class="w-full truncate text-body-sm">{{
                     version.title || t('tree.untitled')
                   }}</span>
+                  <span v-if="keptUntil(version)" class="text-label-xs text-on-surface-variant">{{
+                    keptUntil(version)
+                  }}</span>
                 </button>
               </li>
             </ul>
@@ -257,6 +353,74 @@ const row =
                 <p class="text-headline-lg" data-testid="version-title">
                   {{ selectedDetail.detail.title || t('tree.untitled') }}
                 </p>
+                <div
+                  v-if="canEdit"
+                  class="flex flex-col gap-space-sm border-y border-border-subtle py-space-md"
+                  data-testid="restore-area"
+                >
+                  <p v-if="restoreBlocked" class="text-body-sm text-on-surface-variant">
+                    {{ restoreBlocked }}
+                  </p>
+                  <AppButton
+                    v-else-if="!confirming"
+                    ref="restoreButton"
+                    variant="primary"
+                    class="self-start"
+                    data-testid="restore-version"
+                    @click="askToRestore"
+                  >
+                    {{ t('history.restore.action') }}
+                  </AppButton>
+                  <div
+                    v-else
+                    role="group"
+                    aria-labelledby="restore-confirm-heading"
+                    class="flex flex-col gap-space-sm"
+                    data-testid="restore-confirm"
+                  >
+                    <h4
+                      id="restore-confirm-heading"
+                      ref="confirmHeading"
+                      tabindex="-1"
+                      class="text-label-md focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                      {{ t('history.restore.confirmTitle') }}
+                    </h4>
+                    <p class="text-body-sm">{{ t('history.restore.replaces') }}</p>
+                    <p class="text-body-sm text-on-surface-variant">
+                      {{ t('history.restore.keeps') }}
+                    </p>
+                    <div class="flex flex-wrap gap-space-sm">
+                      <AppButton
+                        variant="primary"
+                        :disabled="restoring.busy"
+                        data-testid="restore-confirm-button"
+                        @click="confirmRestore"
+                      >
+                        {{
+                          restoring.busy ? t('history.restore.busy') : t('history.restore.confirm')
+                        }}
+                      </AppButton>
+                      <AppButton :disabled="restoring.busy" @click="cancelRestore">
+                        {{ t('history.restore.cancel') }}
+                      </AppButton>
+                    </div>
+                  </div>
+                  <div
+                    v-if="restoring.error"
+                    role="alert"
+                    class="flex flex-col items-start gap-space-sm text-body-sm"
+                    data-testid="restore-error"
+                  >
+                    <p>{{ restoreError(restoring.error) }}</p>
+                    <AppButton
+                      v-if="restoring.error === 'page_changed'"
+                      @click="refreshAfterChange"
+                    >
+                      {{ t('history.restore.refresh') }}
+                    </AppButton>
+                  </div>
+                </div>
                 <!-- Made again in another language: its words are set when it is made. -->
                 <VersionPreview
                   :key="`${selected.id}-${locale}`"

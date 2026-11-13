@@ -521,7 +521,7 @@ test('the history panel: its versions, one version, and every state it can be in
   ]
   let list: { status: number; body: object } = {
     status: 200,
-    body: { versions, next: 'more', state: 'pending', failure: null },
+    body: { versions, next: 'more', state: 'pending', failure: null, pageContent: '0.0' },
   }
   let detail: { status: number; body: object } = {
     status: 200,
@@ -560,6 +560,10 @@ test('the history panel: its versions, one version, and every state it can be in
   await panel.getByTestId('version-row').nth(1).click()
   await expect(panel.getByTestId('version-content')).toContainText('What the page said then.')
   await scan(page, testInfo, 'history panel with a version')
+  await panel.getByRole('button', { name: 'Restore this version' }).click()
+  await expect(panel.getByTestId('restore-confirm')).toBeVisible()
+  await scan(page, testInfo, 'history panel, the restore asked to be confirmed')
+  await panel.getByRole('button', { name: 'Cancel' }).click()
 
   detail = { status: 503, body: { code: 'history_unavailable' } }
   // On a narrow screen the version is shown in place of the list.
@@ -571,17 +575,46 @@ test('the history panel: its versions, one version, and every state it can be in
   await close()
 
   for (const state of ['failed', 'full'] as const) {
-    list = { status: 200, body: { versions, next: null, state, failure: null } }
+    list = { status: 200, body: { versions, next: null, state, failure: null, pageContent: '0.0' } }
     await open(state)
     await close()
   }
-  list = { status: 200, body: { versions: [], next: null, state: 'off', failure: null } }
+  list = {
+    status: 200,
+    body: { versions: [], next: null, state: 'off', failure: null, pageContent: '0.0' },
+  }
   await open('off, without versions')
   await close()
   list = { status: 500, body: { code: 'server_error' } }
   await open('could not be loaded')
   await expect(panel.getByRole('alert')).toContainText('The history could not be loaded.')
   await close()
+})
+
+test('the settings screen, a number it cannot save and its warning', async ({ page }, testInfo) => {
+  await page.goto('/')
+  await openUserMenu(page)
+  await page.getByRole('menuitem', { name: 'Settings', exact: true }).click()
+  await closeDrawer(page)
+  const daily = page.getByLabel('Then the newest of each day, until (days)')
+  await expect(daily).not.toHaveValue('')
+  await scan(page, testInfo, 'settings')
+
+  // Nothing is saved: answered here, so the shared workspace is not changed.
+  await page.route('**/history-policy', (route) =>
+    route.request().method() === 'PUT' ? route.abort() : route.fallback(),
+  )
+  await daily.fill('0')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.getByTestId('policy-problem')).toBeVisible()
+  await scan(page, testInfo, 'settings with a number it cannot save')
+
+  await daily.fill('1')
+  await page.getByLabel('Every version, for (hours)').fill('1')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.getByTestId('policy-warning')).toBeVisible()
+  await scan(page, testInfo, 'settings warning before versions are removed')
+  await page.getByTestId('policy-warning').getByRole('button', { name: 'Cancel' }).click()
 })
 
 test('the account menu and the import page', async ({ page }, testInfo) => {

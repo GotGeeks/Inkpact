@@ -598,7 +598,8 @@
     "menu": "{name}, account menu",
     "signedInAs": "Signed in as {email}",
     "logout": "Sign out",
-    "logoutEverywhere": "Sign out everywhere"
+    "logoutEverywhere": "Sign out everywhere",
+    "settings": "Settings"
   },
   "export": {
     "menu": "Export everything",
@@ -629,7 +630,8 @@
     "editsTooLarge": "What you typed offline in “{title}” was removed by a change made elsewhere, and the page is too large to keep a copy of it.",
     "openCopy": "Open the copy",
     "openCopyAlt": "Open the copy of your offline changes to “{title}”",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "versionRestored": "“{title}” is back as it was then. What it was before is kept in its history."
   },
   "favorites": {
     "navLabel": "Favorites",
@@ -675,6 +677,66 @@
       "unavailable": "This version cannot be shown right now. Try again in a moment.",
       "notFound": "This version is no longer kept.",
       "failed": "This version could not be loaded."
+    },
+    "keptUntil": "Kept at least until {time}",
+    "restore": {
+      "action": "Restore this version",
+      "confirmTitle": "Restore this version?",
+      "replaces": "The page’s content and title become this version’s. What the page is now is kept in its history, so this can be undone.",
+      "keeps": "Its place in the tree, its tags, favorites and to-do settings stay as they are.",
+      "confirm": "Restore",
+      "busy": "Restoring…",
+      "cancel": "Cancel",
+      "refresh": "Refresh",
+      "pageChanged": "The page changed since the history was read. Refresh, and choose again.",
+      "inTrash": "The page is in the trash. Restore it from the trash first.",
+      "historyOff": "History is off for this workspace, so there is nowhere to keep the page as it is now. Its owner can turn history on.",
+      "full": "The history of this workspace is full, so the page as it is now cannot be kept. Its owner can raise the limit.",
+      "attachmentMissing": "A picture or file in this version is no longer there, so it cannot be restored.",
+      "tooLarge": "The page would be too large to open, so this version cannot be restored.",
+      "pageUnreadable": "The page as it is now cannot be read back, so it cannot be kept. Nothing was changed.",
+      "forbidden": "You may no longer edit this page.",
+      "failed": "The version could not be restored. Nothing was changed."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "loading": "Loading the settings…",
+    "retry": "Try again",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved.",
+    "cancel": "Cancel",
+    "history": {
+      "title": "History of this workspace",
+      "description": "Earlier versions of every page, kept a few minutes after it changes. History is not a backup: it lives in the same database.",
+      "loadFailed": "The history settings could not be loaded.",
+      "ownerOnly": "Only the owner of the workspace can change these.",
+      "enabled": "Keep versions of pages",
+      "offNote": "No new versions are kept. The versions there are stay, and are thinned as below.",
+      "windows": "How long versions are kept",
+      "granular": "Every version, for (hours)",
+      "daily": "Then the newest of each day, until (days)",
+      "expiry": "Then the newest of each week, until (days); older ones are removed",
+      "capTitle": "Size limit",
+      "capped": "Limit what the history may take",
+      "capMiB": "Limit (MiB)",
+      "capCounts": "The limit counts the versions’ content, not pictures and files. When it is reached, the oldest versions go first, also younger than the windows above.",
+      "used": "Versions take {used}.",
+      "usedOfCap": "Versions take {used} of {cap}.",
+      "warningTitle": "Remove versions?",
+      "warning": "Shorter windows or a lower limit remove the versions that no longer fit, within the hour. Raising them later does not bring those back.",
+      "saveAnyway": "Save and remove",
+      "capBelowProtected": "The limit is lower than what protected versions take (the page before a restore, kept for a day). Choose a higher limit, or wait a day.",
+      "invalid": {
+        "granular": "Keep every version for a whole number of hours, from 1 to 87600.",
+        "daily": "Keep one a day for a whole number of days, from 1 to 3650.",
+        "dailyBeforeGranular": "One a day must last at least as long as every version.",
+        "expiry": "Keep one a week for a whole number of days, up to 3650.",
+        "expiryBeforeDaily": "One a week must last at least as long as one a day.",
+        "cap": "The limit is a whole number of MiB, 1 or more.",
+        "policy": "These settings cannot be saved. Check the numbers."
+      }
     }
   }
 }

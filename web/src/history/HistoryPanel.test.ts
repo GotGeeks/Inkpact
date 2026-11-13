@@ -37,7 +37,13 @@ function list(
   state: HistoryState = 'ready',
   next: string | null = null,
 ): VersionList {
-  return { versions, next, state, failure: state === 'failed' ? 'unreadable' : null }
+  return {
+    versions,
+    next,
+    state,
+    failure: state === 'failed' ? 'unreadable' : null,
+    pageContent: '12.4',
+  }
 }
 
 function detailOf(version: VersionSummary, text: string, extra: JSONContent[] = []): VersionDetail {
@@ -69,13 +75,17 @@ function stubScreen(wide: boolean) {
 
 let i18n = createAppI18n('en')
 
-async function open(routes: Route[], locale: Locale = 'en') {
+async function open(
+  routes: Route[],
+  locale: Locale = 'en',
+  extra: { canEdit?: boolean; inTrash?: boolean; pageVersion?: number } = {},
+) {
   const fetchMock = stubApi(routes)
   const pinia = createPinia()
   setActivePinia(pinia)
   i18n = createAppI18n(locale)
   wrapper = mount(HistoryPanel, {
-    props: { pageId, pageTitle: 'Plans, renamed' },
+    props: { pageId, pageTitle: 'Plans, renamed', ...extra },
     global: { plugins: [pinia, i18n] },
     attachTo: document.body,
   })
@@ -458,6 +468,172 @@ describe('HistoryPanel', () => {
       'De inhoud van deze versie',
     )
     expect(text(preview().querySelector('.ProseMirror'))).toBe('Then')
+  })
+
+  describe('restoring', () => {
+    const restorePath = `/api/pages/${pageId}/versions/v2/restore`
+    const answer = { beforeVersionId: 'v4', restoreVersionId: 'v5', title: 'Plans', version: 8 }
+    const choose = async (
+      routes: Route[],
+      extra: Parameters<typeof open>[2] = { canEdit: true, pageVersion: 7 },
+    ) => {
+      const fetchMock = await open(
+        [
+          get(listPath, () => jsonResponse(200, list([newest, middle]))),
+          get(versionPath('v2'), () => jsonResponse(200, detailOf(middle, 'What it said then'))),
+          ...routes,
+        ],
+        'en',
+        extra,
+      )
+      rows()[1]!.click()
+      await flushPromises()
+      return fetchMock
+    }
+    const area = () => preview().querySelector<HTMLElement>('[data-testid="restore-area"]')
+
+    it('asks first, says what it replaces and what it leaves, and restores the chosen version', async () => {
+      const fetchMock = await choose([
+        { method: 'POST', path: restorePath, respond: () => jsonResponse(200, answer) },
+      ])
+
+      buttonNamed('Restore this version')!.click()
+      await flushPromises()
+      const confirm = preview().querySelector<HTMLElement>('[data-testid="restore-confirm"]')!
+      expect(document.activeElement).toBe(confirm.querySelector('h4'))
+      expect(text(confirm)).toContain('The page’s content and title become this version’s.')
+      expect(text(confirm)).toContain(
+        'Its place in the tree, its tags, favorites and to-do settings stay',
+      )
+      // Asking changed nothing yet.
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
+
+      buttonNamed('Restore')!.click()
+      await flushPromises()
+
+      const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')!
+      expect(JSON.parse(String(post[1]!.body))).toMatchObject({
+        expectedContent: '12.4',
+        expectedVersion: 7,
+      })
+      expect(wrapper!.emitted('restored')).toEqual([[answer]])
+    })
+
+    it('goes back to the button when the person thinks again', async () => {
+      await choose([])
+      buttonNamed('Restore this version')!.click()
+      await flushPromises()
+
+      buttonNamed('Cancel')!.click()
+      await flushPromises()
+
+      expect(area()!.querySelector('[data-testid="restore-confirm"]')).toBeNull()
+      expect(document.activeElement).toBe(buttonNamed('Restore this version'))
+    })
+
+    it('sends one request at a time, and says it is busy', async () => {
+      let finish: (response: Response) => void = () => {}
+      const fetchMock = await choose([
+        {
+          method: 'POST',
+          path: restorePath,
+          respond: () => new Promise<Response>((resolve) => (finish = resolve)),
+        },
+      ])
+      buttonNamed('Restore this version')!.click()
+      await flushPromises()
+
+      buttonNamed('Restore')!.click()
+      await flushPromises()
+      const busy = buttonNamed('Restoring…')!
+      expect(busy.disabled).toBe(true)
+      busy.click()
+      await flushPromises()
+
+      expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1)
+      finish(jsonResponse(200, answer))
+      await flushPromises()
+      expect(wrapper!.emitted('restored')).toHaveLength(1)
+    })
+
+    it('says when the page changed, keeps the version on the screen, and reads the list again when asked', async () => {
+      const fetchMock = await choose([
+        {
+          method: 'POST',
+          path: restorePath,
+          respond: () => jsonResponse(409, { code: 'page_changed' }),
+        },
+      ])
+      buttonNamed('Restore this version')!.click()
+      await flushPromises()
+      buttonNamed('Restore')!.click()
+      await flushPromises()
+
+      expect(text(area()!.querySelector('[role="alert"]'))).toContain(
+        'The page changed since the history was read.',
+      )
+      expect(wrapper!.emitted('restored')).toBeUndefined()
+      const lists = () =>
+        fetchMock.mock.calls.filter(([input]) => String(input) === listPath).length
+      expect(lists()).toBe(1)
+
+      buttonNamed('Refresh')!.click()
+      await flushPromises()
+
+      expect(lists()).toBe(2)
+      expect(text(preview().querySelector('.ProseMirror'))).toBe('What it said then')
+      expect(rows()[1]!.getAttribute('aria-current')).toBe('true')
+      expect(area()!.querySelector('[role="alert"]')).toBeNull()
+    })
+
+    it.each([
+      ['history_full', 'The history of this workspace is full'],
+      ['attachment_missing', 'A picture or file in this version is no longer there'],
+      ['content_too_large', 'The page would be too large to open'],
+      ['forbidden', 'You may no longer edit this page.'],
+      ['server_error', 'The version could not be restored. Nothing was changed.'],
+    ])('says why a restore was refused (%s)', async (code, words) => {
+      await choose([
+        {
+          method: 'POST',
+          path: restorePath,
+          respond: () => jsonResponse(code === 'server_error' ? 500 : 409, { code }),
+        },
+      ])
+      buttonNamed('Restore this version')!.click()
+      await flushPromises()
+      buttonNamed('Restore')!.click()
+      await flushPromises()
+
+      expect(text(area()!.querySelector('[role="alert"]'))).toContain(words)
+      expect(buttonNamed('Refresh')).toBeUndefined()
+    })
+
+    it('is not offered to someone who can only read', async () => {
+      await choose([], { canEdit: false })
+
+      expect(area()).toBeNull()
+      expect(buttonNamed('Restore this version')).toBeUndefined()
+    })
+
+    it('says why it is not offered for a page in the trash, or with history off', async () => {
+      await choose([], { canEdit: true, inTrash: true })
+      expect(text(area())).toBe('The page is in the trash. Restore it from the trash first.')
+      expect(buttonNamed('Restore this version')).toBeUndefined()
+    })
+
+    it('marks the version that is kept for a day', async () => {
+      const kept = {
+        ...middle,
+        kind: 'before_restore' as const,
+        protectedUntil: new Date(Date.now() + 3600_000).toISOString(),
+      }
+      const old = { ...oldest, protectedUntil: new Date(Date.now() - 3600_000).toISOString() }
+      await open([get(listPath, () => jsonResponse(200, list([kept, old])))])
+
+      expect(text(rows()[0]!)).toContain(`Kept at least until ${when(kept.protectedUntil)}`)
+      expect(text(rows()[1]!)).not.toContain('Kept at least until')
+    })
   })
 
   it('leaves the focus in the list when the version shows beside it', async () => {

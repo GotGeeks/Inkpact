@@ -17,7 +17,7 @@ function version(id: string, minutesAgo = 0): VersionSummary {
 }
 
 function listOf(versions: VersionSummary[], next: string | null = null): VersionList {
-  return { versions, next, state: 'ready', failure: null }
+  return { versions, next, state: 'ready', failure: null, pageContent: '7.3' }
 }
 
 const detailOf = (id: string) => ({
@@ -181,6 +181,57 @@ describe('useVersionHistory', () => {
     await opening
 
     expect(history.details.get('v1')?.status).toBe('ready')
+  })
+
+  it('restores against the page as the list saw it, under one operation id, one request at a time', async () => {
+    const { calls } = controlledFetch()
+    const fetchMock = vi.mocked(fetch)
+    const history = useVersionHistory(pageId)
+    const reading = history.load()
+    calls[0]!.resolve(jsonResponse(200, listOf([version('v1')])))
+    await reading
+
+    const restoring = history.restore('v1', 5)
+    expect(history.restoring.busy).toBe(true)
+    // A second press meanwhile asks nothing.
+    expect(await history.restore('v1', 5)).toBeNull()
+    expect(calls).toHaveLength(2)
+    expect(calls[1]!.url).toBe(`/api/pages/${pageId}/versions/v1/restore`)
+    const body = JSON.parse(String(fetchMock.mock.calls[1]![1]!.body)) as Record<string, unknown>
+    expect(body).toEqual({
+      operationId: expect.any(String),
+      expectedContent: '7.3',
+      expectedVersion: 5,
+    })
+    const answer = { beforeVersionId: 'b', restoreVersionId: 'r', title: 'Then', version: 6 }
+    calls[1]!.resolve(jsonResponse(200, answer))
+
+    expect(await restoring).toEqual(answer)
+    expect(history.restoring.busy).toBe(false)
+    expect(history.restoring.error).toBeNull()
+  })
+
+  it('asks again under the same operation id when the answer was lost, and under a new one after a refusal', async () => {
+    const { calls } = controlledFetch()
+    const fetchMock = vi.mocked(fetch)
+    const history = useVersionHistory(pageId)
+    const operationOf = (call: number) =>
+      (JSON.parse(String(fetchMock.mock.calls[call]![1]!.body)) as { operationId: string })
+        .operationId
+
+    const lost = history.restore('v1', 1)
+    calls[0]!.reject(new TypeError('offline'))
+    expect(await lost).toBeNull()
+    expect(history.restoring.error).toBe('network_error')
+
+    const again = history.restore('v1', 1)
+    expect(operationOf(1)).toBe(operationOf(0))
+    calls[1]!.resolve(jsonResponse(409, { code: 'page_changed' }))
+    expect(await again).toBeNull()
+    expect(history.restoring.error).toBe('page_changed')
+
+    void history.restore('v1', 1)
+    expect(operationOf(2)).not.toBe(operationOf(0))
   })
 
   it('says why a version could not be read, and reads it again when asked', async () => {

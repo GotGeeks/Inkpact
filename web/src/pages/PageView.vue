@@ -27,6 +27,8 @@ import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import SyncStatus from '../sync/SyncStatus.vue'
 import { useHistoryPanel } from '../history/useHistoryPanel'
+import type { RestoreAnswer } from '../history/types'
+import { useNotificationsStore } from '../stores/notifications'
 import BacklinksPanel from './BacklinksPanel.vue'
 import ChildPages from './ChildPages.vue'
 import FavoriteButton from './FavoriteButton.vue'
@@ -54,6 +56,7 @@ const auth = useAuthStore()
 const offline = useOfflineStore()
 const recent = useRecentStore()
 const current = useCurrentPageStore()
+const notifications = useNotificationsStore()
 const titleField = useTemplateRef<InstanceType<typeof TitleField>>('titleField')
 
 const pageId = computed(() => String(route.params.pageId))
@@ -308,6 +311,16 @@ async function closeHistory() {
 watch(localOnly, (isLocal) => {
   if (isLocal) hideHistory()
 })
+
+/**
+ * A version was restored: the panel closes, the content arrives through sync (the server relays the replacement), and the
+ * tree is read again for the title, which this page reads from it. The notice says where what was there went.
+ */
+async function restoredVersion(answer: RestoreAnswer) {
+  notifications.post({ type: 'versionRestored', pageId: pageId.value, title: answer.title })
+  await closeHistory()
+  await tree.load().catch(() => undefined)
+}
 </script>
 
 <template>
@@ -486,7 +499,11 @@ watch(localOnly, (isLocal) => {
       v-if="historyOpen && historyPanel && detail"
       :page-id="detail.page.id"
       :page-title="detail.page.title"
+      :page-version="detail.page.version"
+      :can-edit="!localOnly && tree.canEdit"
+      :in-trash="detail.inTrash"
       @close="closeHistory"
+      @restored="restoredVersion"
       @vue:unmounted="hideHistory"
     />
   </article>

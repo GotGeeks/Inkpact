@@ -39,6 +39,7 @@ async function menu(
       { path: '/', name: 'home', component: { template: '<div />' } },
       { path: '/login', name: 'login', component: { template: '<div />' } },
       { path: '/import/joplin/:importId?', name: 'import', component: { template: '<div />' } },
+      { path: '/settings', name: 'settings', component: { template: '<div />' } },
     ],
   })
   await router.push('/')
@@ -128,6 +129,19 @@ describe('UserMenu', () => {
     await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('import'))
     expect(onNavigate).toHaveBeenCalledOnce()
   })
+
+  it.each(['owner', 'viewer'] as const)(
+    'opens the settings for anyone in the workspace (%s)',
+    async (role) => {
+      const { item, router, onNavigate } = await menu(role)
+
+      item('Settings').click()
+      await flushPromises()
+
+      await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('settings'))
+      expect(onNavigate).toHaveBeenCalledOnce()
+    },
+  )
 
   it('does not offer the import to someone who can only read', async () => {
     const { items } = await menu('viewer')

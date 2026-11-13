@@ -2,7 +2,7 @@
 
 **Model:** O·high → S·high in the roadmap. Planned on Fable 5.2 on 2026-11-12 from a reading of #122's code against the B.5 card. Sync, restore and the client's lost-edit check are critical paths: `/code-review` at high on PRs 3 and 4 before they merge, at medium on the others.
 
-**Status:** In progress. The five questions were answered on 2026-11-12, each as recommended. Built in the order PR 3, 1, 2, 4, 5 (PR 3 first: it closes a gap that exists today). PRs 3 (#144), 1 (#145) and 2 (#148) are merged; PR 4 (the restore endpoint) is described under **Handoff**; PR 5 is not started. History can be captured, looked at and restored through the API; the panel gets its Restore button in PR 5.
+**Status:** In progress. The five questions were answered on 2026-11-12, each as recommended. Built in the order PR 3, 1, 2, 4, 5 (PR 3 first: it closes a gap that exists today). PRs 3 (#144), 1 (#145), 2 (#148) and 4 (#149) are merged; PR 5 (the Restore button and the settings screen) is described under **Handoff**. With it the run is built: history is captured, looked at, restored and configured.
 
 This card plans what [`B.5.md`](B.5.md) left open. That card stays the statement of what version history must do (its "Decisions", "Done when" and "Tests" hold unless this card says otherwise); this one says how, in which order, and where the plan narrows or changes it.
 
@@ -213,6 +213,25 @@ All five were answered "yes, as recommended" by the maintainer on 2026-11-12.
 **Not in this PR:**
 - The Restore button and its e2e journey with real versions: both come with PR 5, which brings the restore to the interface. (PR 2's handoff said PR 4; PR 4 is server only.)
 - A Joplin re-import after a restore. The restore does not write `import_items`, so the import sees the page as edited here; there is no end-to-end test of that yet.
+
+**Checks:** see the pull request.
+
+### PR 5: restore in the panel, and the settings screen
+
+- **Restore in the panel:** for an editor, on a version that is shown, "Restore this version". It asks first, in the panel: what is replaced (the content and the title, with the page as it is kept in its history) and what is not (its place, tags, favorites, to-dos). One request at a time; a request whose answer was lost is asked again under the same operation id. On `page_changed` the panel says so and offers "Refresh", which reads the list again and keeps the version on the screen. Every other refusal is said in words. For a page in the trash, or with history off, the panel says why there is no button. After a restore the panel closes, the focus goes back to the History button, a notice says the page is back and where the page as it was went, and the tree is read again for the title; the content arrives through sync.
+- **The list** marks a version that is kept for a day ("Kept at least until …"): the safety version, whatever its kind (see PR 4: it can be the newest version itself).
+- **The settings screen,** `/settings`, from the account menu (for every member): the workspace's history, on or off, the three windows, a size limit in MiB, and what the versions take (`GET /api/workspaces/{id}/history-usage`, new, viewer role). The owner can save; the server's own rules are checked first and named; a change that can remove versions (a shorter window, a new or lower limit) asks first. Everyone else sees the same, read-only, with a note. Run B.9 adds its sections to this screen.
+- **The list endpoint** also gives `protectedUntil` per version.
+- **Docs:** `self-hosting.md` has a "Version history" section (what is kept, the settings, what the limit counts, that history is not a backup); the B.5 card's status points here; `test-pass.md`'s B.5 checks can be done.
+
+**Where it differs from the plan above, and why:**
+
+1. **The confirmation is in the panel, not a second dialog:** a dialog over the dialog, on a phone, hides the version that is being restored. The confirmation takes the place of the button, the focus moves to it, and Cancel brings it back.
+2. **The settings are for every member to read,** with the menu item for all: the card said an owner saves and others read, which needs the screen for all.
+3. **`/settings` reads the policy through a usage endpoint of its own,** rather than adding the bytes to the policy, whose `PUT` body is the same record.
+4. **e2e:** the device journeys answer the versions with `page.route` (as PR 2's); one desktop journey restores real versions, after a real capture. A new page's naming is captured within the minute (a rename is due at once), so it does not wait the two idle minutes.
+
+**Not in this PR:** a viewer's view end to end (the e2e suite has one account; the unit tests cover it). The e2e of the settings saves nothing: every device project shares the workspace, and `history-policy.spec.ts` already saves and puts back.
 
 **Checks:** see the pull request.
 
