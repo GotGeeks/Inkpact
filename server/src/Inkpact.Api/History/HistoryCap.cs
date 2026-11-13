@@ -81,6 +81,14 @@ internal static class HistoryCap
         return at;
     }
 
+    /// <summary>What makes two versions of a page the same to someone looking at them: the document, the title and the file text.</summary>
+    internal sealed record Shown(byte[] Fingerprint, string Title, string FileText)
+    {
+        public bool Same(Shown? other) =>
+            other is not null && Title == other.Title && FileText == other.FileText
+            && Fingerprint.Length > 0 && Fingerprint.AsSpan().SequenceEqual(other.Fingerprint);
+    }
+
     /// <summary>The time of the page's newest version, if it has one: where <see cref="After"/> starts.</summary>
     internal static async Task<DateTimeOffset?> NewestAtAsync(InkpactDbContext db, Guid pageId, CancellationToken cancellationToken) =>
         await db.PageVersions.AsNoTracking()

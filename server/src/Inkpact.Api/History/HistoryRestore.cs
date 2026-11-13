@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Inkpact.Api.Compaction;
 using Inkpact.Api.Crdt;
 using Inkpact.Api.Links;
 using Inkpact.Api.Pages;
@@ -82,18 +83,31 @@ public static class ContentMark
             && long.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out storedUpdates);
     }
 
-    /// <summary>The page's mark as stored now: read in the caller's transaction.</summary>
-    internal static async Task<(long LastSeq, long StoredUpdates)> ReadAsync(InkpactDbContext db, Guid pageId, CancellationToken cancellationToken)
+    /// <summary>A page's content as stored: its mark, and the bytes a client that opens it would be sent as the log.</summary>
+    internal sealed record Stored(long LastSeq, long StoredUpdates, long Bytes);
+
+    /// <summary>
+    /// The page's mark as stored now, read in one statement: the snapshot row and the live updates as one observation.
+    /// Two queries could fall either side of a compaction, which moves updates from the one into the other, and give a
+    /// count that is too low (a page that did not change would then seem to have).
+    /// </summary>
+    internal static async Task<Stored> ReadAsync(InkpactDbContext db, Guid pageId, CancellationToken cancellationToken)
     {
-        var snapshot = await db.PageSnapshots.AsNoTracking()
-            .Where(s => s.PageId == pageId)
-            .Select(s => new { s.Watermark, s.UpdateCount })
+        var row = await db.Pages.AsNoTracking()
+            .Where(p => p.Id == pageId)
+            .Select(p => new
+            {
+                Watermark = db.PageSnapshots.Where(s => s.PageId == pageId).Select(s => (long?)s.Watermark).FirstOrDefault() ?? 0,
+                InSnapshot = db.PageSnapshots.Where(s => s.PageId == pageId).Select(s => (long?)s.UpdateCount).FirstOrDefault() ?? 0,
+                SnapshotBytes = db.PageSnapshots.Where(s => s.PageId == pageId).Select(s => (long?)s.State.Length).FirstOrDefault() ?? 0,
+                LastLive = db.PageUpdates.Where(u => u.PageId == pageId).Max(u => (long?)u.Seq) ?? 0,
+                Live = db.PageUpdates.LongCount(u => u.PageId == pageId),
+                LiveBytes = db.PageUpdates.Where(u => u.PageId == pageId).Sum(u => (long?)u.Data.Length) ?? 0,
+            })
             .SingleOrDefaultAsync(cancellationToken);
-        var live = await db.PageUpdates.Where(u => u.PageId == pageId)
-            .GroupBy(u => u.PageId)
-            .Select(g => new { Last = g.Max(u => u.Seq), Count = g.LongCount() })
-            .SingleOrDefaultAsync(cancellationToken);
-        return (Math.Max(snapshot?.Watermark ?? 0, live?.Last ?? 0), (snapshot?.UpdateCount ?? 0) + (live?.Count ?? 0));
+        return row is null
+            ? new Stored(0, 0, 0)
+            : new Stored(Math.Max(row.Watermark, row.LastLive), row.InSnapshot + row.Live, row.SnapshotBytes + row.LiveBytes);
     }
 }
 
@@ -124,6 +138,8 @@ internal sealed class HistoryRestore(
     IPermissionService permissions,
     SyncHub hub,
     SyncOptions sync,
+    HistoryPreviewGate gate,
+    Compactor compactor,
     TimeProvider time,
     IHistoryRestoreHooks hooks,
     ILogger<HistoryRestore> logger)
@@ -160,10 +176,26 @@ internal sealed class HistoryRestore(
             return refusal;
         }
 
+        // The cheap look before the sidecar's work: a client whose list is out of date is told so without a replay.
+        var stored = await ContentMark.ReadAsync(db, pageId, cancellationToken);
+        var metadataVersion = await db.Pages.AsNoTracking().Where(p => p.Id == pageId).Select(p => p.Version).SingleAsync(cancellationToken);
+        if (stored.LastSeq != expectedSeq || stored.StoredUpdates != expectedUpdates || metadataVersion != request.ExpectedVersion)
+        {
+            return RestoreResult.Refused(StatusCodes.Status409Conflict, "page_changed");
+        }
+
+        // The replays that follow take the sidecar, which takes one request at a time and people who are editing wait
+        // behind: one history read at a time, previews and restores alike.
         Prepared prepared;
+        var turn = await gate.EnterAsync(cancellationToken);
+        if (turn is null)
+        {
+            return RestoreResult.Refused(StatusCodes.Status503ServiceUnavailable, "history_unavailable");
+        }
+
         try
         {
-            if (await PrepareAsync(pageId, version.State, cancellationToken) is not { } ready)
+            if (await PrepareAsync(pageId, workspaceId.Value, version.State, cancellationToken) is not { } ready)
             {
                 return RestoreResult.Refused(StatusCodes.Status409Conflict, "version_unreadable");
             }
@@ -178,6 +210,10 @@ internal sealed class HistoryRestore(
         {
             return RestoreResult.Refused(StatusCodes.Status409Conflict, "page_unreadable");
         }
+        finally
+        {
+            turn.Dispose();
+        }
 
         if (prepared.MissingAttachments)
         {
@@ -190,8 +226,12 @@ internal sealed class HistoryRestore(
             return RestoreResult.Refused(StatusCodes.Status409Conflict, "page_changed");
         }
 
-        // A page that cannot be sent to a client is not made (the sync queue holds twice this; see SyncOptions).
-        if (prepared.Replacement.Update.Length > sync.MaxPageBytes || prepared.After.State.Length > sync.MaxPageBytes)
+        // A page that cannot be sent to a client is not made (the sync queue holds twice this; see SyncOptions). Nor one whose
+        // stored updates and the replacement together, which is what a client that opens it before its compaction is sent,
+        // would not fit three quarters of the queue with the traffic around it: the import's own rule (MaxOldAndNewBytes).
+        var together = stored.Bytes + prepared.Replacement.Update.Length;
+        if (prepared.Replacement.Update.Length > sync.MaxPageBytes || prepared.After.State.Length > sync.MaxPageBytes
+            || together > sync.MaxQueuedBytes / 4 * 3)
         {
             return RestoreResult.Refused(StatusCodes.Status413PayloadTooLarge, "content_too_large");
         }
@@ -213,6 +253,21 @@ internal sealed class HistoryRestore(
         if (published)
         {
             logger.LogInformation("Restored version {VersionId} of page {PageId}", versionId, pageId);
+
+            // A page whose log is now more than a diff is made of is sent as stored to everyone who opens it: compacted now,
+            // as the import does with a large replacement, rather than whenever the worker gets to it. The restore stands
+            // whatever happens here; the worker tries again.
+            if (together > sync.MaxDiffBytes)
+            {
+                try
+                {
+                    await compactor.CompactAsync(pageId, CancellationToken.None);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning("Page {PageId} was not compacted after its restore: {Reason}", pageId, ex.GetType().Name);
+                }
+            }
         }
 
         return outcome ?? throw new InvalidOperationException("The restore's commit ended without an outcome.");
@@ -227,7 +282,7 @@ internal sealed class HistoryRestore(
     /// Reads the version back, checks its files, observes the page and builds the replacement against that observation.
     /// Null when the version cannot be read back whole.
     /// </summary>
-    private async Task<Prepared?> PrepareAsync(Guid pageId, byte[] state, CancellationToken cancellationToken)
+    private async Task<Prepared?> PrepareAsync(Guid pageId, Guid workspaceId, byte[] state, CancellationToken cancellationToken)
     {
         YjsRead target;
         try
@@ -245,10 +300,14 @@ internal sealed class HistoryRestore(
             return null;
         }
 
+        // A file is the workspace's: one copied into another page keeps the row of the page it was added to, and the id
+        // in the document is all the copy is (see the architecture, "Attachments"). So it counts when it is in a page of
+        // this workspace, not only of this page.
         var files = AttachmentIds(target.Json);
         var known = files.Count == 0
             ? 0
-            : await db.Attachments.AsNoTracking().CountAsync(a => a.PageId == pageId && files.Contains(a.Id), cancellationToken);
+            : await db.Attachments.AsNoTracking().CountAsync(
+                a => files.Contains(a.Id) && db.Pages.Any(p => p.Id == a.PageId && p.WorkspaceId == workspaceId), cancellationToken);
 
         HistorySnapshot? current;
         try
@@ -400,50 +459,106 @@ internal sealed class HistoryRestore(
 
         // Exactly the page the replacement was built against: no update stored since (none can be now, the hub holds the
         // page), no compaction that changed what counts (it keeps both numbers), and the same title and place.
-        var (lastSeq, stored) = await ContentMark.ReadAsync(db, pageId, cancellationToken);
-        if (lastSeq != current.ContentSeq || stored != current.StoredUpdates || page.Version != current.MetadataVersion)
+        var observed = await ContentMark.ReadAsync(db, pageId, cancellationToken);
+        var stored = observed.StoredUpdates;
+        if (observed.LastSeq != current.ContentSeq || stored != current.StoredUpdates || page.Version != current.MetadataVersion)
         {
             return RestoreResult.Refused(StatusCodes.Status409Conflict, "page_changed");
         }
 
         var now = time.GetUtcNow();
-        var lastAt = await HistoryCap.NewestAtAsync(db, pageId, cancellationToken);
+        var protectUntil = now + ProtectFor;
 
-        // Titles that waited for the capture become versions first, as the capture would have made them: the history
-        // keeps every title the page had before the restore. Then the page as it is, protected.
+        // The page's newest version, tracked: when the page as it is equals it, it becomes the safety version (protected)
+        // instead of a copy of the same document, title and file text.
+        var newest = await db.PageVersions
+            .Where(v => v.PageId == pageId)
+            .OrderByDescending(v => v.CreatedAt)
+            .ThenByDescending(v => v.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        var lastAt = newest?.CreatedAt;
+        var newestShown = newest is null ? null : new HistoryCap.Shown(newest.Fingerprint, newest.Title, newest.FileText);
+        var currentShown = new HistoryCap.Shown(current.Fingerprint, page.Title, page.FileText);
+
+        // Titles that waited for the capture become versions first, as the capture would have made them (each skipped when
+        // it would show the same as the version before it): the history keeps every title the page had before the restore.
         var renames = await db.PageTitleChanges.Where(c => c.PageId == pageId).OrderBy(c => c.Id).ToListAsync(cancellationToken);
-        var renameVersions = renames
-            .Select(r => new PageVersion(
-                pageId, current.State, r.Title, current.FileText, HistoryCap.After(r.ChangedAt, ref lastAt), r.ChangedBy, PageVersionKind.Rename,
-                fingerprint: current.Fingerprint, contentSeq: current.ContentSeq))
-            .ToList();
-        var before = new PageVersion(
-            pageId, current.State, page.Title, page.FileText, HistoryCap.After(now, ref lastAt), userId, PageVersionKind.BeforeRestore,
-            protectedUntil: now + ProtectFor, fingerprint: current.Fingerprint, contentSeq: current.ContentSeq);
-        var restoreAt = HistoryCap.After(now, ref lastAt);
-        var restoreBytes = checked(prepared.After.State.LongLength + System.Text.Encoding.UTF8.GetByteCount(fileText));
+        var renameTitles = new List<PageTitleChange>();
+        var shownSoFar = newestShown;
+        foreach (var rename in renames)
+        {
+            var shown = new HistoryCap.Shown(current.Fingerprint, rename.Title, current.FileText);
+            if (!shown.Same(shownSoFar))
+            {
+                renameTitles.Add(rename);
+                shownSoFar = shown;
+            }
+        }
+
+        var beforeBytes = PageVersion.PayloadOf(current.State, page.FileText);
+        var restoreBytes = PageVersion.PayloadOf(prepared.After.State, fileText);
+        // Whether the page as it is would be the last of these versions already: then that version is kept as the safety one.
+        bool AlreadyKept(List<PageTitleChange> titles) =>
+            currentShown.Same(titles.Count > 0 ? new HistoryCap.Shown(current.Fingerprint, titles[^1].Title, current.FileText) : newestShown);
+        long Needed(List<PageTitleChange> titles) =>
+            titles.Count * beforeBytes + (AlreadyKept(titles) ? 0 : beforeBytes) + restoreBytes;
 
         var policy = HistoryPolicy.From(await db.Workspaces.AsNoTracking().SingleAsync(w => w.Id == workspaceId, cancellationToken));
         if (policy.CapBytes is { } cap)
         {
             var (size, kept) = await HistoryCap.MeasureAsync(db, workspaceId, now, cancellationToken);
+            // The newest version kept as the safety one becomes protected, and no longer counts as room to make.
+            long NowProtected(List<PageTitleChange> titles) =>
+                titles.Count == 0 && AlreadyKept(titles) && newest is not null && !(newest.ProtectedUntil > now) ? newest.PayloadBytes : 0;
+
             // The safety version and the restore must fit; titles that waited are left out, oldest first, when they do not.
-            while (renameVersions.Count > 0 && renameVersions.Sum(v => v.PayloadBytes) + before.PayloadBytes + restoreBytes > cap - kept)
+            while (renameTitles.Count > 0 && Needed(renameTitles) > cap - kept - NowProtected(renameTitles))
             {
-                renameVersions.RemoveAt(0);
+                renameTitles.RemoveAt(0);
             }
 
-            var needed = renameVersions.Sum(v => v.PayloadBytes) + before.PayloadBytes + restoreBytes;
-            if (needed > cap - kept)
+            if (Needed(renameTitles) > cap - kept - NowProtected(renameTitles))
             {
                 return RestoreResult.Refused(StatusCodes.Status409Conflict, "history_full");
             }
 
-            await HistoryCap.EvictAsync(db, workspaceId, size + needed - cap, now, cancellationToken);
+            if (NowProtected(renameTitles) > 0)
+            {
+                // Before the room is made, so that it is not the version removed to make it.
+                newest!.ProtectUntil(protectUntil);
+                await db.SaveChangesAsync(cancellationToken);
+            }
+
+            await HistoryCap.EvictAsync(db, workspaceId, size + Needed(renameTitles) - cap, now, cancellationToken);
         }
 
+        var renameVersions = renameTitles
+            .Select((r, i) => new PageVersion(
+                pageId, current.State, r.Title, current.FileText, HistoryCap.After(r.ChangedAt, ref lastAt), r.ChangedBy, PageVersionKind.Rename,
+                // The last of them is the safety version when it shows the page as it is.
+                protectedUntil: i == renameTitles.Count - 1 && AlreadyKept(renameTitles) ? protectUntil : null,
+                fingerprint: current.Fingerprint, contentSeq: current.ContentSeq))
+            .ToList();
+        PageVersion before;
+        if (!AlreadyKept(renameTitles))
+        {
+            before = new PageVersion(
+                pageId, current.State, page.Title, page.FileText, HistoryCap.After(now, ref lastAt), userId, PageVersionKind.BeforeRestore,
+                protectedUntil: protectUntil, fingerprint: current.Fingerprint, contentSeq: current.ContentSeq);
+            db.PageVersions.Add(before);
+        }
+        else if (renameVersions.Count > 0)
+        {
+            before = renameVersions[^1];
+        }
+        else
+        {
+            before = newest!;
+            before.ProtectUntil(protectUntil);
+        }
+
+        var restoreAt = HistoryCap.After(now, ref lastAt);
         db.PageVersions.AddRange(renameVersions);
-        db.PageVersions.Add(before);
         db.PageTitleChanges.RemoveRange(renames);
         await db.SaveChangesAsync(cancellationToken);
         await hooks.AtAsync(RestoreStage.BeforeWritten, cancellationToken);
@@ -458,13 +573,8 @@ internal sealed class HistoryRestore(
             fingerprint: prepared.After.ReplayFingerprint, contentSeq: update.Seq);
         db.PageVersions.Add(restored);
 
-        // The title through the tree's rule for a change of title: a new metadata version and time. The tree lock is held.
-        if (page.Title != title)
-        {
-            page.Title = title;
-            page.Version++;
-        }
-
+        // The title by the tree's rule for a change of title (the tree lock is held): a new metadata version when it changes.
+        tree.RetitleUnderLock(page, title);
         page.UpdatedAt = now;
         page.ContentText = prepared.After.Text.Replace("\0", "");
         page.FileText = fileText;
@@ -499,7 +609,20 @@ internal sealed class HistoryRestore(
             PageVersion = page.Version,
             CreatedAt = now,
         });
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "pk_page_restores" })
+        {
+            // Another restore under this id committed meanwhile (of a page in another workspace, under another history lock).
+            // Nothing of this one is kept; the answer is the one for that id.
+            await transaction.RollbackAsync(cancellationToken);
+            db.ChangeTracker.Clear();
+            return await EarlierAsync(operationId, pageId, versionId, userId, cancellationToken)
+                ?? throw new InvalidOperationException("An operation id was taken, and its restore is not found.", ex);
+        }
+
         await hooks.AtAsync(RestoreStage.PageWritten, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return RestoreResult.Done(answer) with { Written = true };

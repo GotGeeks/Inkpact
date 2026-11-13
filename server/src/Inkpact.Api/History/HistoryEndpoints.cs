@@ -127,9 +127,9 @@ public static class HistoryEndpoints
                 v.PayloadBytes))
             .ToList();
         var next = rows.Count > take ? WriteCursor(page[^1].CreatedAt, page[^1].Id) : null;
-        var (state, failure) = await StateAsync(db, pageId, cancellationToken);
-        var (lastSeq, stored) = await ContentMark.ReadAsync(db, pageId, cancellationToken);
-        return Results.Ok(new VersionList(page, next, state, failure, ContentMark.Of(lastSeq, stored)));
+        var stored = await ContentMark.ReadAsync(db, pageId, cancellationToken);
+        var (state, failure) = await StateAsync(db, pageId, stored.StoredUpdates, cancellationToken);
+        return Results.Ok(new VersionList(page, next, state, failure, ContentMark.Of(stored.LastSeq, stored.StoredUpdates)));
     }
 
     private static async Task<IResult> Get(
@@ -188,7 +188,8 @@ public static class HistoryEndpoints
     }
 
     /// <summary>Where the page's history stands, for the list to say so instead of showing an empty list without a word.</summary>
-    internal static async Task<(string State, string? Failure)> StateAsync(InkpactDbContext db, Guid pageId, CancellationToken cancellationToken)
+    internal static async Task<(string State, string? Failure)> StateAsync(
+        InkpactDbContext db, Guid pageId, long storedUpdates, CancellationToken cancellationToken)
     {
         var enabled = await db.Pages.AsNoTracking()
             .Where(p => p.Id == pageId)
@@ -210,11 +211,10 @@ public static class HistoryEndpoints
             return (HistoryStates.Failed, failure);
         }
 
-        // Counted as the capture counts (see HistoryCapture.DuePagesAsync): the updates in the snapshot and the live ones.
+        // Counted as the capture counts (see HistoryCapture.DuePagesAsync): the updates in the snapshot and the live ones,
+        // as the caller read them with the page's content mark.
         var captured = state?.CapturedUpdates ?? 0;
-        var pending = await db.PageTitleChanges.AnyAsync(c => c.PageId == pageId, cancellationToken)
-            || (await db.PageSnapshots.Where(s => s.PageId == pageId).Select(s => (long?)s.UpdateCount).SingleOrDefaultAsync(cancellationToken) ?? 0)
-                + await db.PageUpdates.LongCountAsync(u => u.PageId == pageId, cancellationToken) > captured;
+        var pending = storedUpdates > captured || await db.PageTitleChanges.AnyAsync(c => c.PageId == pageId, cancellationToken);
         return (pending ? HistoryStates.Pending : HistoryStates.Ready, null);
     }
 

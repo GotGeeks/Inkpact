@@ -69,10 +69,13 @@ public class HistoryRestoreTests(PostgresFixture postgres) : IClassFixture<Postg
         var firstState = await UseDbAsync(db => db.PageVersions.Where(v => v.Id == page.First).Select(v => v.State).SingleAsync());
         row.ContentText.ShouldBe((await Codec.CompactAsync([firstState], default)).Text.Replace("\0", ""));
 
-        // The page as it was: kept, protected for a day, made by the person who restored; then the restore itself.
+        // The page as it was is the newest version already (the capture made it): that version is the safety version, now
+        // protected for a day, and no copy of it is made. Then the restore itself.
         var versions = await VersionsAsync(page.Id);
+        versions.Count.ShouldBe(3);
         var before = versions.Single(v => v.Id == answer.BeforeVersionId);
-        (before.Kind, before.Title, before.CreatedBy).ShouldBe((PageVersionKind.BeforeRestore, "Second title", _owner.UserId));
+        before.Id.ShouldBe(page.Second);
+        (before.Kind, before.Title).ShouldBe((PageVersionKind.Rename, "Second title"));
         before.ProtectedUntil.ShouldBe(restoredAt + HistoryRestore.ProtectFor);
         (await StateContentAsync(before.State)).ShouldBe(contentBefore);
         var restored = versions.Single(v => v.Id == answer.RestoreVersionId);
@@ -83,6 +86,230 @@ public class HistoryRestoreTests(PostgresFixture postgres) : IClassFixture<Postg
         // The capture has nothing to add: the restore's version is the page.
         (await Services<HistoryCapture>().CaptureAsync(page.Id, default)).ShouldBe(HistoryCaptureOutcome.Unchanged);
         (await VersionsAsync(page.Id)).Count.ShouldBe(versions.Count);
+    }
+
+    [Fact]
+    public async Task A_page_changed_since_its_newest_version_is_kept_in_a_safety_version_of_its_own()
+    {
+        var page = await PageWithTwoVersionsAsync();
+        // The page's own stream, continued: edits that build on what it has, so they change what it shows.
+        await AppendAsync(page.Id, EditStreams.Get(16, 5).Skip(12));
+        var contentBefore = await ContentAsync(page.Id);
+        var restoredAt = _clock.GetUtcNow();
+
+        var answer = await (await RestoreAsync(page.Id, page.First, await MarkAsync(page.Id))).Content.ReadFromJsonAsync<RestoreAnswer>();
+
+        var before = (await VersionsAsync(page.Id)).Single(v => v.Id == answer!.BeforeVersionId);
+        (before.Kind, before.Title, before.CreatedBy).ShouldBe((PageVersionKind.BeforeRestore, "Second title", _owner.UserId));
+        before.ProtectedUntil.ShouldBe(restoredAt + HistoryRestore.ProtectFor);
+        (await StateContentAsync(before.State)).ShouldBe(contentBefore);
+    }
+
+    [Fact]
+    public async Task Titles_that_waited_and_show_the_same_as_the_version_before_them_add_no_copies()
+    {
+        var page = await PageWithTwoVersionsAsync();
+        // Away and back: the title that is left is the newest version's.
+        (await _owner.Http.PatchJsonAsync($"/api/pages/{page.Id}", new { title = "Elsewhere" })).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await _owner.Http.PatchJsonAsync($"/api/pages/{page.Id}", new { title = "Second title" })).StatusCode.ShouldBe(HttpStatusCode.OK);
+        var mark = await MarkAsync(page.Id);
+
+        var answer = await (await RestoreAsync(page.Id, page.First, mark)).Content.ReadFromJsonAsync<RestoreAnswer>();
+
+        (await VersionsAsync(page.Id)).Select(v => (v.Kind, v.Title)).ShouldBe(
+        [
+            (PageVersionKind.Automatic, "First title"),
+            (PageVersionKind.Rename, "Second title"),
+            (PageVersionKind.Rename, "Elsewhere"),
+            (PageVersionKind.Rename, "Second title"),
+            (PageVersionKind.Restore, "First title"),
+        ]);
+        (await VersionsAsync(page.Id))[3].Id.ShouldBe(answer!.BeforeVersionId);
+    }
+
+    [Fact]
+    public async Task A_capture_that_observed_the_page_before_a_restore_writes_nothing_after_it()
+    {
+        var page = await PageWithTwoVersionsAsync();
+        // The page changes, so the capture has something to write: it observes that, and then a restore commits first.
+        await AppendAsync(page.Id, EditStreams.Get(16, 5).Skip(12));
+        var mark = await MarkAsync(page.Id);
+        RestoreResult? restored = null;
+        var during = new SnapshotHooks(async () => restored = await RestoreDirectAsync(page.Id, page.First, mark, _owner.UserId));
+        var capture = new HistoryCapture(
+            Services<Microsoft.EntityFrameworkCore.IDbContextFactory<InkpactDbContext>>(),
+            new HistorySnapshotBuilder(Services<Microsoft.EntityFrameworkCore.IDbContextFactory<InkpactDbContext>>(), Codec, _clock, during),
+            Services<HistoryOptions>(),
+            _clock,
+            NullLogger<HistoryCapture>.Instance);
+
+        (await capture.CaptureAsync(page.Id, default)).ShouldBe(HistoryCaptureOutcome.Superseded);
+
+        restored!.Answer.ShouldNotBeNull();
+        // The newest version is the restore's, and the page is what it says.
+        var newest = (await VersionsAsync(page.Id))[^1];
+        newest.Id.ShouldBe(restored.Answer!.RestoreVersionId);
+        (await StateContentAsync(newest.State)).ShouldBe(await ContentAsync(page.Id));
+        (await Services<HistoryCapture>().CaptureAsync(page.Id, default)).ShouldBe(HistoryCaptureOutcome.Unchanged);
+    }
+
+    private sealed class SnapshotHooks(Func<Task> during) : IHistorySnapshotHooks
+    {
+        private bool _done;
+
+        public async Task AfterMetadataReadAsync(Guid pageId, CancellationToken cancellationToken)
+        {
+            if (!_done)
+            {
+                _done = true;
+                await during();
+            }
+        }
+    }
+
+    [Fact]
+    public async Task A_picture_copied_from_another_page_of_the_workspace_is_found_and_the_version_restored()
+    {
+        var page = await PageWithTwoVersionsAsync();
+        var other = await CreatePageAsync("Where it was added");
+        var picture = await UseDbAsync(async db =>
+        {
+            var attachment = new Attachment { PageId = other, FileName = "p.png", ContentType = "image/png", Size = 3, Sha256 = new string('a', 64), CreatedAt = Start };
+            db.Attachments.Add(attachment);
+            await db.SaveChangesAsync();
+            return attachment.Id;
+        });
+        var withPicture = $$$$"""{"type":"doc","content":[{"type":"image","attrs":{"attachmentId":"{{{{picture}}}}","alt":"copied"}}]}""";
+        var version = await AddVersionAsync(page.Id, await Codec.BuildAsync(Encoding.UTF8.GetBytes(withPicture), default), "Picture", "");
+
+        (await RestoreAsync(page.Id, version, await MarkAsync(page.Id))).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task A_restore_whose_page_is_sent_as_stored_is_compacted_at_once()
+    {
+        await using var factory = new InkpactFactory(
+            await postgres.CreateDatabaseAsync(), time: _clock, sidecar: true,
+            settings: new Dictionary<string, string> { ["Sync:MaxDiffBytes"] = "64" });
+        var owner = await SyncUser.SetUpAdministratorAsync(factory);
+        await factory.Services.GetRequiredService<YjsSidecar>().WaitUntilReadyAsync(new CancellationTokenSource(YjsSidecars.StartTimeout).Token);
+        var codec = factory.Services.GetRequiredService<IYjsCodec>();
+        Guid pageId;
+        Guid version;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<InkpactDbContext>();
+            var page = new Page { WorkspaceId = await db.Workspaces.Select(w => w.Id).SingleAsync(), Title = "Page", SortKey = "a0", CreatedAt = Start, UpdatedAt = Start };
+            db.Pages.Add(page);
+            await db.SaveChangesAsync();
+            pageId = page.Id;
+            foreach (var update in EditStreams.Get(6, 61))
+            {
+                db.PageUpdates.Add(new PageUpdate { PageId = pageId, UserId = owner.UserId, Data = update, CreatedAt = Start });
+            }
+
+            var row = new PageVersion(pageId, await codec.BuildAsync(EmptyDocument, default), "Page", "", Start, null, PageVersionKind.Automatic);
+            db.PageVersions.Add(row);
+            await db.SaveChangesAsync();
+            version = row.Id;
+        }
+
+        var list = await owner.Http.GetFromJsonAsync<VersionList>($"/api/pages/{pageId}/versions");
+        (await owner.Http.PostJsonAsync(RestorePath(pageId, version), new { operationId = Guid.NewGuid(), expectedContent = list!.PageContent, expectedVersion = 1 }))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        await using var check = factory.Services.CreateAsyncScope();
+        var checkDb = check.ServiceProvider.GetRequiredService<InkpactDbContext>();
+        (await checkDb.PageUpdates.CountAsync(u => u.PageId == pageId)).ShouldBe(0);
+        (await checkDb.PageSnapshots.AnyAsync(s => s.PageId == pageId)).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task A_list_that_is_out_of_date_is_told_so_before_any_replay_and_a_busy_sidecar_says_so()
+    {
+        await using var factory = new InkpactFactory(
+            await postgres.CreateDatabaseAsync(), time: _clock, sidecar: true,
+            settings: new Dictionary<string, string> { ["History:PreviewWait"] = "00:00:00.200" });
+        var owner = await SyncUser.SetUpAdministratorAsync(factory);
+        await factory.Services.GetRequiredService<YjsSidecar>().WaitUntilReadyAsync(new CancellationTokenSource(YjsSidecars.StartTimeout).Token);
+        Guid pageId;
+        Guid version;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<InkpactDbContext>();
+            var page = new Page { WorkspaceId = await db.Workspaces.Select(w => w.Id).SingleAsync(), Title = "Page", SortKey = "a0", CreatedAt = Start, UpdatedAt = Start };
+            db.Pages.Add(page);
+            await db.SaveChangesAsync();
+            pageId = page.Id;
+            var row = new PageVersion(pageId, await factory.Services.GetRequiredService<IYjsCodec>().BuildAsync(EmptyDocument, default), "Page", "", Start, null, PageVersionKind.Automatic);
+            db.PageVersions.Add(row);
+            await db.SaveChangesAsync();
+            version = row.Id;
+        }
+
+        var list = await owner.Http.GetFromJsonAsync<VersionList>($"/api/pages/{pageId}/versions");
+        using (await factory.Services.GetRequiredService<HistoryPreviewGate>().EnterAsync(default))
+        {
+            // Out of date: answered while the sidecar's turn is taken, so without waiting for it.
+            var stale = await owner.Http.PostJsonAsync(RestorePath(pageId, version), new { operationId = Guid.NewGuid(), expectedContent = "999.9", expectedVersion = 1 });
+            (await stale.ReadErrorAsync()).Code.ShouldBe("page_changed");
+
+            // Up to date, but the turn does not come in time.
+            var busy = await owner.Http.PostJsonAsync(RestorePath(pageId, version), new { operationId = Guid.NewGuid(), expectedContent = list!.PageContent, expectedVersion = 1 });
+            busy.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+            (await busy.ReadErrorAsync()).Code.ShouldBe("history_unavailable");
+        }
+
+        (await owner.Http.PostJsonAsync(RestorePath(pageId, version), new { operationId = Guid.NewGuid(), expectedContent = list!.PageContent, expectedVersion = 1 }))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task An_operation_id_taken_meanwhile_by_a_restore_elsewhere_is_refused_and_writes_nothing()
+    {
+        var page = await PageWithTwoVersionsAsync();
+        var other = await CreatePageAsync("Elsewhere");
+        var mark = await MarkAsync(page.Id);
+        var operation = Guid.NewGuid();
+        // Past both looks at the id, a restore of another page (under another history lock, were it another workspace) takes it.
+        var taken = new Hooks(async at =>
+        {
+            if (at == RestoreStage.BeforeWritten)
+            {
+                await using var scope = _factory.Services.CreateAsyncScope();
+                var db = scope.ServiceProvider.GetRequiredService<InkpactDbContext>();
+                db.PageRestores.Add(new PageRestore
+                {
+                    OperationId = operation,
+                    PageId = other,
+                    VersionId = Guid.NewGuid(),
+                    UserId = _owner.UserId,
+                    BeforeVersionId = Guid.NewGuid(),
+                    RestoreVersionId = Guid.NewGuid(),
+                    Title = "Elsewhere",
+                    PageVersion = 1,
+                    CreatedAt = Start,
+                });
+                await db.SaveChangesAsync();
+            }
+        });
+        var start = await SummaryAsync();
+
+        var result = await RestoreDirectAsync(page.Id, page.First, mark, _owner.UserId, taken, operation);
+
+        (result.Status, result.Code).ShouldBe((StatusCodes.Status409Conflict, "operation_mismatch"));
+        // Without the other restore's row, everything is as it was.
+        await UseDbAsync(db => db.PageRestores.Where(r => r.OperationId == operation).ExecuteDeleteAsync());
+        (await SummaryAsync()).ShouldBe(start);
+    }
+
+    [Fact]
+    public void A_version_counts_against_the_cap_what_PayloadOf_says()
+    {
+        var version = new PageVersion(Guid.NewGuid(), new byte[123], "T", "héllo", Start, null, PageVersionKind.Automatic);
+
+        version.PayloadBytes.ShouldBe(PageVersion.PayloadOf(new byte[123], "héllo"));
+        version.PayloadBytes.ShouldBe(123 + 6);
     }
 
     [Fact]
@@ -144,15 +371,18 @@ public class HistoryRestoreTests(PostgresFixture postgres) : IClassFixture<Postg
         (await _owner.Http.PatchJsonAsync($"/api/pages/{page.Id}", new { title = "Fourth title" })).StatusCode.ShouldBe(HttpStatusCode.OK);
         var mark = await MarkAsync(page.Id);
 
-        (await RestoreAsync(page.Id, page.First, mark)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        var answer = await (await RestoreAsync(page.Id, page.First, mark)).Content.ReadFromJsonAsync<RestoreAnswer>();
 
-        (await VersionsAsync(page.Id)).Select(v => (v.Kind, v.Title)).TakeLast(4).ShouldBe(
+        var versions = await VersionsAsync(page.Id);
+        versions.Select(v => (v.Kind, v.Title)).TakeLast(3).ShouldBe(
         [
             (PageVersionKind.Rename, "Third title"),
             (PageVersionKind.Rename, "Fourth title"),
-            (PageVersionKind.BeforeRestore, "Fourth title"),
             (PageVersionKind.Restore, "First title"),
         ]);
+        // The last title shows the page as it is: that version is the safety one, not a copy of it.
+        var safety = versions.Single(v => v.Id == answer!.BeforeVersionId);
+        (safety.Title, safety.ProtectedUntil).ShouldBe(("Fourth title", _clock.GetUtcNow() + HistoryRestore.ProtectFor));
         (await UseDbAsync(db => db.PageTitleChanges.CountAsync())).ShouldBe(0);
     }
 
@@ -583,7 +813,8 @@ public class HistoryRestoreTests(PostgresFixture postgres) : IClassFixture<Postg
             new { operationId = operation ?? Guid.NewGuid(), expectedContent = mark.Content, expectedVersion = mark.Version });
 
     /// <summary>The service itself, as the endpoint calls it, with hooks a test chooses and as any person.</summary>
-    private async Task<RestoreResult> RestoreDirectAsync(Guid pageId, Guid versionId, Mark mark, Guid userId, IHistoryRestoreHooks? hooks = null)
+    private async Task<RestoreResult> RestoreDirectAsync(
+        Guid pageId, Guid versionId, Mark mark, Guid userId, IHistoryRestoreHooks? hooks = null, Guid? operation = null)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var services = scope.ServiceProvider;
@@ -596,10 +827,12 @@ public class HistoryRestoreTests(PostgresFixture postgres) : IClassFixture<Postg
             services.GetRequiredService<IPermissionService>(),
             services.GetRequiredService<SyncHub>(),
             services.GetRequiredService<SyncOptions>(),
+            services.GetRequiredService<HistoryPreviewGate>(),
+            services.GetRequiredService<Compactor>(),
             _clock,
             hooks ?? new NoHistoryRestoreHooks(),
             NullLogger<HistoryRestore>.Instance);
-        return await restore.RestoreAsync(pageId, versionId, userId, new RestoreRequest(Guid.NewGuid(), mark.Content, mark.Version), default);
+        return await restore.RestoreAsync(pageId, versionId, userId, new RestoreRequest(operation ?? Guid.NewGuid(), mark.Content, mark.Version), default);
     }
 
     private async Task ExpectRefusedAsync(Guid pageId, Func<Task<HttpResponseMessage>> restore, HttpStatusCode status, string code)

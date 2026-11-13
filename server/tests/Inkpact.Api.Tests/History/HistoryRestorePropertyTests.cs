@@ -157,9 +157,12 @@ public class HistoryRestorePropertyTests(PostgresFixture postgres, ITestOutputHe
         result.Answer.ShouldNotBeNull(result.Code);
         (await ContentAsync(pageId)).ShouldBe(await StateContentAsync(version.State));
         (await UseDbAsync(db => db.Pages.Where(p => p.Id == pageId).Select(p => p.Title).SingleAsync())).ShouldBe(version.Title);
+        // The safety version: a copy of the page as it was, or its newest version when that showed the page already.
         var safety = await UseDbAsync(db => db.PageVersions.AsNoTracking().SingleAsync(v => v.Id == result.Answer!.BeforeVersionId));
-        (safety.Kind, safety.Title).ShouldBe((PageVersionKind.BeforeRestore, titleBefore));
+        safety.Title.ShouldBe(titleBefore);
         (await StateContentAsync(safety.State)).ShouldBe(contentBefore);
+        safety.ProtectedUntil.ShouldBe(_clock.GetUtcNow() + HistoryRestore.ProtectFor);
+        Count(safety.Kind == PageVersionKind.BeforeRestore ? "restore copy" : "restore kept newest");
         Count("restore");
     }
 
@@ -267,6 +270,8 @@ public class HistoryRestorePropertyTests(PostgresFixture postgres, ITestOutputHe
             services.GetRequiredService<IPermissionService>(),
             services.GetRequiredService<SyncHub>(),
             services.GetRequiredService<SyncOptions>(),
+            services.GetRequiredService<HistoryPreviewGate>(),
+            services.GetRequiredService<Compactor>(),
             _clock,
             hooks,
             NullLogger<HistoryRestore>.Instance);

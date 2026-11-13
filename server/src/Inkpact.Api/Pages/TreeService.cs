@@ -229,6 +229,25 @@ public sealed class TreeService(InkpactDbContext db, TimeProvider time, ILogger<
         return new PageChange(ToDto(page), conflict);
     }
 
+    /// <summary>
+    /// Gives a page another title as a rename does (the title cleaned; a new metadata version and time when it changes),
+    /// for a caller that holds the workspace's tree lock in its own transaction and records the title itself: a restore of a
+    /// version (run B.5b), whose own version holds the title, so no <see cref="PageTitleChange"/> row is left. The caller
+    /// saves. False when the title was the page's already.
+    /// </summary>
+    internal bool RetitleUnderLock(Page page, string title)
+    {
+        var cleanTitle = CleanTitle(title) ?? throw new InvalidOperationException($"The title for page {page.Id} is not one a page can have.");
+        if (page.Title == cleanTitle)
+        {
+            return false;
+        }
+
+        page.Title = cleanTitle;
+        Touch(page);
+        return true;
+    }
+
     public async Task<TreeResult<PageChange>> MoveAsync(Guid pageId, Position position, int? expectedVersion, CancellationToken cancellationToken = default)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);

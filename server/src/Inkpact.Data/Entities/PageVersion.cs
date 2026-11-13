@@ -46,7 +46,7 @@ public class PageVersion
         ProtectedUntil = protectedUntil;
         Fingerprint = fingerprint ?? [];
         ContentSeq = contentSeq;
-        PayloadBytes = checked(state.LongLength + Encoding.UTF8.GetByteCount(fileText));
+        PayloadBytes = PayloadOf(state, fileText);
     }
 
     public Guid Id { get; private set; } = Guid.CreateVersion7();
@@ -71,6 +71,15 @@ public class PageVersion
 
     public DateTimeOffset? ProtectedUntil { get; private set; }
 
+    /// <summary>Keeps the version at least until <paramref name="until"/>, whatever retention and the cap say. Never shortens it.</summary>
+    public void ProtectUntil(DateTimeOffset until)
+    {
+        if (ProtectedUntil is not { } current || current < until)
+        {
+            ProtectedUntil = until;
+        }
+    }
+
     /// <summary>
     /// The Yjs fingerprint of the state (its state vector and delete set), to tell that a later capture would be the same
     /// document. Empty for a version made before run B.5b, of which there are none.
@@ -83,6 +92,12 @@ public class PageVersion
 
     /// <summary>The page's last stored sequence number when this state was observed.</summary>
     public long ContentSeq { get; private set; }
+
+    /// <summary>
+    /// What a version of this state and file text counts against the workspace cap, for a caller that must know it before
+    /// the version exists (a restore checks the cap before its update is stored).
+    /// </summary>
+    public static long PayloadOf(byte[] state, string fileText) => checked(state.LongLength + Encoding.UTF8.GetByteCount(fileText));
 
     /// <summary>Bytes counted against the workspace cap: the Yjs state and the file-note search text.</summary>
     public long PayloadBytes { get; private set; }

@@ -13,6 +13,12 @@ internal enum HistoryCaptureOutcome
     /// <summary>Nothing differs from the page's newest version; only the cursor moved.</summary>
     Unchanged,
 
+    /// <summary>
+    /// A newer state of the page is in a version already (a restore committed while this capture observed the page):
+    /// nothing was written, so the history's newest version is not this older state.
+    /// </summary>
+    Superseded,
+
     /// <summary>The workspace's history is off: nothing was written, and titles that waited are dropped.</summary>
     Off,
 
@@ -233,6 +239,18 @@ internal sealed class HistoryCapture(
             return HistoryCaptureOutcome.Gone;
         }
 
+        // What is in a version already may be newer than this observation: a restore writes its own version of the page it
+        // makes, and moves the cursor past it, under this lock. Written now, this older state would sort after it and stand
+        // as the page's newest version, and the cursor would keep any later capture from putting that right.
+        var captured = await db.PageHistoryStates.AsNoTracking()
+            .Where(s => s.PageId == pageId)
+            .Select(s => new { s.CapturedSeq, s.CapturedUpdates })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (captured is not null && (captured.CapturedUpdates > snapshot.StoredUpdates || captured.CapturedSeq > snapshot.ContentSeq))
+        {
+            return HistoryCaptureOutcome.Superseded;
+        }
+
         // The policy as it is now, not as it was when the page was chosen.
         var policy = HistoryPolicy.From(await db.Workspaces.AsNoTracking().SingleAsync(w => w.Id == snapshot.WorkspaceId, cancellationToken));
 
@@ -257,12 +275,12 @@ internal sealed class HistoryCapture(
             .Select(v => new { v.Fingerprint, v.Title, v.FileText, v.CreatedAt })
             .FirstOrDefaultAsync(cancellationToken);
         var lastAt = newest?.CreatedAt;
-        var last = newest is null ? null : new Shown(newest.Fingerprint, newest.Title, newest.FileText);
+        var last = newest is null ? null : new HistoryCap.Shown(newest.Fingerprint, newest.Title, newest.FileText);
 
         var versions = new List<PageVersion>();
         foreach (var rename in renames)
         {
-            var shown = new Shown(snapshot.Fingerprint, rename.Title, snapshot.FileText);
+            var shown = new HistoryCap.Shown(snapshot.Fingerprint, rename.Title, snapshot.FileText);
             if (!shown.Same(last))
             {
                 versions.Add(new PageVersion(
@@ -272,7 +290,7 @@ internal sealed class HistoryCapture(
             }
         }
 
-        var current = new Shown(snapshot.Fingerprint, snapshot.Title, snapshot.FileText);
+        var current = new HistoryCap.Shown(snapshot.Fingerprint, snapshot.Title, snapshot.FileText);
         if (!current.Same(last))
         {
             // Nobody in particular: an automatic version can hold several people's edits.
@@ -325,14 +343,6 @@ internal sealed class HistoryCapture(
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return versions.Count > 0 ? HistoryCaptureOutcome.Captured : HistoryCaptureOutcome.Unchanged;
-    }
-
-    /// <summary>What makes two versions of a page the same to someone looking at them.</summary>
-    private sealed record Shown(byte[] Fingerprint, string Title, string FileText)
-    {
-        public bool Same(Shown? other) =>
-            other is not null && Title == other.Title && FileText == other.FileText
-            && Fingerprint.Length > 0 && Fingerprint.AsSpan().SequenceEqual(other.Fingerprint);
     }
 
     /// <summary>
