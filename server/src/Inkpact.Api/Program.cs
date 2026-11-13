@@ -32,6 +32,17 @@ if (ResetPasswordCommand.IsCommand(args))
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 
+// Before anything is written (the services below make the keys folder): a /data the app cannot write, such as a host
+// folder that belongs to root, stops it here with one line that says what to run. The app's logging is not built yet, so
+// the line goes through a logger of its own, in the same format; disposing it writes the line out.
+using (var startupLogs = LoggerFactory.Create(logging => logging.AddConfiguration(builder.Configuration.GetSection("Logging")).AddConsole()))
+{
+    if (!DataDirectories.Check(builder.Configuration, startupLogs.CreateLogger("Inkpact.Startup")))
+    {
+        return 1;
+    }
+}
+
 // The log is one line per entry (appsettings.json). Logging__Console__FormatterName=json gives a log collector one JSON
 // object per entry instead, with the scopes (the request's trace id) that the readable format leaves out.
 builder.Services.Configure<JsonConsoleFormatterOptions>(options => options.IncludeScopes = true);

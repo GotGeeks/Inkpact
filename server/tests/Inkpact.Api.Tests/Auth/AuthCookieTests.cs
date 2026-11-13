@@ -153,6 +153,25 @@ public class AuthCookieTests(PostgresFixture postgres) : IClassFixture<PostgresF
         cookie.ShouldStartWith("__Host-inkpact=");
     }
 
+    [Theory]
+    // Unraid passes a template's field even when it is left empty: Network__TrustedProxies__0=''.
+    [InlineData("10.1.2.3", true, new[] { "" })]
+    [InlineData("10.1.2.3", true, new[] { " ", "" })]
+    [InlineData("203.0.113.9", false, new[] { "" })]
+    // A blank entry next to a real one is left out; the real one replaces the defaults as usual.
+    [InlineData("203.0.113.9", true, new[] { "", "203.0.113.0/24" })]
+    [InlineData("10.1.2.3", false, new[] { "", "203.0.113.0/24" })]
+    public async Task An_empty_trusted_range_is_left_out_and_the_defaults_stay_when_none_is_left(
+        string remoteIp, bool trusted, string[] trustedProxies)
+    {
+        var (factory, client) = await StartAsync(trustedProxies: trustedProxies, remoteIp: remoteIp);
+        await using var disposeFactory = factory;
+
+        var cookie = await SessionCookieAsync(client, request => request.Headers.Add("X-Forwarded-Proto", "https"));
+
+        cookie.StartsWith(trusted ? "__Host-inkpact=" : "inkpact=").ShouldBeTrue(cookie);
+    }
+
     [Fact]
     public async Task A_private_address_is_no_longer_trusted_when_the_ranges_are_set_elsewhere()
     {

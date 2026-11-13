@@ -22,6 +22,8 @@ services:
       # Attachments__MaxFileSize: 52428800
       # Once a day the app asks GitHub for its newest release, to tell the administrator about an update. This stops it.
       # UpdateCheck__Enabled: 'false'
+      # One JSON object per log entry, for a log collector (Loki, Graylog), instead of one readable line.
+      # Logging__Console__FormatterName: json
     ports:
       - '${INKPACT_PORT:-8080}:8080'
     volumes:
