@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Net.WebSockets;
 using Inkpact.Api.Auth;
 using Inkpact.Api.Pages;
@@ -624,6 +625,39 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
 
         (await mine.ExpectCloseAsync()).CloseStatus.ShouldBe(SyncClose.SessionEnded);
         (await mineElsewhere.ExpectCloseAsync()).CloseStatus.ShouldBe(SyncClose.SessionEnded);
+        await someoneElse.ExpectSilenceAsync();
+    }
+
+    [Fact]
+    public async Task Signing_out_another_device_from_the_settings_closes_its_sockets_and_only_those()
+    {
+        var otherBrowser = await _jos.LogInAgainAsync();
+        var mine = await ConnectAsync();
+        var theirs = await ConnectAsync(otherBrowser);
+        var list = await _jos.Http.GetFromJsonAsync<Inkpact.Api.Account.SessionList>("/api/account/sessions");
+        var other = list!.Sessions.Single(s => !s.Current);
+
+        (await _jos.Http.DeleteJsonAsync($"/api/account/sessions/{other.Id}")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        (await theirs.ExpectCloseAsync()).CloseStatus.ShouldBe(SyncClose.SessionEnded);
+        await mine.ExpectSilenceAsync();
+    }
+
+    [Fact]
+    public async Task Signing_out_all_other_devices_closes_their_sockets_and_keeps_this_one()
+    {
+        var otherBrowser = await _jos.LogInAgainAsync();
+        var thirdBrowser = await _jos.LogInAgainAsync();
+        var mine = await ConnectAsync();
+        var theirs = await ConnectAsync(otherBrowser);
+        var third = await ConnectAsync(thirdBrowser);
+        var someoneElse = await ConnectAsync(await OtherPersonAsync(WorkspaceRole.Editor));
+
+        (await _jos.Http.PostJsonAsync("/api/account/sessions/sign-out-others")).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        (await theirs.ExpectCloseAsync()).CloseStatus.ShouldBe(SyncClose.SessionEnded);
+        (await third.ExpectCloseAsync()).CloseStatus.ShouldBe(SyncClose.SessionEnded);
+        await mine.ExpectSilenceAsync();
         await someoneElse.ExpectSilenceAsync();
     }
 

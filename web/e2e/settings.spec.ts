@@ -84,7 +84,10 @@ test('numbers that cannot be saved are named, and a change that removes versions
   const before = await daily.inputValue()
 
   await daily.fill('0')
-  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await page
+    .getByTestId('history-settings')
+    .getByRole('button', { name: 'Save', exact: true })
+    .click()
   await expect(page.getByTestId('policy-problem')).toHaveText(
     'Keep one a day for a whole number of days, from 1 to 3650.',
   )
@@ -94,7 +97,10 @@ test('numbers that cannot be saved are named, and a change that removes versions
   await granular.fill(
     String(Math.min(Number(await granular.inputValue()), Math.max(1, Number(before) - 1) * 24)),
   )
-  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await page
+    .getByTestId('history-settings')
+    .getByRole('button', { name: 'Save', exact: true })
+    .click()
   const warning = page.getByTestId('policy-warning')
   await expect(warning.getByRole('heading', { name: 'Remove versions?' })).toBeFocused()
   await warning.getByRole('button', { name: 'Cancel' }).click()

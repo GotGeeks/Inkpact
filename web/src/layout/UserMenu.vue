@@ -185,7 +185,8 @@ const item =
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator class="my-space-xs h-px bg-border-subtle" />
-        <template v-if="tree.workspace">
+        <!-- For everyone, with or without a workspace: the account section needs none (run B.9). -->
+        <template v-if="auth.user">
           <DropdownMenuItem
             :aria-describedby="update ? 'update-hint' : undefined"
             data-testid="settings-item"

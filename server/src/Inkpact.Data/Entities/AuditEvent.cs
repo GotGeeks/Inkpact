@@ -36,6 +36,12 @@ public static class AuditEventTypes
     /// <summary>A new password was set from the command line (<c>reset-password</c>). No address: it came from the console.</summary>
     public const string PasswordReset = "password_reset";
 
+    /// <summary>A person signed one of their other devices out, from the settings screen (run B.9).</summary>
+    public const string SessionRevoked = "session_revoked";
+
+    /// <summary>A person signed out every device but the one they used, from the settings screen (run B.9).</summary>
+    public const string SessionsRevoked = "sessions_revoked";
+
     /// <summary>Someone took the export of a workspace: all of its pages and files.</summary>
     public const string WorkspaceExported = "workspace_exported";
 }

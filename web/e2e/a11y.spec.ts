@@ -605,16 +605,56 @@ test('the settings screen, a number it cannot save and its warning', async ({ pa
     route.request().method() === 'PUT' ? route.abort() : route.fallback(),
   )
   await daily.fill('0')
-  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await page
+    .getByTestId('history-settings')
+    .getByRole('button', { name: 'Save', exact: true })
+    .click()
   await expect(page.getByTestId('policy-problem')).toBeVisible()
   await scan(page, testInfo, 'settings with a number it cannot save')
 
   await daily.fill('1')
   await page.getByLabel('Every version, for (hours)').fill('1')
-  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await page
+    .getByTestId('history-settings')
+    .getByRole('button', { name: 'Save', exact: true })
+    .click()
   await expect(page.getByTestId('policy-warning')).toBeVisible()
   await scan(page, testInfo, 'settings warning before versions are removed')
   await page.getByTestId('policy-warning').getByRole('button', { name: 'Cancel' }).click()
+})
+
+test('the account section, its device list and a confirmation', async ({ page }, testInfo) => {
+  // Answered here, so the list is the same every time and nothing is signed out.
+  const now = new Date().toISOString()
+  await page.route('**/api/account/sessions', (route) =>
+    route.fulfill({
+      json: {
+        sessions: [
+          {
+            id: 'this',
+            signedInAt: now,
+            lastSeenAt: now,
+            userAgent:
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0',
+            current: true,
+          },
+          { id: 'phone', signedInAt: now, lastSeenAt: now, userAgent: null, current: false },
+        ],
+        more: 2,
+      },
+    }),
+  )
+  await page.goto('/')
+  await openUserMenu(page)
+  await page.getByRole('menuitem', { name: 'Settings', exact: true }).click()
+  await closeDrawer(page)
+  await expect(page.getByTestId('device')).toHaveCount(2)
+  await scan(page, testInfo, 'account section')
+
+  await page.locator('[id="sign-out-phone"]').click()
+  await expect(page.getByText('Sign this device out?')).toBeFocused()
+  await scan(page, testInfo, 'account section asking to sign a device out')
+  await page.getByTestId('devices').getByRole('button', { name: 'Cancel' }).click()
 })
 
 test('the account menu and the settings screen while a newer release is out', async ({
