@@ -72,6 +72,8 @@ public static class HistoryExtensions
         services.AddSingleton<HistorySnapshotBuilder>();
         services.AddSingleton<HistoryCapture>();
         services.AddSingleton<HistoryPreviewGate>();
+        services.AddSingleton<IHistoryRestoreHooks, NoHistoryRestoreHooks>();
+        services.AddScoped<HistoryRestore>();
         services.AddHostedService<HistoryCaptureWorker>();
         return services;
     }

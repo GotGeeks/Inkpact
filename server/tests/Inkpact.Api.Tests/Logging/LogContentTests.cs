@@ -124,6 +124,14 @@ public class LogContentTests(PostgresFixture postgres) : IClassFixture<PostgresF
         (await owner.GetAsync($"/api/pages/{pageId}/versions/{versions!.Versions[0].Id}")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await owner.GetFromJsonAsync<VersionList>($"/api/pages/{brokenId}/versions"))!.State.ShouldBe(HistoryStates.Failed);
 
+        // A restore of the oldest version, which logs that it was made.
+        var oldest = versions.Versions[^1];
+        var version = await owner.GetFromJsonAsync<JsonElement>($"/api/pages/{pageId}");
+        var restored = await owner.PostJsonAsync(
+            $"/api/pages/{pageId}/versions/{oldest.Id}/restore",
+            new { operationId = Guid.NewGuid(), expectedContent = versions.PageContent, expectedVersion = version.GetProperty("page").GetProperty("version").GetInt32() });
+        restored.StatusCode.ShouldBe(HttpStatusCode.OK);
+
         factory.Logs.Entries.ShouldNotBeEmpty();
         factory.Logs.Entries
             .Where(e => e.Message.Contains(Marker, StringComparison.OrdinalIgnoreCase))

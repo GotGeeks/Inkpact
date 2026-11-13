@@ -70,3 +70,34 @@ public class PageTitleChange
     /// <summary>Who renamed it. Cleared when the user is deleted.</summary>
     public Guid? ChangedBy { get; set; }
 }
+
+/// <summary>
+/// A restore that was made (run B.5b), kept by the id the client gave it: a request repeated after its answer was lost gets
+/// that first answer back, also after the version it restored was pruned, and is never restored a second time over what was
+/// written since. The version ids are not foreign keys: the versions can be pruned, the answer stays.
+/// </summary>
+public class PageRestore
+{
+    public Guid OperationId { get; set; }
+
+    public Guid PageId { get; set; }
+
+    /// <summary>The version that was restored.</summary>
+    public Guid VersionId { get; set; }
+
+    /// <summary>Who restored it. Cleared when the user is deleted, after which the id answers nobody.</summary>
+    public Guid? UserId { get; set; }
+
+    /// <summary>The version that keeps the page as it was before.</summary>
+    public Guid BeforeVersionId { get; set; }
+
+    /// <summary>The version that is the page as the restore made it.</summary>
+    public Guid RestoreVersionId { get; set; }
+
+    /// <summary>The page's title and metadata version right after the restore, for the answer.</summary>
+    public string Title { get; set; } = "";
+
+    public int PageVersion { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+}

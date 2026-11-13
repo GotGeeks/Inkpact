@@ -46,8 +46,6 @@ internal sealed class HistoryCapture(
     TimeProvider time,
     ILogger<HistoryCapture> logger)
 {
-    internal const int EvictionBatchSize = 128;
-
     private static readonly TimeSpan MaxUnreadableBackoff = TimeSpan.FromHours(24);
     private static readonly TimeSpan MaxUnavailableBackoff = TimeSpan.FromHours(1);
 
@@ -268,7 +266,7 @@ internal sealed class HistoryCapture(
             if (!shown.Same(last))
             {
                 versions.Add(new PageVersion(
-                    pageId, snapshot.State, rename.Title, snapshot.FileText, After(rename.ChangedAt, ref lastAt), rename.ChangedBy, PageVersionKind.Rename,
+                    pageId, snapshot.State, rename.Title, snapshot.FileText, HistoryCap.After(rename.ChangedAt, ref lastAt), rename.ChangedBy, PageVersionKind.Rename,
                     fingerprint: snapshot.Fingerprint, contentSeq: snapshot.ContentSeq));
                 last = shown;
             }
@@ -279,16 +277,14 @@ internal sealed class HistoryCapture(
         {
             // Nobody in particular: an automatic version can hold several people's edits.
             versions.Add(new PageVersion(
-                pageId, snapshot.State, snapshot.Title, snapshot.FileText, After(snapshot.ObservedAt, ref lastAt), createdBy: null, PageVersionKind.Automatic,
+                pageId, snapshot.State, snapshot.Title, snapshot.FileText, HistoryCap.After(snapshot.ObservedAt, ref lastAt), createdBy: null, PageVersionKind.Automatic,
                 fingerprint: snapshot.Fingerprint, contentSeq: snapshot.ContentSeq));
         }
 
         if (versions.Count > 0 && policy.CapBytes is { } cap)
         {
             var now = time.GetUtcNow();
-            var stored = db.PageVersions.Where(v => db.Pages.Any(p => p.Id == v.PageId && p.WorkspaceId == snapshot.WorkspaceId));
-            var size = await stored.SumAsync(v => (long?)v.PayloadBytes, cancellationToken) ?? 0;
-            var kept = await stored.Where(v => v.ProtectedUntil > now).SumAsync(v => (long?)v.PayloadBytes, cancellationToken) ?? 0;
+            var (size, kept) = await HistoryCap.MeasureAsync(db, snapshot.WorkspaceId, now, cancellationToken);
 
             // Under a cap the oldest versions go first, and that holds for the ones about to be written too: when the
             // titles that waited and the page as it is do not all fit, the earliest titles are left out. Each of them is
@@ -306,7 +302,7 @@ internal sealed class HistoryCapture(
                 return HistoryCaptureOutcome.Full;
             }
 
-            await EvictAsync(stored, size + needed - cap, now, cancellationToken);
+            await HistoryCap.EvictAsync(db, snapshot.WorkspaceId, size + needed - cap, now, cancellationToken);
         }
 
         db.PageVersions.AddRange(versions);
@@ -331,64 +327,12 @@ internal sealed class HistoryCapture(
         return versions.Count > 0 ? HistoryCaptureOutcome.Captured : HistoryCaptureOutcome.Unchanged;
     }
 
-    /// <summary>
-    /// The time a new version gets: <paramref name="at"/>, or just after the page's newest version when that is not
-    /// earlier. A page's versions are read newest first, so the one written last must also be the last in time: a rename
-    /// that waited for the capture after it would otherwise sort before the version that capture made, and the page's
-    /// newest version would carry a title the page no longer has. The smallest step Postgres keeps is a microsecond.
-    /// </summary>
-    private static DateTimeOffset After(DateTimeOffset at, ref DateTimeOffset? last)
-    {
-        if (last is { } newest && at <= newest)
-        {
-            at = newest.AddTicks(TimeSpan.TicksPerMicrosecond);
-        }
-
-        last = at;
-        return at;
-    }
-
     /// <summary>What makes two versions of a page the same to someone looking at them.</summary>
     private sealed record Shown(byte[] Fingerprint, string Title, string FileText)
     {
         public bool Same(Shown? other) =>
             other is not null && Title == other.Title && FileText == other.FileText
             && Fingerprint.Length > 0 && Fingerprint.AsSpan().SequenceEqual(other.Fingerprint);
-    }
-
-    /// <summary>
-    /// Removes the workspace's oldest versions that are not protected until <paramref name="excess"/> bytes are gone. The
-    /// caller has checked that there are that many, and holds the workspace's history lock.
-    /// </summary>
-    private static async Task EvictAsync(IQueryable<PageVersion> stored, long excess, DateTimeOffset now, CancellationToken cancellationToken)
-    {
-        while (excess > 0)
-        {
-            var oldest = await stored.AsNoTracking()
-                .Where(v => v.PayloadBytes > 0 && (v.ProtectedUntil == null || v.ProtectedUntil <= now))
-                .OrderBy(v => v.CreatedAt)
-                .ThenBy(v => v.Id)
-                .Select(v => new { v.Id, v.PayloadBytes })
-                .Take(EvictionBatchSize)
-                .ToListAsync(cancellationToken);
-            if (oldest.Count == 0)
-            {
-                throw new InvalidOperationException("The history has fewer unprotected bytes than were counted under its lock.");
-            }
-
-            var ids = new List<Guid>();
-            foreach (var version in oldest)
-            {
-                ids.Add(version.Id);
-                excess -= version.PayloadBytes;
-                if (excess <= 0)
-                {
-                    break;
-                }
-            }
-
-            await stored.Where(v => ids.Contains(v.Id)).ExecuteDeleteAsync(cancellationToken);
-        }
     }
 
     /// <summary>

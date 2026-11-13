@@ -594,6 +594,58 @@ namespace Inkpact.Data.Migrations
                     b.ToTable("page_links", (string)null);
                 });
 
+            modelBuilder.Entity("Inkpact.Data.Entities.PageRestore", b =>
+                {
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("operation_id");
+
+                    b.Property<Guid>("BeforeVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("before_version_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("page_id");
+
+                    b.Property<int>("PageVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("page_version");
+
+                    b.Property<Guid>("RestoreVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("restore_version_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("VersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("version_id");
+
+                    b.HasKey("OperationId")
+                        .HasName("pk_page_restores");
+
+                    b.HasIndex("PageId")
+                        .HasDatabaseName("ix_page_restores_page_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_page_restores_user_id");
+
+                    b.ToTable("page_restores", (string)null);
+                });
+
             modelBuilder.Entity("Inkpact.Data.Entities.PageSnapshot", b =>
                 {
                     b.Property<Guid>("PageId")
@@ -1265,6 +1317,22 @@ namespace Inkpact.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_page_links_source_page_id");
+                });
+
+            modelBuilder.Entity("Inkpact.Data.Entities.PageRestore", b =>
+                {
+                    b.HasOne("Inkpact.Data.Entities.Page", null)
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_page_restores_page_id");
+
+                    b.HasOne("Inkpact.Data.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_page_restores_user_id");
                 });
 
             modelBuilder.Entity("Inkpact.Data.Entities.PageSnapshot", b =>
