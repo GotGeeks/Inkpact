@@ -3,8 +3,8 @@
 # Open http://<host>:8080 and create the administrator with the setup code from .env.
 services:
   app:
-    # edge until the first release is out; then latest, the newest release (run B.8, "After the run").
-    image: ${INKPACT_IMAGE:-ghcr.io/gotgeeks/inkpact:edge}
+    # The newest release. Set INKPACT_IMAGE to stay on one (ghcr.io/gotgeeks/inkpact:0.1), or to :edge for main.
+    image: ${INKPACT_IMAGE:-ghcr.io/gotgeeks/inkpact:latest}
     restart: unless-stopped
     depends_on:
       postgres:

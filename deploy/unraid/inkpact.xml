@@ -7,8 +7,8 @@
        UnraidTemplateTests checks that they match. -->
 
   <Name>Inkpact</Name>
-  <!-- edge until the first release is out, then latest; the compose file runs the same (UnraidTemplateTests). -->
-  <Repository>ghcr.io/gotgeeks/inkpact:edge</Repository>
+  <!-- The newest release; the compose file runs the same (UnraidTemplateTests). -->
+  <Repository>ghcr.io/gotgeeks/inkpact:latest</Repository>
   <Registry>https://github.com/GotGeeks/Inkpact/pkgs/container/inkpact</Registry>
   <Network>bridge</Network>
   <MyIP/>
