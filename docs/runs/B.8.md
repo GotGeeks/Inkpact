@@ -2,7 +2,7 @@
 
 **Model:** S·med in the roadmap; kept. Planned on Opus 5.5 on 2026-11-13. Three PRs, each `/code-review` at medium before it merges: PR 1 adds the server's first outbound call, PR 2 handles signing and a token that can write to the repository.
 
-**Status:** PR 1 built (see **Handoff**). The four questions are taken as recommended (the maintainer asked for the card to be built without answering them; they can still be changed before PRs 2 and 3 merge).
+**Status:** PRs 1 and 2 built (see **Handoff**). The four questions are taken as recommended (the maintainer asked for the card to be built without answering them; they can still be changed before PRs 2 and 3 merge).
 
 ## Goal
 
@@ -56,7 +56,7 @@ A release is one merge: merging the release PR tags the version, writes the chan
 4. **One token for what `GITHUB_TOKEN` cannot do** (question 2).
    - **What it does:** release-please opens and updates its PR with a GitHub App's installation token (`actions/create-github-app-token`), so the PR runs its checks like any other.
    - **Sign-off:** the release commit carries the App's bot identity as its sign-off (release-please's `signoff` option). If that cannot be made to match its author, `check-dco.sh` exempts that one bot by its login, as `ci.yml` does for Dependabot. The commit title (`chore(main): release 0.1.0`) passes commitlint as it is.
-   - **Secrets:** the App id and its private key are repository secrets: `RELEASE_APP_ID`, `RELEASE_APP_KEY`.
+   - **Secrets:** the App's client id and its private key are repository secrets: `RELEASE_APP_CLIENT_ID`, `RELEASE_APP_KEY` (PR 2: the token action asks for the client id; the App id is deprecated there).
 5. **One publishing path, for `edge` and for releases.**
    - **The build:** `image.yml` gets a `workflow_call` with `version` and `release` inputs. It builds each architecture on its own runner (`ubuntu-24.04-arm` for arm64, free for a public repository) and pushes by digest. Each build has `provenance: mode=max` and `sbom: true`. A merge job ties the two digests into one index and checks that both architectures are in it. It then tags it (`edge` and `sha-<sha>`; or `x.y.z`, `x.y` and `latest`) and signs it keylessly with `cosign sign --recursive` (`id-token: write`).
    - **Before anything is pushed:** the existing checks run on the amd64 image: inspect, backup and restore, the Trivy gate, and the new upgrade test.
@@ -232,3 +232,39 @@ A release is one merge: merging the release PR tags the version, writes the chan
   - `VersionEndpointTests`: administrator, member, signed out, with a fake GitHub.
 - **Web:** the store, the About section, the menu.
 - **Playwright:** `settings.spec.ts` (the development build; an answered update in the menu and on the screen) and `a11y.spec.ts` (both, scanned).
+
+### PR 2: the pipeline
+
+- **[`image.yml`](../../.github/workflows/image.yml)**, one path for `edge` and releases:
+  - **`version`:** [`.github/scripts/image-version.sh`](../../.github/scripts/image-version.sh) works out what is built: the version (a release's `x.y.z`, or `<manifest>+edge.<sha>`), the tags, whether it is published, and the upgrade test's start (`latest`, or `edge` while there is no release).
+  - **`check`:** on amd64 it runs the inspection (now also the stamped version), backup and restore, the new upgrade test, and the Trivy gates.
+  - **`build`:** each architecture on its own runner (`ubuntu-24.04-arm` for arm64), pushed by digest, with `provenance: mode=max` and `sbom: true`.
+  - **`publish`:** one index of both digests, tagged, checked to hold both architectures, signed with `cosign sign --recursive`, and summed up in the run's summary.
+  - **`scan`:** rescans `edge` and `latest` weekly; `latest` is skipped until it exists.
+  - **Triggers:** pull requests that change a migration, and `workflow_call` with the release's version. A manual run can build and check both architectures without publishing.
+- **[`release.yml`](../../.github/workflows/release.yml):** release-please with the App's token, then `image.yml` for the release in the same run. Without the App's secrets it says so and does nothing, so main stays green until the App is set up.
+- **[`release-please-config.json`](../../release-please-config.json)** and `.release-please-manifest.json`: release type `simple`, first version `0.1.0`, `bump-minor-pre-major`, `bootstrap-sha` at the merge of #151, the changelog sections of decision 3 (without "Security": commitlint has no such type, so security fixes are `fix`).
+- **[`deploy/test-upgrade.sh`](../../deploy/test-upgrade.sh):** decision 6, with the history capture's round set to two seconds and the update check off in a compose override of its own.
+- **`ci.yml`:** the DCO check skips the release pull request: an account ending in `[bot]` (only a GitHub App's can), on a `release-please--` branch.
+- **The compose file** runs `latest`.
+- **Docs:**
+  - the guide's "Updating" (`latest`, the version tags, `edge`, images following the release) and "Verifying the image" (`cosign verify`, SBOM, provenance);
+  - architecture ("Database migrations", "Main and releases");
+  - `SECURITY.md` (supported versions, verifying);
+  - README (status, release badge);
+  - CONTRIBUTING (the changelog's commit types; "Releases", with the App's setup).
+
+**Where it differs from the card:**
+
+1. **No `signoff` option:** the App's bot identity (`<slug>[bot] <id+slug[bot]@users.noreply.github.com>`) is known only once the App exists, and the check wants the sign-off to match the author exactly. The DCO check skips that one kind of pull request instead (decision 4's fallback).
+2. **The secrets are `RELEASE_APP_CLIENT_ID` and `RELEASE_APP_KEY`** (see decision 4).
+3. **The image's inspection had a check that could never fail:** `! docker run --read-only …` under `set -e`. It is an `if` now, and actionlint found it.
+4. **A release's images follow its GitHub release** by the length of their checks (about half an hour): the update notice can name a release whose image is not there yet. The guide says so. Holding the release as a draft until the images are out would need release-please's draft mode and a step that publishes it; not worth it for 0.x.
+
+**Checked while building:**
+- **The upgrade test** from `ghcr.io/gotgeeks/inkpact:sha-657b3c2` (before the history-restore migration) to an image of this branch passed: one migration, after a dump, and every answer the same.
+- **A throwaway image** with a migration that deletes every page's tag (built in a separate worktree, never committed) made it fail on `tags.json`.
+- **Lint:** actionlint 1.7.7 on every workflow, and shellcheck 0.10 on the scripts, both clean.
+- **`image-version.sh`** run locally for a push, a release, and a version that is not x.y.z.
+
+**Not checked:** the release itself and the arm64 build run only on GitHub, after the merge. The first release (see "After the run") is their test; its outcome goes here.

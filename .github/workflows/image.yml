@@ -1,8 +1,15 @@
 name: Image
 
-# The container image: built, checked and scanned for a change that can affect it, and published as `edge` to GHCR on
-# every merge to main. A pull request builds and scans only. No Playwright here: it is too slow on GitHub, so the suite
-# against the container is run locally (see CONTRIBUTING). Release tags, signing and attestations come with the release pipeline.
+# The container image (runs 1.13 and B.8): built and checked for a change that can affect it, published as `edge` on every
+# merge to main, and as x.y.z, x.y and latest when release.yml calls it for a release. One path for both:
+#
+#   version  what is built: the version stamped in it, its tags, whether it is published, the upgrade test's start
+#   check    amd64, loaded into the runner: the image's properties, backup and restore, the upgrade from the newest
+#            release, and Trivy. Nothing is pushed unless all of it passed.
+#   build    each architecture on its own runner (no emulation), pushed by digest with its SBOM and provenance
+#   publish  one index of both digests, tagged, and signed with cosign (keyless, recursive: the index and each image)
+#
+# No Playwright here: it is too slow on GitHub, so the suite against the container is run locally (see CONTRIBUTING).
 on:
   pull_request:
     paths:
@@ -10,37 +17,80 @@ on:
       - .dockerignore
       - deploy/**
       - .github/workflows/image.yml
+      - .github/scripts/image-version.sh
       - .trivyignore
+      # A new migration is tested on an older release's database before it merges.
+      - server/src/Inkpact.Data/Migrations/**
   push:
     branches: [main]
-  # Rescans the published `edge` image: a new CVE in a base image that has not changed appears without any commit.
+  # Rescans the published images: a new CVE in a base image that has not changed appears without any commit.
   schedule:
     - cron: '30 5 * * 1'
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish edge after the checks (off builds and checks both architectures and pushes nothing)
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      version:
+        description: The release's version (x.y.z), from release-please
+        type: string
+        required: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: image-${{ github.ref }}
+  group: image-${{ github.ref }}-${{ inputs.version || 'edge' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   LOCAL_IMAGE: inkpact:ci
 
 jobs:
-  check:
-    name: image
+  version:
+    name: version
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
+      tags: ${{ steps.version.outputs.tags }}
+      publish: ${{ steps.version.outputs.publish }}
+      from: ${{ steps.version.outputs.from }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: version
+        run: bash .github/scripts/image-version.sh
+        env:
+          RELEASE: ${{ inputs.version }}
+          EVENT: ${{ github.event_name }}
+          PUBLISH_INPUT: ${{ inputs.publish }}
+          SHA: ${{ github.sha }}
+          IMAGE: ghcr.io/gotgeeks/inkpact
+
+  check:
+    name: image
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
     permissions:
       contents: read
       security-events: write # uploads the Trivy findings to code scanning
+    env:
+      INKPACT_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Node 26 runs the upgrade test's Joplin export (web/e2e/jex.ts) as it is.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
 
       # amd64 only: loaded into the runner's Docker to be inspected, scanned and started.
       - name: Build
@@ -49,6 +99,7 @@ jobs:
           context: .
           load: true
           tags: ${{ env.LOCAL_IMAGE }}
+          build-args: INKPACT_VERSION=${{ env.INKPACT_VERSION }}
           cache-from: type=gha,scope=amd64
           cache-to: type=gha,scope=amd64,mode=max
 
@@ -61,8 +112,15 @@ jobs:
           docker run --rm --entrypoint pg_dump "$LOCAL_IMAGE" --version | grep -E ' 1[89]\.| [2-9][0-9]\.'
           docker run --rm --entrypoint test "$LOCAL_IMAGE" -d /app/sidecar/node_modules/yjs
           docker run --rm --entrypoint test "$LOCAL_IMAGE" -f /app/wwwroot/index.html
-          # A read-only root filesystem refuses a write anywhere but the mounted /data and /tmp.
-          ! docker run --rm --read-only --entrypoint touch "$LOCAL_IMAGE" /app/x
+          # The version the app says it is, stamped into its assembly.
+          docker run --rm --entrypoint grep "$LOCAL_IMAGE" -qaF "$INKPACT_VERSION" /app/Inkpact.Api.dll \
+            || { echo "::error::The image is not stamped with $INKPACT_VERSION"; exit 1; }
+          # A read-only root filesystem refuses a write anywhere but the mounted /data and /tmp. (Not `! docker run`:
+          # a negated command never stops a script under set -e.)
+          if docker run --rm --read-only --entrypoint touch "$LOCAL_IMAGE" /app/x; then
+            echo "::error::The image wrote to its read-only root filesystem"
+            exit 1
+          fi
           # The SDK image of the Dockerfile and global.json move together (Dependabot opens two pull requests).
           pinned="$(node -p "require('./global.json').sdk.version")"
           grep -qE "^FROM mcr\.microsoft\.com/dotnet/sdk:${pinned}@" Dockerfile \
@@ -73,8 +131,14 @@ jobs:
       - name: Backup and restore
         run: |
           set -euo pipefail
-          shellcheck deploy/inkpact.sh deploy/test-backup-restore.sh
+          shellcheck deploy/inkpact.sh deploy/test-backup-restore.sh deploy/test-upgrade.sh .github/scripts/image-version.sh
           INKPACT_IMAGE="$LOCAL_IMAGE" deploy/test-backup-restore.sh
+
+      # The newest release's database and files, taken over by this image: nothing may be lost (run B.8).
+      - name: Upgrade from ${{ needs.version.outputs.from }}
+        run: deploy/test-upgrade.sh "$FROM" "$LOCAL_IMAGE"
+        env:
+          FROM: ${{ needs.version.outputs.from }}
 
       # All findings, for the Security tab. The gate below decides what fails.
       - name: Scan, all findings
@@ -112,59 +176,170 @@ jobs:
           exit-code: '1'
           trivyignores: .trivyignore
 
-  publish:
-    name: publish
-    needs: check
-    if: github.event_name != 'pull_request' && github.event_name != 'schedule'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+  build:
+    name: build (${{ matrix.arch }})
+    needs: [version, check]
+    if: github.event_name != 'pull_request'
+    # Each architecture on its own hardware: arm64 under emulation took up to an hour. Free for a public repository.
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        arch: [amd64, arm64]
+    env:
+      PUBLISH: ${{ needs.version.outputs.publish }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+      - if: env.PUBLISH == 'true'
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Lowercases the repository name, which a registry requires.
+      # The labels only; the tags go on the index in the publish job.
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=raw,value=edge
-            type=sha,prefix=sha-
+          images: ghcr.io/gotgeeks/inkpact
+          labels: |
+            org.opencontainers.image.version=${{ needs.version.outputs.version }}
 
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      # Pushed by digest, without a tag, with its SBOM and its provenance. Without publishing it is built and dropped.
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          platforms: linux/${{ matrix.arch }}
+          build-args: INKPACT_VERSION=${{ needs.version.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: |
-            type=gha,scope=amd64
-            type=gha,scope=arm64
-          cache-to: type=gha,scope=arm64,mode=max
+          outputs: ${{ env.PUBLISH == 'true' && 'type=image,name=ghcr.io/gotgeeks/inkpact,push-by-digest=true,name-canonical=true,push=true' || 'type=cacheonly' }}
+          provenance: ${{ env.PUBLISH == 'true' && 'mode=max' || 'false' }}
+          sbom: ${{ env.PUBLISH == 'true' }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,scope=${{ matrix.arch }},mode=max
 
-  # The image people actually pull, rescanned every week: all findings to the Security tab, and a red run on a HIGH or
+      - name: Keep the digest
+        if: env.PUBLISH == 'true'
+        run: |
+          set -euo pipefail
+          [[ "$DIGEST" == sha256:* ]] || { echo "::error::The build gave no digest"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+      - if: env.PUBLISH == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ github.run_id }}-${{ inputs.version || 'edge' }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: publish
+    needs: [version, build]
+    if: needs.version.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # cosign's keyless signature: the workflow's own identity, no key to keep
+    env:
+      IMAGE: ghcr.io/gotgeeks/inkpact
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digest-${{ github.run_id }}-${{ inputs.version || 'edge' }}-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+
+      # One index of both architectures, with every tag; its digest from the create itself, not read back through a tag
+      # that another run may have moved since.
+      - id: index
+        name: Tag the index
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          set -euo pipefail
+          digests=(*)
+          [[ ${#digests[@]} -eq 2 ]] || { echo "::error::Expected 2 digests, found ${#digests[@]}"; exit 1; }
+          sources=()
+          for digest in "${digests[@]}"; do sources+=("$IMAGE@sha256:$digest"); done
+          tags=()
+          while IFS= read -r tag; do if [[ -n "$tag" ]]; then tags+=(-t "$tag"); fi; done <<<"$PUBLISH_TAGS"
+          [[ ${#tags[@]} -gt 0 ]] || { echo "::error::No tags to publish"; exit 1; }
+          docker buildx imagetools create --metadata-file "$RUNNER_TEMP/index.json" \
+            --annotation "index:org.opencontainers.image.description=Self-hosted, multi-user notes with real-time collaborative editing" \
+            --annotation "index:org.opencontainers.image.version=$VERSION" \
+            --annotation "index:org.opencontainers.image.source=https://github.com/GotGeeks/Inkpact" \
+            --annotation "index:org.opencontainers.image.licenses=AGPL-3.0-only" \
+            "${tags[@]}" "${sources[@]}"
+          digest="$(jq -r '."containerimage.descriptor".digest // ."containerimage.digest" // empty' "$RUNNER_TEMP/index.json")"
+          [[ "$digest" == sha256:* ]] || { echo "::error::No index digest in the create's metadata"; exit 1; }
+          echo "digest=$digest" >>"$GITHUB_OUTPUT"
+        env:
+          PUBLISH_TAGS: ${{ needs.version.outputs.tags }}
+          VERSION: ${{ needs.version.outputs.version }}
+
+      - name: Check the index
+        run: |
+          set -euo pipefail
+          docker buildx imagetools inspect "$IMAGE@$DIGEST" --raw \
+            | jq -e '[.manifests[] | .platform // empty | select(.os == "linux") | .architecture] | contains(["amd64", "arm64"])' >/dev/null
+        env:
+          DIGEST: ${{ steps.index.outputs.digest }}
+
+      # The index (which covers every tag) and, recursively, each image in it: a check against the digest a host pulled
+      # for its own architecture finds a signature too. docs/self-hosting.md says how to verify it.
+      - name: Sign
+        run: cosign sign --yes --recursive "$IMAGE@$DIGEST"
+        env:
+          DIGEST: ${{ steps.index.outputs.digest }}
+
+      - name: Say what was published
+        run: |
+          {
+            echo "### Published ${VERSION}"
+            echo
+            echo "Digest: \`${DIGEST}\`"
+            echo
+            while IFS= read -r tag; do if [[ -n "$tag" ]]; then printf -- '- %s\n' "$tag"; fi; done <<<"$PUBLISH_TAGS"
+          } >>"$GITHUB_STEP_SUMMARY"
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          DIGEST: ${{ steps.index.outputs.digest }}
+          PUBLISH_TAGS: ${{ needs.version.outputs.tags }}
+
+  # The images people actually pull, rescanned every week: all findings to the Security tab, and a red run on a HIGH or
   # CRITICAL one that has a fix.
-  scan-edge:
-    name: scan edge
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+  scan:
+    name: scan ${{ matrix.tag }}
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.version)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
       packages: read
       security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: [edge, latest]
     steps:
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
@@ -172,23 +347,36 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Until the first release there is no latest.
+      - id: exists
+        run: |
+          if docker manifest inspect "ghcr.io/gotgeeks/inkpact:${TAG}" >/dev/null 2>&1; then
+            echo "exists=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "::notice::ghcr.io/gotgeeks/inkpact:${TAG} is not published yet"
+          fi
+        env:
+          TAG: ${{ matrix.tag }}
+
       - name: Scan, all findings
+        if: steps.exists.outputs.exists == 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/gotgeeks/inkpact:edge
+          image-ref: ghcr.io/gotgeeks/inkpact:${{ matrix.tag }}
           format: sarif
-          output: trivy-edge.sarif
+          output: trivy-${{ matrix.tag }}.sarif
       - name: Upload the findings
-        if: always() && hashFiles('trivy-edge.sarif') != ''
+        if: always() && steps.exists.outputs.exists == 'true' && hashFiles(format('trivy-{0}.sarif', matrix.tag)) != ''
         uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
-          sarif_file: trivy-edge.sarif
-          category: trivy-edge
+          sarif_file: trivy-${{ matrix.tag }}.sarif
+          category: trivy-${{ matrix.tag }}
 
       - name: Scan
+        if: steps.exists.outputs.exists == 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/gotgeeks/inkpact:edge
+          image-ref: ghcr.io/gotgeeks/inkpact:${{ matrix.tag }}
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'

@@ -387,7 +387,7 @@ Every import ends with a report: counts per type, plus a list of anything skippe
 - The app refuses to start against a database newer than itself, with a clear message
 - Downgrades are unsupported: roll back by restoring the backup taken before the upgrade
 - Backups carry their schema version (the migrations history table is part of every dump)
-- CI runs an upgrade test: the previous release's database, migrated by the new version, must pass the integration tests
+- CI runs an upgrade test (`deploy/test-upgrade.sh`, run B.8) before any image is published, and on a pull request that adds a migration. The previous release's image (or `edge` before the first release) makes a database and data volume with real content, from a Joplin import, a rename and a favorite. The new image then takes them over, and must give the same answers through its API: the full export byte for byte, the pages, tags, favorites, versions, a search and a file. When it migrated, a dump must be in `/data/backups`. The xUnit suite is not run against the migrated database: it makes a database per test
 
 ## Project setup
 
@@ -442,11 +442,11 @@ To keep waiting short on the free plan, the slow suites do not run on a pull req
 
 **Main and releases**
 
-- Every merge to main publishes an `edge` image to GHCR (amd64 and arm64), handy for your own Unraid test instance
+- Every merge to main publishes an `edge` image to GHCR (amd64 and arm64, each built on its own runner, tied into one index), handy for your own Unraid test instance. It goes through the same checks, signing and attestations as a release (`image.yml`, one path for both)
 - Docs and screenshots are rebuilt: Playwright captures screenshots from a demo mode with sample data, as in GarageStack
-- Merging the release PR tags the version and creates the GitHub Release with its changelog
-- Release images are tagged `x.y.z`, `x.y` and `latest` on GHCR, signed with cosign, with SBOM and build provenance attestations
-- The Unraid template in your community-apps repository is updated automatically
+- Merging the release PR tags the version and creates the GitHub Release with its changelog. release-please opens that PR with a GitHub App's token, because a PR opened with `GITHUB_TOKEN` runs no checks (`release.yml`, run B.8)
+- Release images are tagged `x.y.z`, `x.y` and `latest` on GHCR, signed with cosign (keyless), with SBOM and build provenance attestations. They are published after the GitHub Release, once their checks pass
+- The Unraid template in your community-apps repository is updated through a pull request there whenever the template changes. The sync is switched off by a repository variable until the first public release (2.11), since a template there is listed in Community Apps
 - The app checks GitHub for newer releases through its own server, so the CSP stays strict, and shows a notice; a setting turns this off
 - The performance targets are checked against the seeded data set before each release
 - From phase 3: Electron installers for Windows, macOS and Linux are built, signed and attached to the release, with auto-update through electron-updater (code-signing certificates for Windows and macOS cost money yearly; budget them before phase 3)

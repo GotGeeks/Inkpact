@@ -8,7 +8,9 @@ Include what you found, how to reproduce it, and the version or commit you teste
 
 ## Supported versions
 
-Inkpact has no stable release yet. Until 1.0, only the latest commit on `main` is supported.
+Inkpact has no stable release yet. Until 1.0, only the latest release and the latest commit on `main` (the `edge` image) are supported: a fix comes in a new release, not in an older one.
+
+Every published image is signed and carries its SBOM and build provenance; "Verifying the image" in `docs/self-hosting.md` says how to check them.
 
 ## Scope
 

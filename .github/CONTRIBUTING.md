@@ -61,3 +61,17 @@ git commit -s -m "fix(sync): close dead sockets"
 ```
 
 The `-s` flag adds `Signed-off-by: Your Name <you@example.com>`, which certifies that you wrote the change or have the right to submit it under the project license ([developercertificate.org](https://developercertificate.org/)). CI checks both the format and the sign-off.
+
+The commit types decide the release notes: `feat` (Features), `fix` (Fixes), `perf` (Performance) and `revert` are listed; `docs`, `test`, `ci`, `build`, `chore`, `refactor` and `style` are not. A change that needs care when updating says so in a `BREAKING CHANGE:` footer.
+
+## Releases
+
+A release is one merge. On every push to `main`, release-please keeps a pull request open titled `chore(main): release x.y.z`, with the next version (from the commit types since the last release) and its changelog. Merging it tags the version, makes the GitHub release, and publishes the image as `x.y.z`, `x.y` and `latest`. The image is published only after its checks pass: inspection, backup and restore, the upgrade from the previous release, and Trivy. It is signed, with its SBOM and provenance (`.github/workflows/release.yml` and `image.yml`). Until 1.0 a breaking change raises the minor version.
+
+**Set up once:** release-please needs a GitHub App, because a pull request opened with the workflow's own token runs no checks.
+
+1. Create a GitHub App (Settings → Developer settings → GitHub Apps) with no webhook. Give it repository permissions *Contents*, *Pull requests* and *Issues*, read and write, and let it be installed on any account.
+2. Install it on `GotGeeks/Inkpact`, and on `joszz/unraid-community-apps` for the Unraid template's copy (see `docs/self-hosting.md`, "Unraid").
+3. In this repository's Actions secrets, set `RELEASE_APP_CLIENT_ID` (the App's client id) and `RELEASE_APP_KEY` (a private key made on the App's page).
+
+Without them, `release.yml` makes no release pull request and says so in its run.

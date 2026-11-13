@@ -3,7 +3,7 @@
 # Open http://<host>:8080 and create the administrator with the setup code from .env.
 services:
   app:
-    image: ${INKPACT_IMAGE:-ghcr.io/gotgeeks/inkpact:edge}
+    image: ${INKPACT_IMAGE:-ghcr.io/gotgeeks/inkpact:latest}
     restart: unless-stopped
     depends_on:
       postgres:
