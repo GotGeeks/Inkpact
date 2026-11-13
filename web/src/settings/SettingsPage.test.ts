@@ -29,13 +29,21 @@ afterEach(() => {
 /** The server: the workspace with the person's role, its policy, what it takes, and what a save answers. */
 function server(
   role: 'owner' | 'editor' | 'viewer',
-  options: { policy?: HistoryPolicy; put?: () => Response; failPolicy?: boolean } = {},
+  options: {
+    policy?: HistoryPolicy
+    put?: () => Response
+    failPolicy?: boolean
+    failWorkspaces?: boolean
+  } = {},
 ) {
   let policy = options.policy ?? defaults
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = String(input)
     const method = init?.method ?? 'GET'
-    if (path === '/api/workspaces') return jsonResponse(200, [{ ...workspace, role }])
+    if (path === '/api/workspaces')
+      return options.failWorkspaces
+        ? jsonResponse(503, { code: 'server_error' })
+        : jsonResponse(200, [{ ...workspace, role }])
     if (path === `/api/workspaces/${workspace.id}/pages`)
       return jsonResponse(200, { treeVersion: 1, pages: [] })
     if (path === `/api/workspaces/${workspace.id}/trash`) return jsonResponse(200, [])
@@ -63,7 +71,8 @@ async function open(
   const fetchMock = server(role, options)
   const pinia = createPinia()
   setActivePinia(pinia)
-  await useTreeStore().init()
+  // The tree is read already, as when the screen is opened from the menu; else the screen reads it itself.
+  if (!options.failWorkspaces) await useTreeStore().init()
   wrapper = mount(SettingsPage, {
     global: { plugins: [pinia, createAppI18n(locale)] },
     attachTo: document.body,
@@ -143,12 +152,16 @@ describe('SettingsPage', () => {
     await flushPromises()
     expect(byTestId('policy-warning')).toBeNull()
     expect(puts(fetchMock)).toHaveLength(0)
+    // The focus does not fall to the page: it goes to Save, where the warning was.
+    const saveButton = () => document.body.querySelector('button[type="submit"]')
+    expect(document.activeElement).toBe(saveButton())
 
     await submit()
     buttonNamed('Save and remove')!.click()
     await flushPromises()
     expect(puts(fetchMock)).toHaveLength(1)
     expect(JSON.parse(String(puts(fetchMock)[0]![1]!.body))).toMatchObject({ expiryDays: 90 })
+    expect(document.activeElement).toBe(saveButton())
   })
 
   it('says what is wrong with the numbers, and sends nothing', async () => {
@@ -168,6 +181,17 @@ describe('SettingsPage', () => {
     expect(text(byTestId('policy-problem'))).toBe(
       'One a week must last at least as long as one a day.',
     )
+
+    // A limit larger than the server can count.
+    await type('expiry-days', '365')
+    ;(document.querySelectorAll('input[type="checkbox"]')[1] as HTMLInputElement).click()
+    await flushPromises()
+    await type('cap-mib', '9000000000000')
+    await submit()
+    expect(text(byTestId('policy-problem'))).toBe(
+      `The limit is a whole number of MiB, from 1 to ${new Intl.NumberFormat('en').format(8_796_093_022_207)}.`,
+    )
+    expect(puts(fetchMock)).toHaveLength(0)
   })
 
   it('says when the limit is below what protected versions take', async () => {
@@ -207,6 +231,19 @@ describe('SettingsPage', () => {
       'The history settings could not be loaded.',
     )
     fetchMock.mockClear()
+    vi.stubGlobal('fetch', server('owner'))
+    buttonNamed('Try again')!.click()
+    await flushPromises()
+    expect(field('granular-hours').value).toBe('24')
+  })
+
+  it('says when the workspace could not be read (opened from its address), and reads it when asked again', async () => {
+    await open('owner', { failWorkspaces: true })
+
+    expect(text(document.querySelector('[role="alert"]'))).toContain(
+      'The history settings could not be loaded.',
+    )
+    expect(document.body.querySelector('[role="status"]')).toBeNull()
     vi.stubGlobal('fetch', server('owner'))
     buttonNamed('Try again')!.click()
     await flushPromises()

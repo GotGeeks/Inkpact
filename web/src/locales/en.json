@@ -696,7 +696,8 @@
       "tooLarge": "The page would be too large to open, so this version cannot be restored.",
       "pageUnreadable": "The page as it is now cannot be read back, so it cannot be kept. Nothing was changed.",
       "forbidden": "You may no longer edit this page.",
-      "failed": "The version could not be restored. Nothing was changed."
+      "failed": "The version could not be restored. Nothing was changed.",
+      "noAnswer": "No answer came, so the version may already be restored. Try again: it is not restored twice."
     }
   },
   "settings": {
@@ -734,7 +735,7 @@
         "dailyBeforeGranular": "One a day must last at least as long as every version.",
         "expiry": "Keep one a week for a whole number of days, up to 3650.",
         "expiryBeforeDaily": "One a week must last at least as long as one a day.",
-        "cap": "The limit is a whole number of MiB, 1 or more.",
+        "cap": "The limit is a whole number of MiB, from 1 to {max}.",
         "policy": "These settings cannot be saved. Check the numbers."
       }
     }

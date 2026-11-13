@@ -51,7 +51,8 @@ public class HistoryEndpointTests(PostgresFixture postgres) : IClassFixture<Post
     public async Task The_list_is_newest_first_with_what_a_row_shows_and_without_the_content()
     {
         await AddVersionsAsync(
-            new PageVersion(_pageId, new byte[10], "First", "", Now.AddHours(-3), null, PageVersionKind.Automatic),
+            // Its protection ended just now (the safety version of an earlier restore): no longer said.
+            new PageVersion(_pageId, new byte[10], "First", "", Now.AddHours(-3), null, PageVersionKind.Automatic, protectedUntil: Now),
             new PageVersion(_pageId, new byte[20], "Renamed", "", Now.AddHours(-2), _ownerId, PageVersionKind.Rename),
             new PageVersion(_pageId, new byte[30], "Renamed", "four", Now.AddHours(-1), _ownerId, PageVersionKind.BeforeRestore, protectedUntil: Now.AddHours(23)),
             new PageVersion(_pageId, new byte[40], "First", "", Now, _ownerId, PageVersionKind.Restore));
@@ -71,7 +72,7 @@ public class HistoryEndpointTests(PostgresFixture postgres) : IClassFixture<Post
             ("automatic", "First", 10),
         ]);
         list.Versions[0].CreatedAt.ShouldBe(Now);
-        // Only the version before a restore is protected, and says until when.
+        // Only the version before a restore is protected, and says until when; a protection that has passed is left out.
         list.Versions.Select(v => v.ProtectedUntil).ShouldBe([null, Now.AddHours(23), null, null]);
         // Who it was, when it was one person; nobody for a version that can hold several people's edits.
         var ownerName = await UseDbAsync(db => db.Users.Where(u => u.Id == _ownerId).Select(u => u.DisplayName).SingleAsync());

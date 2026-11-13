@@ -499,7 +499,6 @@ async function restoredVersion(answer: RestoreAnswer) {
       v-if="historyOpen && historyPanel && detail"
       :page-id="detail.page.id"
       :page-title="detail.page.title"
-      :page-version="detail.page.version"
       :can-edit="!localOnly && tree.canEdit"
       :in-trash="detail.inTrash"
       @close="closeHistory"

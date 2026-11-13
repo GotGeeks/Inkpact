@@ -21,6 +21,9 @@ export interface HistoryUsage {
 /** The server's longest window, in days. */
 export const MAXIMUM_DAYS = 3650
 
+/** The server's largest limit, in MiB: what still fits in its byte count (a signed 64-bit number, `long.MaxValue / 1 MiB`). */
+export const MAXIMUM_CAP_MIB = 8_796_093_022_207
+
 /** Why a policy cannot be saved, as a key under `settings.history.invalid`; null when it can. The server's own rules. */
 export type PolicyProblem =
   'granular' | 'daily' | 'dailyBeforeGranular' | 'expiry' | 'expiryBeforeDaily' | 'cap'
@@ -32,7 +35,8 @@ export function policyProblem(policy: HistoryPolicy): PolicyProblem | null {
   if (policy.dailyDays * 24 < policy.granularHours) return 'dailyBeforeGranular'
   if (!whole(policy.expiryDays) || policy.expiryDays > MAXIMUM_DAYS) return 'expiry'
   if (policy.expiryDays < policy.dailyDays) return 'expiryBeforeDaily'
-  if (policy.capMiB !== null && !whole(policy.capMiB)) return 'cap'
+  if (policy.capMiB !== null && (!whole(policy.capMiB) || policy.capMiB > MAXIMUM_CAP_MIB))
+    return 'cap'
   return null
 }
 

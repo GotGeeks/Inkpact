@@ -17,7 +17,10 @@ export interface VersionSummary {
   /** Who made it, when that is one person (a rename, a restore); null for an automatic version. */
   createdBy: { id: string; displayName: string } | null
   bytes: number
-  /** Set while no retention or cap removes it: the page as it was before a restore, kept for a day. */
+  /**
+   * Set while no retention or cap removes it: the page as it was before a restore, kept for a day. Null once that time has
+   * passed, by the server's clock.
+   */
   protectedUntil?: string | null
 }
 
