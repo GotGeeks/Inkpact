@@ -61,7 +61,7 @@ public class HistoryEndpointTests(PostgresFixture postgres) : IClassFixture<Post
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync();
         body.ShouldNotContain("\"state\":[");
-        body.ShouldNotContain("content", Case.Insensitive);
+        body.ShouldNotContain("\"content\"", Case.Insensitive);
         var list = JsonSerializer.Deserialize<VersionList>(body, JsonSerializerOptions.Web).ShouldNotBeNull();
         list.Versions.Select(v => (v.Kind, v.Title, v.Bytes)).ShouldBe(
         [
@@ -76,6 +76,39 @@ public class HistoryEndpointTests(PostgresFixture postgres) : IClassFixture<Post
         list.Versions[2].CreatedBy.ShouldBe(new VersionAuthor(_ownerId, ownerName));
         list.Versions[3].CreatedBy.ShouldBeNull();
         list.Next.ShouldBeNull();
+        // The page's content as stored, for a restore to send back: nothing stored yet.
+        list.PageContent.ShouldBe(ContentMark.Of(0, 0));
+    }
+
+    [Fact]
+    public async Task The_list_gives_the_page_s_content_mark_which_counts_updates_in_the_snapshot_and_live()
+    {
+        await UseDbAsync(async db =>
+        {
+            db.PageSnapshots.Add(new PageSnapshot { PageId = _pageId, State = [1], StateVector = [1], Watermark = 7, Version = 1, UpdateCount = 4, UpdatedAt = Now });
+            db.PageUpdates.Add(new PageUpdate { PageId = _pageId, UserId = _ownerId, Data = [1], CreatedAt = Now });
+            return await db.SaveChangesAsync();
+        });
+        var seq = await UseDbAsync(db => db.PageUpdates.Where(u => u.PageId == _pageId).Select(u => u.Seq).SingleAsync());
+
+        (await ListAsync(_pageId)).PageContent.ShouldBe(ContentMark.Of(Math.Max(7, seq), 5));
+    }
+
+    [Theory]
+    [InlineData("3.4", true, 3, 4)]
+    [InlineData("0.0", true, 0, 0)]
+    [InlineData("3", false, 0, 0)]
+    [InlineData("3.4.5", false, 0, 0)]
+    [InlineData("-3.4", false, 0, 0)]
+    [InlineData(" 3.4", false, 0, 0)]
+    [InlineData(null, false, 0, 0)]
+    public void A_content_mark_reads_back_only_as_two_whole_numbers(string? mark, bool ok, long seq, long count)
+    {
+        ContentMark.TryParse(mark, out var readSeq, out var readCount).ShouldBe(ok);
+        if (ok)
+        {
+            (readSeq, readCount).ShouldBe((seq, count));
+        }
     }
 
     [Fact]

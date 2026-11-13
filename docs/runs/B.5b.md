@@ -2,7 +2,7 @@
 
 **Model:** O·high → S·high in the roadmap. Planned on Fable 5.2 on 2026-11-12 from a reading of #122's code against the B.5 card. Sync, restore and the client's lost-edit check are critical paths: `/code-review` at high on PRs 3 and 4 before they merge, at medium on the others.
 
-**Status:** In progress. The five questions were answered on 2026-11-12, each as recommended. Built in the order PR 3, 1, 2, 4, 5 (PR 3 first: it closes a gap that exists today). PR 3 (#144) and PR 1 (#145) are merged; PR 2 (the read-only history panel) is described under **Handoff**; PRs 4 and 5 are not started. History can be captured and looked at, not yet restored.
+**Status:** In progress. The five questions were answered on 2026-11-12, each as recommended. Built in the order PR 3, 1, 2, 4, 5 (PR 3 first: it closes a gap that exists today). PRs 3 (#144), 1 (#145) and 2 (#148) are merged; PR 4 (the restore endpoint) is described under **Handoff**; PR 5 is not started. History can be captured, looked at and restored through the API; the panel gets its Restore button in PR 5.
 
 This card plans what [`B.5.md`](B.5.md) left open. That card stays the statement of what version history must do (its "Decisions", "Done when" and "Tests" hold unless this card says otherwise); this one says how, in which order, and where the plan narrows or changes it.
 
@@ -182,6 +182,37 @@ All five were answered "yes, as recommended" by the maintainer on 2026-11-12.
 **Review:** `/code-review` on 2026-11-13 gave nine findings, all fixed in this PR: a link clicked in the preview was followed by the browser; a panel chunk that failed to load left the button dead; the panel came back by itself after the page was away; the preview's link marks and words did not follow the tree and the language; a version id went into a selector unescaped; the page editor's link, label and file options were copied into the preview (now `contentOptions.ts`); the composable handled a change of page that never happens, and a list read again could leave a version loading for good; and the editor was destroyed twice.
 
 **Not in this PR:** restore (PRs 4 and 5). A viewer's view of the panel is not tested end to end, as the e2e suite has one account; the button has no role check and the endpoints' roles are tested on the server.
+
+**Checks:** see the pull request.
+
+### PR 4: the restore endpoint
+
+- **`POST /api/pages/{pageId}/versions/{versionId}/restore`** with `{operationId, expectedContent, expectedVersion}`, editor role, CSRF. It answers `{beforeVersionId, restoreVersionId, title, version}`. [`HistoryRestore.cs`](../../server/src/Inkpact.Api/History/HistoryRestore.cs).
+- **Before the locks:** first the cheap look, the content mark and metadata version against the request (`page_changed` without any replay). Then, one at a time with the previews (`HistoryPreviewGate`, else `503 history_unavailable`): the version is read back whole (else `version_unreadable`), its files must still be in the workspace (`attachment_missing`; a file copied into another page keeps its first page's row), and the page is observed as one snapshot by the capture's builder (`page_unreadable` when that cannot be read). The replacement is built against that snapshot's state, and the page after it is compacted and checked against the replacement's fingerprint. `413 content_too_large` when the replacement or the page after it is over `Sync:MaxPageBytes`, or the stored page and the replacement together are over three quarters of `Sync:MaxQueuedBytes` (the import's rule). A restore whose page is then more than `Sync:MaxDiffBytes` as stored is compacted at once.
+- **Under the locks:** the hub's page lock (`PublishAsync`), then one transaction with the tree lock, the history lock and the person's membership. Inside, everything is checked again: the operation id, the version, the page live (`page_in_trash`), history on (`history_off`), the role (`403` or `404`), and the page exactly as observed (`page_changed`). Then, in order: titles that waited become Rename versions (each skipped when it shows the same as the version before it); the page as it was becomes the safety version, protected 24 hours: a copy of kind `BeforeRestore`, or, when the page's newest version shows the page as it is already, that version itself, protected; the replacement update is stored; the Restore version, the title (a new metadata version when it changes), the search text, `file_text`, the backlinks, the capture's cursor and the operation's row are written. The hub then relays the replacement as Replaced and Sync.
+- **The list** gives the page's content mark (`pageContent`) for the client to send back.
+- **Not touched:** the page's place, tags, favorites, to-do fields, and the Joplin import's comparison base.
+
+**Where it differs from the plan above, and why:**
+
+1. **A content mark instead of `expectedSeq`:** `"<last sequence number>.<updates stored>"`, from the list. The sequence number alone misses an update that commits late with a lower number, the same gap PR 1 closed for the capture.
+2. **The replacement is built against the page's full state** from the capture's builder (one observation, verified against a replay), not against the stored inputs. The commit then checks the stored page is still exactly that observation.
+3. **The role is read again at the commit,** under the locks, as the B.5 card asks; the endpoint's filter alone saw it before the slow part. A role lowered meanwhile writes nothing.
+4. **Titles that waited for the capture become versions first,** as the capture would have made them, so a restore never loses a title from the history.
+5. **The cap must hold the safety version and the restore version,** not the safety version alone: both are written. Titles that waited are left out first, oldest first, as in the capture.
+6. **The capture's cursor is moved to the restore,** so the capture does not make an automatic version that equals the Restore version.
+7. **Every restore raises the tree version** (the tree lock is the workspace row's update), also when the title stays: clients read the tree again once. Harmless, and the lock is needed.
+8. **New error codes** beyond the plan's: `page_unreadable` (the page as it is cannot be read back, so no safety version can be made), `restore_invalid` (no operation id, or a mark that does not read), and `forbidden`/`not_found` at the commit.
+
+**Review:** `/code-review` (high) on 2026-11-13 gave ten findings, all fixed in this PR: a capture that observed the page before a restore no longer writes after it (`Superseded`: it checks the cursor under the history lock); a version with a file copied from another page of the workspace restores; the import's size rule and compaction at once; the cheap look before any replay, and the replays one at a time; the content mark read in one statement, which two queries could get wrong across a compaction; an operation id taken meanwhile under another history lock answers `operation_mismatch` instead of a 500; no copies of the newest version (titles that waited, or the safety version); the list reads the mark once; one formula for a version's bytes (`PageVersion.PayloadOf`); and the title through the tree's rule (`TreeService.RetitleUnderLock`).
+
+**Tests:** [`HistoryRestoreTests.cs`](../../server/tests/Inkpact.Api.Tests/History/HistoryRestoreTests.cs) (32, real Postgres, sidecar and hub): what a restore writes and keeps; the safety version restored; links, search and file text; titles that waited; the Replaced and Sync frames a subscriber gets; every refusal comparing the rows of every table it could write; a crash at each of five stages, with nothing written and nothing relayed; an edit stored and a compaction run between the preview and the commit; a role lowered meanwhile; the operation id repeated, after a prune, and reused; viewer, stranger, signed out and no CSRF. [`HistoryRestorePropertyTests.cs`](../../server/tests/Inkpact.Api.Tests/History/HistoryRestorePropertyTests.cs) is FsCheck with generated edits, compactions, captures, renames, restores, stale restores and crashes against a full replay, with floors on how often each happened; this is the move to FsCheck that PR 1's handoff promised.
+
+**Test Postgres:** the suite's container now gets 512 MB of `/dev/shm` instead of Docker's 64 MB. With this PR's tests, parallel queries and index builds in six classes at once ran out of it ("could not resize shared memory segment", 2 to 23 failures a run; none on main). The production compose file also leaves Postgres at 64 MB. One server's load is far below the test suite's, so nothing is changed there; worth knowing if that error ever shows in a log.
+
+**Not in this PR:**
+- The Restore button and its e2e journey with real versions: both come with PR 5, which brings the restore to the interface. (PR 2's handoff said PR 4; PR 4 is server only.)
+- A Joplin re-import after a restore. The restore does not write `import_items`, so the import sees the page as edited here; there is no end-to-end test of that yet.
 
 **Checks:** see the pull request.
 

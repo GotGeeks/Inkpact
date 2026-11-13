@@ -49,8 +49,17 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     private static async Task<PostgreSqlContainer> StartAsync()
     {
-        // Several classes at once each hold a few connections, and an import's pool up to 30.
-        var container = new PostgreSqlBuilder("postgres:18-alpine").WithCommand("-c", "max_connections=500").Build();
+        // Several classes at once each hold a few connections, and an import's pool up to 30. And they make databases and
+        // run parallel queries at once: each parallel query or index build takes a shared-memory segment of up to 32 MB,
+        // which Docker's default of 64 MB for /dev/shm ran out of once the suite had grown (run B.5b's restore tests).
+        var container = new PostgreSqlBuilder("postgres:18-alpine")
+            .WithCommand("-c", "max_connections=500")
+            .WithCreateParameterModifier(parameters =>
+            {
+                parameters.HostConfig ??= new Docker.DotNet.Models.HostConfig();
+                parameters.HostConfig.ShmSize = 512L * 1024 * 1024;
+            })
+            .Build();
         await container.StartAsync();
         // Testcontainers' reaper removes the container when the process ends too; this is quicker, and works without it.
         AppDomain.CurrentDomain.ProcessExit += (_, _) => container.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(10));

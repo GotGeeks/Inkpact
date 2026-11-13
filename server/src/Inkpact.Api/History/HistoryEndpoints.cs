@@ -19,7 +19,11 @@ public sealed record VersionSummary(Guid Id, DateTimeOffset CreatedAt, string Ki
 /// One page of a page's versions, newest first. <paramref name="Next"/> asks for the page after it. <paramref name="State"/>
 /// says where the page's history stands (<see cref="HistoryStates"/>), and <paramref name="Failure"/> why when it failed.
 /// </summary>
-public sealed record VersionList(IReadOnlyList<VersionSummary> Versions, string? Next, string State, string? Failure);
+/// <remarks>
+/// <paramref name="PageContent"/> is the page's content mark (<see cref="ContentMark"/>) when the list was read: a restore
+/// sends it back, and is refused when the page has changed since.
+/// </remarks>
+public sealed record VersionList(IReadOnlyList<VersionSummary> Versions, string? Next, string State, string? Failure, string PageContent);
 
 /// <summary>A version to look at: its title and its content as the editor's document.</summary>
 public sealed record VersionDetail(Guid Id, DateTimeOffset CreatedAt, string Kind, string Title, JsonElement Content);
@@ -82,6 +86,7 @@ public static class HistoryEndpoints
     {
         app.MapGet("/api/pages/{pageId}/versions", List).RequirePageRole(WorkspaceRole.Viewer);
         app.MapGet("/api/pages/{pageId}/versions/{versionId}", Get).RequirePageRole(WorkspaceRole.Viewer);
+        app.MapPost("/api/pages/{pageId}/versions/{versionId}/restore", Restore).RequirePageRole(WorkspaceRole.Editor);
         return app;
     }
 
@@ -122,8 +127,9 @@ public static class HistoryEndpoints
                 v.PayloadBytes))
             .ToList();
         var next = rows.Count > take ? WriteCursor(page[^1].CreatedAt, page[^1].Id) : null;
-        var (state, failure) = await StateAsync(db, pageId, cancellationToken);
-        return Results.Ok(new VersionList(page, next, state, failure));
+        var stored = await ContentMark.ReadAsync(db, pageId, cancellationToken);
+        var (state, failure) = await StateAsync(db, pageId, stored.StoredUpdates, cancellationToken);
+        return Results.Ok(new VersionList(page, next, state, failure, ContentMark.Of(stored.LastSeq, stored.StoredUpdates)));
     }
 
     private static async Task<IResult> Get(
@@ -174,8 +180,16 @@ public static class HistoryEndpoints
         return Results.Ok(new VersionDetail(version.Id, version.CreatedAt, KindName(version.Kind), version.Title, document.RootElement.Clone()));
     }
 
+    private static async Task<IResult> Restore(
+        Guid pageId, Guid versionId, RestoreRequest request, HttpContext http, HistoryRestore restore, CancellationToken cancellationToken)
+    {
+        var result = await restore.RestoreAsync(pageId, versionId, http.UserId(), request, cancellationToken);
+        return result.Answer is { } answer ? Results.Ok(answer) : ApiResults.Error(result.Status, result.Code!);
+    }
+
     /// <summary>Where the page's history stands, for the list to say so instead of showing an empty list without a word.</summary>
-    internal static async Task<(string State, string? Failure)> StateAsync(InkpactDbContext db, Guid pageId, CancellationToken cancellationToken)
+    internal static async Task<(string State, string? Failure)> StateAsync(
+        InkpactDbContext db, Guid pageId, long storedUpdates, CancellationToken cancellationToken)
     {
         var enabled = await db.Pages.AsNoTracking()
             .Where(p => p.Id == pageId)
@@ -197,11 +211,10 @@ public static class HistoryEndpoints
             return (HistoryStates.Failed, failure);
         }
 
-        // Counted as the capture counts (see HistoryCapture.DuePagesAsync): the updates in the snapshot and the live ones.
+        // Counted as the capture counts (see HistoryCapture.DuePagesAsync): the updates in the snapshot and the live ones,
+        // as the caller read them with the page's content mark.
         var captured = state?.CapturedUpdates ?? 0;
-        var pending = await db.PageTitleChanges.AnyAsync(c => c.PageId == pageId, cancellationToken)
-            || (await db.PageSnapshots.Where(s => s.PageId == pageId).Select(s => (long?)s.UpdateCount).SingleOrDefaultAsync(cancellationToken) ?? 0)
-                + await db.PageUpdates.LongCountAsync(u => u.PageId == pageId, cancellationToken) > captured;
+        var pending = storedUpdates > captured || await db.PageTitleChanges.AnyAsync(c => c.PageId == pageId, cancellationToken);
         return (pending ? HistoryStates.Pending : HistoryStates.Ready, null);
     }
 

@@ -29,6 +29,8 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
 
     public DbSet<PageTitleChange> PageTitleChanges => Set<PageTitleChange>();
 
+    public DbSet<PageRestore> PageRestores => Set<PageRestore>();
+
     public DbSet<ArchivedPageUpdate> ArchivedPageUpdates => Set<ArchivedPageUpdate>();
 
     public DbSet<PageLink> PageLinks => Set<PageLink>();
@@ -193,6 +195,16 @@ public class InkpactDbContext(DbContextOptions<InkpactDbContext> options) : DbCo
             state.HasKey(s => s.PageId);
             state.Property(s => s.Failure).HasMaxLength(32);
             state.HasOne<Page>().WithOne().HasForeignKey<PageHistoryState>(s => s.PageId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PageRestore>(restore =>
+        {
+            restore.ToTable("page_restores");
+            restore.HasKey(r => r.OperationId);
+            restore.Property(r => r.OperationId).ValueGeneratedNever();
+            restore.Property(r => r.Title).HasMaxLength(500).IsRequired();
+            restore.HasOne<Page>().WithMany().HasForeignKey(r => r.PageId).OnDelete(DeleteBehavior.Cascade);
+            restore.HasOne<User>().WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<PageTitleChange>(change =>
