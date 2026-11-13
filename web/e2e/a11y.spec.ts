@@ -625,6 +625,7 @@ test('the account menu and the settings screen while a newer release is out', as
     route.fulfill({
       json: {
         version: '0.1.0',
+        development: false,
         update: {
           version: '0.2.0',
           url: 'https://github.com/GotGeeks/Inkpact/releases/tag/v0.2.0',

@@ -161,6 +161,13 @@ public sealed class UpdateCheck(
         {
             logger.LogWarning("The update check could not reach GitHub ({Error}); the last answer stays", ex.HttpRequestError);
         }
+        catch (IOException ex)
+        {
+            // The connection broke while the answer was read, after its headers (HttpIOException is an IOException).
+            logger.LogWarning(
+                "The update check's answer was cut off ({Error}); the last answer stays",
+                ex is HttpIOException http ? http.HttpRequestError : HttpRequestError.Unknown);
+        }
     }
 
     /// <summary>The release, read from at most <see cref="MaxAnswerBytes"/>; null when it is not one.</summary>
@@ -218,11 +225,16 @@ public sealed class UpdateCheck(
         [property: JsonPropertyName("prerelease")] bool PreRelease);
 }
 
-/// <summary>Asks a while after the start, then once per interval.</summary>
+/// <summary>
+/// Asks a while after the start, then once per interval. A round that fails in a way the check does not expect is logged
+/// and the next round comes as usual: a background service that throws stops the whole app, and an update notice is never
+/// worth that.
+/// </summary>
 internal sealed class UpdateCheckWorker(
     UpdateCheck check,
     UpdateCheckOptions options,
-    TimeProvider time) : BackgroundService
+    TimeProvider time,
+    ILogger<UpdateCheckWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -237,7 +249,15 @@ internal sealed class UpdateCheckWorker(
             using var timer = new PeriodicTimer(options.Interval, time);
             do
             {
-                await check.CheckAsync(stoppingToken);
+                try
+                {
+                    await check.CheckAsync(stoppingToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
+                {
+                    // The type only: an exception's message can hold the address or part of an answer.
+                    logger.LogError("The update check failed ({Error}); it asks again at the next round", ex.GetType().Name);
+                }
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }

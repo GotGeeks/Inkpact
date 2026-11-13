@@ -11,22 +11,18 @@ export interface AvailableUpdate {
 
 export interface VersionInfo {
   version: string
+  /** A developer's build, without a version: the server's word, which also decides that it never asks for updates. */
+  development: boolean
   update: AvailableUpdate | null
 }
 
-/** Release notes are only ever a release page of Inkpact on GitHub: anything else from the server is not shown. */
-const RELEASE_PAGE = 'https://github.com/GotGeeks/Inkpact/releases/'
-
-export function isReleasePage(url: string): boolean {
+/**
+ * Whether a link may be put in the page. Which pages count as release notes is the server's rule (UpdateCheck); the
+ * client only refuses what no link should be (`javascript:` and the like), as Vue puts an href in as it is.
+ */
+export function isSafeLink(url: string): boolean {
   try {
-    const page = new URL(url)
-    return (
-      page.href.startsWith(RELEASE_PAGE) &&
-      page.search === '' &&
-      page.hash === '' &&
-      page.username === '' &&
-      page.password === ''
-    )
+    return new URL(url).protocol === 'https:'
   } catch {
     return false
   }
@@ -42,7 +38,8 @@ export const useVersionStore = defineStore('version', () => {
   const error = ref<string | null>(null)
   const loading = ref(false)
   let loadedFor: string | null = null
-  let pending: Promise<void> | null = null
+  /** The request on its way, and whose it is: another person's answer is not theirs to wait for. */
+  let pending: { userId: string; promise: Promise<void> } | null = null
 
   async function fetchInfo(userId: string) {
     loading.value = true
@@ -52,14 +49,15 @@ export const useVersionStore = defineStore('version', () => {
       if (auth.user?.id !== userId) return
       info.value = {
         version: answer.version,
-        update: answer.update && isReleasePage(answer.update.url) ? answer.update : null,
+        development: answer.development,
+        update: answer.update && isSafeLink(answer.update.url) ? answer.update : null,
       }
       loadedFor = userId
     } catch (caught) {
       if (auth.user?.id !== userId) return
       error.value = caught instanceof ApiError ? caught.code : 'unknown'
     } finally {
-      loading.value = false
+      if (pending?.userId === userId) loading.value = false
     }
   }
 
@@ -67,10 +65,18 @@ export const useVersionStore = defineStore('version', () => {
   async function load(again = false) {
     const userId = auth.user?.id
     if (!userId) return
-    if (loadedFor !== userId) info.value = null
+    if (loadedFor !== userId) {
+      info.value = null
+      error.value = null
+    }
     if (!again && loadedFor === userId && info.value) return
-    pending ??= fetchInfo(userId).finally(() => (pending = null))
-    await pending
+    if (pending?.userId !== userId) {
+      const promise = fetchInfo(userId).finally(() => {
+        if (pending?.promise === promise) pending = null
+      })
+      pending = { userId, promise }
+    }
+    await pending.promise
   }
 
   return { info, error, loading, load }

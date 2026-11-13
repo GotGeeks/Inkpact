@@ -11,13 +11,17 @@ namespace Inkpact.Api.Versions;
 /// </summary>
 public sealed partial record ReleaseVersion(int Major, int Minor, int Patch, string PreRelease) : IComparable<ReleaseVersion>
 {
-    /// <summary>A build that was not stamped with a version: a developer's, or a test's.</summary>
-    public bool IsDevelopment => Major == 0 && Minor == 0 && Patch == 0;
+    /// <summary>
+    /// A build that was not stamped with a version (<see cref="AppVersion.Development"/>): a developer's, or a test's. Not
+    /// any 0.0.0: an edge build made before the first release is <c>0.0.0+edge.&lt;sha&gt;</c>, and must hear of 0.1.0.
+    /// </summary>
+    public bool IsDevelopment => Major == 0 && Minor == 0 && Patch == 0 && PreRelease == "dev";
 
     public bool IsPreRelease => PreRelease.Length > 0;
 
+    // [0-9], not \d: in .NET \d is any Unicode digit (١, ३), which int.Parse refuses.
     [GeneratedRegex(
-        @"^v?(?<major>0|[1-9]\d{0,8})\.(?<minor>0|[1-9]\d{0,8})\.(?<patch>0|[1-9]\d{0,8})(?:-(?<pre>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?\z",
+        @"^v?(?<major>0|[1-9][0-9]{0,8})\.(?<minor>0|[1-9][0-9]{0,8})\.(?<patch>0|[1-9][0-9]{0,8})(?:-(?<pre>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?\z",
         RegexOptions.CultureInvariant)]
     private static partial Regex Pattern();
 

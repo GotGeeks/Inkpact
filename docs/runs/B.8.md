@@ -233,6 +233,15 @@ A release is one merge: merging the release PR tags the version, writes the chan
 - **Web:** the store, the About section, the menu.
 - **Playwright:** `settings.spec.ts` (the development build; an answered update in the menu and on the screen) and `a11y.spec.ts` (both, scanned).
 
+**Review:** `/code-review` (medium) on 2026-11-13, over the three PRs, gave ten findings. The five that are this PR's are fixed in it:
+1. **A connection that broke while the answer was read stopped the app.** `HttpIOException` escaped the check and the worker, and a background service that throws stops the host. The check now catches it, and the worker logs any failure of a round it does not expect, then asks again at the next.
+2. **Version text with other digits threw.** The pattern used `\d`, which in .NET takes any Unicode digit (`١`), and `int.Parse` then threw. It uses `[0-9]` now.
+3. **One person's request was another's.** A request on its way was shared whoever asked, so someone who signed in meanwhile got no answer; it is kept per person now.
+4. **The client copied the development-build rule.** It is the server's word now (`development` in `/api/version`), and the rule itself was wrong: an edge build made before the first release is `0.0.0+edge.<sha>`, which counted as a developer's build and would never have heard of 0.1.0. Only an unstamped build (`0.0.0-dev`) is one now.
+5. **The client repeated the release-page rule.** It is the server's alone now; the client refuses only a link that is not `https:`, as Vue puts an `href` in as it is.
+
+The other five are fixed in PRs 2 and 3.
+
 ### PR 2: the pipeline
 
 - **[`image.yml`](../../.github/workflows/image.yml)**, one path for `edge` and releases:

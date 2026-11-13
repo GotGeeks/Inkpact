@@ -40,7 +40,7 @@ const text = (selector: string) =>
 
 describe('AboutSection', () => {
   it('says which version runs', async () => {
-    await open(answer({ version: '0.1.0+edge.abc1234', update: null }))
+    await open(answer({ version: '0.1.0+edge.abc1234', development: false, update: null }))
 
     expect(text('h2')).toBe('About Inkpact')
     expect(text('[data-testid="app-version"]')).toBe('Version 0.1.0+edge.abc1234')
@@ -48,13 +48,15 @@ describe('AboutSection', () => {
   })
 
   it('names a development build as such', async () => {
-    await open(answer({ version: '0.0.0-dev', update: null }))
+    await open(answer({ version: '0.0.0-dev', development: true, update: null }))
 
     expect(text('[data-testid="app-version"]')).toBe('A development build, without a version.')
   })
 
   it('tells of a newer release, links to its notes in a new tab, and says how to update', async () => {
-    await open(answer({ version: '0.1.0', update: { version: '0.2.0', url: notes } }))
+    await open(
+      answer({ version: '0.1.0', development: false, update: { version: '0.2.0', url: notes } }),
+    )
 
     const update = document.body.querySelector<HTMLElement>('[data-testid="update"]')!
     expect(text('[data-testid="update"] h3')).toBe('Inkpact 0.2.0 is out')
@@ -76,7 +78,7 @@ describe('AboutSection', () => {
     const fetchMock = await open(() =>
       fail
         ? jsonResponse(500, { code: 'server_error' })
-        : jsonResponse(200, { version: '0.1.0', update: null }),
+        : jsonResponse(200, { version: '0.1.0', development: false, update: null }),
     )
     expect(text('[role="alert"]')).toContain('The version could not be loaded.')
 
@@ -91,7 +93,10 @@ describe('AboutSection', () => {
   })
 
   it('speaks Dutch', async () => {
-    await open(answer({ version: '0.1.0', update: { version: '0.2.0', url: notes } }), 'nl')
+    await open(
+      answer({ version: '0.1.0', development: false, update: { version: '0.2.0', url: notes } }),
+      'nl',
+    )
 
     expect(text('h2')).toBe('Over Inkpact')
     expect(text('[data-testid="update"] h3')).toBe('Inkpact 0.2.0 is uit')

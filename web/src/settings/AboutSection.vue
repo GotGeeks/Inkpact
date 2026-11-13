@@ -13,14 +13,13 @@ const versions = useVersionStore()
 
 onMounted(() => void versions.load())
 
-/** A build without a version stamped in it: a developer's. */
-const DEVELOPMENT = '0.0.0-dev'
+// A build without a version stamped in it (a developer's) is the server's to say.
 const versionText = computed(() => {
-  const version = versions.info?.version
-  if (!version) return ''
-  return version === DEVELOPMENT
+  const info = versions.info
+  if (!info) return ''
+  return info.development
     ? t('settings.about.development')
-    : t('settings.about.version', { version })
+    : t('settings.about.version', { version: info.version })
 })
 
 // Said after the link's words, for a screen reader; the template would drop a leading space.
