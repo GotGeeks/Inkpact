@@ -2,7 +2,7 @@
 
 **Model:** S·med in the roadmap; kept. Planned on Opus 5.5 on 2026-11-13. Three PRs, each `/code-review` at medium before it merges: PR 1 adds the server's first outbound call, PR 2 handles signing and a token that can write to the repository.
 
-**Status:** Built: PRs 1, 2 and 3 (see **Handoff**); the first release waits for the release App (see "After the run"). The four questions are taken as recommended (the maintainer asked for the card to be built without answering them; they can still be changed before PRs 2 and 3 merge).
+**Status:** Built and released: PRs 1, 2 and 3 (#152, #153, #154), and 0.1.0 on 2026-11-13 (see **Handoff**, "The first release"). The four questions are taken as recommended (the maintainer asked for the card to be built without answering them; they can still be changed before PRs 2 and 3 merge).
 
 ## Goal
 
@@ -319,3 +319,24 @@ The other five are fixed in PRs 2 and 3.
 **Review** (the same `/code-review`; this PR's two findings, fixed in it):
 1. **An empty "Trusted proxy" broke the app.** Unraid passes a template's field even when it is empty, the configuration then gives `['']` (checked), and `IPNetwork.Parse("")` threw. That also replaced the default private ranges. Blank entries are now left out, and with none left the defaults stay (`AuthCookieTests`).
 2. **The template ran `latest`, which does not exist before the first release.** It runs `edge` like the compose file, and `UnraidTemplateTests` checks that both name the same image, so step 5 of "After the run" switches them together.
+
+### The first release, 0.1.0 (2026-11-13)
+
+**How it went:**
+- **The App:** the maintainer made the release App (`inkpact-release`), installed it on `GotGeeks/Inkpact`, and set its two secrets. The runs before the secrets existed said so and did nothing.
+- **The release PR:** a manual run of `release.yml` opened #156, `chore(main): release 0.1.0`, as `app/inkpact-release`. Its checks ran like any PR's; that is the reason for the App. Merging it made the tag `v0.1.0` and the GitHub release within a minute.
+- **The images:** about five minutes later, after the checks (inspection, backup and restore, the upgrade test from `edge`, Trivy), `image.yml` published them for amd64 and arm64.
+
+**Checked afterwards:**
+- **Tags:** `0.1.0`, `0.1` and `latest` are one index, with an attestation manifest per architecture.
+- **Signature:** `cosign verify` with the guide's identity (`…/image.yml@refs/heads/main`) passes, for the index and for the amd64 image's own digest.
+- **SBOM:** 145 packages per architecture.
+- **Provenance:** SLSA v1, with the commit of the release and `INKPACT_VERSION=0.1.0`.
+- **Version:** the image says `0.1.0`.
+
+**Found by it, and fixed in the PR after the release:**
+1. **cosign 2 does not see the signature:** the installer brings cosign 3, which stores it in its newer form. The guide now asks for cosign 3.
+2. **Two labels were wrong:** the image's description was empty and its licence `AGPL-3.0`. `docker/metadata-action` sets both from the repository's settings over the Dockerfile's labels; `image.yml` now gives them as the Dockerfile has them.
+3. **Every PR appeared twice in the changelog:** once from its commits, once from its merge commit, whose body is the PR's title. The repository now merges by squash only (the maintainer's choice), so one PR is one commit and one line; CONTRIBUTING says how to title a PR. 0.1.0's notes keep their doubles.
+
+**Step 5 of "After the run"** (`latest` in the compose file and the template) is in the same PR.

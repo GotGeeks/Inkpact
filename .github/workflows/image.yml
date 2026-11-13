@@ -232,8 +232,12 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/gotgeeks/inkpact
+          # The action fills description and licence from the repository's settings (an empty description, and the
+          # licence without -only), over the Dockerfile's own labels: they are given here as the Dockerfile has them.
           labels: |
             org.opencontainers.image.version=${{ needs.version.outputs.version }}
+            org.opencontainers.image.description=Self-hosted, multi-user notes with real-time collaborative editing
+            org.opencontainers.image.licenses=AGPL-3.0-only
 
       # Pushed by digest, without a tag, with its SBOM and its provenance. Without publishing it is built and dropped.
       - id: build

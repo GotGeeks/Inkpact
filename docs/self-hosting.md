@@ -198,7 +198,7 @@ docker compose pull
 docker compose up -d
 ```
 
-**Which image:** releases are published as `ghcr.io/gotgeeks/inkpact:latest`, the newest release. Until the first one is out, the compose file runs `edge`; set `INKPACT_IMAGE` to `ghcr.io/gotgeeks/inkpact:latest` once it is. Each release is also tagged with its version (`0.1.0`) and its minor version (`0.1`); set `INKPACT_IMAGE` to stay on one. The release notes are on [GitHub](https://github.com/GotGeeks/Inkpact/releases); read them before updating while Inkpact is at 0.x. `edge` is every change merged to `main`, for a test instance; it is checked the same way but has had no use yet.
+**Which image:** the compose file runs `ghcr.io/gotgeeks/inkpact:latest`, the newest release. Each release is also tagged with its version (`0.1.0`) and its minor version (`0.1`); set `INKPACT_IMAGE` to stay on one. The release notes are on [GitHub](https://github.com/GotGeeks/Inkpact/releases); read them before updating while Inkpact is at 0.x. `edge` is every change merged to `main`, for a test instance; it is checked the same way but has had no use yet.
 
 A release's images are published a while after the release itself appears, once they have passed their checks: if `pull` finds nothing new, try again in half an hour.
 
@@ -213,7 +213,7 @@ When the new version changes the database, the app writes a `pg_dump` to `/data/
 
 ## Verifying the image
 
-Every published image (each release, and `edge`) is signed with [cosign](https://docs.sigstore.dev/) by the workflow that built it, without a key: the signature names that workflow. To check an image before you run it:
+Every published image (each release, and `edge`) is signed with [cosign](https://docs.sigstore.dev/) by the workflow that built it, without a key: the signature names that workflow. To check an image before you run it, with cosign 3 or later (cosign 2 does not find these signatures and says "no signatures found"):
 
 ```bash
 cosign verify ghcr.io/gotgeeks/inkpact:0.1.0 \
@@ -263,7 +263,7 @@ with the `traefik` network declared as external at the bottom of the file.
    - **Setup code:** one of your choice.
 4. **Apply,** open the web UI, and create the administrator with the setup code.
 
-The template runs the image as the compose file does: a read-only root filesystem, no extra privileges, and `/data` on the appdata folder. The Docker tab shows whether it is healthy (`/api/health/ready`). **To update,** use Unraid's **Check for updates**, then **Apply update**: the template follows `latest` (until the first release is out, `edge`). Back up the appdata folder and the database as described under "Backup and restore".
+The template runs the image as the compose file does: a read-only root filesystem, no extra privileges, and `/data` on the appdata folder. The Docker tab shows whether it is healthy (`/api/health/ready`). **To update,** use Unraid's **Check for updates**, then **Apply update**: the template follows `latest`. Back up the appdata folder and the database as described under "Backup and restore".
 
 **With a stack** (the Docker Compose Manager plugin): add a stack, paste the compose file and the `.env`, and point the volumes at `/mnt/user/appdata/inkpact/...` if you prefer bind mounts (the folder for `/data` must be writable by UID 1654). To run Inkpact alone against a PostgreSQL server you have, from a checkout of this repository, use the next section.
 

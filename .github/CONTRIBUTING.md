@@ -62,6 +62,8 @@ git commit -s -m "fix(sync): close dead sockets"
 
 The `-s` flag adds `Signed-off-by: Your Name <you@example.com>`, which certifies that you wrote the change or have the right to submit it under the project license ([developercertificate.org](https://developercertificate.org/)). CI checks both the format and the sign-off.
 
+Pull requests are merged with **Squash and merge** (the only way the repository allows): main gets one commit per pull request, whose message is the pull request's title and description. So the **title** is a conventional commit, and it is what the release notes list; the description holds no `feat:` or `fix:` lines of its own, which would be listed again. The commits on the branch are checked for their format and sign-off before the merge.
+
 The commit types decide the release notes: `feat` (Features), `fix` (Fixes), `perf` (Performance) and `revert` are listed; `docs`, `test`, `ci`, `build`, `chore`, `refactor` and `style` are not. A change that needs care when updating says so in a `BREAKING CHANGE:` footer.
 
 ## Releases
