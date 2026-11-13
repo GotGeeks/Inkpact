@@ -198,7 +198,7 @@ docker compose pull
 docker compose up -d
 ```
 
-**Which image:** the compose file runs `ghcr.io/gotgeeks/inkpact:latest`, the newest release. Each release is also tagged with its version (`0.1.0`) and its minor version (`0.1`); set `INKPACT_IMAGE` to stay on one. The release notes are on [GitHub](https://github.com/GotGeeks/Inkpact/releases); read them before updating while Inkpact is at 0.x. `edge` is every change merged to `main`, for a test instance; it is checked the same way but has had no use yet.
+**Which image:** releases are published as `ghcr.io/gotgeeks/inkpact:latest`, the newest release. Until the first one is out, the compose file runs `edge`; set `INKPACT_IMAGE` to `ghcr.io/gotgeeks/inkpact:latest` once it is. Each release is also tagged with its version (`0.1.0`) and its minor version (`0.1`); set `INKPACT_IMAGE` to stay on one. The release notes are on [GitHub](https://github.com/GotGeeks/Inkpact/releases); read them before updating while Inkpact is at 0.x. `edge` is every change merged to `main`, for a test instance; it is checked the same way but has had no use yet.
 
 A release's images are published a while after the release itself appears, once they have passed their checks: if `pull` finds nothing new, try again in half an hour.
 

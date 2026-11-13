@@ -42,8 +42,15 @@ on:
 permissions:
   contents: read
 
+# A group holds one waiting run, and a newer one cancels it: merges to main share one (the newest commit's edge
+# supersedes), and a release has its own. A rescan and a manual run each have a group of their own, so that neither ever
+# cancels a merge's edge waiting to publish.
 concurrency:
-  group: image-${{ github.ref }}-${{ inputs.version || 'edge' }}
+  group: >-
+    image-${{ github.ref }}-${{ inputs.version
+    || (github.event_name == 'schedule' && 'scan')
+    || (github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id))
+    || 'edge' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -68,6 +75,7 @@ jobs:
         env:
           RELEASE: ${{ inputs.version }}
           EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
           PUBLISH_INPUT: ${{ inputs.publish }}
           SHA: ${{ github.sha }}
           IMAGE: ghcr.io/gotgeeks/inkpact
