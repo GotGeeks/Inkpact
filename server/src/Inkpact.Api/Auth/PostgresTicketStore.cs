@@ -99,6 +99,57 @@ public sealed class PostgresTicketStore(IDbContextFactory<InkpactDbContext> dbFa
         return await db.Sessions.AnyAsync(s => s.Id == key && s.ExpiresAt > now, cancellationToken);
     }
 
+    /// <summary>
+    /// What a person sees of a session (run B.9): 16 bytes of SHA-256 over its key, base64url. The key itself is what the
+    /// cookie holds, and would sign in whoever read it; the handle cannot be turned back into it.
+    /// </summary>
+    public static string HandleOf(string key) => WebEncoders.Base64UrlEncode(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(key)).AsSpan(0, 16));
+
+    /// <summary>
+    /// A user's sessions that have not expired: the one named by <paramref name="currentKey"/> first, then the most recently
+    /// seen, at most <paramref name="limit"/>; and how many there are in all.
+    /// </summary>
+    public async Task<(IReadOnlyList<Session> Sessions, int Total)> ListForUserAsync(
+        Guid userId, string currentKey, int limit, CancellationToken cancellationToken = default)
+    {
+        var now = time.GetUtcNow();
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var live = db.Sessions.AsNoTracking().Where(s => s.UserId == userId && s.ExpiresAt > now);
+        var total = await live.CountAsync(cancellationToken);
+        var sessions = await live
+            .OrderByDescending(s => s.Id == currentKey)
+            .ThenByDescending(s => s.LastSeenAt)
+            .ThenByDescending(s => s.CreatedAt)
+            .Take(limit)
+            .Select(s => new Session { Id = s.Id, UserId = s.UserId, CreatedAt = s.CreatedAt, LastSeenAt = s.LastSeenAt, ExpiresAt = s.ExpiresAt, UserAgent = s.UserAgent })
+            .ToListAsync(cancellationToken);
+        return (sessions, total);
+    }
+
+    /// <summary>
+    /// The key of the user's session with this handle, or null: someone else's handle, or one that does not exist, is the
+    /// same answer. The user's keys are few, so they are compared here rather than storing the handle.
+    /// </summary>
+    public async Task<string?> FindForUserAsync(Guid userId, string handle, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var keys = await db.Sessions.AsNoTracking().Where(s => s.UserId == userId).Select(s => s.Id).ToListAsync(cancellationToken);
+        return keys.FirstOrDefault(key => CryptographicOperations.FixedTimeEquals(
+            System.Text.Encoding.ASCII.GetBytes(HandleOf(key)), System.Text.Encoding.ASCII.GetBytes(handle)));
+    }
+
+    /// <summary>
+    /// Signs a user out of every browser but the one with <paramref name="keepKey"/>, in one statement (so a session made
+    /// meanwhile goes too), and closes their sync sockets. Returns how many sessions ended.
+    /// </summary>
+    public async Task<int> RemoveAllForUserExceptAsync(Guid userId, string keepKey, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var removed = await db.Sessions.Where(s => s.UserId == userId && s.Id != keepKey).ExecuteDeleteAsync(cancellationToken);
+        sessionEvents.AllSessionsEndedExcept(userId, keepKey);
+        return removed;
+    }
+
     /// <summary>Signs a user out of every browser. Returns how many sessions ended.</summary>
     public async Task<int> RemoveAllForUserAsync(Guid userId)
     {

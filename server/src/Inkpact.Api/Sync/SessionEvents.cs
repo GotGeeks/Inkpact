@@ -23,6 +23,10 @@ public sealed class SessionEvents
 
     public void AllSessionsEnded(Guid userId) => Raise(listener => listener.UserId == userId);
 
+    /// <summary>Every session of the user but one ended (run B.9: "sign out all other devices", a changed password).</summary>
+    public void AllSessionsEndedExcept(Guid userId, string keepSessionKey) =>
+        Raise(listener => listener.UserId == userId && listener.SessionKey != keepSessionKey);
+
     private void Raise(Func<Listener, bool> matches)
     {
         foreach (var listener in _listeners.Keys.Where(matches))

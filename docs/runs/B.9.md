@@ -2,7 +2,7 @@
 
 **Model:** O·high → S·med in the roadmap; kept. Planned on Opus 5.5 on 2026-11-13; builds on Sonnet 5.5 medium. Two PRs. PR 2 changes a password and ends sessions, an authentication path, so it gets `/code-review` at **high**; PR 1 at medium.
 
-**Status:** Planned; PR 1 in progress. The maintainer answered the three questions on 2026-11-13, each as recommended: no email change in this run, a password change always signs out the other devices, no addresses in the device list.
+**Status:** PR 1 built (see **Handoff**); PR 2 next. The maintainer answered the three questions on 2026-11-13, each as recommended: no email change in this run, a password change always signs out the other devices, no addresses in the device list.
 
 ## Goal
 
@@ -146,3 +146,45 @@ Until now the only way to change a password was the command line (run B.7). The 
 - **Password:** change it on the laptop. The phone is signed out at once; the laptop stays signed in; the new password signs in on the phone; the old one does not.
 - **Lockout:** type a wrong current password five times. The change is refused for a minute, and so is a login with that email on the phone.
 - **Display name:** change it, and see it in the account menu at once, and as the author of the next renamed page's version.
+
+## Handoff
+
+### PR 1: the account section, the display name and the devices
+
+- **Server:** [`AccountEndpoints.cs`](../../server/src/Inkpact.Api/Account/AccountEndpoints.cs), behind `Policies.SignedIn`: `PATCH /api/account`, `GET /api/account/sessions`, `DELETE /api/account/sessions/{id}` and `POST /api/account/sessions/sign-out-others`, as decision 1.
+  - **The session store** ([`PostgresTicketStore.cs`](../../server/src/Inkpact.Api/Auth/PostgresTicketStore.cs)):
+    - `HandleOf(key)`: decision 2;
+    - `ListForUserAsync`: this device first, then by last seen;
+    - `FindForUserAsync`: by handle, among the person's own keys, compared in fixed time;
+    - `RemoveAllForUserExceptAsync`: one statement.
+  - **The hub:** `SessionEvents.AllSessionsEndedExcept`.
+  - **Audit:** `session_revoked` and `sessions_revoked`.
+  - **Setup's name rule** (`AuthEndpoints.MaxNameLength`) is shared rather than copied.
+- **Client:**
+  - [`AccountSection.vue`](../../web/src/settings/AccountSection.vue), first on `/settings`;
+  - [`deviceName.ts`](../../web/src/settings/deviceName.ts): the browser and the system, or "Unknown browser on an unknown system";
+  - `formatAgo` for "last active";
+  - the confirmations sit in the row, with the focus on them, and go back to the button on Cancel;
+  - after a change, the list is read again and the focus goes to its heading.
+- **The settings screen and the menu:** the history section is left out for someone without a workspace (it was an error before), and the account menu offers Settings to everyone signed in.
+- **Docs:** architecture ("Sessions", the audit log), the test pass.
+
+**Where it differs from the card:**
+
+1. **"Sign out all other devices" is offered also when only `more` is left:** every listed device is this one, but more are counted. It would have been hidden otherwise.
+2. **A device that was already gone** (`session_not_found`) is said as such, and the list is read again; it is no error.
+
+**Tests:**
+- **Server:**
+  - `AccountEndpointTests` (20):
+    - the name: rules, trimming, the answer, only one's own;
+    - the list: order, what it shows, no key anywhere in the body, other people's and expired sessions, the cap of 100 and `more`;
+    - signing out one device, this one (409), someone else's, a made-up one and a key (404), all the others; the audit rows;
+    - anonymous and without CSRF.
+  - `SyncHubTests`: a device signed out closes its sockets and only those; "all the others" keeps this socket and someone else's.
+  - `LogContentTests`: a display name.
+- **Web:** `deviceName.test.ts` (15 user agents) and `AccountSection.test.ts` (10). The settings page's tests are scoped to the history section, plus a test for no workspace.
+- **Playwright:**
+  - `account.spec.ts`: a second, real browser is listed and signed out from here; this device has no button. The name and "all the others" are answered with `page.route`.
+  - `a11y.spec.ts`: the section, and its confirmation.
+  - The older settings specs press the history section's Save.

@@ -1,3 +1,4 @@
+using Inkpact.Api.Account;
 using Inkpact.Api.Attachments;
 using Inkpact.Api.Auth;
 using Inkpact.Api.Compaction;
@@ -131,6 +132,7 @@ app.UseAuthorization();
 app.MapHealthEndpoints();
 app.MapVersionEndpoints();
 app.MapAuthEndpoints();
+app.MapAccountEndpoints();
 app.MapWorkspaceEndpoints();
 app.MapHistoryPolicyEndpoints();
 app.MapHistoryEndpoints();

@@ -25,6 +25,14 @@ public static class AuthTestExtensions
     }
 
     /// <summary>Patches with JSON and a fresh CSRF token, like <see cref="PostJsonAsync"/>.</summary>
+    /// <summary>A DELETE as the web client sends it: JSON (the API takes nothing else for a write) and a fresh CSRF token.</summary>
+    public static async Task<HttpResponseMessage> DeleteJsonAsync(this HttpClient client, string path)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Delete, path) { Content = JsonContent.Create(new { }) };
+        request.Headers.Add(CsrfProtection.HeaderName, (await client.GetStateAsync()).CsrfToken);
+        return await client.SendAsync(request);
+    }
+
     public static async Task<HttpResponseMessage> PatchJsonAsync(this HttpClient client, string path, object? body = null)
     {
         var request = new HttpRequestMessage(HttpMethod.Patch, path) { Content = JsonContent.Create(body ?? new { }) };
