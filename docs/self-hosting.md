@@ -198,6 +198,10 @@ docker compose pull
 docker compose up -d
 ```
 
+**Which image:** releases are published as `ghcr.io/gotgeeks/inkpact:latest`, the newest release. Until the first one is out, the compose file runs `edge`; set `INKPACT_IMAGE` to `ghcr.io/gotgeeks/inkpact:latest` once it is. Each release is also tagged with its version (`0.1.0`) and its minor version (`0.1`); set `INKPACT_IMAGE` to stay on one. The release notes are on [GitHub](https://github.com/GotGeeks/Inkpact/releases); read them before updating while Inkpact is at 0.x. `edge` is every change merged to `main`, for a test instance; it is checked the same way but has had no use yet.
+
+A release's images are published a while after the release itself appears, once they have passed their checks: if `pull` finds nothing new, try again in half an hour.
+
 When the new version changes the database, the app writes a `pg_dump` to `/data/backups` first and stops with a clear message if that fails, before it changes anything. Old dumps are not removed; see "The dumps before a migration" for removing them.
 
 **Which version runs:** **Settings → About Inkpact** says so, for everyone signed in.
@@ -206,6 +210,23 @@ When the new version changes the database, the app writes a `pg_dump` to `/data/
 
 - **What is sent:** one request to `api.github.com` for the public release list, which names the app and its version. Nothing about your install, your users or your notes. The browser never contacts GitHub itself.
 - **Turning it off:** set `UpdateCheck__Enabled` to `false` (it is in the compose file, commented out). A build without a version (see "Building the image yourself") never asks.
+
+## Verifying the image
+
+Every published image (each release, and `edge`) is signed with [cosign](https://docs.sigstore.dev/) by the workflow that built it, without a key: the signature names that workflow. To check an image before you run it:
+
+```bash
+cosign verify ghcr.io/gotgeeks/inkpact:0.1.0 \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity https://github.com/GotGeeks/Inkpact/.github/workflows/image.yml@refs/heads/main
+```
+
+Each image also carries its SBOM (every package in it) and its build provenance (which commit and workflow made it):
+
+```bash
+docker buildx imagetools inspect ghcr.io/gotgeeks/inkpact:0.1.0 --format '{{ json .SBOM }}'
+docker buildx imagetools inspect ghcr.io/gotgeeks/inkpact:0.1.0 --format '{{ json .Provenance }}'
+```
 
 ## Behind a reverse proxy
 

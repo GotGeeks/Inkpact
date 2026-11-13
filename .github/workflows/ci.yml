@@ -170,9 +170,15 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      # On the release pull request (run B.8), release-please writes its commit through the release App, whose bot cannot
+      # sign off: that bot's own commits are skipped (BOT_AUTHOR), and anyone else's commit there is checked. Only a GitHub
+      # App's account ends in [bot], so a fork cannot claim this by naming its branch. Commit titles are checked above.
       - name: DCO sign-off
         if: github.event.pull_request.user.login != 'dependabot[bot]'
         run: bash .github/scripts/check-dco.sh "$BASE_SHA" "$HEAD_SHA"
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BOT_AUTHOR: >-
+            ${{ endsWith(github.event.pull_request.user.login, '[bot]') && startsWith(github.head_ref, 'release-please--')
+            && github.event.pull_request.user.login || '' }}

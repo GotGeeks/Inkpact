@@ -114,7 +114,7 @@ _Built in run B.5b: capture (PR 1), the panel (PR 2), the protection of typing d
 - [ ] With a PostgreSQL you already run: `deploy/inkpact.sh backup`, then `restore` into an emptied database. These two commands were not run by CI or while building (only their syntax was checked).
 
 ### B.8: releases, the Unraid template and the update check
-_PR 1 (the version and the update check) is built; the release pipeline (PR 2) and the Unraid template (PR 3) follow._
+_PRs 1 (the version and the update check) and 2 (the release pipeline) are built; the Unraid template (PR 3) follows. The first release is cut once the release App is set up (CONTRIBUTING, "Releases")._
 - [ ] Signed in as the administrator with an older version running, the account menu says a newer one is out, and the settings screen links to its notes. As another account (from phase 2), neither says so.
 - [ ] With `UpdateCheck__Enabled=false`, the container makes no request to `api.github.com` (the router's or Pi-hole's log).
 - [ ] Install Inkpact on Unraid from the template's URL with a PostgreSQL 18 container: the `chown`, the connection string, the setup code. The Docker tab shows it healthy, and it works behind Traefik.

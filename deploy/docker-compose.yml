@@ -3,6 +3,7 @@
 # Open http://<host>:8080 and create the administrator with the setup code from .env.
 services:
   app:
+    # edge until the first release is out; then latest, the newest release (run B.8, "After the run").
     image: ${INKPACT_IMAGE:-ghcr.io/gotgeeks/inkpact:edge}
     restart: unless-stopped
     depends_on:
