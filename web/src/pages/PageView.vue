@@ -14,6 +14,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError } from '../api'
 import AppButton from '../components/AppButton.vue'
+import AppIcon from '../components/AppIcon.vue'
 import { useOnline } from '../composables/useOnline'
 import { loginRoute } from '../router'
 import type { OfflineDocument } from '../offline/offlineDocument'
@@ -25,6 +26,7 @@ import { useRecentStore } from '../stores/recent'
 import { useSyncStore } from '../stores/sync'
 import { useTreeStore } from '../stores/tree'
 import SyncStatus from '../sync/SyncStatus.vue'
+import { useHistoryPanel } from '../history/useHistoryPanel'
 import BacklinksPanel from './BacklinksPanel.vue'
 import ChildPages from './ChildPages.vue'
 import FavoriteButton from './FavoriteButton.vue'
@@ -283,6 +285,29 @@ async function retryUnavailable() {
   }
 }
 const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
+
+// The history panel (run B.5b): its code is fetched when it is first asked for, and it is open for the page it was opened
+// on. Another page closes it, and so does anything that takes the page away (the panel goes with it, see the template).
+const {
+  component: historyPanel,
+  open: historyOpen,
+  loading: historyLoading,
+  show: showHistory,
+  hide: hideHistory,
+} = useHistoryPanel(pageId)
+const historyButton = useTemplateRef<HTMLButtonElement>('historyButton')
+/**
+ * The focus goes back to the button, also where a tap does not focus a button (Safari on an iPhone): the dialog would
+ * otherwise give it back to what had it before, which there is nothing.
+ */
+async function closeHistory() {
+  hideHistory()
+  await nextTick()
+  historyButton.value?.focus()
+}
+watch(localOnly, (isLocal) => {
+  if (isLocal) hideHistory()
+})
 </script>
 
 <template>
@@ -368,12 +393,28 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
       </button>
     </div>
 
+    <!-- One line: the buttons keep their size, and on the narrowest phones the status shortens its words. Wrapping would
+         move the page down and up again each time the status changes while someone types. -->
     <div class="flex items-center justify-end gap-space-sm">
       <FavoriteButton
         v-if="!localOnly && detail"
         :page-id="detail.page.id"
         :in-trash="detail.inTrash"
       />
+      <!-- Every member can look at a page's history, also of a page in the trash; it needs the server. -->
+      <button
+        v-if="!localOnly && detail"
+        ref="historyButton"
+        type="button"
+        :aria-label="t('history.open')"
+        aria-haspopup="dialog"
+        :aria-busy="historyLoading || undefined"
+        data-testid="history-open"
+        class="flex size-11 shrink-0 items-center justify-center rounded text-on-surface-variant hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-primary md:size-9"
+        @click="showHistory"
+      >
+        <AppIcon name="history" class="size-5" />
+      </button>
       <SyncStatus :page-id="shownId" />
     </div>
 
@@ -438,6 +479,16 @@ const editor = useTemplateRef<InstanceType<PageEditorComponent>>('editor')
       :document="document"
     />
     <BacklinksPanel v-if="detail" :key="`backlinks-${detail.page.id}`" :page-id="detail.page.id" />
+    <!-- When the page goes (not found, failed, offline), the panel goes with it: it must not come back by itself with the
+         page, so its state is cleared when it is unmounted, whatever the reason. -->
+    <component
+      :is="historyPanel"
+      v-if="historyOpen && historyPanel && detail"
+      :page-id="detail.page.id"
+      :page-title="detail.page.title"
+      @close="closeHistory"
+      @vue:unmounted="hideHistory"
+    />
   </article>
 
   <section

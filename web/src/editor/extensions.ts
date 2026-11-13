@@ -30,7 +30,11 @@ const InkpactTable = Table.extend({
 })
 
 export interface EditorExtensionsOptions {
-  doc: Y.Doc
+  /**
+   * The page's shared document. Without it there is no collaboration at all: the editor shows content it is given, as
+   * the preview of a version in the history does, and nothing it does reaches a page.
+   */
+  doc?: Y.Doc
   placeholder: string
   /** The label of a task item's checkbox; the node view calls it for every item. */
   checkboxLabel: (checked: boolean) => string
@@ -99,7 +103,15 @@ export function createExtensions({
     BrokenLinks.configure(brokenLinks ?? {}),
     PageLinkNormalizer,
     LinkShortcut.configure(linkShortcut ?? {}),
-    Collaboration.configure({ document: doc, field: FIELD, ySyncOptions: { onInvalidContent } }),
+    ...(doc
+      ? [
+          Collaboration.configure({
+            document: doc,
+            field: FIELD,
+            ySyncOptions: { onInvalidContent },
+          }),
+        ]
+      : []),
     TaskList,
     TaskItem.configure({
       nested: true,

@@ -31,8 +31,9 @@ export async function openSidebar(page: Page) {
   // The app may still be starting: wait until either the button (narrow) or the account menu (wide) is there.
   await expect(button.or(page.getByTestId('user-name'))).toBeVisible()
   if (await button.isVisible()) await button.click()
-  // The tree only exists once there is a page; the account menu is always there.
-  await expect(page.getByTestId('user-name')).toBeVisible()
+  // The tree only exists once there is a page; the account menu is always there. Late in a full run the drawer holds
+  // hundreds of pages, and a slow phone (WebKit) takes longer than the usual five seconds to show it.
+  await expect(page.getByTestId('user-name')).toBeVisible({ timeout: 15_000 })
 }
 
 export async function openUserMenu(page: Page) {

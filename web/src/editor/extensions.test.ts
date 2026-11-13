@@ -61,3 +61,36 @@ describe('a page with a block this schema does not know', () => {
     expect(onInvalidContent.mock.calls[0]![0]).toBeInstanceOf(Error)
   })
 })
+
+describe('without a document', () => {
+  it('shows the content it is given, with the same schema, and nothing it does reaches a page', () => {
+    const editor = new Editor({
+      element: document.createElement('div'),
+      extensions: createExtensions({ placeholder: '', checkboxLabel: () => '' }),
+      content: {
+        type: 'doc',
+        content: [
+          { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Then' }] },
+          {
+            type: 'taskList',
+            content: [
+              {
+                type: 'taskItem',
+                attrs: { checked: true },
+                content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Done' }] }],
+              },
+            ],
+          },
+        ],
+      },
+      editable: false,
+      injectCSS: false,
+    })
+    editors.push(editor)
+
+    expect(editor.extensionManager.extensions.map((e) => e.name)).not.toContain('collaboration')
+    expect(editor.getText()).toContain('Then')
+    expect(editor.getJSON().content?.map((node) => node.type)).toEqual(['heading', 'taskList'])
+    expect(editor.isEditable).toBe(false)
+  })
+})

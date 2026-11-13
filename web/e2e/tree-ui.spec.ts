@@ -487,18 +487,27 @@ test.describe('on a phone', () => {
     await page.goto('/')
     await createPageNamed(page, `Touch-${suffix(testInfo)}`)
 
-    const small: string[] = []
-    for (const control of await page
-      .getByRole('dialog')
-      .locator('button:visible, a:visible, [role="treeitem"]:visible')
-      .all()) {
-      const box = await control.boundingBox()
-      // The arrow and the menu button sit inside a 44 px line, so the line is the target; they are 28 px.
-      if (box && box.height < 28) small.push((await control.textContent())?.trim() ?? '?')
-    }
+    // Measured in one pass in the browser: the drawer holds every page the suite has made by now (hundreds), and a round
+    // trip per control took longer than the test may.
+    const { small, lowLines } = await page.getByRole('dialog').evaluate((drawer) => {
+      const shown = (element: Element) => {
+        const box = element.getBoundingClientRect()
+        return box.width > 0 && box.height > 0 && element.checkVisibility()
+      }
+      const controls = [...drawer.querySelectorAll('button, a, [role="treeitem"]')].filter(shown)
+      const lines = [...document.querySelectorAll('[role="treeitem"]')]
+      return {
+        // The arrow and the menu button sit inside a 44 px line, so the line is the target; they are 28 px.
+        small: controls
+          .filter((control) => control.getBoundingClientRect().height < 28)
+          .map((control) => control.textContent?.trim() ?? '?'),
+        lowLines: lines
+          .filter((line) => line.getBoundingClientRect().height < 44)
+          .map((line) => line.textContent?.trim() ?? '?'),
+      }
+    })
     expect(small).toEqual([])
-    const lines = await page.locator('[role="treeitem"]').all()
-    for (const line of lines) expect((await line.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    expect(lowLines).toEqual([])
   })
 
   test('the new page can be named in the open drawer', async ({ page }, testInfo) => {

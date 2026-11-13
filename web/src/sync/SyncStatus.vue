@@ -35,12 +35,18 @@ const dot = computed(() => (sync.display === 'live' ? 'bg-sync-active' : 'bg-syn
     :data-local="
       local?.error ? 'error' : local?.pending ? 'saving' : local ? 'saved' : 'unavailable'
     "
-    class="inline-flex items-center gap-space-sm rounded-full border border-border-subtle bg-surface-subtle px-space-md py-space-xs text-label-xs text-on-surface-variant"
+    class="inline-flex min-w-0 items-center gap-space-sm rounded-full border border-border-subtle bg-surface-subtle px-space-md py-space-xs text-label-xs text-on-surface-variant"
   >
-    <span class="size-1.5 rounded-full" :class="dot" aria-hidden="true" />
-    {{ label }}
-    <span v-if="sync.display !== 'offline' && local?.pending">{{ t('offline.saving') }}</span>
-    <span v-else-if="sync.display !== 'offline' && local?.error">{{ t('offline.notSaved') }}</span>
-    <span v-else-if="sync.display !== 'offline' && local">{{ t('offline.savedHere') }}</span>
+    <span class="size-1.5 shrink-0 rounded-full" :class="dot" aria-hidden="true" />
+    <!-- Cut short with an ellipsis where there is no room (a narrow phone, beside the page's buttons); the whole text is
+         still what a screen reader hears. -->
+    <span class="truncate"
+      >{{ label }}
+      <span v-if="sync.display !== 'offline' && local?.pending">{{ t('offline.saving') }}</span>
+      <span v-else-if="sync.display !== 'offline' && local?.error">{{
+        t('offline.notSaved')
+      }}</span>
+      <span v-else-if="sync.display !== 'offline' && local">{{ t('offline.savedHere') }}</span>
+    </span>
   </span>
 </template>

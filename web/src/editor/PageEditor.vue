@@ -16,7 +16,7 @@ import { useTreeStore } from '../stores/tree'
 import { formatFileSize } from '../fileSize'
 import { uploadAttachment } from './attachmentApi'
 import { editorClasses } from './editorClasses'
-import { refreshBrokenLinks, type LinkTarget } from './brokenLinks'
+import { useContentOptions } from './contentOptions'
 import { openPageMenu } from './blockCommands'
 import { registerLinkShortcut } from './linkShortcutRegistry'
 import { selectedRange } from './selectedRange'
@@ -255,15 +255,8 @@ const uploading = ref(0)
 const router = useRouter()
 const openLink = openLinkIn(router)
 
-/**
- * What a page that a link points to is now, by the tree this tab has: there, in the trash, or not to be found. Until the tree
- * is read nothing is known, so nothing is marked rather than every link for a moment.
- */
-const trashed = computed(() => new Set(tree.trash.map((page) => page.id)))
-function linkTarget(pageId: string): LinkTarget {
-  if (!tree.loaded || tree.byId.has(pageId)) return 'live'
-  return trashed.value.has(pageId) ? 'trash' : 'unavailable'
-}
+// The labels, the files and the links to pages that are gone: the same as in a version's preview (the history).
+const content = useContentOptions()
 
 function attributes() {
   return {
@@ -278,8 +271,7 @@ const editor = useEditor({
   extensions: createExtensions({
     doc: handle.doc,
     placeholder: t('editor.placeholder'),
-    // Written out, so the lint rule that finds unused translations can see the keys.
-    checkboxLabel: (checked) => (checked ? t('editor.checkboxDone') : t('editor.checkboxNotDone')),
+    checkboxLabel: content.checkboxLabel,
     slash: {
       state: slashState,
       translate: (key) => t(key),
@@ -299,11 +291,7 @@ const editor = useEditor({
     // the document invalid.
     onInvalidContent: () => (contentError.value = true),
     openLink,
-    brokenLinks: {
-      stateOf: linkTarget,
-      describe: (state) =>
-        state === 'trash' ? t('editor.link.inTrash') : t('editor.link.unavailable'),
-    },
+    brokenLinks: content.brokenLinks,
     onBlockMoved: announceMove,
     dragHandle: {
       element: handleElement, // Leaving the block for the handle reports no block; the handle still belongs to the one it was next to.
@@ -311,10 +299,7 @@ const editor = useEditor({
         if (pos >= 0) hoveredBlock = pos
       },
     },
-    files: {
-      formatSize: (bytes) => formatFileSize(bytes, locale.value),
-      downloadLabel: (fileName, size) => t('editor.attachment.download', { name: fileName, size }),
-    },
+    files: content.files,
     upload: {
       upload: (file) =>
         sync.connection === 'open'
@@ -404,11 +389,7 @@ watch(pagesAvailable, (available) => {
   }
 })
 
-// A link to a page that goes to the trash, comes back or is made is marked by the tree, not by the document: when the tree
-// changes, the links are looked at again.
-watch([() => tree.pages, () => tree.trash, () => tree.loaded], () => {
-  if (editor.value) refreshBrokenLinks(editor.value.view)
-})
+content.keepLinksCurrent(editor)
 
 onBeforeUnmount(() => {
   stopLinkShortcut()

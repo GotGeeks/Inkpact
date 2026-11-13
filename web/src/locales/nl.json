@@ -87,6 +87,7 @@
     "too_many_pages": "Er zijn te veel pagina's tegelijk open. Sluit er een en probeer het opnieuw.",
     "forbidden": "Dat mag je niet doen.",
     "not_found": "Dat is niet gevonden.",
+    "history_open_failed": "De geschiedenis kon niet worden geopend. Laad de pagina opnieuw en probeer het nog eens.",
     "export_unavailable": "De export kan nu niet worden gemaakt, omdat het deel van de server dat de pagina’s leest niet beschikbaar is. Probeer het zo opnieuw.",
     "csrf_invalid": "De pagina was verouderd. Laad hem opnieuw en probeer het nog eens.",
     "title_invalid": "De titel mag hooguit 500 tekens hebben.",
@@ -636,5 +637,44 @@
     "toggle": "Favoriet",
     "add": "Aan favorieten toevoegen",
     "remove": "Uit favorieten verwijderen"
+  },
+  "history": {
+    "open": "Geschiedenis van de pagina",
+    "title": "Geschiedenis van “{title}”",
+    "description": "Eerdere versies van deze pagina. Een versie bekijken verandert de pagina niet.",
+    "close": "Geschiedenis sluiten",
+    "listLabel": "Versies, nieuwste eerst",
+    "loading": "Geschiedenis laden…",
+    "loadFailed": "De geschiedenis kon niet worden geladen.",
+    "retry": "Opnieuw proberen",
+    "empty": "Nog geen versies. Een paar minuten nadat de pagina verandert, wordt een versie bewaard.",
+    "emptyOff": "Er zijn geen versies bewaard.",
+    "more": "Oudere versies tonen",
+    "loadingMore": "Oudere versies laden…",
+    "moreFailed": "De oudere versies konden niet worden geladen.",
+    "choose": "Kies een versie om die te bekijken.",
+    "back": "Terug naar de versies",
+    "heading": "{time} · {kind}",
+    "byAuthor": "{kind} · {name}",
+    "versionUnreadable": "Deze versie kan niet worden getoond: er staat iets in dat deze app niet kan weergeven.",
+    "kind": {
+      "automatic": "Automatisch bewaard",
+      "rename": "Hernoemd",
+      "restore": "Teruggezet",
+      "beforeRestore": "Vóór het terugzetten"
+    },
+    "state": {
+      "pending": "De laatste wijzigingen staan nog niet in een versie. Een paar minuten na de laatste wijziging wordt er een bewaard.",
+      "failed": "De laatste wijzigingen van deze pagina konden niet als versie worden bewaard. Na de volgende wijziging wordt het opnieuw geprobeerd.",
+      "full": "De geschiedenis van deze werkruimte is vol, dus er worden geen nieuwe versies bewaard. De eigenaar kan de grens verhogen.",
+      "off": "De geschiedenis staat uit voor deze werkruimte, dus er worden geen nieuwe versies bewaard. De eerder bewaarde versies blijven hier."
+    },
+    "preview": {
+      "label": "De inhoud van deze versie",
+      "loading": "Deze versie laden…",
+      "unavailable": "Deze versie kan nu niet worden getoond. Probeer het zo opnieuw.",
+      "notFound": "Deze versie wordt niet meer bewaard.",
+      "failed": "Deze versie kon niet worden geladen."
+    }
   }
 }

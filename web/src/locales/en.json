@@ -87,6 +87,7 @@
     "too_many_pages": "Too many pages are open at once. Close one and try again.",
     "forbidden": "You are not allowed to do that.",
     "not_found": "That could not be found.",
+    "history_open_failed": "The history could not be opened. Reload the page and try again.",
     "export_unavailable": "The export cannot be made right now, because the part of the server that reads the pages is not available. Try again in a moment.",
     "csrf_invalid": "The page was out of date. Reload it and try again.",
     "title_invalid": "The title can be at most 500 characters.",
@@ -636,5 +637,44 @@
     "toggle": "Favorite",
     "add": "Add to favorites",
     "remove": "Remove from favorites"
+  },
+  "history": {
+    "open": "Page history",
+    "title": "History of “{title}”",
+    "description": "Earlier versions of this page. Looking at one does not change the page.",
+    "close": "Close the history",
+    "listLabel": "Versions, newest first",
+    "loading": "Loading the history…",
+    "loadFailed": "The history could not be loaded.",
+    "retry": "Try again",
+    "empty": "No versions yet. A version is kept a few minutes after the page changes.",
+    "emptyOff": "No versions were kept.",
+    "more": "Show older versions",
+    "loadingMore": "Loading older versions…",
+    "moreFailed": "The older versions could not be loaded.",
+    "choose": "Choose a version to see it.",
+    "back": "Back to the versions",
+    "heading": "{time} · {kind}",
+    "byAuthor": "{kind} · {name}",
+    "versionUnreadable": "This version cannot be shown: it holds something this app cannot display.",
+    "kind": {
+      "automatic": "Saved automatically",
+      "rename": "Renamed",
+      "restore": "Restored",
+      "beforeRestore": "Before a restore"
+    },
+    "state": {
+      "pending": "The latest changes are not in a version yet. One is kept a few minutes after the page was last changed.",
+      "failed": "The latest changes of this page could not be kept as a version. It is tried again after the next change.",
+      "full": "The history of this workspace is full, so no new versions are kept. Its owner can raise the limit.",
+      "off": "History is off for this workspace, so no new versions are kept. The versions kept before stay here."
+    },
+    "preview": {
+      "label": "The content of this version",
+      "loading": "Loading this version…",
+      "unavailable": "This version cannot be shown right now. Try again in a moment.",
+      "notFound": "This version is no longer kept.",
+      "failed": "This version could not be loaded."
+    }
   }
 }
