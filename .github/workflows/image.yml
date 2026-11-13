@@ -126,6 +126,22 @@ jobs:
           grep -qE "^FROM mcr\.microsoft\.com/dotnet/sdk:${pinned}@" Dockerfile \
             || { echo "::error::global.json pins .NET SDK ${pinned}, but the Dockerfile's dotnet/sdk image is another version"; exit 1; }
 
+      # A /data that belongs to root, as a folder Unraid makes for a template's path: the app stops at once, says what to
+      # run, and writes nothing (run B.8). The volume gets a file first: Docker gives an empty volume the image's owner.
+      - name: A data folder the app cannot write
+        run: |
+          set -euo pipefail
+          docker volume create inkpact-root-data >/dev/null
+          docker run --rm -v inkpact-root-data:/data --user 0 --entrypoint sh "$LOCAL_IMAGE" \
+            -c 'touch /data/.root && chown -R 0:0 /data && chmod 755 /data'
+          status=0
+          docker run --rm -v inkpact-root-data:/data -e 'ConnectionStrings__Inkpact=Host=nowhere;Database=x;Username=x;Password=x' \
+            "$LOCAL_IMAGE" >start.log 2>&1 || status=$?
+          cat start.log
+          [[ $status == 1 ]] || { echo "::error::The app ended with $status, not 1, on a data folder it cannot write"; exit 1; }
+          grep -q 'chown -R 1654:1654' start.log || { echo "::error::The app did not say what to run"; exit 1; }
+          docker volume rm inkpact-root-data >/dev/null
+
       # The backup and restore commands of docs/self-hosting.md, followed against a stack of this image: a page, a tag
       # and a file are there again after the volumes are removed and the backup is put back (run B.7).
       - name: Backup and restore

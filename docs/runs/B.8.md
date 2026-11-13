@@ -2,7 +2,7 @@
 
 **Model:** S·med in the roadmap; kept. Planned on Opus 5.5 on 2026-11-13. Three PRs, each `/code-review` at medium before it merges: PR 1 adds the server's first outbound call, PR 2 handles signing and a token that can write to the repository.
 
-**Status:** PRs 1 and 2 built (see **Handoff**). The four questions are taken as recommended (the maintainer asked for the card to be built without answering them; they can still be changed before PRs 2 and 3 merge).
+**Status:** Built: PRs 1, 2 and 3 (see **Handoff**); the first release waits for the release App (see "After the run"). The four questions are taken as recommended (the maintainer asked for the card to be built without answering them; they can still be changed before PRs 2 and 3 merge).
 
 ## Goal
 
@@ -268,3 +268,32 @@ A release is one merge: merging the release PR tags the version, writes the chan
 - **`image-version.sh`** run locally for a push, a release, and a version that is not x.y.z.
 
 **Not checked:** the release itself and the arm64 build run only on GitHub, after the merge. The first release (see "After the run") is their test; its outcome goes here.
+
+### PR 3: the Unraid template
+
+- **[`deploy/unraid/inkpact.xml`](../../deploy/unraid/inkpact.xml):** decision 7. The `latest` image, port 8080, `/data` on `/mnt/user/appdata/inkpact`, and the compose file's hardening in `ExtraParams`. The two secrets are masked. Every setting the compose file names is offered (the log format is now named there too, commented out), and `<Requires>` gives the PostgreSQL commands and the `chown`.
+- **The start-up check of the data folders:** [`DataDirectories.cs`](../../server/src/Inkpact.Api/Health/DataDirectories.cs).
+  - **What:** the keys, attachments and imports folders, and the dumps' folder when a dump is made before a migration.
+  - **How:** each is made and a file is written and removed.
+  - **On failure:** the first that fails stops the app with exit code 1 and one critical log line, which names the folder, its setting, and the `chown` to run.
+- **[`unraid-sync.yml`](../../.github/workflows/unraid-sync.yml):** decision 8. It checks that the copy differs from the template in its `TemplateURL` only, commits it as the App's bot with a sign-off, and opens a pull request in `joszz/unraid-community-apps`. It runs only with `UNRAID_CA_SYNC=true` and the App's secrets; otherwise it says why.
+- **`image.yml`:** a step runs the image on a `/data` volume that belongs to root, and expects exit code 1 and the `chown` line.
+- **Docs:** the guide's "Unraid": the template (PostgreSQL, the folder, the URL, the fields, updating), and the Compose Manager way kept as the alternative.
+
+**Where it differs from the card:**
+
+1. **The check runs before the services are registered,** not before the migration: registering Data Protection already makes the keys folder, and an unwritable one ended the app with an unhandled exception there. The check has a console logger of its own, in the app's format, because the app's logging is not built yet.
+2. **The template's copy and its README in the CA repository:** the copy is synced. The CA repository's README, which lists its apps, gets Inkpact by hand when the sync is switched on (at 2.11).
+
+**Tests:**
+- **`DataDirectoriesTests`:** passes and leaves nothing; each of the four folders, unwritable, stops it with the line; no dump folder when no dump is made; the defaults.
+- **`UnraidTemplateTests`:** the image, the URLs and the icon file, the folder and the port, the hardening flags against the compose file, the settings both ways against the compose file, the masked fields, defaults equal to values, and `<Requires>`.
+
+**Checked while building:**
+- **The image on a root-owned `/data` volume:** exit 1 and the line, before any database call.
+- **`unraid-sync.yml`'s copy step,** run locally: the `sed` changes one line, and the diff check counts two.
+- **actionlint** on every workflow.
+
+**Not checked:**
+- **The sync against the CA repository:** it needs the App. Try it once with `workflow_dispatch` and `UNRAID_CA_SYNC=true` against a branch, then switch it off again, or leave it for 2.11.
+- **A real Unraid install:** it is in the test pass.

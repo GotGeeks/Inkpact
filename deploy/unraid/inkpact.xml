@@ -1,0 +1,148 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <!-- The Unraid template (run B.8). It exists twice: here, and as templates/inkpact.xml in
+       joszz/unraid-community-apps, the copy Community Apps installs from, which differs only in its TemplateURL.
+       .github/workflows/unraid-sync.yml opens a pull request there when this file changes (switched on at the first
+       public release). Change this one, never the copy. Its variables are the compose file's settings:
+       UnraidTemplateTests checks that they match. -->
+
+  <Name>Inkpact</Name>
+  <Repository>ghcr.io/gotgeeks/inkpact:latest</Repository>
+  <Registry>https://github.com/GotGeeks/Inkpact/pkgs/container/inkpact</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/GotGeeks/Inkpact/issues</Support>
+  <Project>https://github.com/GotGeeks/Inkpact</Project>
+  <Overview>
+    Inkpact is a self-hosted notes app with real-time collaborative editing: notebooks and notes in a tree, a block
+    editor that syncs live between your devices, attachments, search, tags, favorites, links between notes with
+    backlinks, version history with restore, offline use as an installed app, an import from Joplin and an export of
+    everything to Markdown. AGPL-3.0, no paid features.
+
+    It needs a PostgreSQL 18 server: add the official PostgreSQL container from Community Apps first (see Requires).
+  </Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/GotGeeks/Inkpact/main/deploy/unraid/inkpact.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/GotGeeks/Inkpact/main/web/public/icons/icon-512.png</Icon>
+  <!-- The compose file's hardening: nothing written outside /data and /tmp, no extra privileges. -->
+  <ExtraParams>--read-only --tmpfs /tmp --cap-drop=ALL --security-opt=no-new-privileges:true</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>
+    Before the first start, two things, once:
+    1. A PostgreSQL 18 server with a user and a database for Inkpact. With the official PostgreSQL container, in its console (psql -U postgres): CREATE ROLE inkpact LOGIN PASSWORD 'a long password'; CREATE DATABASE inkpact OWNER inkpact;
+    2. The data folder, writable by the user Inkpact runs as, in the Unraid terminal: mkdir -p /mnt/user/appdata/inkpact &amp;&amp; chown -R 1654:1654 /mnt/user/appdata/inkpact
+    The full guide: https://github.com/GotGeeks/Inkpact/blob/main/docs/self-hosting.md#unraid
+  </Requires>
+
+  <!-- ── Ports and folders ─────────────────────────────────────────────────── -->
+
+  <Config
+    Name="Web UI port"
+    Target="8080"
+    Default="8080"
+    Mode="tcp"
+    Description="The host port for Inkpact's web interface. Behind a reverse proxy (Traefik, Nginx Proxy Manager), point it here."
+    Type="Port"
+    Display="always"
+    Required="true"
+    Mask="false">8080</Config>
+
+  <Config
+    Name="Data"
+    Target="/data"
+    Default="/mnt/user/appdata/inkpact"
+    Mode="rw"
+    Description="Attachments, the keys that keep you signed in, and the database dump written before each update that changes the database. Must belong to UID 1654 (see Requires). Back it up together with the database."
+    Type="Path"
+    Display="always"
+    Required="true"
+    Mask="false">/mnt/user/appdata/inkpact</Config>
+
+  <!-- ── Required settings ─────────────────────────────────────────────────── -->
+
+  <Config
+    Name="Database connection"
+    Target="ConnectionStrings__Inkpact"
+    Default="Host=192.168.1.10;Port=5432;Database=inkpact;Username=inkpact;Password=change-me"
+    Mode=""
+    Description="Where PostgreSQL 18 is, and the user and database you made for Inkpact. Host is the Unraid server's address (not localhost), or the PostgreSQL container's name when both are on the same custom Docker network. A password with a ; in it does not fit here: choose another."
+    Type="Variable"
+    Display="always"
+    Required="true"
+    Mask="true">Host=192.168.1.10;Port=5432;Database=inkpact;Username=inkpact;Password=change-me</Config>
+
+  <Config
+    Name="Setup code"
+    Target="Auth__SetupCode"
+    Default=""
+    Mode=""
+    Description="A code of your choice that lets the first visitor create the administrator account. Open the web UI and enter it. Once the account exists the code does nothing; you can then clear this field."
+    Type="Variable"
+    Display="always"
+    Required="true"
+    Mask="true"></Config>
+
+  <!-- ── Optional settings ─────────────────────────────────────────────────── -->
+
+  <Config
+    Name="Trusted proxy"
+    Target="Network__TrustedProxies__0"
+    Default=""
+    Mode=""
+    Description="Only for a reverse proxy outside the private ranges (10/8, 172.16/12, 192.168/16): its address. Docker and Unraid are covered already."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false"></Config>
+
+  <Config
+    Name="Proxies in front"
+    Target="Network__ForwardLimit"
+    Default="1"
+    Mode=""
+    Description="With two proxies in front of Inkpact (a Cloudflare or Tailscale tunnel in front of Traefik), set 2, so that the login limit counts each visitor and not the outer proxy."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false">1</Config>
+
+  <Config
+    Name="Largest file"
+    Target="Attachments__MaxFileSize"
+    Default="52428800"
+    Mode=""
+    Description="The largest file that can be added to a page, in bytes (52428800 is 50 MB)."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false">52428800</Config>
+
+  <Config
+    Name="Update check"
+    Target="UpdateCheck__Enabled"
+    Default="true"
+    Mode=""
+    Description="Once a day Inkpact asks GitHub for its newest release, to tell the administrator about an update (nothing about your install is sent). false stops it. Updating itself is Unraid's Check for updates."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false">true</Config>
+
+  <Config
+    Name="Log format"
+    Target="Logging__Console__FormatterName"
+    Default="simple"
+    Mode=""
+    Description="simple: one readable line per entry, as Unraid's log viewer shows it. json: one JSON object per entry, for a log collector (Loki, Graylog)."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false">simple</Config>
+</Container>

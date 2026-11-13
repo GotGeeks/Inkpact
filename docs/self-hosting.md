@@ -254,7 +254,18 @@ with the `traefik` network declared as external at the bottom of the file.
 
 ## Unraid
 
-Use the Docker Compose Manager plugin: add a stack, paste the compose file and the `.env`, and point the volumes at `/mnt/user/appdata/inkpact/...` if you prefer bind mounts (the folder for `/data` must be writable by UID 1654). A Community Apps template comes with the first release. If Unraid runs a PostgreSQL server already, use the next section instead.
+**With the template** (Inkpact alone, against a PostgreSQL container):
+
+1. **PostgreSQL 18:** if Unraid does not run one yet, add the official `postgres` container from Community Apps, with the tag `18` (or `18-alpine`). In its console (`psql -U postgres`), make the user and the database once: `CREATE ROLE inkpact LOGIN PASSWORD '...'; CREATE DATABASE inkpact OWNER inkpact;`.
+2. **The data folder,** in the Unraid terminal, once: `mkdir -p /mnt/user/appdata/inkpact && chown -R 1654:1654 /mnt/user/appdata/inkpact`. A folder Unraid makes by itself belongs to root, and the app (which runs as UID 1654) then stops at once with a line in its log saying to run this.
+3. **The template:** Docker → Add Container → Template, with the URL `https://raw.githubusercontent.com/GotGeeks/Inkpact/main/deploy/unraid/inkpact.xml`. (Inkpact is not listed in Community Apps until its first public release.) Fill in:
+   - **Database connection:** the server's address (the Unraid server's own, not `localhost`), and the password. With both containers on one custom Docker network, the PostgreSQL container's name works too.
+   - **Setup code:** one of your choice.
+4. **Apply,** open the web UI, and create the administrator with the setup code.
+
+The template runs the image as the compose file does: a read-only root filesystem, no extra privileges, and `/data` on the appdata folder. The Docker tab shows whether it is healthy (`/api/health/ready`). **To update,** use Unraid's **Check for updates**, then **Apply update**: the template follows `latest`. Back up the appdata folder and the database as described under "Backup and restore".
+
+**With a stack** (the Docker Compose Manager plugin): add a stack, paste the compose file and the `.env`, and point the volumes at `/mnt/user/appdata/inkpact/...` if you prefer bind mounts (the folder for `/data` must be writable by UID 1654). To run Inkpact alone against a PostgreSQL server you have, from a checkout of this repository, use the next section.
 
 ## With a PostgreSQL you already run
 

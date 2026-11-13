@@ -1,0 +1,112 @@
+name: Unraid template
+
+# Keeps the copy of the Unraid template that Community Apps installs from (templates/inkpact.xml in
+# joszz/unraid-community-apps) the same as deploy/unraid/inkpact.xml, but for its TemplateURL (run B.8). When the template
+# changes on main, this opens a pull request there; the maintainer merges it. A release needs no change: the template
+# tracks the latest image.
+#
+# Switched off until the first public release (run 2.11): a template in that repository is listed in Community Apps for
+# every Unraid user. Switch it on with the repository variable UNRAID_CA_SYNC=true. It uses the release App's token (see
+# CONTRIBUTING, "Releases"), with the App installed on joszz/unraid-community-apps too.
+on:
+  push:
+    branches: [main]
+    paths:
+      - deploy/unraid/inkpact.xml
+      - .github/workflows/unraid-sync.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unraid-sync
+  cancel-in-progress: false
+
+env:
+  CA_OWNER: joszz
+  CA_REPOSITORY: unraid-community-apps
+  CA_PATH: templates/inkpact.xml
+  CA_TEMPLATE_URL: https://raw.githubusercontent.com/joszz/unraid-community-apps/main/templates/inkpact.xml
+
+jobs:
+  sync:
+    name: sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - id: on
+        name: Is the sync switched on?
+        run: |
+          if [[ "$SYNC" == true && -n "$CLIENT_ID" && "$KEY_SET" == true ]]; then
+            echo "on=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "::notice::The Unraid template is not copied to Community Apps (UNRAID_CA_SYNC is not true, or the release App is not set up)."
+          fi
+        env:
+          SYNC: ${{ vars.UNRAID_CA_SYNC }}
+          CLIENT_ID: ${{ secrets.RELEASE_APP_CLIENT_ID }}
+          KEY_SET: ${{ secrets.RELEASE_APP_KEY != '' }}
+
+      - if: steps.on.outputs.on == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: inkpact
+
+      - id: token
+        if: steps.on.outputs.on == 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_KEY }}
+          owner: ${{ env.CA_OWNER }}
+          repositories: ${{ env.CA_REPOSITORY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - if: steps.on.outputs.on == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.CA_OWNER }}/${{ env.CA_REPOSITORY }}
+          token: ${{ steps.token.outputs.token }}
+          path: ca
+
+      # The copy is the template with its own TemplateURL, and nothing else changed.
+      - id: copy
+        if: steps.on.outputs.on == 'true'
+        run: |
+          set -euo pipefail
+          source='https://raw.githubusercontent.com/GotGeeks/Inkpact/main/deploy/unraid/inkpact.xml'
+          grep -qF "<TemplateURL>$source</TemplateURL>" inkpact/deploy/unraid/inkpact.xml \
+            || { echo "::error::deploy/unraid/inkpact.xml does not name its own TemplateURL"; exit 1; }
+          mkdir -p "ca/$(dirname "$CA_PATH")"
+          sed "s#<TemplateURL>$source</TemplateURL>#<TemplateURL>$CA_TEMPLATE_URL</TemplateURL>#" \
+            inkpact/deploy/unraid/inkpact.xml >"ca/$CA_PATH"
+          [[ "$(diff inkpact/deploy/unraid/inkpact.xml "ca/$CA_PATH" | grep -c '^[<>]')" == 2 ]] \
+            || { echo "::error::The copy differs in more than its TemplateURL"; exit 1; }
+          if git -C ca diff --quiet -- "$CA_PATH" && git -C ca ls-files --error-unmatch "$CA_PATH" >/dev/null 2>&1; then
+            echo "::notice::The copy in $CA_OWNER/$CA_REPOSITORY is up to date."
+          else
+            echo "changed=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      # As the App's bot, signed off by it; a pull request, not a push to main, so the maintainer looks first.
+      - if: steps.copy.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          bot="${SLUG}[bot]"
+          id="$(gh api "/users/${bot}" --jq .id)"
+          cd ca
+          git config user.name "$bot"
+          git config user.email "${id}+${bot}@users.noreply.github.com"
+          branch="sync/inkpact-${GITHUB_SHA::7}"
+          git switch -c "$branch"
+          git add "$CA_PATH"
+          git commit -s -m "Sync inkpact.xml with GotGeeks/Inkpact (${GITHUB_SHA::7})"
+          git push origin "$branch"
+          gh pr create --repo "$CA_OWNER/$CA_REPOSITORY" --base main --head "$branch" \
+            --title "Sync inkpact.xml with GotGeeks/Inkpact (${GITHUB_SHA::7})" \
+            --body "The Unraid template as of GotGeeks/Inkpact@${GITHUB_SHA}, with this copy's TemplateURL. Made by unraid-sync.yml."
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          SLUG: ${{ steps.token.outputs.app-slug }}
