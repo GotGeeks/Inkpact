@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { policyProblem, removesVersions, type HistoryPolicy } from './historyPolicy'
+import {
+  MAXIMUM_CAP_MIB,
+  policyProblem,
+  removesVersions,
+  type HistoryPolicy,
+} from './historyPolicy'
 
 const defaults: HistoryPolicy = {
   enabled: true,
@@ -18,6 +23,12 @@ describe('policyProblem', () => {
     ).toBeNull()
     expect(policyProblem({ ...defaults, granularHours: 48, dailyDays: 2 })).toBeNull()
     expect(policyProblem({ ...defaults, capMiB: 1 })).toBeNull()
+    expect(policyProblem({ ...defaults, capMiB: MAXIMUM_CAP_MIB })).toBeNull()
+  })
+
+  it('has the largest limit the server takes', () => {
+    // The server: CapMiB <= long.MaxValue / 1 MiB.
+    expect(MAXIMUM_CAP_MIB).toBe(Number((2n ** 63n - 1n) / 1048576n))
   })
 
   it.each([
@@ -33,6 +44,8 @@ describe('policyProblem', () => {
     [{ expiryDays: 29 }, 'expiryBeforeDaily'],
     [{ capMiB: 0 }, 'cap'],
     [{ capMiB: Number.NaN }, 'cap'],
+    [{ capMiB: MAXIMUM_CAP_MIB + 1 }, 'cap'],
+    [{ capMiB: 9_000_000_000_000 }, 'cap'],
   ] as const)('refuses %o (%s)', (change, problem) => {
     expect(policyProblem({ ...defaults, ...change })).toBe(problem)
   })

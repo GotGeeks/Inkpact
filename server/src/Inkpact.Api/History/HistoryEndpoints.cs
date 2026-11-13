@@ -14,7 +14,7 @@ public sealed record VersionAuthor(Guid Id, string DisplayName);
 
 /// <summary>
 /// A version in the list: everything but its content. <paramref name="ProtectedUntil"/> is set while no retention or cap
-/// removes it: the page as it was before a restore, kept for a day.
+/// removes it: the page as it was before a restore, kept for a day. Null once that time has passed.
 /// </summary>
 public sealed record VersionSummary(
     Guid Id, DateTimeOffset CreatedAt, string Kind, string Title, VersionAuthor? CreatedBy, long Bytes, DateTimeOffset? ProtectedUntil = null);
@@ -94,7 +94,8 @@ public static class HistoryEndpoints
         return app;
     }
 
-    private static async Task<IResult> List(Guid pageId, string? before, int? limit, InkpactDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> List(
+        Guid pageId, string? before, int? limit, InkpactDbContext db, TimeProvider time, CancellationToken cancellationToken)
     {
         var take = Math.Clamp(limit ?? DefaultPageSize, 1, MaxPageSize);
         var versions = db.PageVersions.AsNoTracking().Where(v => v.PageId == pageId);
@@ -125,12 +126,15 @@ public static class HistoryEndpoints
             .Take(take + 1)
             .ToListAsync(cancellationToken);
 
+        // A protection that has passed is not sent: the retention no longer heeds it (see HistoryCap), and a client's own
+        // clock should not have to decide.
+        var now = time.GetUtcNow();
         var page = rows.Take(take)
             .Select(v => new VersionSummary(
                 v.Id, v.CreatedAt, KindName(v.Kind), v.Title,
                 v.CreatedBy is { } author && v.AuthorName is not null ? new VersionAuthor(author, v.AuthorName) : null,
                 v.PayloadBytes,
-                v.ProtectedUntil))
+                v.ProtectedUntil > now ? v.ProtectedUntil : null))
             .ToList();
         var next = rows.Count > take ? WriteCursor(page[^1].CreatedAt, page[^1].Id) : null;
         var stored = await ContentMark.ReadAsync(db, pageId, cancellationToken);

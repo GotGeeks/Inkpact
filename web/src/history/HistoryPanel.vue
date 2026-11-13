@@ -14,6 +14,7 @@ import AppButton from '../components/AppButton.vue'
 import AppIcon from '../components/AppIcon.vue'
 import AppNotice from '../components/AppNotice.vue'
 import { useMediaQuery } from '../composables/useMediaQuery'
+import { useTreeStore } from '../stores/tree'
 import type { RestoreAnswer, VersionSummary } from './types'
 import { useVersionHistory } from './useVersionHistory'
 import VersionPreview from './VersionPreview.vue'
@@ -28,18 +29,17 @@ const props = withDefaults(
   defineProps<{
     pageId: string
     pageTitle: string
-    /** The page's metadata version as the page view has it: a restore is refused when the title or place changed since. */
-    pageVersion?: number
     /** The person may edit the page. */
     canEdit?: boolean
     /** The page is in the trash, or below a page that is: restored from the trash first. */
     inTrash?: boolean
   }>(),
-  { pageVersion: 0, canEdit: false, inTrash: false },
+  { canEdit: false, inTrash: false },
 )
 const emit = defineEmits<{ close: []; restored: [answer: RestoreAnswer] }>()
 
 const { t, locale } = useI18n()
+const tree = useTreeStore()
 // Made for one page: the page view closes the panel when another page opens.
 const history = useVersionHistory(props.pageId)
 const { list, details, restoring } = history
@@ -86,20 +86,26 @@ async function cancelRestore() {
 async function confirmRestore() {
   const version = selected.value
   if (!version) return
-  const answer = await history.restore(version.id, props.pageVersion)
+  // The page's metadata version (its title and place) from the tree, as a rename or a move sends it. A page that is not in
+  // the tree cannot be restored here (it is in the trash); 0 is refused as page_changed, and Refresh reads the tree.
+  const answer = await history.restore(version.id, tree.byId.get(props.pageId)?.version ?? 0)
   if (answer) {
     confirming.value = false
     emit('restored', answer)
   }
 }
 
-/** The page changed since the list was read: the list is read again, and the version stays on the screen. */
+/**
+ * The page changed since the list was read: the list and the tree are read again (the content mark and the metadata
+ * version a restore sends back), and the version stays on the screen.
+ */
 async function refreshAfterChange() {
   restoring.error = null
   confirming.value = false
-  await history.load()
+  await Promise.all([history.load(), tree.load().catch(() => undefined)])
 }
 
+/** Why a restore was refused. The codes a version's preview has too are said as the preview says them. */
 function restoreError(code: string): string {
   switch (code) {
     case 'page_changed':
@@ -110,31 +116,38 @@ function restoreError(code: string): string {
       return t('history.restore.historyOff')
     case 'history_full':
       return t('history.restore.full')
-    case 'version_not_found':
-      return t('history.preview.notFound')
-    case 'version_unreadable':
-      return t('history.versionUnreadable')
     case 'attachment_missing':
       return t('history.restore.attachmentMissing')
     case 'content_too_large':
       return t('history.restore.tooLarge')
     case 'page_unreadable':
       return t('history.restore.pageUnreadable')
-    case 'history_unavailable':
-      return t('history.preview.unavailable')
     case 'forbidden':
       return t('history.restore.forbidden')
+    // The server may have restored it without the answer arriving: trying again asks for that answer (same operation id).
+    case 'network_error':
+    case 'server_error':
+      return t('history.restore.noAnswer')
+    case 'version_not_found':
+    case 'version_unreadable':
+    case 'history_unavailable':
+      return previewError(code)
     default:
       return t('history.restore.failed')
   }
 }
 
-/** Until when a version is kept whatever the retention says: only the page as it was before a restore. */
-function keptUntil(version: VersionSummary): string | null {
-  return version.protectedUntil && new Date(version.protectedUntil) > new Date()
-    ? t('history.keptUntil', { time: when(version.protectedUntil) })
-    : null
-}
+/**
+ * Until when each version is kept whatever the retention says (only the page as it was before a restore), by id. The
+ * server leaves `protectedUntil` out once it has passed, so its clock decides, not the browser's.
+ */
+const keptUntil = computed(() => {
+  const kept = new Map<string, string>()
+  for (const version of list.versions)
+    if (version.protectedUntil)
+      kept.set(version.id, t('history.keptUntil', { time: when(version.protectedUntil) }))
+  return kept
+})
 
 const timeFormat = computed(
   () => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }),
@@ -195,6 +208,8 @@ function previewError(code: string): string {
 const canRetry = (code: string) => code !== 'version_unreadable' && code !== 'version_not_found'
 
 async function choose(version: VersionSummary) {
+  // While a restore is on its way, its answer belongs to the version on the screen: the rows wait (they are disabled).
+  if (restoring.busy) return
   confirming.value = false
   restoring.error = null
   selectedId.value = version.id
@@ -276,6 +291,7 @@ const row =
                   :class="[row, version.id === selectedId ? 'bg-surface-container-high' : '']"
                   :aria-current="version.id === selectedId ? 'true' : undefined"
                   :data-version-id="version.id"
+                  :disabled="restoring.busy"
                   data-testid="version-row"
                   @click="choose(version)"
                 >
@@ -286,9 +302,11 @@ const row =
                   <span class="w-full truncate text-body-sm">{{
                     version.title || t('tree.untitled')
                   }}</span>
-                  <span v-if="keptUntil(version)" class="text-label-xs text-on-surface-variant">{{
-                    keptUntil(version)
-                  }}</span>
+                  <span
+                    v-if="keptUntil.has(version.id)"
+                    class="text-label-xs text-on-surface-variant"
+                    >{{ keptUntil.get(version.id) }}</span
+                  >
                 </button>
               </li>
             </ul>
@@ -317,7 +335,12 @@ const row =
               {{ t('history.choose') }}
             </p>
             <template v-else>
-              <AppButton variant="text" class="self-start md:hidden" @click="backToList">
+              <AppButton
+                variant="text"
+                class="self-start md:hidden"
+                :disabled="restoring.busy"
+                @click="backToList"
+              >
                 {{ t('history.back') }}
               </AppButton>
               <h3

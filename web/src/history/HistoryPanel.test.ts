@@ -60,6 +60,14 @@ function detailOf(version: VersionSummary, text: string, extra: JSONContent[] = 
 }
 
 const get = (path: string, respond: Route['respond']): Route => ({ method: 'GET', path, respond })
+const treeNode = (version: number) => ({
+  id: pageId,
+  parentId: null,
+  title: 'Plans, renamed',
+  sortKey: 'a0',
+  version,
+  updatedAt: '2026-11-12T11:30:00Z',
+})
 
 let wrapper: VueWrapper | null = null
 
@@ -84,8 +92,11 @@ async function open(
   const pinia = createPinia()
   setActivePinia(pinia)
   i18n = createAppI18n(locale)
+  // The page as the tree has it: a restore sends its metadata version.
+  const { pageVersion, ...props } = extra
+  if (pageVersion !== undefined) useTreeStore().pages = [treeNode(pageVersion)]
   wrapper = mount(HistoryPanel, {
-    props: { pageId, pageTitle: 'Plans, renamed', ...extra },
+    props: { pageId, pageTitle: 'Plans, renamed', ...props },
     global: { plugins: [pinia, i18n] },
     attachTo: document.body,
   })
@@ -549,11 +560,38 @@ describe('HistoryPanel', () => {
       expect(busy.disabled).toBe(true)
       busy.click()
       await flushPromises()
+      // The answer belongs to the version on the screen: another one cannot be chosen meanwhile.
+      expect(rows().every((row) => row.disabled)).toBe(true)
+      rows()[0]!.click()
+      await flushPromises()
+      expect(rows()[1]!.getAttribute('aria-current')).toBe('true')
 
       expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1)
       finish(jsonResponse(200, answer))
       await flushPromises()
       expect(wrapper!.emitted('restored')).toHaveLength(1)
+    })
+
+    it('lets the version be chosen again once the answer is in, without the answer of the other', async () => {
+      await choose([
+        {
+          method: 'POST',
+          path: restorePath,
+          respond: () => jsonResponse(409, { code: 'history_full' }),
+        },
+      ])
+      buttonNamed('Restore this version')!.click()
+      await flushPromises()
+      buttonNamed('Restore')!.click()
+      await flushPromises()
+      expect(area()!.querySelector('[role="alert"]')).not.toBeNull()
+
+      rows()[0]!.click()
+      await flushPromises()
+
+      expect(rows()[0]!.disabled).toBe(false)
+      expect(rows()[0]!.getAttribute('aria-current')).toBe('true')
+      expect(document.body.querySelector('[data-testid="restore-error"]')).toBeNull()
     })
 
     it('says when the page changed, keeps the version on the screen, and reads the list again when asked', async () => {
@@ -576,14 +614,28 @@ describe('HistoryPanel', () => {
       const lists = () =>
         fetchMock.mock.calls.filter(([input]) => String(input) === listPath).length
       expect(lists()).toBe(1)
+      // The title or place may have changed where this tab did not hear of it: the tree is read again too.
+      const tree = useTreeStore()
+      const readTree = vi.spyOn(tree, 'load').mockImplementation(async () => {
+        tree.pages = [treeNode(9)]
+        return true
+      })
 
       buttonNamed('Refresh')!.click()
       await flushPromises()
 
       expect(lists()).toBe(2)
+      expect(readTree).toHaveBeenCalledOnce()
       expect(text(preview().querySelector('.ProseMirror'))).toBe('What it said then')
       expect(rows()[1]!.getAttribute('aria-current')).toBe('true')
       expect(area()!.querySelector('[role="alert"]')).toBeNull()
+
+      buttonNamed('Restore this version')!.click()
+      await flushPromises()
+      buttonNamed('Restore')!.click()
+      await flushPromises()
+      const posts = fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')
+      expect(JSON.parse(String(posts[1]![1]!.body))).toMatchObject({ expectedVersion: 9 })
     })
 
     it.each([
@@ -591,13 +643,20 @@ describe('HistoryPanel', () => {
       ['attachment_missing', 'A picture or file in this version is no longer there'],
       ['content_too_large', 'The page would be too large to open'],
       ['forbidden', 'You may no longer edit this page.'],
-      ['server_error', 'The version could not be restored. Nothing was changed.'],
+      ['history_unavailable', 'This version cannot be shown right now. Try again in a moment.'],
+      ['something_new', 'The version could not be restored. Nothing was changed.'],
+      // No answer: the server may have restored it, so the panel does not say nothing changed.
+      ['server_error', 'No answer came, so the version may already be restored. Try again'],
+      ['network_error', 'No answer came, so the version may already be restored. Try again'],
     ])('says why a restore was refused (%s)', async (code, words) => {
       await choose([
         {
           method: 'POST',
           path: restorePath,
-          respond: () => jsonResponse(code === 'server_error' ? 500 : 409, { code }),
+          respond: () =>
+            code === 'network_error'
+              ? Promise.reject(new TypeError('Failed to fetch'))
+              : jsonResponse(code === 'server_error' ? 500 : 409, { code }),
         },
       ])
       buttonNamed('Restore this version')!.click()
@@ -622,13 +681,14 @@ describe('HistoryPanel', () => {
       expect(buttonNamed('Restore this version')).toBeUndefined()
     })
 
-    it('marks the version that is kept for a day', async () => {
+    it('marks the version that is kept for a day, as the server says', async () => {
+      // The server leaves the time out once it has passed: the browser's clock does not decide.
       const kept = {
         ...middle,
         kind: 'before_restore' as const,
-        protectedUntil: new Date(Date.now() + 3600_000).toISOString(),
+        protectedUntil: new Date(Date.now() - 3600_000).toISOString(),
       }
-      const old = { ...oldest, protectedUntil: new Date(Date.now() - 3600_000).toISOString() }
+      const old = { ...oldest, protectedUntil: null }
       await open([get(listPath, () => jsonResponse(200, list([kept, old])))])
 
       expect(text(rows()[0]!)).toContain(`Kept at least until ${when(kept.protectedUntil)}`)

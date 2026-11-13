@@ -221,7 +221,7 @@ All five were answered "yes, as recommended" by the maintainer on 2026-11-12.
 - **Restore in the panel:** for an editor, on a version that is shown, "Restore this version". It asks first, in the panel: what is replaced (the content and the title, with the page as it is kept in its history) and what is not (its place, tags, favorites, to-dos). One request at a time; a request whose answer was lost is asked again under the same operation id. On `page_changed` the panel says so and offers "Refresh", which reads the list again and keeps the version on the screen. Every other refusal is said in words. For a page in the trash, or with history off, the panel says why there is no button. After a restore the panel closes, the focus goes back to the History button, a notice says the page is back and where the page as it was went, and the tree is read again for the title; the content arrives through sync.
 - **The list** marks a version that is kept for a day ("Kept at least until …"): the safety version, whatever its kind (see PR 4: it can be the newest version itself).
 - **The settings screen,** `/settings`, from the account menu (for every member): the workspace's history, on or off, the three windows, a size limit in MiB, and what the versions take (`GET /api/workspaces/{id}/history-usage`, new, viewer role). The owner can save; the server's own rules are checked first and named; a change that can remove versions (a shorter window, a new or lower limit) asks first. Everyone else sees the same, read-only, with a note. Run B.9 adds its sections to this screen.
-- **The list endpoint** also gives `protectedUntil` per version.
+- **The list endpoint** also gives `protectedUntil` per version, while it lies ahead by the server's clock (null once it has passed).
 - **Docs:** `self-hosting.md` has a "Version history" section (what is kept, the settings, what the limit counts, that history is not a backup); the B.5 card's status points here; `test-pass.md`'s B.5 checks can be done.
 
 **Where it differs from the plan above, and why:**
@@ -232,6 +232,8 @@ All five were answered "yes, as recommended" by the maintainer on 2026-11-12.
 4. **e2e:** the device journeys answer the versions with `page.route` (as PR 2's); one desktop journey restores real versions, after a real capture. A new page's naming is captured within the minute (a rename is due at once), so it does not wait the two idle minutes.
 
 **Not in this PR:** a viewer's view end to end (the e2e suite has one account; the unit tests cover it). The e2e of the settings saves nothing: every device project shares the workspace, and `history-policy.spec.ts` already saves and puts back.
+
+**Review:** `/code-review` (medium) on 2026-11-13 gave ten findings, all fixed in this PR: a restore without an answer (network, server error) no longer says nothing was changed, as it may have been done; "Refresh" after `page_changed` reads the tree too, and the restore sends the page's metadata version from the tree, as a rename and a move do (the page view's copy could be older); while a restore is on its way no other version can be chosen, so its answer cannot land on another; `/settings` opened from its address when the workspace cannot be read says so, with "Try again", and no longer loads forever; the focus goes back to Save when the warning goes; the limit's largest value is the server's; an expired protection is not sent; the "kept until" text is made once per row; the restore's error words reuse the preview's for the codes they share.
 
 **Checks:** see the pull request.
 

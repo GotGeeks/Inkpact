@@ -8,6 +8,7 @@ import { useErrorMessage } from '../errors'
 import { formatFileSize } from '../fileSize'
 import { useTreeStore } from '../stores/tree'
 import {
+  MAXIMUM_CAP_MIB,
   policyProblem,
   removesVersions,
   type HistoryPolicy,
@@ -45,6 +46,18 @@ const done = ref(false)
 /** The warning before a save that can remove versions is showing. */
 const warning = ref(false)
 const warningHeading = useTemplateRef<HTMLElement>('warningHeading')
+const formElement = useTemplateRef<HTMLFormElement>('formElement')
+
+/** When the warning goes, the focus goes back to Save, which takes its place (once a save is over: busy, it is disabled). */
+async function backToSave() {
+  await nextTick()
+  formElement.value?.querySelector<HTMLButtonElement>('button[type="submit"]')?.focus()
+}
+
+function cancelWarning() {
+  warning.value = false
+  void backToSave()
+}
 
 function show(policy: HistoryPolicy) {
   saved.value = policy
@@ -56,11 +69,14 @@ function show(policy: HistoryPolicy) {
   form.capMiB = policy.capMiB === null ? '' : String(policy.capMiB)
 }
 
+/** Reads the policy, and first the workspace when it is not known yet (this screen opened straight from its address). */
 async function load() {
   loadError.value = null
-  const id = workspaceId.value
-  if (!id) return
   try {
+    if (!tree.loaded) await tree.init()
+    const id = workspaceId.value
+    // No workspace to read: said like a failed read, with a way to try again.
+    if (!id) throw new ApiError(0, 'unknown')
     const [policy, used] = await Promise.all([
       api<HistoryPolicy>('GET', `/api/workspaces/${id}/history-policy`),
       api<HistoryUsage>('GET', `/api/workspaces/${id}/history-usage`),
@@ -72,10 +88,7 @@ async function load() {
   }
 }
 
-onMounted(async () => {
-  if (!tree.loaded) await tree.init().catch(() => undefined)
-  await load()
-})
+onMounted(load)
 
 const asNumber = (text: string) => (/^\d+$/.test(text.trim()) ? Number(text.trim()) : Number.NaN)
 const asked = computed<HistoryPolicy>(() => ({
@@ -100,7 +113,9 @@ function problemText(which: PolicyProblem): string {
     case 'expiryBeforeDaily':
       return t('settings.history.invalid.expiryBeforeDaily')
     case 'cap':
-      return t('settings.history.invalid.cap')
+      return t('settings.history.invalid.cap', {
+        max: new Intl.NumberFormat(locale.value).format(MAXIMUM_CAP_MIB),
+      })
   }
 }
 
@@ -136,6 +151,7 @@ async function save(confirmed = false) {
   } finally {
     saving.value = false
   }
+  if (confirmed) await backToSave()
 }
 
 function saveErrorText(code: string): string {
@@ -184,7 +200,13 @@ const field =
       </div>
       <p v-else-if="!saved" role="status" class="text-body-sm">{{ t('settings.loading') }}</p>
 
-      <form v-else class="flex flex-col gap-space-md" novalidate @submit.prevent="save()">
+      <form
+        v-else
+        ref="formElement"
+        class="flex flex-col gap-space-md"
+        novalidate
+        @submit.prevent="save()"
+      >
         <p v-if="!isOwner" class="text-body-sm text-on-surface-variant" data-testid="owner-only">
           {{ t('settings.history.ownerOnly') }}
         </p>
@@ -264,7 +286,7 @@ const field =
             <AppButton variant="primary" :disabled="saving" @click="save(true)">
               {{ t('settings.history.saveAnyway') }}
             </AppButton>
-            <AppButton :disabled="saving" @click="warning = false">{{
+            <AppButton :disabled="saving" @click="cancelWarning">{{
               t('settings.cancel')
             }}</AppButton>
           </div>

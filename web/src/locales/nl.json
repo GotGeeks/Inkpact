@@ -696,7 +696,8 @@
       "tooLarge": "De pagina zou te groot worden om te openen, dus deze versie kan niet worden teruggezet.",
       "pageUnreadable": "De pagina zoals die nu is kan niet worden teruggelezen, dus kan niet worden bewaard. Er is niets veranderd.",
       "forbidden": "Je mag deze pagina niet meer bewerken.",
-      "failed": "De versie kon niet worden teruggezet. Er is niets veranderd."
+      "failed": "De versie kon niet worden teruggezet. Er is niets veranderd.",
+      "noAnswer": "Er kwam geen antwoord, dus de versie is misschien al teruggezet. Probeer het opnieuw: ze wordt niet twee keer teruggezet."
     }
   },
   "settings": {
@@ -734,7 +735,7 @@
         "dailyBeforeGranular": "Eén per dag moet minstens zo lang duren als elke versie.",
         "expiry": "Bewaar er één per week een heel aantal dagen, tot 3650.",
         "expiryBeforeDaily": "Eén per week moet minstens zo lang duren als één per dag.",
-        "cap": "De grens is een heel aantal MiB, 1 of meer.",
+        "cap": "De grens is een heel aantal MiB, van 1 tot {max}.",
         "policy": "Deze instellingen kunnen niet worden opgeslagen. Controleer de getallen."
       }
     }
