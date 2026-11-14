@@ -8,6 +8,7 @@ import { useErrorMessage } from '../errors'
 import { formatFileSize } from '../fileSize'
 import { useTreeStore } from '../stores/tree'
 import AboutSection from './AboutSection.vue'
+import AccountSection from './AccountSection.vue'
 import {
   MAXIMUM_CAP_MIB,
   policyProblem,
@@ -18,8 +19,8 @@ import {
 } from './historyPolicy'
 
 /**
- * The settings of the workspace (run B.5b, review finding 5.6): its history, which every member can read and only the
- * owner can change, and which Inkpact runs (run B.8). Run B.9 adds the person's own account here.
+ * The settings (review finding 5.6): the person's own account (run B.9); the workspace's history, which every member can
+ * read and only the owner can change (run B.5b); and which Inkpact runs (run B.8).
  */
 const { t, locale } = useI18n()
 const message = useErrorMessage()
@@ -40,6 +41,8 @@ const form = reactive({
   capMiB: '',
 })
 const loadError = ref<string | null>(null)
+/** Signed in, but without a workspace to read the history of: the section is left out, not shown as an error. */
+const noWorkspace = ref(false)
 const saveError = ref<string | null>(null)
 const problem = ref<PolicyProblem | null>(null)
 const saving = ref(false)
@@ -76,8 +79,8 @@ async function load() {
   try {
     if (!tree.loaded) await tree.init()
     const id = workspaceId.value
-    // No workspace to read: said like a failed read, with a way to try again.
-    if (!id) throw new ApiError(0, 'unknown')
+    noWorkspace.value = !id
+    if (!id) return
     const [policy, used] = await Promise.all([
       api<HistoryPolicy>('GET', `/api/workspaces/${id}/history-policy`),
       api<HistoryUsage>('GET', `/api/workspaces/${id}/history-usage`),
@@ -183,7 +186,10 @@ const field =
   <section class="mx-auto flex max-w-2xl flex-col gap-space-lg p-margin md:p-margin-desktop">
     <h1 class="text-headline-xl-mobile md:text-headline-xl">{{ t('settings.title') }}</h1>
 
+    <AccountSection />
+
     <section
+      v-if="!noWorkspace"
       aria-labelledby="history-settings"
       class="flex flex-col gap-space-md"
       data-testid="history-settings"

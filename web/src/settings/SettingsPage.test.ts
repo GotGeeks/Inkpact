@@ -34,6 +34,7 @@ function server(
     put?: () => Response
     failPolicy?: boolean
     failWorkspaces?: boolean
+    noWorkspace?: boolean
   } = {},
 ) {
   let policy = options.policy ?? defaults
@@ -43,7 +44,7 @@ function server(
     if (path === '/api/workspaces')
       return options.failWorkspaces
         ? jsonResponse(503, { code: 'server_error' })
-        : jsonResponse(200, [{ ...workspace, role }])
+        : jsonResponse(200, options.noWorkspace ? [] : [{ ...workspace, role }])
     if (path === `/api/workspaces/${workspace.id}/pages`)
       return jsonResponse(200, { treeVersion: 1, pages: [] })
     if (path === `/api/workspaces/${workspace.id}/trash`) return jsonResponse(200, [])
@@ -52,6 +53,10 @@ function server(
         ? jsonResponse(500, { code: 'server_error' })
         : jsonResponse(200, policy)
     if (path === usagePath) return jsonResponse(200, { usedBytes: 3_400_000, protectedBytes: 0 })
+    // The account section (run B.9) and "About" read these; their own tests are in their own files.
+    if (path === '/api/account/sessions') return jsonResponse(200, { sessions: [], more: 0 })
+    if (path === '/api/version')
+      return jsonResponse(200, { version: '0.1.0', development: false, update: null })
     if (path === policyPath && method === 'PUT') {
       if (options.put) return options.put()
       policy = JSON.parse(String(init!.body)) as HistoryPolicy
@@ -84,6 +89,8 @@ async function open(
 const field = (id: string) => document.getElementById(id) as HTMLInputElement
 const text = (element: Element | null) => element?.textContent?.replace(/\s+/g, ' ').trim() ?? ''
 const byTestId = (id: string) => document.body.querySelector<HTMLElement>(`[data-testid="${id}"]`)
+/** The history section: the account section (run B.9) comes first on the screen and has a form of its own. */
+const history = () => byTestId('history-settings')!
 const buttonNamed = (name: string) =>
   [...document.body.querySelectorAll('button')].find((b) => text(b) === name)
 async function type(id: string, value: string) {
@@ -93,7 +100,7 @@ async function type(id: string, value: string) {
   await flushPromises()
 }
 async function submit() {
-  document.body.querySelector('form')!.dispatchEvent(new Event('submit'))
+  history().querySelector('form')!.dispatchEvent(new Event('submit'))
   await flushPromises()
 }
 const puts = (fetchMock: ReturnType<typeof server>) =>
@@ -104,8 +111,8 @@ describe('SettingsPage', () => {
     await open('owner')
 
     expect(text(document.querySelector('h1'))).toBe('Settings')
-    expect(text(document.querySelector('h2'))).toBe('History of this workspace')
-    expect((document.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(
+    expect(text(history().querySelector('h2'))).toBe('History of this workspace')
+    expect((history().querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(
       true,
     )
     expect([
@@ -132,7 +139,7 @@ describe('SettingsPage', () => {
       granularHours: 48,
       capMiB: 200,
     })
-    expect(text(document.querySelector('[role="status"]'))).toBe('Saved.')
+    expect(text(history().querySelector('[role="status"]'))).toBe('Saved.')
   })
 
   it('warns before a save that removes versions, and saves only when the owner says so', async () => {
@@ -153,7 +160,7 @@ describe('SettingsPage', () => {
     expect(byTestId('policy-warning')).toBeNull()
     expect(puts(fetchMock)).toHaveLength(0)
     // The focus does not fall to the page: it goes to Save, where the warning was.
-    const saveButton = () => document.body.querySelector('button[type="submit"]')
+    const saveButton = () => history().querySelector('button[type="submit"]')
     expect(document.activeElement).toBe(saveButton())
 
     await submit()
@@ -184,7 +191,7 @@ describe('SettingsPage', () => {
 
     // A limit larger than the server can count.
     await type('expiry-days', '365')
-    ;(document.querySelectorAll('input[type="checkbox"]')[1] as HTMLInputElement).click()
+    ;(history().querySelectorAll('input[type="checkbox"]')[1] as HTMLInputElement).click()
     await flushPromises()
     await type('cap-mib', '9000000000000')
     await submit()
@@ -196,7 +203,7 @@ describe('SettingsPage', () => {
 
   it('says when the limit is below what protected versions take', async () => {
     await open('owner', { put: () => jsonResponse(400, { code: 'history_cap_below_protected' }) })
-    ;(document.querySelectorAll('input[type="checkbox"]')[1] as HTMLInputElement).click()
+    ;(history().querySelectorAll('input[type="checkbox"]')[1] as HTMLInputElement).click()
     await flushPromises()
     await type('cap-mib', '1000')
 
@@ -217,17 +224,17 @@ describe('SettingsPage', () => {
 
       expect(text(byTestId('owner-only'))).toBe('Only the owner of the workspace can change these.')
       expect(field('granular-hours').closest('fieldset')!.disabled).toBe(true)
-      expect((document.querySelector('input[type="checkbox"]') as HTMLInputElement).disabled).toBe(
+      expect((history().querySelector('input[type="checkbox"]') as HTMLInputElement).disabled).toBe(
         true,
       )
-      expect(document.body.querySelector('button[type="submit"]')).toBeNull()
+      expect(history().querySelector('button[type="submit"]')).toBeNull()
     },
   )
 
   it('says when the policy could not be loaded, and loads it when asked again', async () => {
     const fetchMock = await open('owner', { failPolicy: true })
 
-    expect(text(document.querySelector('[role="alert"]'))).toContain(
+    expect(text(history().querySelector('[role="alert"]'))).toContain(
       'The history settings could not be loaded.',
     )
     fetchMock.mockClear()
@@ -240,7 +247,7 @@ describe('SettingsPage', () => {
   it('says when the workspace could not be read (opened from its address), and reads it when asked again', async () => {
     await open('owner', { failWorkspaces: true })
 
-    expect(text(document.querySelector('[role="alert"]'))).toContain(
+    expect(text(history().querySelector('[role="alert"]'))).toContain(
       'The history settings could not be loaded.',
     )
     expect(byTestId('history-settings')!.querySelector('[role="status"]')).toBeNull()
@@ -250,9 +257,17 @@ describe('SettingsPage', () => {
     expect(field('granular-hours').value).toBe('24')
   })
 
+  it('leaves the history out for someone without a workspace, and keeps the account', async () => {
+    await open('owner', { noWorkspace: true })
+
+    expect(byTestId('history-settings')).toBeNull()
+    expect(byTestId('account')).not.toBeNull()
+    expect(document.body.querySelector('[role="alert"]')).toBeNull()
+  })
+
   it('speaks Dutch', async () => {
     await open('owner', {}, 'nl')
 
-    expect(text(document.querySelector('h2'))).toBe('Geschiedenis van deze werkruimte')
+    expect(text(history().querySelector('h2'))).toBe('Geschiedenis van deze werkruimte')
   })
 })

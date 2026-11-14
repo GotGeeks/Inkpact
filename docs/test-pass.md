@@ -121,6 +121,12 @@ _Built in three PRs: the version and the update check, the release pipeline, the
 - [ ] After the next release, Unraid's "Check for updates" offers it; updating keeps notes, attachments and sign-in, and a dump appears in `/data/backups` when the release has a migration.
 - [ ] `cosign verify` of the installed tag on the laptop, with the guide's command.
 - [ ] At 2.11: switch `UNRAID_CA_SYNC` on, merge the first sync PR in the CA repository, and find Inkpact in Community Apps.
+### B.9: account settings
+_PR 1 (the name and the devices) is built; changing the password (PR 2) follows._
+- [ ] **Devices:** on the laptop, Settings → "Signed-in devices" shows the laptop and the phone with readable names ("Safari on iOS"). Sign the phone out from the laptop: the phone goes to the login page within seconds if the app is open, or at its next request.
+- [ ] **All the others:** sign in on a third browser, then "Sign out all other devices" on the laptop: the other two are signed out, the laptop is not.
+- [ ] **Display name:** change it; the account menu shows the new name at once, and so does the author of the next renamed page's version.
+
 ### The review of 2026-11-11
 - [ ] With the device in dark mode, start the installed app (laptop and phone): note whether the title bar and the first screen are light until the page has loaded (the manifest has one theme colour, the light one). If it flashes, that is a finding for a fix run.
 - [ ] Read the whole interface in Dutch once. 13 strings are the same in English and Dutch; most are names (Inkpact, Joplin), but note any that should have been translated.

@@ -51,6 +51,10 @@ public class LogContentTests(PostgresFixture postgres) : IClassFixture<PostgresF
             (await stranger.LoginAsync(email: $"{Marker} not an address", password: $"{Marker}-password")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         }
 
+        // The person's own display name (run B.9), and a name that is refused.
+        (await owner.PatchJsonAsync("/api/account", new { displayName = $"{Marker} name" })).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await owner.PatchJsonAsync("/api/account", new { displayName = $"{Marker}{new string('x', 300)}" })).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
         // A page: made, renamed, tagged, searched for.
         var created = await owner.PostJsonAsync($"/api/workspaces/{workspaceId}/pages", new { title = $"{Marker} title" });
         created.StatusCode.ShouldBe(HttpStatusCode.Created);

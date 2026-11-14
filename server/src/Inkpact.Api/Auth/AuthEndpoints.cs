@@ -26,7 +26,8 @@ public sealed record AuthState(bool SetupRequired, CurrentUser? User, string? Cs
 
 public static class AuthEndpoints
 {
-    private const int MaxNameLength = 200;
+    /// <summary>The longest display name or workspace name, after trimming (setup, and run B.9's account settings).</summary>
+    internal const int MaxNameLength = 200;
     private const int MaxEmailLength = 320;
 
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)

@@ -65,11 +65,8 @@ public static class SyncEndpoints
             return Results.Json(new ApiError("session_changed"), statusCode: StatusCodes.Status409Conflict);
         }
 
-        // Already authenticated for this request, so this reads the cached result.
-        var authentication = await http.AuthenticateAsync();
-        string? sessionKey = null;
-        if (authentication.Properties?.Items.TryGetValue(PostgresTicketStore.SessionKeyItem, out sessionKey) != true
-            || string.IsNullOrEmpty(sessionKey))
+        var sessionKey = await http.SessionKeyAsync();
+        if (sessionKey is null)
         {
             return Results.Json(new ApiError("unauthorized"), statusCode: StatusCodes.Status401Unauthorized);
         }
