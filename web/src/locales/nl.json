@@ -79,6 +79,8 @@
     "password_too_long": "Het wachtwoord mag hooguit 128 tekens hebben.",
     "password_same_as_email": "Het wachtwoord mag niet je e-mailadres zijn.",
     "not_authenticated": "Je bent niet ingelogd.",
+    "session_not_found": "Dat apparaat is niet meer ingelogd.",
+    "session_is_current": "Dat is dit apparaat: log het uit via het accountmenu.",
     "network_error": "De server is niet bereikbaar. Controleer je verbinding en probeer het opnieuw.",
     "server_error": "Er ging iets mis op de server. Probeer het zo opnieuw.",
     "unknown": "Er ging iets mis. Probeer het opnieuw.",

@@ -107,48 +107,64 @@ public sealed class PostgresTicketStore(IDbContextFactory<InkpactDbContext> dbFa
 
     /// <summary>
     /// A user's sessions that have not expired: the one named by <paramref name="currentKey"/> first, then the most recently
-    /// seen, at most <paramref name="limit"/>; and how many there are in all.
+    /// seen, at most <paramref name="limit"/>; and how many there are in all. Both read from one snapshot, so the count
+    /// agrees with the list even while the person signs in or out elsewhere.
     /// </summary>
     public async Task<(IReadOnlyList<Session> Sessions, int Total)> ListForUserAsync(
         Guid userId, string currentKey, int limit, CancellationToken cancellationToken = default)
     {
-        var now = time.GetUtcNow();
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var live = db.Sessions.AsNoTracking().Where(s => s.UserId == userId && s.ExpiresAt > now);
+        await using var snapshot = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead, cancellationToken);
+        var live = Live(db, userId);
         var total = await live.CountAsync(cancellationToken);
-        var sessions = await live
-            .OrderByDescending(s => s.Id == currentKey)
-            .ThenByDescending(s => s.LastSeenAt)
-            .ThenByDescending(s => s.CreatedAt)
-            .Take(limit)
+        var sessions = await Listed(live, currentKey, limit)
             .Select(s => new Session { Id = s.Id, UserId = s.UserId, CreatedAt = s.CreatedAt, LastSeenAt = s.LastSeenAt, ExpiresAt = s.ExpiresAt, UserAgent = s.UserAgent })
             .ToListAsync(cancellationToken);
+        await snapshot.CommitAsync(cancellationToken);
         return (sessions, total);
     }
 
     /// <summary>
-    /// The key of the user's session with this handle, or null: someone else's handle, or one that does not exist, is the
-    /// same answer. The user's keys are few, so they are compared here rather than storing the handle.
+    /// The key of the user's session with this handle, or null. It looks among the sessions the list can show (live, and
+    /// the first <paramref name="limit"/> in its order), so an expired session or someone else's handle is the same "not
+    /// found", and the work is bounded however many sessions a person has.
     /// </summary>
-    public async Task<string?> FindForUserAsync(Guid userId, string handle, CancellationToken cancellationToken = default)
+    public async Task<string?> FindForUserAsync(
+        Guid userId, string handle, string currentKey, int limit, CancellationToken cancellationToken = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var keys = await db.Sessions.AsNoTracking().Where(s => s.UserId == userId).Select(s => s.Id).ToListAsync(cancellationToken);
-        return keys.FirstOrDefault(key => CryptographicOperations.FixedTimeEquals(
-            System.Text.Encoding.ASCII.GetBytes(HandleOf(key)), System.Text.Encoding.ASCII.GetBytes(handle)));
+        var keys = await Listed(Live(db, userId), currentKey, limit).Select(s => s.Id).ToListAsync(cancellationToken);
+        var wanted = System.Text.Encoding.ASCII.GetBytes(handle);
+        return keys.FirstOrDefault(key => CryptographicOperations.FixedTimeEquals(System.Text.Encoding.ASCII.GetBytes(HandleOf(key)), wanted));
     }
 
     /// <summary>
     /// Signs a user out of every browser but the one with <paramref name="keepKey"/>, in one statement (so a session made
-    /// meanwhile goes too), and closes their sync sockets. Returns how many sessions ended.
+    /// meanwhile goes too), and closes their sync sockets. Returns how many live sessions ended: the ones the list showed.
+    /// Expired rows are left to the hourly cleanup; they sign nobody in already.
     /// </summary>
     public async Task<int> RemoveAllForUserExceptAsync(Guid userId, string keepKey, CancellationToken cancellationToken = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var removed = await db.Sessions.Where(s => s.UserId == userId && s.Id != keepKey).ExecuteDeleteAsync(cancellationToken);
+        var removed = await Live(db, userId).Where(s => s.Id != keepKey).ExecuteDeleteAsync(cancellationToken);
         sessionEvents.AllSessionsEndedExcept(userId, keepKey);
         return removed;
     }
+
+    private IQueryable<Session> Live(InkpactDbContext db, Guid userId)
+    {
+        var now = time.GetUtcNow();
+        return db.Sessions.AsNoTracking().Where(s => s.UserId == userId && s.ExpiresAt > now);
+    }
+
+    /// <summary>The order of the list: this session first, then the most recently seen.</summary>
+    private static IQueryable<Session> Listed(IQueryable<Session> sessions, string currentKey, int limit) =>
+        sessions
+            .OrderByDescending(s => s.Id == currentKey)
+            .ThenByDescending(s => s.LastSeenAt)
+            .ThenByDescending(s => s.CreatedAt)
+            .ThenBy(s => s.Id)
+            .Take(limit);
 
     /// <summary>Signs a user out of every browser. Returns how many sessions ended.</summary>
     public async Task<int> RemoveAllForUserAsync(Guid userId)

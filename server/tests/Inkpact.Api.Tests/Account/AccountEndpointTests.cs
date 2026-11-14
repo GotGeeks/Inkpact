@@ -262,6 +262,84 @@ public class AccountEndpointTests(PostgresFixture postgres) : IClassFixture<Post
         (await UseDbAsync(db => db.AuditEvents.Select(e => e.Type).ToListAsync())).ShouldContain(AuditEventTypes.SessionsRevoked);
     }
 
+    [Fact]
+    public async Task An_expired_device_is_not_found_and_nothing_is_written()
+    {
+        await UseDbAsync(async db =>
+        {
+            db.Sessions.Add(new Session
+            {
+                Id = "expired",
+                UserId = (await db.Users.SingleAsync()).Id,
+                Ticket = [1],
+                CreatedAt = Start.AddDays(-40),
+                LastSeenAt = Start.AddDays(-31),
+                ExpiresAt = Start.AddMinutes(-1),
+            });
+            return await db.SaveChangesAsync();
+        });
+        var auditBefore = await UseDbAsync(db => db.AuditEvents.CountAsync());
+
+        var response = await _jos.DeleteJsonAsync($"/api/account/sessions/{PostgresTicketStore.HandleOf("expired")}");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await response.ReadErrorAsync()).Code.ShouldBe("session_not_found");
+        (await UseDbAsync(db => db.AuditEvents.CountAsync())).ShouldBe(auditBefore);
+    }
+
+    [Fact]
+    public async Task A_device_beyond_the_ones_listed_cannot_be_named_by_its_handle()
+    {
+        await UseDbAsync(async db =>
+        {
+            var userId = (await db.Users.SingleAsync()).Id;
+            for (var i = 0; i < AccountEndpoints.MaxListed + 5; i++)
+            {
+                db.Sessions.Add(new Session
+                {
+                    Id = $"old-{i}",
+                    UserId = userId,
+                    Ticket = [1],
+                    CreatedAt = Start.AddDays(-1),
+                    LastSeenAt = Start.AddDays(-1).AddMinutes(i),
+                    ExpiresAt = Start.AddDays(20),
+                });
+            }
+
+            return await db.SaveChangesAsync();
+        });
+        var listed = (await SessionsAsync(_jos)).Sessions.Select(s => s.Id).ToHashSet();
+        listed.ShouldNotContain(PostgresTicketStore.HandleOf("old-0"));
+
+        // The lookup is bounded as the list is: the oldest is beyond it, the newest is in it.
+        (await _jos.DeleteJsonAsync($"/api/account/sessions/{PostgresTicketStore.HandleOf("old-0")}")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await _jos.DeleteJsonAsync($"/api/account/sessions/{PostgresTicketStore.HandleOf("old-104")}")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Signing_out_all_other_devices_counts_the_live_ones_the_list_showed()
+    {
+        await SignInElsewhereAsync();
+        await UseDbAsync(async db =>
+        {
+            db.Sessions.Add(new Session
+            {
+                Id = "expired",
+                UserId = (await db.Users.SingleAsync()).Id,
+                Ticket = [1],
+                CreatedAt = Start.AddDays(-40),
+                LastSeenAt = Start.AddDays(-31),
+                ExpiresAt = Start.AddMinutes(-1),
+            });
+            return await db.SaveChangesAsync();
+        });
+        (await SessionsAsync(_jos)).Sessions.Count(s => !s.Current).ShouldBe(1);
+
+        var response = await _jos.PostJsonAsync("/api/account/sessions/sign-out-others");
+
+        (await response.Content.ReadFromJsonAsync<SessionsEnded>())!.Ended.ShouldBe(1);
+    }
+
     // ---- who may ----------------------------------------------------------------------------------------------------------
 
     [Theory]

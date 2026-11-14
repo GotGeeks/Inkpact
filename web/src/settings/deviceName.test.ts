@@ -18,9 +18,21 @@ describe('deviceOf', () => {
       'Edge',
       'Windows',
     ],
+    // Safari on a Mac, and on an iPad asking for the desktop site: the same user agent.
     [
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.0 Safari/605.1.15',
       'Safari',
+      'macOS/iPadOS',
+    ],
+    // Chrome and Firefox on a Mac are the Mac's own: no iPad sends their desktop tokens.
+    [
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+      'Chrome',
+      'macOS',
+    ],
+    [
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:145.0) Gecko/20100101 Firefox/145.0',
+      'Firefox',
       'macOS',
     ],
     [

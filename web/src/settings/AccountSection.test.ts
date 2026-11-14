@@ -108,6 +108,31 @@ describe('AccountSection', () => {
       expect(text(document.body.querySelector('form [role="status"]'))).toBe('Saved.')
     })
 
+    it('no longer says "Saved." once the name is edited again', async () => {
+      await open({
+        'GET /api/account/sessions': listed(thisOne),
+        'PATCH /api/account': () =>
+          jsonResponse(200, {
+            id: 'u1',
+            email: 'jos@example.com',
+            displayName: 'Ann',
+            isAdmin: true,
+          }),
+      })
+      const field = document.getElementById('display-name') as HTMLInputElement
+      field.value = 'Ann'
+      field.dispatchEvent(new Event('input'))
+      document.body.querySelector('form')!.dispatchEvent(new Event('submit'))
+      await flushPromises()
+      expect(text(document.body.querySelector('form [role="status"]'))).toBe('Saved.')
+
+      field.value = 'Annie'
+      field.dispatchEvent(new Event('input'))
+      await flushPromises()
+
+      expect(document.body.querySelector('form [role="status"]')).toBeNull()
+    })
+
     it('says what is wrong with a name it cannot take', async () => {
       await open({
         'GET /api/account/sessions': listed(thisOne),
@@ -195,6 +220,23 @@ describe('AccountSection', () => {
       await flushPromises()
 
       expect(text(byTestId('devices-done'))).toBe('That device was already signed out.')
+    })
+
+    it('explains a device that turned out to be this one', async () => {
+      // A stale list: another tab signed in again, and the row is now this request's own session.
+      await open({
+        'GET /api/account/sessions': listed(thisOne, phone),
+        'DELETE /api/account/sessions/phone': () =>
+          jsonResponse(409, { code: 'session_is_current' }),
+      })
+      buttonIn(devices()[1]!, 'Sign out')!.click()
+      await flushPromises()
+      buttonIn(devices()[1]!, 'Sign out')!.click()
+      await flushPromises()
+
+      expect(text(byTestId('devices')!.querySelector('[role="alert"]'))).toBe(
+        'That is this device: sign it out from the account menu.',
+      )
     })
 
     it('signs out all the other devices after asking, and says how many', async () => {

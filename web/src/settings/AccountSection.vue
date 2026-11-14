@@ -33,17 +33,19 @@ const codeOf = (error: unknown) => (error instanceof ApiError ? error.code : 'un
 const displayName = ref(auth.user?.displayName ?? '')
 const nameError = ref<string | null>(null)
 const nameSaving = ref(false)
-const nameSaved = ref(false)
+/** The name as it was last saved here. "Saved." shows while the field still holds it; an edit after it is not saved yet. */
+const savedName = ref<string | null>(null)
+const nameSaved = computed(() => savedName.value !== null && displayName.value === savedName.value)
 
 async function saveName() {
   nameError.value = null
-  nameSaved.value = false
+  savedName.value = null
   nameSaving.value = true
   try {
     const user = await api<CurrentUser>('PATCH', '/api/account', { displayName: displayName.value })
     auth.user = user
     displayName.value = user.displayName
-    nameSaved.value = true
+    savedName.value = user.displayName
   } catch (error) {
     nameError.value = message(codeOf(error))
   } finally {

@@ -188,3 +188,24 @@ Until now the only way to change a password was the command line (run B.7). The 
   - `account.spec.ts`: a second, real browser is listed and signed out from here; this device has no button. The name and "all the others" are answered with `page.route`.
   - `a11y.spec.ts`: the section, and its confirmation.
   - The older settings specs press the history section's Save.
+
+**Review:** `/code-review` (medium) on 2026-11-13, run twice, gave nine findings, mostly the same in both runs; all are fixed in this PR:
+1. **The codes:**
+   - Without a session key the account endpoints answered `unauthorized`, which the client does not know; they now answer `not_authenticated`, as the cookie handler does.
+   - `session_is_current` and `session_not_found` have messages of their own in both languages.
+2. **One snapshot:** the list and its `more` are read in one snapshot (repeatable read), and `more` is never below 0.
+3. **Only live sessions:**
+   - The lookup by handle looks only among the live sessions the list can show, in its order and within its 100. An expired session, or one beyond the list, is "not found", writes nothing, and the work is bounded however many sessions a person has.
+   - "All the others" ends and counts only live sessions, the ones the list showed; expired rows are left to the hourly cleanup.
+4. **One helper:** the request's session key is found by one helper (`HttpContext.SessionKeyAsync`), which the sync endpoint uses too.
+5. **No server error:** a person removed while their name change was on its way gets `not_authenticated`, not a server error.
+6. **"Saved."** shows only while the field still holds the saved name.
+7. **iPads:** an iPad asking for the desktop site sends the user agent of Safari on a Mac. Safari (and the iOS browsers) with that user agent is named "macOS/iPadOS"; Chrome and Firefox on a Mac stay "macOS".
+8. **The test helper's doc comments** are each on their own method again.
+
+New tests:
+- an expired handle, and one beyond the list (404, no audit row);
+- "all the others" with an expired row;
+- "Saved." after an edit;
+- the `session_is_current` message;
+- the Mac and iPad user agents.

@@ -42,6 +42,10 @@ export function useErrorMessage() {
         return t('errors.password_same_as_email')
       case 'not_authenticated':
         return t('errors.not_authenticated')
+      case 'session_not_found':
+        return t('errors.session_not_found')
+      case 'session_is_current':
+        return t('errors.session_is_current')
       case 'forbidden':
         return t('errors.forbidden')
       case 'not_found':

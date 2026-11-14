@@ -2,7 +2,6 @@ using Inkpact.Api.Auth;
 using Inkpact.Api.Permissions;
 using Inkpact.Data;
 using Inkpact.Data.Entities;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inkpact.Api.Account;
@@ -48,7 +47,13 @@ public static class AccountEndpoints
         }
 
         var userId = http.UserId();
-        var user = await db.Users.SingleAsync(u => u.Id == userId, cancellationToken);
+        // Removed while the request was on its way (an administrator, from phase 2): signed out, not a server error.
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null)
+        {
+            return NotSignedIn();
+        }
+
         user.DisplayName = displayName;
         await db.SaveChangesAsync(cancellationToken);
         return Results.Ok(new CurrentUser(user.Id, user.Email, user.DisplayName, user.IsAdmin));
@@ -56,17 +61,17 @@ public static class AccountEndpoints
 
     private static async Task<IResult> ListSessions(HttpContext http, PostgresTicketStore store, CancellationToken cancellationToken)
     {
-        var current = await CurrentSessionKeyAsync(http);
+        var current = await http.SessionKeyAsync();
         if (current is null)
         {
-            return ApiResults.Error(StatusCodes.Status401Unauthorized, "unauthorized");
+            return NotSignedIn();
         }
 
         var (sessions, total) = await store.ListForUserAsync(http.UserId(), current, MaxListed, cancellationToken);
         var summaries = sessions
             .Select(s => new SessionSummary(PostgresTicketStore.HandleOf(s.Id), s.CreatedAt, s.LastSeenAt, s.UserAgent, s.Id == current))
             .ToList();
-        return Results.Ok(new SessionList(summaries, total - summaries.Count));
+        return Results.Ok(new SessionList(summaries, Math.Max(0, total - summaries.Count)));
     }
 
     /// <summary>
@@ -76,14 +81,14 @@ public static class AccountEndpoints
     private static async Task<IResult> EndSession(
         string id, HttpContext http, PostgresTicketStore store, IAuditLog audit, CancellationToken cancellationToken)
     {
-        var current = await CurrentSessionKeyAsync(http);
+        var current = await http.SessionKeyAsync();
         if (current is null)
         {
-            return ApiResults.Error(StatusCodes.Status401Unauthorized, "unauthorized");
+            return NotSignedIn();
         }
 
         var userId = http.UserId();
-        var key = await store.FindForUserAsync(userId, id, cancellationToken);
+        var key = await store.FindForUserAsync(userId, id, current, MaxListed, cancellationToken);
         if (key is null)
         {
             return ApiResults.Error(StatusCodes.Status404NotFound, "session_not_found");
@@ -102,10 +107,10 @@ public static class AccountEndpoints
     private static async Task<IResult> EndOtherSessions(
         HttpContext http, PostgresTicketStore store, IAuditLog audit, CancellationToken cancellationToken)
     {
-        var current = await CurrentSessionKeyAsync(http);
+        var current = await http.SessionKeyAsync();
         if (current is null)
         {
-            return ApiResults.Error(StatusCodes.Status401Unauthorized, "unauthorized");
+            return NotSignedIn();
         }
 
         var userId = http.UserId();
@@ -114,13 +119,6 @@ public static class AccountEndpoints
         return Results.Ok(new SessionsEnded(ended));
     }
 
-    /// <summary>The key of the session this request came with (the cookie handler has already read it).</summary>
-    internal static async Task<string?> CurrentSessionKeyAsync(HttpContext http)
-    {
-        var authentication = await http.AuthenticateAsync();
-        return authentication.Properties?.Items.TryGetValue(PostgresTicketStore.SessionKeyItem, out var key) == true
-            && !string.IsNullOrEmpty(key)
-            ? key
-            : null;
-    }
+    /// <summary>The answer the cookie handler gives a request without a session, so the client says the same.</summary>
+    private static IResult NotSignedIn() => ApiResults.Error(StatusCodes.Status401Unauthorized, "not_authenticated");
 }

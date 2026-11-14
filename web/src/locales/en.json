@@ -79,6 +79,8 @@
     "password_too_long": "The password can be at most 128 characters.",
     "password_same_as_email": "The password cannot be your email address.",
     "not_authenticated": "You are not signed in.",
+    "session_not_found": "That device is no longer signed in.",
+    "session_is_current": "That is this device: sign it out from the account menu.",
     "network_error": "Could not reach the server. Check your connection and try again.",
     "server_error": "Something went wrong on the server. Try again in a moment.",
     "unknown": "Something went wrong. Try again.",
