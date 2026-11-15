@@ -781,10 +781,10 @@ public sealed partial class ImportRunner(
     }
 
     /// <summary>
-    /// The most a page's stored updates and a replacement may be together: three quarters of the sync queue. A client that
-    /// opens the page before it is compacted is sent all of it, and the reply and the traffic around it fit the queue.
+    /// The most a page's stored updates and a replacement may be together (<see cref="SyncOptions.MaxStoredBytes"/>). A client
+    /// that opens the page before it is compacted is sent all of it, and the reply and the traffic around it fit the queue.
     /// </summary>
-    private long MaxOldAndNewBytes => syncOptions.MaxQueuedBytes / 4 * 3;
+    private long MaxOldAndNewBytes => syncOptions.MaxStoredBytes;
 
     /// <summary>
     /// The name of the file a note is kept in: its title as the page shows it, with what a file name cannot hold (a line

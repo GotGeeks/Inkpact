@@ -122,4 +122,13 @@ public sealed class SyncConnection(WebSocket socket, Guid userId, string session
 }
 
 /// <summary>A page a connection receives, and whether it may change it.</summary>
-internal sealed record Subscription(PageRoom Room, bool CanEdit);
+internal sealed record Subscription(PageRoom Room, bool CanEdit)
+{
+    /// <summary>
+    /// An update of this subscription was refused for the page's size (run B.10). Every later one is dropped unstored: it
+    /// may build on the refused one, and the log must never hold an update that points at something it does not have. An
+    /// unsubscribe and a new subscribe start a new subscription; a subscribe for a page the connection already receives
+    /// changes nothing.
+    /// </summary>
+    public bool Refused { get; set; }
+}

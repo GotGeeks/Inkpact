@@ -50,6 +50,13 @@ public static class SyncErrors
 
     /// <summary>The connection already receives as many pages as it may.</summary>
     public const string TooManyPages = "too_many_pages";
+
+    /// <summary>
+    /// The update would take the page past what a client that opens it can be sent (<see cref="SyncOptions.MaxStoredBytes"/>).
+    /// It was not stored, and nothing more from this subscription is, until the client unsubscribes and subscribes again
+    /// (run B.10).
+    /// </summary>
+    public const string PageTooLarge = "page_too_large";
 }
 
 /// <summary>

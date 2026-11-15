@@ -2,7 +2,7 @@
 
 **Model:** O·high → S·med in the roadmap; kept. Planned on Opus 5.5 on 2026-11-15; builds on Sonnet 5.5 medium. Two PRs. Both touch the sync path, and PR 2 throws away a change on purpose, so both get `/code-review` at **high**.
 
-**Status:** planned; PR 1 next. The maintainer answered the three questions on 2026-11-15, each as recommended: a page at the limit keeps a small margin to shrink, a refused change stays on the device until it is discarded, and `tooLarge` gets the same discard button.
+**Status:** PR 1 built (see **Handoff**); PR 2 next. The maintainer answered the three questions on 2026-11-15, each as recommended: a page at the limit keeps a small margin to shrink, a refused change stays on the device until it is discarded, and `tooLarge` gets the same discard button.
 
 ## Goal
 
@@ -51,12 +51,12 @@ Finding 2.3 of the review of 2026-11-11: nine pastes of just under 2 MiB take a 
    - It is the room the queue keeps for a page whose log has not been compacted yet: the reply plus the traffic around it.
 3. **The rule** (question 1):
    - An update is refused when the page's stored bytes plus the update would be over `MaxStoredBytes`.
-   - **Except a small one:** an update of at most `MaxQueuedBytes / 256` (64 KiB, `SmallUpdateBytes`) is still taken up to `MaxQueuedBytes / 16 * 13` (13 MiB, `MaxStoredBytesForSmallUpdates`). A person at the limit can then delete text (a deletion is a few bytes), and the next compaction makes the page smaller. A paste or a long burst of typing cannot use that margin.
+   - **Except a small one:** an update of at most `MaxQueuedBytes / 4096` (4 KiB, `SmallUpdateBytes`) is still taken up to `MaxQueuedBytes / 16 * 13` (13 MiB, `MaxStoredBytesForSmallUpdates`). A person at the limit can then delete text (a deletion is a few bytes), and the next compaction makes the page smaller. A paste cannot use that margin. (Planned as 64 KiB; the review of PR 1 made it 4 KiB, see the handoff.)
    - All three figures are worked out from the queue, not configured, so a larger queue moves them together.
 4. **Counting without a query per keystroke:**
    - The room keeps `StoredBytes`. It is known after a subscribe (the load the subscribe does anyway), grows by every update stored, and is unknown after a `PublishAsync` (the replacement read the log itself).
    - Only when the kept figure plus the update would cross the limit, or the figure is unknown, does the hub read the real one (`ContentMark.ReadAsync`, under the room's lock). A compaction may have made it smaller.
-   - It reads at most once every 10 seconds per page. Between reads the kept figure stands; it can only be too high, never too low (item 4).
+   - The kept figure can only be too high, never too low (item 4), so a yes from it is enough. A refusal always reads the real figure first. (Planned with a read at most every 10 seconds; the review of PR 1 dropped that, see the handoff.)
 5. **A refusal:**
    - The Error `page_too_large` about that page. Nothing is stored or relayed.
    - **The subscription stops taking updates** (item 5): every later Update on it is dropped unstored, without another Error, until the client unsubscribes and subscribes again.
@@ -79,7 +79,7 @@ Finding 2.3 of the review of 2026-11-11: nine pastes of just under 2 MiB take a 
 | 1 | The server: `MaxStoredBytes` and its users, the room's count, the refusal and the closed subscription, the protocol page | Medium | **high** |
 | 2 | The client: the `full` state, the notice, discarding the change (also for `tooLarge`), both languages, e2e | Medium | **high** |
 
-PR 1 can merge alone: a client from before PR 2 gets an error it does not know (decision 6), which is no worse than a page nobody can open.
+**PR 1 and PR 2 go out in one release.** A client from before PR 2 does not know `page_too_large`. It keeps sending, the server drops what it sends, and the next Pong makes the client count those changes as saved. PR 1 may merge to main first, but no release is cut between the two. (Planned as "PR 1 can merge alone"; the review of PR 1 found this.)
 
 ## Done when
 
@@ -91,7 +91,7 @@ PR 1 can merge alone: a client from before PR 2 gets an error it does not know (
 
 ## Tests
 
-- **Server, real Postgres.** A class of its own (`SyncPageLimitTests`), with a small queue so a test needs kilobytes, not megabytes. For example `Sync:MaxQueuedBytes` at 256 KiB, which gives a limit of 192 KiB, small updates of 1 KiB, and a margin up to 208 KiB. The import's note limits must be set at or below half of it, or start-up refuses.
+- **Server, real Postgres.** A class of its own (`SyncPageLimitTests`), with a small queue so a test needs kilobytes, not megabytes. For example `Sync:MaxQueuedBytes` at 256 KiB, which gives a limit of 192 KiB, small updates of 64 bytes, and a margin up to 208 KiB. The import's note limits must be set at or below half of it, or start-up refuses.
   - Under the limit: stored and relayed.
   - **An update that would cross it:** `page_too_large` to the sender, nothing stored, nothing relayed to a second subscriber.
   - **After a refusal,** a small update on the same subscription: not stored, no second Error. After unsubscribe and subscribe: taken again.
@@ -130,7 +130,7 @@ PR 1 can merge alone: a client from before PR 2 gets an error it does not know (
 ## Questions
 
 1. **Is a page at the limit still allowed to shrink?**
-   - **Recommended:** yes, through the margin of decision 3. Updates of at most 64 KiB are taken up to 1 MiB over the limit (by default), so deleting text works and the next compaction makes the page smaller. 13 MiB still fits the 16 MiB queue with the traffic around it.
+   - **Recommended:** yes, through the margin of decision 3. Small updates are taken up to 1 MiB over the limit (by default), so deleting text works and the next compaction makes the page smaller. 13 MiB still fits the 16 MiB queue with the traffic around it.
    - **The other way:** a hard limit with no margin. Simpler, but a page at the limit can only be made smaller by restoring an earlier version.
 2. **What happens to a refused change on the device?**
    - **Recommended:** it stays in that tab and on that device, unsent, with the page read-only, until the person presses "Discard unsaved change". They can copy text out first.
@@ -146,3 +146,39 @@ PR 1 can merge alone: a client from before PR 2 gets an error it does not know (
 - **The phone:** open that page on the phone while the laptop is refused. It opens, and shows nothing of the refused paste.
 
 ## Handoff
+
+### PR 1: the server's limit
+
+- **`SyncOptions`:** `MaxStoredBytes` (three quarters of the queue), `SmallUpdateBytes` (1/4096, 4 KiB) and `MaxStoredBytesForSmallUpdates` (13/16), all worked out. The import's `MaxOldAndNewBytes` and the restore's size rule use `MaxStoredBytes`.
+- **The hub** ([`SyncHub.cs`](../../server/src/Inkpact.Api/Sync/SyncHub.cs)):
+  - `PageRoom.StoredBytes`: set by a subscribe's load, grown by every update stored, null after `PublishAsync` and after a store that threw.
+  - `FitsAsync`, under the room's lock: the kept figure is enough when it says yes. Otherwise the database is read (`PageUpdateStore.StoredBytesAsync`, both sums in one statement) before anything is refused.
+  - A refusal sends `SyncErrors.PageTooLarge` (`page_too_large`), sets `Subscription.Refused`, and logs the page id and the two sizes. Every later Update on that subscription is dropped before the lock is taken.
+- **`PageContent.Bytes`:** the snapshot and the live updates, which the subscribe uses for the room's figure and for the diff's size check.
+- **Docs:** the protocol ("How large a page may grow", the error, the worked-out figures), architecture (the B.10 row, the paragraph on what a page can be), [`large-pages.md`](../design-notes/large-pages.md), self-hosting ("Very long notes"), the test pass.
+
+**For PR 2:** after a refusal, a Ping the client sent is still answered with a Pong. The client counts an update as confirmed by the next Pong, so it must handle `page_too_large` before it marks anything confirmed. The server sends the Error before the Pong, since a socket is answered in order.
+
+**Tests:** `SyncPageLimitTests` (10), with a queue of 256 KiB:
+- the worked-out figures;
+- up to the limit, stored and relayed;
+- crossing it: refused, not stored, not relayed, and another connection's update still fits;
+- after a refusal, a small update on that subscription is dropped without a second Error, and a new subscribe takes updates again;
+- the margin: 64 bytes taken at the limit, 65 refused, and small updates up to and not past 208 KiB;
+- a page made smaller outside the hub: read again and taken, not refused;
+- after `PublishAsync`, the size is read again;
+- two people's updates count together;
+- a viewer is told `read_only` first;
+- the log line holds numbers only.
+
+The sync, import, history and pages tests pass unchanged.
+
+**Review:** `/code-review` (high) on 2026-11-15 gave eight findings:
+1. **Fixed: a refusal on a stale figure.** The room's figure was read again at most every 10 seconds, so a page a compaction had just made smaller could be refused, and the refusal is final for the subscription. A refusal now always reads the real figure first. That is one read per refusal, and so at most one per subscription.
+2. **Fixed in part: typing can fill the margin.** The hub cannot tell a deletion from typing. The cutoff for a small update is now 4 KiB (1/4096 of the queue), not 64 KiB, so no paste fits it. Typing could still fill the 1 MiB margin, but that takes hours. A page that does fill it takes no more edits; restoring an earlier version is the way back.
+3. **Changed in the plan: one release for both PRs.** A client from before PR 2 would count dropped changes as saved (see "The PRs").
+4. **Not fixed here: two large pages on one socket.** A connection opening two pages of about 12 MiB each at once overflows its 16 MiB queue and is dropped, again after every reconnect. Two pages the import made (8 MiB each) already do that, so it is older than this run. It is a candidate for a bug-fix run: a subscribe could wait until the queue has room for its reply.
+5. **Fixed: the comments** say "unsubscribes and subscribes again". A Subscribe for a page the connection already receives changes nothing.
+6. **Fixed: a store that throws** (the row may have committed) leaves the room's figure unknown, so it is never too low.
+7. **Fixed: `StoredBytesAsync`** is its own query (both sums, one statement) instead of the history's `ContentMark`.
+8. **Fixed: the subscribe** passes its byte count on to the diff's size check instead of adding it up again.

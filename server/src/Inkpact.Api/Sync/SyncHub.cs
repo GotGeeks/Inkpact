@@ -24,6 +24,13 @@ internal sealed class PageRoom
     /// <summary>Set when the last subscriber left and the room was removed. A subscriber that finds it set starts over.</summary>
     public bool Closed { get; set; }
 
+    /// <summary>
+    /// The page's stored bytes as far as the room knows (run B.10): read by a subscribe, grown by every update stored here,
+    /// and unknown (null) after a replacement or a store that failed. It is never too low: stored bytes only grow under this
+    /// room's lock, and only shrink outside it (a compaction). So it is read again only when it says an update would not fit.
+    /// </summary>
+    public long? StoredBytes { get; set; }
+
     public void Broadcast(byte[] message, SyncConnection? except)
     {
         foreach (var subscriber in Subscribers)
@@ -93,6 +100,8 @@ public sealed class SyncHub(
             // later is answered before these two.
             room.Broadcast(Frame.EncodeReplaced(pageId), except: null);
             room.Broadcast(Frame.EncodeSync(pageId, stateVector, [update]), except: null);
+            // The replacement read and wrote the log itself: what the room knew of its size no longer holds.
+            room.StoredBytes = null;
             return true;
         }
         finally
@@ -274,10 +283,38 @@ public sealed class SyncHub(
                     break;
                 }
 
+                // After a refusal nothing more of this subscription is stored, and it was told once.
+                if (subscription.Refused)
+                {
+                    break;
+                }
+
                 await WithLockAsync(subscription.Room, async room =>
                 {
+                    var length = frame.Payload.Length;
+                    if (!await FitsAsync(room, frame.PageId, length, connection.Aborted))
+                    {
+                        subscription.Refused = true;
+                        logger.LogInformation(
+                            "Refused an update of {UpdateBytes} bytes to page {PageId}, which holds {StoredBytes} bytes",
+                            length, frame.PageId, room.StoredBytes);
+                        connection.Enqueue(Frame.EncodeError(frame.PageId, SyncErrors.PageTooLarge));
+                        return;
+                    }
+
                     // Stored before it is relayed: a peer never sees an update the log does not have.
-                    await store.AppendAsync(frame.PageId, connection.UserId, frame.Payload.ToArray(), connection.Aborted);
+                    try
+                    {
+                        await store.AppendAsync(frame.PageId, connection.UserId, frame.Payload.ToArray(), connection.Aborted);
+                    }
+                    catch
+                    {
+                        // The row may have been stored after all (the answer was lost): the room no longer knows the size.
+                        room.StoredBytes = null;
+                        throw;
+                    }
+
+                    room.StoredBytes += length;
                     room.Broadcast(message, except: connection);
                 }, connection.Aborted);
                 break;
@@ -325,8 +362,10 @@ public sealed class SyncHub(
             room.Subscribers.Add(connection);
             connection.Pages[pageId] = new Subscription(room, role >= WorkspaceRole.Editor);
 
-            var log = (await store.LoadAsync(pageId, connection.Aborted)).Inputs;
-            connection.Enqueue(await EncodeSyncAsync(pageId, clientStateVector, log, connection.Aborted));
+            var content = await store.LoadAsync(pageId, connection.Aborted);
+            // Read under the lock, so it is the page's size right now.
+            room.StoredBytes = content.Bytes;
+            connection.Enqueue(await EncodeSyncAsync(pageId, clientStateVector, content.Inputs, content.Bytes, connection.Aborted));
             if (room.Awareness.EncodeAll() is { } presence)
             {
                 connection.Enqueue(Frame.Encode(MessageType.Awareness, pageId, presence));
@@ -338,12 +377,32 @@ public sealed class SyncHub(
         }
     }
 
+    /// <summary>
+    /// Whether an update of <paramref name="length"/> bytes may be stored on the page (run B.10): the page's stored bytes and
+    /// the update must stay within <see cref="SyncOptions.MaxStoredBytes"/>, or within
+    /// <see cref="SyncOptions.MaxStoredBytesForSmallUpdates"/> for a small one. What the room knows is never too low, so it
+    /// is enough when it says yes. When it says no, or knows nothing, the database is asked: a refusal ends what the
+    /// subscription may store, so it never rests on a figure a compaction may have made too high. That is one read per
+    /// refusal, and so at most one per subscription. Under the room's lock.
+    /// </summary>
+    private async Task<bool> FitsAsync(PageRoom room, Guid pageId, long length, CancellationToken cancellationToken)
+    {
+        var limit = length <= options.SmallUpdateBytes ? options.MaxStoredBytesForSmallUpdates : options.MaxStoredBytes;
+        if (room.StoredBytes is { } known && known + length <= limit)
+        {
+            return true;
+        }
+
+        room.StoredBytes = await store.StoredBytesAsync(pageId, cancellationToken);
+        return room.StoredBytes + length <= limit;
+    }
+
     /// <summary>The answer to a subscribe: the diff and the server's state vector, or the stored log when there is no diff.</summary>
     private async Task<byte[]> EncodeSyncAsync(
-        Guid pageId, ReadOnlyMemory<byte> clientStateVector, IReadOnlyList<byte[]> log, CancellationToken cancellationToken)
+        Guid pageId, ReadOnlyMemory<byte> clientStateVector, IReadOnlyList<byte[]> log, long logBytes, CancellationToken cancellationToken)
     {
         // A page nobody has written to has nothing to diff. A large one is sent as stored (see SyncOptions.MaxDiffBytes).
-        if (log.Count == 0 || log.Sum(update => (long)update.Length) > options.MaxDiffBytes)
+        if (log.Count == 0 || logBytes > options.MaxDiffBytes)
         {
             return Frame.EncodeSync(pageId, [], log);
         }
