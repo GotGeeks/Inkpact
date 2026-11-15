@@ -38,6 +38,17 @@ A client may send only Subscribe, Unsubscribe, Update, Awareness and Ping. Anyth
 
 The role is read when the page is subscribed. A viewer receives updates; an Update from a viewer is answered with the error `read_only` and not stored.
 
+## How large a page may grow
+
+A page is opened by one Sync that can hold all of its stored bytes (its snapshot and its live updates), so live edits may not take them past what that reply can be (run B.10):
+
+- An Update is refused when the page's stored bytes and the update together would be over `MaxStoredBytes`: three quarters of `Sync:MaxQueuedBytes`, 12 MiB by default.
+- **Except a small one:** an update of at most 1/4096 of the queue (4 KiB) is still taken up to 13/16 of it (13 MiB). A person at the limit can then delete text, and the next compaction, which drops deleted content, makes the page smaller. The server does not decode updates and cannot tell a deletion from typing; the size keeps a paste out of the margin.
+- A refused update gets the error `page_too_large`. It is neither stored nor relayed.
+- **Nothing more of that subscription is stored**, and the client is not told again (a Ping is still answered): a later update of the same client may build on the refused one, and the log must never hold an update that points at something it does not have. An Unsubscribe and a new Subscribe start over.
+
+The Joplin import and a restored version keep to the same figure, with the page's stored updates and their replacement together.
+
 ## When the server replaces a page's content
 
 The server sometimes makes an update itself that deletes every block of a page and writes new content: a Joplin re-import of a note that changed there, and a restored version (run B.5b). It is stored under the page's lock, only when no client's update was stored since the page was read, and then sent to everyone who has the page open as two messages, in this order:
@@ -60,6 +71,7 @@ An Error message leaves the connection open.
 | `page_not_found` | No such page, or no access to it. The two are not told apart, as in the REST API |
 | `read_only` | The person may read the page but not change it. The update was not stored |
 | `too_many_pages` | The connection already receives as many pages as it may (`Sync:MaxPagesPerConnection`) |
+| `page_too_large` | The update would take the page past what can be sent to a client that opens it. It was not stored, and nothing more from this subscription is (see "How large a page may grow") |
 
 ## Closing
 
@@ -95,4 +107,10 @@ All in the `Sync` configuration section (`SyncOptions.cs`), with these defaults:
 | `MaxQueuedMessages`, `MaxQueuedBytes` | 1000, 16 MiB | What may wait to go out to one client |
 | `MaxDiffBytes` | 2 MiB | Above this a page is sent as stored, without a diff |
 
-The largest page that can be opened is half of `MaxQueuedBytes` (8 MiB), since a page is opened by one Sync that holds all of it.
+Worked out from `MaxQueuedBytes`, not configured:
+
+| Name | Default | What it is |
+| --- | --- | --- |
+| `MaxPageBytes` | 8 MiB, half the queue | The largest page state the import and a restore make |
+| `MaxStoredBytes` | 12 MiB, three quarters | The most a page's stored bytes may come to: live edits stop here, and the import and a restore keep a page's stored updates and their replacement within it |
+| `SmallUpdateBytes`, `MaxStoredBytesForSmallUpdates` | 4 KiB, 13 MiB | An update this small is still taken up to the second figure |

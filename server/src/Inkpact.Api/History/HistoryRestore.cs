@@ -228,10 +228,10 @@ internal sealed class HistoryRestore(
 
         // A page that cannot be sent to a client is not made (the sync queue holds twice this; see SyncOptions). Nor one whose
         // stored updates and the replacement together, which is what a client that opens it before its compaction is sent,
-        // would not fit three quarters of the queue with the traffic around it: the import's own rule (MaxOldAndNewBytes).
+        // would not fit three quarters of the queue with the traffic around it: the import's own rule (SyncOptions.MaxStoredBytes).
         var together = stored.Bytes + prepared.Replacement.Update.Length;
         if (prepared.Replacement.Update.Length > sync.MaxPageBytes || prepared.After.State.Length > sync.MaxPageBytes
-            || together > sync.MaxQueuedBytes / 4 * 3)
+            || together > sync.MaxStoredBytes)
         {
             return RestoreResult.Refused(StatusCodes.Status413PayloadTooLarge, "content_too_large");
         }

@@ -755,7 +755,7 @@ public sealed partial class ImportRunner(
             var replacement = await yjs.ReplaceAsync(current, json, cancellationToken);
             var together = current.Sum(input => (long)input.Length) + replacement.Update.Length;
             var compactAtOnce = together > options.MaxNoteUpdateBytes;
-            if (replacement.Update.Length > options.MaxNoteUpdateBytes || together > MaxOldAndNewBytes)
+            if (replacement.Update.Length > options.MaxNoteUpdateBytes || together > syncOptions.MaxStoredBytes)
             {
                 return null;
             }
@@ -779,12 +779,6 @@ public sealed partial class ImportRunner(
 
         return new BuiltNote(converted, update, after.StateVector, after.ReplayFingerprint, after.Text, added, retired);
     }
-
-    /// <summary>
-    /// The most a page's stored updates and a replacement may be together: three quarters of the sync queue. A client that
-    /// opens the page before it is compacted is sent all of it, and the reply and the traffic around it fit the queue.
-    /// </summary>
-    private long MaxOldAndNewBytes => syncOptions.MaxQueuedBytes / 4 * 3;
 
     /// <summary>
     /// The name of the file a note is kept in: its title as the page shows it, with what a file name cannot hold (a line
@@ -1465,7 +1459,7 @@ public sealed partial class ImportRunner(
         }
 
         // After the page's lock is let go, which every client of the page waits for: a compaction takes seconds for a large
-        // page. Until it has run, a client that opens the page is sent the old content and the new (MaxOldAndNewBytes).
+        // page. Until it has run, a client that opens the page is sent the old content and the new (SyncOptions.MaxStoredBytes).
         if (built.CompactAtOnce)
         {
             await CompactNowAsync(pageId, cancellationToken);

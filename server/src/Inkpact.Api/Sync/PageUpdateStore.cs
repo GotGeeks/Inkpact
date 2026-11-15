@@ -19,6 +19,23 @@ public sealed class PageUpdateStore(IDbContextFactory<InkpactDbContext> dbFactor
     }
 
     /// <summary>
+    /// The page's stored bytes now (its snapshot and its live updates), read in one statement, so a compaction that moves
+    /// updates into the snapshot meanwhile cannot make them count twice or not at all.
+    /// </summary>
+    public async Task<long> StoredBytesAsync(Guid pageId, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        // Both sums in one statement, on the page's row: no page (a page removed meanwhile) is 0.
+        var bytes = await db.Pages.AsNoTracking()
+            .Where(p => p.Id == pageId)
+            .Select(p =>
+                (db.PageSnapshots.Where(s => s.PageId == pageId).Select(s => (long?)s.State.Length).FirstOrDefault() ?? 0)
+                + (db.PageUpdates.Where(u => u.PageId == pageId).Sum(u => (long?)u.Data.Length) ?? 0))
+            .SingleOrDefaultAsync(cancellationToken);
+        return bytes;
+    }
+
+    /// <summary>
     /// The page as stored: its snapshot (if a compaction has made one) and the updates still live. Read in one
     /// repeatable-read transaction, because a compaction moves updates out of the log and into the snapshot in one
     /// transaction, and reading the two separately can miss them in between.
@@ -60,6 +77,9 @@ public sealed record PageContent(byte[]? Snapshot, IReadOnlyList<byte[]> Updates
 {
     /// <summary>What to hand the codec, or to send a client in log mode: the snapshot first, then the updates.</summary>
     public IReadOnlyList<byte[]> Inputs => Snapshot is null ? Updates : [Snapshot, .. Updates];
+
+    /// <summary>The page's stored bytes: the snapshot and the live updates, what a client in log mode is sent.</summary>
+    public long Bytes => (Snapshot?.Length ?? 0) + Updates.Sum(update => (long)update.Length);
 
     /// <summary>
     /// How many updates the page was ever given: those the snapshot holds and those still live. A compaction leaves it as
