@@ -55,6 +55,11 @@ public class LogContentTests(PostgresFixture postgres) : IClassFixture<PostgresF
         (await owner.PatchJsonAsync("/api/account", new { displayName = $"{Marker} name" })).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await owner.PatchJsonAsync("/api/account", new { displayName = $"{Marker}{new string('x', 300)}" })).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
+        // A password change (run B.9): a wrong current one, a refused new one, and one that is made. This device stays signed in.
+        (await owner.PostJsonAsync("/api/account/password", new { currentPassword = $"{Marker}-wrong", newPassword = $"{Marker}-new passphrase" })).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await owner.PostJsonAsync("/api/account/password", new { currentPassword = AuthTestExtensions.Password, newPassword = Marker })).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await owner.PostJsonAsync("/api/account/password", new { currentPassword = AuthTestExtensions.Password, newPassword = $"{Marker}-new passphrase" })).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
         // A page: made, renamed, tagged, searched for.
         var created = await owner.PostJsonAsync($"/api/workspaces/{workspaceId}/pages", new { title = $"{Marker} title" });
         created.StatusCode.ShouldBe(HttpStatusCode.Created);

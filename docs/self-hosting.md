@@ -109,7 +109,7 @@ The container's own health check uses the second one, so `docker ps` and Unraid'
 
 ## A forgotten password
 
-There is no reset by email yet. Whoever can run a command in the container can set a new password for any account:
+Someone who knows their password changes it under **Settings → Your account**; that signs out their other devices. For a forgotten one there is no reset by email yet. Whoever can run a command in the container can set a new password for any account:
 
 ```bash
 docker compose exec app dotnet Inkpact.Api.dll reset-password you@example.com

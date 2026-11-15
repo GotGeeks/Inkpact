@@ -655,6 +655,31 @@ test('the account section, its device list and a confirmation', async ({ page },
   await expect(page.getByText('Sign this device out?')).toBeFocused()
   await scan(page, testInfo, 'account section asking to sign a device out')
   await page.getByTestId('devices').getByRole('button', { name: 'Cancel' }).click()
+
+  // The password form with an error under a field and one above it; answered here, so nothing changes. Sent with
+  // Enter, so no button is under the mouse while it is scanned.
+  let answer = 0
+  await page.route('**/api/account/password', (route) =>
+    answer++ === 0
+      ? route.fulfill({
+          status: 400,
+          json: { code: 'current_password_invalid', field: 'currentPassword' },
+        })
+      : route.fulfill({
+          status: 429,
+          json: { code: 'login_locked' },
+          headers: { 'Retry-After': '60' },
+        }),
+  )
+  const form = page.getByTestId('password-form')
+  await form.getByLabel('Current password').fill('not the password')
+  await form.getByLabel('New password').fill('a whole new passphrase')
+  await form.getByLabel('New password').press('Enter')
+  await expect(form.getByText('That is not your current password.')).toBeVisible()
+  await scan(page, testInfo, 'password form with a wrong current password')
+  await form.getByLabel('New password').press('Enter')
+  await expect(form.getByRole('alert')).toContainText('Too many wrong passwords')
+  await scan(page, testInfo, 'password form while locked')
 })
 
 test('the account menu and the settings screen while a newer release is out', async ({
