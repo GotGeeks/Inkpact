@@ -2,7 +2,7 @@
 
 **Model:** O·high → S·med in the roadmap; kept. Planned on Opus 5.5 on 2026-11-13; builds on Sonnet 5.5 medium. Two PRs. PR 2 changes a password and ends sessions, an authentication path, so it gets `/code-review` at **high**; PR 1 at medium.
 
-**Status:** PR 1 built (see **Handoff**); PR 2 next. The maintainer answered the three questions on 2026-11-13, each as recommended: no email change in this run, a password change always signs out the other devices, no addresses in the device list.
+**Status:** both PRs built (see **Handoff**). The maintainer answered the three questions on 2026-11-13, each as recommended: no email change in this run, a password change always signs out the other devices, no addresses in the device list.
 
 ## Goal
 
@@ -209,3 +209,54 @@ New tests:
 - "Saved." after an edit;
 - the `session_is_current` message;
 - the Mac and iPad user agents.
+
+### PR 2: changing the password
+
+- **Server:** `POST /api/account/password` in [`AccountEndpoints.cs`](../../server/src/Inkpact.Api/Account/AccountEndpoints.cs), behind `Policies.SignedIn` and the per-address rate limit that login and setup use (`ThrottleOptions.RateLimitPolicy`), as decision 4.
+  - **In this order:** the new password's rules (`PasswordPolicy`, field `newPassword`); the lockout of the person's email (`429 login_locked` with `Retry-After`, the hash still worked out); the current password (`400 current_password_invalid`, field `currentPassword`, counted as a failed login); `password_unchanged`. The lockout and the check are login's own, shared as `AuthEndpoints.CheckPasswordAsync`.
+  - **The transaction:** first the hash, only over the hash that was checked (which locks the user's row); then a check that this device's session still exists; then every other session of the person, the lockout row and the audit event. Then `SessionEvents.AllSessionsEndedExcept`.
+  - **Login** writes the user's row only over the hash it checked, also when it upgrades the hash, and holds that row lock until its session is stored. A login that checked the old password therefore finds the password changed and is refused, or has stored its session before the change removes the sessions.
+  - **Audit:** `password_changed` and `password_change_failed`, without an address. A change refused by the lockout writes `login_locked` with the user, as a locked login does.
+- **Client:** [`PasswordForm.vue`](../../web/src/settings/PasswordForm.vue) in the account section, between the name and the devices. Errors with a field go under it and take the focus; others go above the form. After a change the fields are cleared and the device list is read again.
+
+**Where it differs from the card:**
+
+1. **The new password's rules are checked first,** before the lockout and the current password. They say nothing about the current one and need no hash, so a too-short new password is not counted as a guess.
+2. **Expired sessions go too:** the transaction removes every other session row of the person, not only the live ones the list shows. None may outlive the password it was signed in with.
+3. **Two changes at once:** the hash is written only over the hash that was checked. Of two changes at once, the second finds a different hash, changes nothing and answers `current_password_invalid` (not counted).
+4. **A wrong current password is `400`, not `401`** (the review's finding 4): a 401 means "not signed in", and the person still is.
+5. **Login changed too** (the review's findings 1 and 2), as above. Without it, a login with the old password that upgraded its hash could write the old password back over a new one, and a login checked just before a change could keep its session.
+6. **What is left:**
+   - Two devices that sign each other out at the very same moment (a password change on one, "sign out" on the other) both end, as two "sign out all other devices" at once do since PR 1. The person signs in again.
+   - Every login now writes the user's row (to lock it), one row version more per login. At this scale that is nothing.
+   - The root fix for sessions made with an old password is a security stamp on the user, copied into each session and compared when a session is read. It needs a migration, which this run ruled out (decision 7). It belongs with the next path that sets a password: run 2.9 (an administrator) or 2.10 (reset by email).
+
+**Tests:**
+- **Server:**
+  - `PasswordChangeTests` (21): the change (old and new password, the sessions, the lockout cleared, the audit row, expired sessions); a wrong current password; five lock the change and login, and failed logins lock the change; the hash is worked out while locked; the shared per-address limit; the rules and `password_unchanged`; a failure at the transaction's last write changes nothing (a test trigger); a change committed meanwhile is not overwritten; this device signed out meanwhile changes nothing; a login that checked the old password before a change keeps no session; a login's hash upgrade does not undo a change, and a hash only upgraded meanwhile still takes the change; a change that starts while a login holds the account waits and removes that login's session (a test trigger holds the login's insert); a login whose commit fails leaves no session (a deferred trigger).
+  - `AccountEndpointTests`: the endpoint refuses anonymous callers and writes without the CSRF token.
+  - `SyncHubTests`: a changed password closes the other device's socket and keeps this one and someone else's.
+  - `LogContentTests`: markers in the current and the new password.
+- **Web:** `PasswordForm.test.ts` (10), and `AccountSection` tests that read the device list again after a change and close an open question about a device.
+- **Playwright:** `account.spec.ts` (answered with `page.route`): a wrong current password, then a change. `a11y.spec.ts`: the form with a field error and while locked.
+
+**Review:** `/code-review` (high) on 2026-11-15 gave seven findings; six are fixed in this PR:
+1. **Login's hash upgrade** wrote the old password's hash with no condition, and could undo a change. It now writes only over the hash it checked.
+2. **A login checked just before a change** could keep its session. Login now holds the user's row lock until its session is stored, and the change takes that lock first.
+3. **This device signed out meanwhile:** the change checks, inside its transaction, that the session still exists.
+4. **`current_password_invalid` is 400.**
+5. **One guard:** login and the change share `CheckPasswordAsync` (the lockout, the hash also while locked, the count).
+6. **A hidden username field** (the account's email) in the form, so password managers update the right entry.
+
+Not taken: moving the change's session delete into `PostgresTicketStore`. It has to be in the change's transaction, and the event has to be raised after the commit, so the store would only pass it through.
+
+A second `/code-review` (the maintainer's, 2026-11-15) gave eight findings:
+1. **Fixed:** a hash that a login only upgraded meanwhile (the same password) made the change answer `current_password_invalid`. The change now verifies the typed password against the new hash and tries once more.
+2. **Fixed:** a login whose commit failed after its session was stored kept that session. The commit is no longer given up when the caller goes away, and a failed commit signs the session out again.
+3. **Fixed:** no test held a login in the middle while a change ran. One does now.
+4. **Fixed:** the change resets the lockout and writes its event through `LoginThrottling` and `IAuditLog`, in its transaction, as login does.
+5. **Fixed:** after a change, an open "Sign this device out?" and the last sign-out message are cleared with the list.
+6. **Not changed:**
+   - two devices signing each other out at the same moment (see "What is left"; the comment no longer claims more);
+   - the extra row write per login;
+   - the security stamp, for runs 2.9 and 2.10.

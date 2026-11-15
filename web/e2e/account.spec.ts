@@ -13,8 +13,8 @@ import {
 /**
  * The account section of the settings (run B.9). Every device project shares one account and its session, so nothing
  * here changes the account for good or ends a session it did not make: the device list signs out only a second session
- * this test makes itself, and the name and "all other devices" are answered with page.route. Their real effect is in
- * the server tests (AccountEndpointTests, SyncHubTests).
+ * this test makes itself, and the name, the password and "all other devices" are answered with page.route. Their real
+ * effect is in the server tests (AccountEndpointTests, PasswordChangeTests, SyncHubTests).
  */
 
 async function openSettings(page: Page) {
@@ -117,4 +117,59 @@ test('signing out every other device asks first, then says how many', async ({ p
   await expect(page.getByTestId('devices-done')).toHaveText('1 other device is signed out.')
   expect(posted).toBe(true)
   await expect(page.getByTestId('device')).toHaveCount(1)
+})
+
+test('a new password is sent with the current one, and the device list is read again', async ({
+  page,
+}) => {
+  // Answered here: for real it would change the password every device project signs in with.
+  const now = new Date().toISOString()
+  const listed = {
+    sessions: [
+      { id: 'this', signedInAt: now, lastSeenAt: now, userAgent: null, current: true },
+      { id: 'phone', signedInAt: now, lastSeenAt: now, userAgent: null, current: false },
+    ],
+    more: 0,
+  }
+  const sent: unknown[] = []
+  await page.route('**/api/account/sessions', (route) => route.fulfill({ json: listed }))
+  await page.route('**/api/account/password', async (route) => {
+    const body = route.request().postDataJSON() as { currentPassword: string }
+    sent.push(body)
+    if (body.currentPassword !== 'the current passphrase') {
+      await route.fulfill({
+        status: 400,
+        json: { code: 'current_password_invalid', field: 'currentPassword' },
+      })
+      return
+    }
+
+    listed.sessions = listed.sessions.filter((session) => session.current)
+    await route.fulfill({ status: 204 })
+  })
+  await openSettings(page)
+  const form = page.getByTestId('password-form')
+  const current = form.getByLabel('Current password')
+  const next = form.getByLabel('New password')
+
+  await current.fill('a wrong guess')
+  await next.fill('a whole new passphrase')
+  await form.getByRole('button', { name: 'Change password' }).click()
+  await expect(form.getByText('That is not your current password.')).toBeVisible()
+  await expect(current).toBeFocused()
+  await expect(page.getByTestId('device')).toHaveCount(2)
+
+  await current.fill('the current passphrase')
+  await form.getByRole('button', { name: 'Change password' }).click()
+
+  await expect(form.getByRole('status')).toHaveText(
+    'Password changed. Your other devices are signed out.',
+  )
+  await expect(current).toHaveValue('')
+  await expect(next).toHaveValue('')
+  await expect(page.getByTestId('device')).toHaveCount(1)
+  expect(sent).toEqual([
+    { currentPassword: 'a wrong guess', newPassword: 'a whole new passphrase' },
+    { currentPassword: 'the current passphrase', newPassword: 'a whole new passphrase' },
+  ])
 })

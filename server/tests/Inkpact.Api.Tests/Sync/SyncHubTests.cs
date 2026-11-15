@@ -662,6 +662,23 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
     }
 
     [Fact]
+    public async Task Changing_the_password_closes_the_other_devices_sockets_and_keeps_this_one()
+    {
+        var otherBrowser = await _jos.LogInAgainAsync();
+        var mine = await ConnectAsync();
+        var theirs = await ConnectAsync(otherBrowser);
+        var someoneElse = await ConnectAsync(await OtherPersonAsync(WorkspaceRole.Editor));
+
+        var response = await _jos.Http.PostJsonAsync(
+            "/api/account/password", new { currentPassword = AuthTestExtensions.Password, newPassword = "a whole new passphrase" });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await theirs.ExpectCloseAsync()).CloseStatus.ShouldBe(SyncClose.SessionEnded);
+        await mine.ExpectSilenceAsync();
+        await someoneElse.ExpectSilenceAsync();
+    }
+
+    [Fact]
     public async Task A_socket_whose_session_disappears_some_other_way_is_closed_at_the_next_check()
     {
         await StartAsync(new() { ["Sync:SessionCheckInterval"] = "00:00:00.200" });

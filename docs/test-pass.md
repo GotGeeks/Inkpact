@@ -122,10 +122,11 @@ _Built in three PRs: the version and the update check, the release pipeline, the
 - [ ] `cosign verify` of the installed tag on the laptop, with the guide's command.
 - [ ] At 2.11: switch `UNRAID_CA_SYNC` on, merge the first sync PR in the CA repository, and find Inkpact in Community Apps.
 ### B.9: account settings
-_PR 1 (the name and the devices) is built; changing the password (PR 2) follows._
 - [ ] **Devices:** on the laptop, Settings → "Signed-in devices" shows the laptop and the phone with readable names ("Safari on iOS"). Sign the phone out from the laptop: the phone goes to the login page within seconds if the app is open, or at its next request.
 - [ ] **All the others:** sign in on a third browser, then "Sign out all other devices" on the laptop: the other two are signed out, the laptop is not.
 - [ ] **Display name:** change it; the account menu shows the new name at once, and so does the author of the next renamed page's version.
+- [ ] **Password:** with a page open on the phone, change the password on the laptop. The phone is signed out at once; the laptop stays signed in; the new password signs in on the phone, the old one does not. The browser offers to save the new password.
+- [ ] **Lockout:** type a wrong current password five times. The change is refused for a minute (it says when to try again), and so is a login with that email on the phone.
 
 ### The review of 2026-11-11
 - [ ] With the device in dark mode, start the installed app (laptop and phone): note whether the title bar and the first screen are light until the page has loaded (the manifest has one theme colour, the light one). If it flashes, that is a finding for a fix run.

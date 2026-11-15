@@ -141,44 +141,96 @@ public static class AuthEndpoints
         var password = request.Password ?? "";
         // Keyed by what was typed, so garbage cannot be used to avoid the count. An address that has no account counts too.
         var key = LoginThrottling.KeyFor(request.Email);
+        var user = email is null
+            ? null
+            : await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.NormalizedEmail == email, cancellationToken);
 
-        if (await throttle.GetLockRemainingAsync(key, cancellationToken) is { } lockedFor)
+        var check = await CheckPasswordAsync(throttle, hasher, key, user?.PasswordHash, password, cancellationToken);
+        if (check.Outcome == PasswordCheckOutcome.Locked)
         {
-            // Nothing is checked while locked, not even the right password. The hash is still computed, so a
-            // locked attempt takes as long as any other and says nothing about the account.
-            hasher.VerifyDummy(password);
             await audit.WriteAsync(http, AuditEventTypes.LoginLocked, email: Typed(request.Email), cancellationToken: cancellationToken);
-            http.Response.Headers.RetryAfter = RetryAfterSeconds(lockedFor);
+            http.Response.Headers.RetryAfter = RetryAfterSeconds(check.LockedFor);
             return ApiResults.Error(StatusCodes.Status429TooManyRequests, "login_locked");
         }
 
-        var user = email is null
-            ? null
-            : await db.Users.SingleOrDefaultAsync(u => u.NormalizedEmail == email, cancellationToken);
-
-        if (user?.PasswordHash is null || !hasher.Verify(user.PasswordHash, password))
+        if (check.Outcome == PasswordCheckOutcome.Wrong)
         {
-            if (user?.PasswordHash is null)
-            {
-                // Same work as a wrong password, so the response time does not say which emails exist.
-                hasher.VerifyDummy(password);
-            }
-
-            await throttle.RecordFailureAsync(key, cancellationToken);
             await audit.WriteAsync(http, AuditEventTypes.LoginFailed, user?.Id, Typed(request.Email), cancellationToken: cancellationToken);
             return ApiResults.Error(StatusCodes.Status401Unauthorized, "invalid_credentials");
         }
 
-        if (hasher.NeedsRehash(user.PasswordHash))
+        var verifiedHash = user!.PasswordHash!;
+        var rehash = hasher.NeedsRehash(verifiedHash) ? hasher.Hash(password) : verifiedHash;
+
+        await using (var transaction = await db.Database.BeginTransactionAsync(cancellationToken))
         {
-            user.PasswordHash = hasher.Hash(password);
-            await db.SaveChangesAsync(cancellationToken);
+            // Only over the hash that was checked, and the row stays locked until the session is stored: a password changed
+            // meanwhile (run B.9) is not overwritten by the upgrade, and either refuses this login or, waiting for this
+            // commit, removes the session it made.
+            var unchanged = await db.Users
+                .Where(u => u.Id == user.Id && u.PasswordHash == verifiedHash)
+                .ExecuteUpdateAsync(set => set.SetProperty(u => u.PasswordHash, rehash), cancellationToken);
+            if (unchanged == 0)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                await audit.WriteAsync(http, AuditEventTypes.LoginFailed, user.Id, Typed(request.Email), cancellationToken: cancellationToken);
+                return ApiResults.Error(StatusCodes.Status401Unauthorized, "invalid_credentials");
+            }
+
+            await throttle.ResetAsync(key, cancellationToken);
+            await audit.WriteAsync(http, AuditEventTypes.LoginSucceeded, user.Id, cancellationToken: cancellationToken);
+            // The session is stored on the store's own connection, at once. From here the commit is not given up when the
+            // caller goes away; and if it fails, the session goes too, so no session lives without its audit row.
+            await SignIn(http, user);
+            try
+            {
+                await transaction.CommitAsync(CancellationToken.None);
+            }
+            catch
+            {
+                await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                throw;
+            }
         }
 
-        await throttle.ResetAsync(key, cancellationToken);
-        await audit.WriteAsync(http, AuditEventTypes.LoginSucceeded, user.Id, cancellationToken: cancellationToken);
-        await SignIn(http, user);
         return Results.NoContent();
+    }
+
+    /// <summary>What <see cref="CheckPasswordAsync"/> found.</summary>
+    internal enum PasswordCheckOutcome
+    {
+        Right,
+        Wrong,
+        Locked,
+    }
+
+    internal readonly record struct PasswordCheck(PasswordCheckOutcome Outcome, TimeSpan LockedFor = default);
+
+    /// <summary>
+    /// The guard on every place a password is typed: login, and a person changing theirs (run B.9). While the address is
+    /// locked nothing is checked, not even the right password; a wrong one counts toward the lock. The hash is worked out
+    /// every time, also while locked and for an account without a password, so the time an answer takes says nothing.
+    /// </summary>
+    internal static async Task<PasswordCheck> CheckPasswordAsync(
+        LoginThrottling throttle, IPasswordHasher hasher, string throttleKey, string? hash, string password, CancellationToken cancellationToken)
+    {
+        if (await throttle.GetLockRemainingAsync(throttleKey, cancellationToken) is { } lockedFor)
+        {
+            hasher.VerifyDummy(password);
+            return new PasswordCheck(PasswordCheckOutcome.Locked, lockedFor);
+        }
+
+        if (hash is null)
+        {
+            hasher.VerifyDummy(password);
+        }
+        else if (hasher.Verify(hash, password))
+        {
+            return new PasswordCheck(PasswordCheckOutcome.Right);
+        }
+
+        await throttle.RecordFailureAsync(throttleKey, cancellationToken);
+        return new PasswordCheck(PasswordCheckOutcome.Wrong);
     }
 
     private static async Task<IResult> Logout(HttpContext http, IAuditLog audit, CancellationToken cancellationToken)
@@ -234,7 +286,7 @@ public static class AuthEndpoints
     /// </summary>
     private static string? Typed(string? email) => NormalizeEmail(email) is null ? null : email!.Trim();
 
-    private static string RetryAfterSeconds(TimeSpan wait) =>
+    internal static string RetryAfterSeconds(TimeSpan wait) =>
         Math.Max(1, (int)Math.Ceiling(wait.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Trimmed, lower case, and a plausible address. Returns null otherwise.</summary>

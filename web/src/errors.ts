@@ -46,6 +46,10 @@ export function useErrorMessage() {
         return t('errors.session_not_found')
       case 'session_is_current':
         return t('errors.session_is_current')
+      case 'current_password_invalid':
+        return t('errors.current_password_invalid')
+      case 'password_unchanged':
+        return t('errors.password_unchanged')
       case 'forbidden':
         return t('errors.forbidden')
       case 'not_found':

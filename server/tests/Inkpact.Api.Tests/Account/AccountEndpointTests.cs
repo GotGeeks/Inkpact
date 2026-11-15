@@ -347,13 +347,14 @@ public class AccountEndpointTests(PostgresFixture postgres) : IClassFixture<Post
     [InlineData("PATCH", "/api/account")]
     [InlineData("DELETE", "/api/account/sessions/x")]
     [InlineData("POST", "/api/account/sessions/sign-out-others")]
+    [InlineData("POST", "/api/account/password")]
     public async Task Nobody_signed_out_reaches_any_of_it(string method, string path)
     {
         var anonymous = _factory.CreateClient();
         var request = new HttpRequestMessage(new HttpMethod(method), path);
         if (method != "GET")
         {
-            request.Content = JsonContent.Create(new { displayName = "x" });
+            request.Content = JsonContent.Create(new { displayName = "x", currentPassword = AuthTestExtensions.Password, newPassword = "a whole new passphrase" });
             request.Headers.Add(CsrfProtection.HeaderName, (await anonymous.GetStateAsync()).CsrfToken);
         }
 
@@ -364,11 +365,13 @@ public class AccountEndpointTests(PostgresFixture postgres) : IClassFixture<Post
     [InlineData("PATCH", "/api/account")]
     [InlineData("DELETE", "/api/account/sessions/x")]
     [InlineData("POST", "/api/account/sessions/sign-out-others")]
+    [InlineData("POST", "/api/account/password")]
     public async Task A_write_without_the_csrf_token_is_refused(string method, string path)
     {
-        var request = new HttpRequestMessage(new HttpMethod(method), path) { Content = JsonContent.Create(new { displayName = "x" }) };
+        var request = new HttpRequestMessage(new HttpMethod(method), path) { Content = JsonContent.Create(new { displayName = "x", currentPassword = AuthTestExtensions.Password, newPassword = "a whole new passphrase" }) };
 
         (await _jos.SendAsync(request)).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await _jos.GetStateAsync()).User!.DisplayName.ShouldBe("Jos");
+        (await UseDbAsync(db => db.AuditEvents.AnyAsync(e => e.Type == AuditEventTypes.PasswordChanged))).ShouldBeFalse();
     }
 }

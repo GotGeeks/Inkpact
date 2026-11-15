@@ -196,6 +196,67 @@ describe('AccountSection', () => {
       expect(document.activeElement?.tagName).toBe('H3')
     })
 
+    it('reads the list again after a new password signed the other devices out', async () => {
+      let changed = false
+      const fetchMock = await open({
+        'GET /api/account/sessions': () =>
+          jsonResponse(200, { sessions: changed ? [thisOne] : [thisOne, phone], more: 0 }),
+        'POST /api/account/password': () => {
+          changed = true
+          return new Response(null, { status: 204 })
+        },
+      })
+      expect(devices()).toHaveLength(2)
+      const form = byTestId('password-form')!
+      for (const [id, value] of [
+        ['current-password', 'the old passphrase'],
+        ['new-password', 'a whole new passphrase'],
+      ] as const) {
+        const input = document.getElementById(id) as HTMLInputElement
+        input.value = value
+        input.dispatchEvent(new Event('input'))
+      }
+
+      form.dispatchEvent(new Event('submit'))
+      await flushPromises()
+
+      expect(writes(fetchMock)).toEqual(['POST /api/account/password'])
+      expect(devices()).toHaveLength(1)
+      expect(devices()[0]!.querySelector('button')).toBeNull()
+    })
+
+    it('closes an open question about a device when a new password signed it out', async () => {
+      let changed = false
+      await open({
+        'GET /api/account/sessions': () =>
+          jsonResponse(200, { sessions: changed ? [thisOne] : [thisOne, phone], more: 0 }),
+        'POST /api/account/password': () => {
+          changed = true
+          return new Response(null, { status: 204 })
+        },
+      })
+      buttonIn(devices()[1]!, 'Sign out')!.click()
+      await flushPromises()
+      expect(document.getElementById('confirm-phone')).not.toBeNull()
+
+      for (const [id, value] of [
+        ['current-password', 'the old passphrase'],
+        ['new-password', 'a whole new passphrase'],
+      ] as const) {
+        const input = document.getElementById(id) as HTMLInputElement
+        input.value = value
+        input.dispatchEvent(new Event('input'))
+      }
+      byTestId('password-form')!.dispatchEvent(new Event('submit'))
+      await flushPromises()
+
+      expect(devices()).toHaveLength(1)
+      expect(document.getElementById('confirm-phone')).toBeNull()
+      expect(byTestId('devices-done')).toBeNull()
+      // A later question about all the others starts closed too.
+      expect(document.getElementById('confirm-others')).toBeNull()
+    })
+
     it('goes back to the button when the person thinks again', async () => {
       const fetchMock = await open({ 'GET /api/account/sessions': listed(thisOne, phone) })
       buttonIn(devices()[1]!, 'Sign out')!.click()

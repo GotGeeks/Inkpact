@@ -9,10 +9,11 @@ import { useErrorMessage } from '../errors'
 import { formatAgo } from '../relativeTime'
 import { useAuthStore, type CurrentUser } from '../stores/auth'
 import { deviceOf } from './deviceName'
+import PasswordForm from './PasswordForm.vue'
 
 /**
- * The person's own account (run B.9): their display name, and the browsers they are signed in on, any of which they can
- * sign out from here. This device is signed out from the account menu instead, which also clears what it kept for
+ * The person's own account (run B.9): their display name, their password, and the browsers they are signed in on, any of
+ * which they can sign out from here. This device is signed out from the account menu instead, which also clears what it kept for
  * offline use.
  */
 interface SessionSummary {
@@ -121,6 +122,17 @@ async function afterChange() {
   listHeading.value?.focus()
 }
 
+/**
+ * A new password signed every other device out: an open question about one of them, and what the last sign-out said, no
+ * longer fit. The list is read again; the focus stays with the password form, which says what happened.
+ */
+async function afterPasswordChange() {
+  confirming.value = null
+  done.value = null
+  actionError.value = null
+  await load()
+}
+
 async function signOut(session: SessionSummary) {
   busy.value = true
   actionError.value = null
@@ -180,6 +192,9 @@ const row = 'flex flex-col gap-space-xs border-b border-border-subtle py-space-m
         <p v-if="nameSaved" role="status" class="text-body-sm">{{ t('settings.saved') }}</p>
       </div>
     </form>
+
+    <!-- A new password signs the other devices out, so the list is read again. -->
+    <PasswordForm @changed="afterPasswordChange" />
 
     <div class="flex flex-col gap-space-sm" data-testid="devices">
       <h3

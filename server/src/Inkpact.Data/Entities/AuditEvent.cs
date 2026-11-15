@@ -42,6 +42,12 @@ public static class AuditEventTypes
     /// <summary>A person signed out every device but the one they used, from the settings screen (run B.9).</summary>
     public const string SessionsRevoked = "sessions_revoked";
 
+    /// <summary>A person changed their own password, from the settings screen; every other device was signed out (run B.9).</summary>
+    public const string PasswordChanged = "password_changed";
+
+    /// <summary>A password change with a wrong current password (run B.9). It counts toward the login lockout too.</summary>
+    public const string PasswordChangeFailed = "password_change_failed";
+
     /// <summary>Someone took the export of a workspace: all of its pages and files.</summary>
     public const string WorkspaceExported = "workspace_exported";
 }
