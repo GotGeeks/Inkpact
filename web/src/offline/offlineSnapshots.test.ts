@@ -60,6 +60,7 @@ class Repository implements OfflineRepository {
   async forgetConfirmed() {
     return 0
   }
+  async removePage() {}
 }
 
 async function opened(repository: Repository, statuses: boolean[] = []) {

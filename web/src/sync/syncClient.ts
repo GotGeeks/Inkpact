@@ -26,9 +26,15 @@ export type ConnectionStatus = 'connecting' | 'open' | 'offline'
 
 /**
  * `syncing`: waiting for the server's answer. `synced`: in step with the server. `missing`: the server has no such page
- * for this person. `tooLarge`: a change is bigger than a message may be, so nothing more is sent for this page.
+ * for this person. `tooLarge`: a change is bigger than a message may be, so nothing more is sent for this page. `full`:
+ * the server refused a change because the page would grow past what it can send to a client that opens it
+ * (`page_too_large`, run B.10), so nothing more is sent for this page either. Both keep the change on this device until
+ * it is discarded (`SyncClient.discard`), and still receive what others change, also after a reconnect.
  */
-export type PageState = 'syncing' | 'synced' | 'missing' | 'tooLarge' | 'blocked'
+export type PageState = 'syncing' | 'synced' | 'missing' | 'tooLarge' | 'full' | 'blocked'
+
+/** A page holding a change the server will not take: it sends nothing more, not even after a Sync. */
+const holdsRefusedChange = (state: PageState) => state === 'tooLarge' || state === 'full'
 
 export interface PageHandle {
   readonly pageId: string
@@ -228,9 +234,12 @@ export class SyncClient {
   ): PageHandle {
     const existing = this.pages.get(pageId)
     if (existing) {
+      const parked = existing.leaving && holdsRefusedChange(existing.state)
       existing.leaving = false
       // A page the server made read-only stays so; asking for read-only on an open page is always allowed.
       if (options.readOnly) existing.readOnly = true
+      // A page with a refused change that was left is subscribed again, to show what others change.
+      if (parked) this.sendSubscribe(existing)
       return existing
     }
 
@@ -247,7 +256,7 @@ export class SyncClient {
         this.setState(page, 'blocked')
         return
       }
-      if (page.state === 'missing' || page.state === 'tooLarge' || page.state === 'blocked') {
+      if (page.state === 'missing' || holdsRefusedChange(page.state) || page.state === 'blocked') {
         this.markUnsent(page, true)
         return
       }
@@ -301,10 +310,28 @@ export class SyncClient {
     return page
   }
 
+  /**
+   * Forgets a page now, with whatever local changes it has: the person chose to discard a change the server refused
+   * (`full`, `tooLarge`). The caller removes the page's offline copy and opens it again from the server.
+   */
+  discard(pageId: string) {
+    const page = this.pages.get(pageId)
+    if (!page) return
+    page.confirmAt = null
+    this.release(page)
+  }
+
   /** The person left the page. Changes still on their way keep it subscribed until the next Sync has sent them. */
   unsubscribe(pageId: string) {
     const page = this.pages.get(pageId)
     if (!page) return
+    if (holdsRefusedChange(page.state)) {
+      // The change can never be sent, and is kept until the person discards it: the page stays here, but the server stops
+      // sending it, and it is not subscribed again on a reconnect until the person opens it again.
+      page.leaving = true
+      if (this.isOpen()) this.send(MessageType.Unsubscribe, page.pageId)
+      return
+    }
     if (page.unconfirmed && (page.state !== 'synced' || !this.isOpen())) {
       page.leaving = true
       return
@@ -523,12 +550,15 @@ export class SyncClient {
         page.confirmAt = null
         if (!page.readOnly) this.markUnsent(page, true)
       }
-      if (page.state !== 'tooLarge') this.setState(page, 'syncing')
+      if (!holdsRefusedChange(page.state)) this.setState(page, 'syncing')
     }
   }
 
   private setState(page: Page, state: PageState) {
     if (page.state === state) return
+    // A refused change stays refused until the person discards it (`discard`, which forgets the page): a permission check
+    // or an error must not take the page back to syncing, whose Sync would send the change again.
+    if (holdsRefusedChange(page.state) && !holdsRefusedChange(state)) return
     page.state = state
     this.options.onPageChange?.(page.pageId)
   }
@@ -540,7 +570,9 @@ export class SyncClient {
   }
 
   private sendSubscribe(page: Page) {
-    if (!this.isOpen() || page.state === 'tooLarge') return
+    // A page holding a refused change subscribes too, to keep showing what others change: its Sync sends nothing back. Not
+    // once the person left it (`unsubscribe`).
+    if (!this.isOpen() || (page.leaving && holdsRefusedChange(page.state))) return
     // Whatever the old connection announced went with it: the Sync that answers this is an ordinary one.
     page.replacing = false
     if (this.options.beforeSubscribe) {
@@ -601,6 +633,8 @@ export class SyncClient {
   }
 
   private release(page: Page) {
+    // A permission check still on its way belongs to this page; a page opened again under the same id makes its own.
+    this.subscribing.delete(page.pageId)
     const retry = this.checkRetries.get(page.pageId)
     if (retry?.timer) clearTimeout(retry.timer)
     this.checkRetries.delete(page.pageId)
@@ -609,7 +643,10 @@ export class SyncClient {
       // The server announces our presence removal to the remaining peers.
       page.awareness.setLocalState(null)
     }
-    if (this.isOpen() && page.state !== 'missing') this.send(MessageType.Unsubscribe, page.pageId)
+    // A page that was left with a refused change is no longer subscribed (`unsubscribe` told the server).
+    const parked = page.leaving && holdsRefusedChange(page.state)
+    if (this.isOpen() && page.state !== 'missing' && !parked)
+      this.send(MessageType.Unsubscribe, page.pageId)
     page.detach()
     // A page left in the background goes later than the call that left it: whoever shows its state has to hear.
     this.options.onPageChange?.(page.pageId)
@@ -682,7 +719,7 @@ export class SyncClient {
     if (before && (replacedUnderChanges || unsynced.some((item) => item.deleted)))
       this.options.onEditsLost?.(page.pageId, before)
 
-    if (page.state === 'tooLarge' || page.state === 'missing') return
+    if (holdsRefusedChange(page.state) || page.state === 'missing') return
     this.setState(page, 'synced')
     // The connection works: only now is the backoff forgotten, so a server that closes straight after opening cannot be
     // hammered at full speed.
@@ -716,6 +753,15 @@ export class SyncClient {
         page.confirmAt = null
         if (rejected) this.markUnsent(page, true)
         this.setState(page, 'missing')
+        break
+      }
+      case 'page_too_large': {
+        // The server stored nothing of this change, and stores nothing more of this subscription (run B.10): what was
+        // sent after it is dropped, and the pong that follows confirms none of it. It stays here, unsent, until the person
+        // discards it.
+        page.confirmAt = null
+        this.markUnsent(page, true)
+        this.setState(page, 'full')
         break
       }
       case 'read_only': {

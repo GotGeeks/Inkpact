@@ -185,6 +185,12 @@ export async function openOfflineDatabase(
       return removed
     },
 
+    async removePage(key) {
+      const transaction = database.transaction(['pages', 'snapshots', 'recoveries'], 'readwrite')
+      removePage(storesOf(transaction), key)
+      await completed(transaction)
+    },
+
     async forgetConfirmed(userId) {
       const transaction = database.transaction(['pages', 'snapshots', 'recoveries'], 'readwrite')
       const stores = storesOf(transaction)
@@ -244,7 +250,7 @@ function findClean(
   }
 }
 
-function removePage(stores: CleanupStores, page: CachedPage) {
+function removePage(stores: CleanupStores, page: PageKey) {
   stores.pages.delete(pageKey(page))
   const cursor = stores.byPage.openKeyCursor(IDBKeyRange.only(pageKey(page)))
   cursor.onsuccess = () => {

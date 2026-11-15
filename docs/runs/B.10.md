@@ -2,7 +2,7 @@
 
 **Model:** O·high → S·med in the roadmap; kept. Planned on Opus 5.5 on 2026-11-15; builds on Sonnet 5.5 medium. Two PRs. Both touch the sync path, and PR 2 throws away a change on purpose, so both get `/code-review` at **high**.
 
-**Status:** PR 1 built (see **Handoff**); PR 2 next. The maintainer answered the three questions on 2026-11-15, each as recommended: a page at the limit keeps a small margin to shrink, a refused change stays on the device until it is discarded, and `tooLarge` gets the same discard button.
+**Status:** both PRs built (see **Handoff**); they go out in one release. The maintainer answered the three questions on 2026-11-15, each as recommended: a page at the limit keeps a small margin to shrink, a refused change stays on the device until it is discarded, and `tooLarge` gets the same discard button.
 
 ## Goal
 
@@ -182,3 +182,67 @@ The sync, import, history and pages tests pass unchanged.
 6. **Fixed: a store that throws** (the row may have committed) leaves the room's figure unknown, so it is never too low.
 7. **Fixed: `StoredBytesAsync`** is its own query (both sums, one statement) instead of the history's `ContentMark`.
 8. **Fixed: the subscribe** passes its byte count on to the diff's size check instead of adding it up again.
+
+### PR 2: the editor
+
+- **The sync client** ([`syncClient.ts`](../../web/src/sync/syncClient.ts)):
+  - The state `full`, from `page_too_large`. The page stops sending and stays unsent (`confirmAt` cleared, so the next Pong confirms nothing). It still applies what others change, and subscribes again after a reconnect for that, sending nothing back after the Sync.
+  - **A refused state stays** until the page is discarded: `setState` never leaves `full` or `tooLarge` for another state, so a permission check (blocked, then edit) cannot send the change again.
+  - **A page the person leaves is parked:** Unsubscribe is sent, the page stays in memory with its change, it is not subscribed again on a reconnect, and opening it again subscribes it.
+  - `holdsRefusedChange` covers `full` and `tooLarge` alike. `tooLarge` now subscribes again after a reconnect too.
+  - `discard(pageId)` releases the page at once (Unsubscribe, unless it was parked), whatever is unconfirmed. `release` also frees the page's place in `subscribing`, so a page opened again while the old one's permission check was on its way can subscribe.
+- **The offline copy:**
+  - `OfflineDocument.discard()` stops saving, writes a lost-edit recovery still waiting (once more after an earlier failure), waits for a write going on, and then removes the page's copy on this device. When the recovery cannot be written, it throws and removes nothing. An earlier failed save is forgotten with the copy.
+  - `OfflineRepository.removePage(key)` removes the page's record and every tab's snapshot: another tab may have merged the refused change when it opened. The offline store's `discard` releases the session and calls it; on a throw the session stays retained.
+  - `OfflineDocument.saveAgain()` writes a tab's snapshot again.
+- **The sync store:** `discardUnsaved(pageId)` runs the client's `discard`, then the offline `discard`, then tells the browser's other tabs through `localStorage` (`inkpact.discardedChange`, with the page and the account). A tab that holds the same refused change discards it too: through its page view (`onDiscardRequest`), which unmounts the editor first, or directly when no view shows it. A tab whose page is fine calls `saveAgain`, so its own unsaved edits are on the device again.
+- **The page:**
+  - [`RefusedChangeNotice.vue`](../../web/src/pages/RefusedChangeNotice.vue) for `full` and `tooLarge`. It shows the message as an alert, then "Discard unsaved change", then the question in place, with the focus on it, and Discard or "Keep it for now".
+  - `PageView.discardUnsaved` unmounts the editor first and waits for that (it holds the document being forgotten), starts no load while it runs, forgets the page, and loads it again; then the focus goes to the new editor. Not while offline: the notice's button is disabled and says that discarding needs the connection. A failure posts `discard_failed`.
+  - `PageEditor` is read-only in `full`.
+- **Texts:** `sync.full`, the discard texts, `errors.discard_failed`. `sync.tooLarge` no longer says a reload discards the change. The large-page notice adds that a page has a size limit.
+
+**Item 7 confirmed:** a test reloads a page whose device copy holds a refused change (a new client with that document, unconfirmed). Before this PR the page stopped at the same change again, `tooLarge` as well as `full`. A reload never discarded it; now the button does.
+
+**Where it differs from the card:**
+
+1. **The large-page notice names no figure.** It says "A page has a size limit: past it, changes are not saved", because the client does not know the server's queue setting, and "about 12 MB" holds only for the default.
+2. **The confirmation's second button is "Keep it for now",** not "Cancel": it says what happens to the change.
+3. **A `full` page subscribes again after a reconnect** (decision 7 said it does not). Otherwise it would stop showing what others change while the pill says live. Its Sync sends nothing back, so the change is not sent again.
+4. **Discarding tells the browser's other tabs** (decision 8 did not say). Every tab's snapshot goes, since another tab may have merged the change; a tab whose page is fine saves its copy again, and a tab with the same refused change discards it too.
+5. **No discard while offline:** the page is opened again from the server, which the device could not do.
+
+**Tests:**
+- **Web:**
+  - `syncClient.test.ts`: `full` (two changes on their way, the Pong confirming neither); a new subscribe after a reconnect that sends nothing and shows others' changes; others' changes shown; the state kept through blocked-then-edit; a page left is parked and subscribed again when opened; a page opened again while the old one's check was on its way; a reload sends a refused change again (`tooLarge` and `full`); discarding (Unsubscribe, the server's content back, editing goes on), also for `tooLarge`.
+  - `offlineDocument.test.ts`: `discard` waits for a write going on and saves nothing after it; every tab's snapshot goes, and `saveAgain` brings another tab's back; an earlier failed save is forgotten; a waiting recovery is written and kept; a recovery that still fails stops the discard, and a second try works.
+  - `RefusedChangeNotice.test.ts` (5): the message per reason, the question and its focus, keeping the change, offline, Dutch.
+  - `sync.test.ts`, through the real page: the notice, the editor read-only, discarding opens the page again from the server; keeping the change sends nothing; another tab's discard (a `storage` event) discards here too, and another account's does not.
+- **Playwright:**
+  - `page-limit.spec.ts`: the socket goes through `refusingSocket`, which refuses as the server does. A refused change can be copied and discarded, the focus goes to the editor, editing goes on, and a reload shows the result. A refused change comes back after a reload. It cannot be discarded offline. Two tabs with the same refused change both lose it, and a reload shows nothing of it is left. A tab with its own offline edit keeps it through another tab's discard, and a new tab sends it. Desktop, phone and iPhone.
+  - The real IndexedDB's `removePage` is checked here, not in Vitest (which has no IndexedDB, and adding one would be a new dependency). After discarding, the reloads show no refused text: a copy that kept it would send it to the real server, and it would show. The tab that keeps its own edit checks that `saveAgain` writes to the real IndexedDB after the removal.
+  - `a11y.spec.ts`: the notice and the question.
+
+**Review:** `/code-review` (high) on 2026-11-15 gave ten findings:
+1. **Fixed: a load during a discard** could open the page's copy before it was removed, and keep the refused change. The page view starts no load while it discards, and makes any load in flight stale.
+2. **Fixed: a `full` page stopped seeing others' changes after a reconnect**, while the pill said live. It subscribes again; its Sync sends nothing back.
+3. **Fixed: the document was destroyed while the editor was still mounted.** The view now waits for the editor to unmount first.
+4. **Fixed: discarding removed other tabs' snapshots.** Only this tab's goes, and the record goes with the last one.
+5. **Fixed: a waiting recovery after an earlier failure** was never written. It is tried once more; when it still fails, the discard fails and removes nothing.
+6. **Fixed in PR 1's branch: a replacement that stored and then threw** left the room's figure too low (its own commit and test).
+7. **Removed:** the notice's `busy` prop. The notice is unmounted while the discard runs, so the prop was never seen.
+8. **Fixed:** the restore's doc comment is above `restoredVersion` again.
+9. **Fixed:** `refusingSocket` reads and writes frames with lib0 and the app's `MessageType`, not a codec of its own.
+10. **Fixed:** the store no longer removes the page from `pages` by hand; the release does that.
+
+A second `/code-review` (the maintainer's, 2026-11-15) gave ten findings; all are fixed:
+1. **An earlier failed save outlived the discard** and kept the save-error banner. It is forgotten with the copy.
+2. **A page opened again while the old one's permission check was on its way** could not subscribe (`subscribing` kept its id). `release` frees it.
+3. **Another tab that had merged the refused change** brought it back. The discard removes every tab's snapshot and tells the other tabs (see the store above).
+4. **A discard while offline** left the page unavailable offline. Discarding needs the connection; the button says so.
+5. **A page left with a refused change stayed subscribed** and was downloaded again on every reconnect. It is parked.
+6. **A permission check (blocked, then edit)** took a `full` page back to syncing, and its Sync sent the change again. A refused state stays.
+7. **The IndexedDB `removePage`** is tested in Playwright, in a real browser: Vitest has no IndexedDB, and adding one would be a new dependency.
+8. **The focus fell to the page** after a discard. It goes to the new editor.
+9. **On PR 1's branch:** `EncodeSyncAsync` takes the `PageContent`, so the log and its size come from one place.
+10. **On PR 1's branch:** the import's `MaxOldAndNewBytes` alias is gone; it uses `SyncOptions.MaxStoredBytes` as the restore does.

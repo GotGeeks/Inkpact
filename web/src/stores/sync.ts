@@ -53,6 +53,9 @@ export type SyncDisplay = 'connecting' | 'live' | 'offline'
  * The tab's one sync socket, made when the first page opens and ended when the person leaves. The client itself knows
  * nothing of Vue: this store turns its callbacks into refs.
  */
+/** Where a tab says it discarded a refused change, for the other tabs of this browser (run B.10). */
+const DISCARDED_KEY = 'inkpact.discardedChange'
+
 export const useSyncStore = defineStore('sync', () => {
   const auth = useAuthStore()
   const notifications = useNotificationsStore()
@@ -130,6 +133,7 @@ export const useSyncStore = defineStore('sync', () => {
   }
 
   function onStorage(event: StorageEvent) {
+    discardedElsewhere(event)
     if (!clientUserId || !isOfflineIdentityEvent(event)) return
     if (readOfflineIdentity() !== clientUserId) identityChanged()
   }
@@ -332,6 +336,58 @@ export const useSyncStore = defineStore('sync', () => {
     return handle
   }
 
+  /** The views that show a page, asked to discard its refused change when another tab discarded it (run B.10). */
+  const discardHandlers = new Map<string, () => void>()
+
+  /** A view that shows the page discards a refused change itself: it has to unmount the editor first. */
+  function onDiscardRequest(pageId: string, handler: () => void): () => void {
+    discardHandlers.set(pageId, handler)
+    return () => {
+      if (discardHandlers.get(pageId) === handler) discardHandlers.delete(pageId)
+    }
+  }
+
+  /**
+   * The person discarded a change the server will not take (`full`, `tooLarge`; run B.10): the page is forgotten on this
+   * device, its offline copy too, so that it opens again from the server. The other tabs are told: one that holds the
+   * same refused change discards it too, and one whose page is fine saves its own copy again. The caller has unmounted
+   * the editor, which holds the document, and opens the page again after this.
+   */
+  async function discardUnsaved(pageId: string) {
+    const document = documents.value.get(pageId)
+    const userId = document?.metadata.userId ?? clientUserId
+    // First the page, so nothing more of it is sent or saved; its detach lets the offline session go.
+    client?.discard(pageId)
+    if (document) await offline.discard(document)
+    try {
+      localStorage.setItem(DISCARDED_KEY, JSON.stringify({ pageId, userId, at: Date.now() }))
+    } catch {
+      // Storage is off (a private window): the other tabs keep what they have, and the page may come back in one of them.
+    }
+  }
+
+  /** Another tab discarded a refused change on this page and removed the page's copy (run B.10). */
+  function discardedElsewhere(event: StorageEvent) {
+    if (event.key !== DISCARDED_KEY || !event.newValue || !client || !clientUserId) return
+    let message: { pageId?: unknown; userId?: unknown }
+    try {
+      message = JSON.parse(event.newValue) as typeof message
+    } catch {
+      return
+    }
+    if (message.userId !== clientUserId || typeof message.pageId !== 'string') return
+    const pageId = message.pageId
+    const handle = client.get(pageId)
+    if (!handle) return
+    if (handle.state === 'full' || handle.state === 'tooLarge') {
+      const handler = discardHandlers.get(pageId)
+      if (handler) handler()
+      else void discardUnsaved(pageId)
+      return
+    }
+    documents.value.get(pageId)?.saveAgain()
+  }
+
   /** The person left the page. Changes still on their way keep it open in the background until they are sent. */
   function close(pageId: string) {
     client?.unsubscribe(pageId)
@@ -406,6 +462,8 @@ export const useSyncStore = defineStore('sync', () => {
     ownsDocument,
     open,
     close,
+    discardUnsaved,
+    onDiscardRequest,
     forgetLostEdits,
     destroy,
   }
