@@ -151,7 +151,7 @@ Finding 2.3 of the review of 2026-11-11: nine pastes of just under 2 MiB take a 
 
 - **`SyncOptions`:** `MaxStoredBytes` (three quarters of the queue), `SmallUpdateBytes` (1/4096, 4 KiB) and `MaxStoredBytesForSmallUpdates` (13/16), all worked out. The import's `MaxOldAndNewBytes` and the restore's size rule use `MaxStoredBytes`.
 - **The hub** ([`SyncHub.cs`](../../server/src/Inkpact.Api/Sync/SyncHub.cs)):
-  - `PageRoom.StoredBytes`: set by a subscribe's load, grown by every update stored, null after `PublishAsync` and after a store that threw.
+  - `PageRoom.StoredBytes`: set by a subscribe's load, grown by every update stored, null from the start of a `PublishAsync` (it may store and then throw) and after a store that threw.
   - `FitsAsync`, under the room's lock: the kept figure is enough when it says yes. Otherwise the database is read (`PageUpdateStore.StoredBytesAsync`, both sums in one statement) before anything is refused.
   - A refusal sends `SyncErrors.PageTooLarge` (`page_too_large`), sets `Subscription.Refused`, and logs the page id and the two sizes. Every later Update on that subscription is dropped before the lock is taken.
 - **`PageContent.Bytes`:** the snapshot and the live updates, which the subscribe uses for the room's figure and for the diff's size check.

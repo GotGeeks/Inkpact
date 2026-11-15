@@ -91,6 +91,9 @@ public sealed class SyncHub(
         var room = await EnterRoomAsync(pageId, cancellationToken);
         try
         {
+            // The replacement writes the log itself, and may have stored it even when it throws (an answer lost after the
+            // commit): from here the room does not know the page's size, whatever happens below.
+            room.StoredBytes = null;
             if (!await commit(cancellationToken))
             {
                 return false;
@@ -100,8 +103,6 @@ public sealed class SyncHub(
             // later is answered before these two.
             room.Broadcast(Frame.EncodeReplaced(pageId), except: null);
             room.Broadcast(Frame.EncodeSync(pageId, stateVector, [update]), except: null);
-            // The replacement read and wrote the log itself: what the room knew of its size no longer holds.
-            room.StoredBytes = null;
             return true;
         }
         finally

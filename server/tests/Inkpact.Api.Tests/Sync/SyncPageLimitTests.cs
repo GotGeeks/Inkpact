@@ -286,6 +286,25 @@ public class SyncPageLimitTests(PostgresFixture postgres) : IClassFixture<Postgr
     }
 
     [Fact]
+    public async Task A_replacement_that_stored_and_then_failed_still_makes_the_size_be_read_again()
+    {
+        var page = await CreatePageAsync();
+        var client = await ConnectAsync();
+        await client.JoinAsync(page);
+
+        // Stored, then the answer was lost: the replacement throws, and nothing is relayed.
+        await Should.ThrowAsync<InvalidOperationException>(Hub.PublishAsync(page, Update(10), [], async token =>
+        {
+            await using var scope = _factory.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<PageUpdateStore>().AppendAsync(page, _jos.UserId, Update(190 * KiB), token);
+            throw new InvalidOperationException("the answer was lost");
+        }, CancellationToken.None));
+
+        await RefusedAsync(client, page, Update(10 * KiB));
+        (await StoredCountAsync(page)).ShouldBe(1);
+    }
+
+    [Fact]
     public async Task Updates_of_two_people_count_together()
     {
         var page = await CreatePageAsync();
