@@ -91,7 +91,12 @@ const contentError = ref(false)
 const editable = computed(() => {
   const page = info.value
   if (!page || props.readOnly || page.readOnly || contentError.value) return false
-  if (page.state === 'missing' || page.state === 'tooLarge' || page.state === 'blocked')
+  if (
+    page.state === 'missing' ||
+    page.state === 'tooLarge' ||
+    page.state === 'full' ||
+    page.state === 'blocked'
+  )
     return false
   return everSynced.value
 })

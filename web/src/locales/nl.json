@@ -92,6 +92,7 @@
     "forbidden": "Dat mag je niet doen.",
     "not_found": "Dat is niet gevonden.",
     "history_open_failed": "De geschiedenis kon niet worden geopend. Laad de pagina opnieuw en probeer het nog eens.",
+    "discard_failed": "De niet-opgeslagen wijziging kon niet worden verworpen. Herlaad de pagina en probeer het opnieuw.",
     "export_unavailable": "De export kan nu niet worden gemaakt, omdat het deel van de server dat de pagina’s leest niet beschikbaar is. Probeer het zo opnieuw.",
     "csrf_invalid": "De pagina was verouderd. Laad hem opnieuw en probeer het nog eens.",
     "title_invalid": "De titel mag hooguit 500 tekens hebben.",
@@ -262,7 +263,12 @@
       "live": "Live",
       "offline": "Offline · wijzigingen blijven in dit tabblad bewaard"
     },
-    "tooLarge": "Deze wijziging is te groot om op te slaan. Als je de pagina herlaadt, gaat ze verloren.",
+    "tooLarge": "Deze wijziging is te groot om op te slaan, dus ze is niet verstuurd. Je kunt de pagina nog selecteren en kopiëren. Verwerp de wijziging om verder te bewerken.",
+    "full": "Deze pagina heeft haar maximale grootte bereikt, dus je laatste wijziging is niet opgeslagen. Je kunt de pagina nog selecteren en kopiëren. Verwerp de wijziging om verder te bewerken; grote inhoud past beter op een eigen pagina of als bijlage.",
+    "discard": "Niet-opgeslagen wijziging verwerpen",
+    "discardQuestion": "De wijziging die niet is opgeslagen verwerpen? Ze staat niet op de server en verdwijnt van dit apparaat.",
+    "discardConfirm": "Verwerpen",
+    "keep": "Nu nog bewaren",
     "offlineCopyTitle": "{title} (je offline wijzigingen)"
   },
   "editor": {
@@ -271,7 +277,7 @@
     "checkboxDone": "Klaar",
     "checkboxNotDone": "Niet klaar",
     "newerVersion": "Deze pagina is gemaakt met een nieuwere versie van Inkpact. Herlaad de pagina om verder te werken.",
-    "largePage": "Deze pagina is groot ({size}), dus openen en bewerken kan traag zijn.",
+    "largePage": "Deze pagina is groot ({size}), dus openen en bewerken kan traag zijn. Een pagina heeft een maximale grootte: daarboven worden wijzigingen niet opgeslagen.",
     "blocks": {
       "text": {
         "label": "Tekst",

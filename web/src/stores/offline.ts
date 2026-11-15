@@ -120,6 +120,17 @@ export const useOfflineStore = defineStore('offline', () => {
     }
   }
 
+  /**
+   * The person discarded a change the server refused (run B.10): the session stops saving, and its copy on this device
+   * goes. Opened again, the page is the server's. When a waiting recovery copy cannot be written this throws, and the
+   * session stays retained, so a retry can still write it.
+   */
+  async function discard(session: OfflineDocument) {
+    release(session)
+    await session.discard()
+    retained.delete(session)
+  }
+
   function statusFor(key: PageKey): Durability | null {
     const all = [...statuses.value.values()].filter((status) => keyOf(status) === keyOf(key))
     if (all.length === 0) return null
@@ -185,6 +196,7 @@ export const useOfflineStore = defineStore('offline', () => {
     repository,
     prepare,
     release,
+    discard,
     statusFor,
     retry,
     retryAll,

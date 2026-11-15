@@ -211,6 +211,7 @@ describe('PageEditor', () => {
       deleteRecovery: async () => {},
       cleanup: async () => 0,
       forgetConfirmed: async () => 0,
+      removeSnapshot: async () => undefined,
     }
     const document = await OfflineDocument.open(repository, metadata, false, () => {})
     hub.refusing = true
@@ -383,8 +384,14 @@ function wireUpdate(page: string, update: Uint8Array): Uint8Array {
 
 describe('a large page', () => {
   it.each([
-    ['en', 'This page is large (6 MB), so it may be slow to open and to edit.'],
-    ['nl', 'Deze pagina is groot (6 MB), dus openen en bewerken kan traag zijn.'],
+    [
+      'en',
+      'This page is large (6 MB), so it may be slow to open and to edit. A page has a size limit: past it, changes are not saved.',
+    ],
+    [
+      'nl',
+      'Deze pagina is groot (6 MB), dus openen en bewerken kan traag zijn. Een pagina heeft een maximale grootte: daarboven worden wijzigingen niet opgeslagen.',
+    ],
   ] as const)('says so once its state is over 5 MiB, in %s', async (locale, message) => {
     hub.store(pageId, pageWithText('x'.repeat(6 * 1000 * 1000)))
 

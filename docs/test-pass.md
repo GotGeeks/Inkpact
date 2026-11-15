@@ -129,10 +129,10 @@ _Built in three PRs: the version and the update check, the release pipeline, the
 - [ ] **Lockout:** type a wrong current password five times. The change is refused for a minute (it says when to try again), and so is a login with that email on the phone.
 
 ### B.10: a size limit on live edits
-_PR 1 (the server's limit) is built; the editor's notice and "Discard unsaved change" (PR 2) follow._
 - [ ] **The limit, on the laptop:** paste a large text (a few MB) into one page again and again. Before it passes about 12 MB, the editor says the change was not saved. Copy a line from the page, then discard the change: the page is editable again, as it was before the last paste.
 - [ ] **Shrinking:** on a page at the limit, delete a large part. Within a minute the page takes a paste again.
 - [ ] **The phone:** open that page on the phone while the laptop is refused. It opens, and shows nothing of the refused paste.
+- [ ] **A reload keeps it:** with a change refused on the laptop, reload the page. The notice is back, with the change; only "Discard unsaved change" removes it.
 
 ### The review of 2026-11-11
 - [ ] With the device in dark mode, start the installed app (laptop and phone): note whether the title bar and the first screen are light until the page has loaded (the manifest has one theme colour, the light one). If it flashes, that is a finding for a fix run.

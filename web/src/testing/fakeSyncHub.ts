@@ -25,6 +25,8 @@ export class FakeSocket implements SocketLike {
   onclose: ((event: { code: number; reason: string }) => void) | null = null
   /** Pages this connection has subscribed to, as the server sees it. */
   readonly subscribed = new Set<string>()
+  /** Pages whose subscription had an update refused for size: nothing more of it is stored until it subscribes again. */
+  readonly refused = new Set<string>()
   /** Messages from the server that have not been delivered yet, while the hub holds them back. */
   held: Uint8Array[] = []
   /** Nothing passes on this connection in either direction, and nobody is told. */
@@ -86,6 +88,8 @@ export class FakeSyncHub {
   readonly missing = new Set<string>()
   /** Page ids the person may read but not change. */
   readonly readOnly = new Set<string>()
+  /** Page ids at the size limit: every update is refused with `page_too_large` (run B.10). */
+  readonly full = new Set<string>()
   readonly sockets: FakeSocket[] = []
   /** Every frame a client sent, in order, with the socket's index. */
   readonly received: { socket: number; frame: SentFrame }[] = []
@@ -211,6 +215,7 @@ export class FakeSyncHub {
         break
       case MessageType.Unsubscribe:
         socket.subscribed.delete(pageId)
+        socket.refused.delete(pageId)
         break
       case MessageType.Update:
         if (!socket.subscribed.has(pageId)) {
@@ -219,6 +224,13 @@ export class FakeSyncHub {
         }
         if (this.readOnly.has(pageId)) {
           socket.reply(errorFrame(pageId, 'read_only'))
+          return
+        }
+        // As the server: refused once, and after that dropped without a word until the page is subscribed again.
+        if (socket.refused.has(pageId)) return
+        if (this.full.has(pageId)) {
+          socket.refused.add(pageId)
+          socket.reply(errorFrame(pageId, 'page_too_large'))
           return
         }
         this.store(pageId, payload)

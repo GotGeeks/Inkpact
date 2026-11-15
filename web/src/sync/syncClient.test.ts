@@ -1191,6 +1191,181 @@ describe('SyncClient', () => {
     })
   })
 
+  describe('a page at the size limit (page_too_large)', () => {
+    it('keeps the refused change and what followed it unsent, and sends nothing more', async () => {
+      const { hub, client } = start()
+      hub.full.add(page)
+      await tick()
+      const handle = client.subscribe(page)
+      await tick()
+
+      // Two changes on their way before the refusal arrives: the server drops the second, and the pong confirms neither.
+      textEdit(handle.doc, 'a')
+      textEdit(handle.doc, 'b')
+      await tick()
+      expect(handle.state).toBe('full')
+      expect(handle.unconfirmed).toBe(true)
+      expect(client.hasUnsent()).toBe(true)
+
+      textEdit(handle.doc, 'c')
+      await tick(3_000)
+      expect(hub.sent(MessageType.Update)).toHaveLength(2)
+      expect(handle.unconfirmed).toBe(true)
+      expect(serverText(hub)).toBe('')
+      client.destroy()
+    })
+
+    it('subscribes again after a reconnect, to show what others change, and still sends nothing', async () => {
+      const { hub, client } = start()
+      hub.full.add(page)
+      await tick()
+      const handle = client.subscribe(page)
+      await tick()
+      textEdit(handle.doc, 'refused ')
+      await tick()
+
+      hub.current.serverClose(1006)
+      await tick(250)
+      await tick()
+      hub.store(page, textEdit(new Y.Doc(), 'theirs'))
+      hub.current.serverClose(1006)
+      await tick(500)
+      await tick()
+
+      expect(client.connection).toBe('open')
+      expect(handle.state).toBe('full')
+      expect(hub.sent(MessageType.Subscribe, page).length).toBeGreaterThan(1)
+      expect(hub.sent(MessageType.Update)).toHaveLength(1)
+      expect(text(handle.doc)).toContain('theirs')
+      expect(handle.unconfirmed).toBe(true)
+      client.destroy()
+    })
+
+    it('still shows what others change on the page', async () => {
+      const { hub, client } = start()
+      hub.full.add(page)
+      await tick()
+      const handle = client.subscribe(page)
+      await tick()
+      textEdit(handle.doc, 'mine ')
+      await tick()
+
+      const remote = new Y.Doc()
+      const theirs = textEdit(remote, 'theirs')
+      hub.current.deliver(encodeFrame(MessageType.Update, page, theirs))
+
+      expect(text(handle.doc)).toContain('theirs')
+      expect(handle.state).toBe('full')
+      remote.destroy()
+      client.destroy()
+    })
+  })
+
+  describe('a refused change after a reload (the device kept it, run B.6)', () => {
+    /** The page as this device kept it, opened by a new client: what a reload does. */
+    function reload(hub: FakeSyncHub, saved: Uint8Array) {
+      const client = new SyncClient({
+        url: 'ws://localhost/api/sync',
+        createSocket: hub.createSocket,
+        random: () => 0.5,
+      })
+      const doc = new Y.Doc()
+      Y.applyUpdate(doc, saved)
+      return { client, handle: client.subscribe(page, { doc, unconfirmed: true }) }
+    }
+
+    it('sends a change too large for a message again, and stops at it again', async () => {
+      const { hub, client } = start()
+      await tick()
+      const first = client.subscribe(page)
+      await tick()
+      textEdit(first.doc, 'x'.repeat(2.2 * 1024 * 1024))
+      expect(first.state).toBe('tooLarge')
+      const saved = Y.encodeStateAsUpdate(first.doc)
+      client.destroy()
+
+      const { client: again, handle } = reload(hub, saved)
+      await tick()
+
+      // A reload does not discard it: the page stops at the same change. Only discarding it does.
+      expect(handle.state).toBe('tooLarge')
+      expect(handle.unconfirmed).toBe(true)
+      expect(hub.sent(MessageType.Update)).toHaveLength(0)
+      expect(serverText(hub)).toBe('')
+      again.destroy()
+    })
+
+    it('sends a change refused for the page size again, and is refused again', async () => {
+      const { hub, client } = start()
+      hub.full.add(page)
+      await tick()
+      const first = client.subscribe(page)
+      await tick()
+      textEdit(first.doc, 'refused')
+      await tick()
+      expect(first.state).toBe('full')
+      const saved = Y.encodeStateAsUpdate(first.doc)
+      client.destroy()
+
+      const { client: again, handle } = reload(hub, saved)
+      await tick()
+
+      expect(handle.state).toBe('full')
+      expect(handle.unconfirmed).toBe(true)
+      expect(serverText(hub)).toBe('')
+      again.destroy()
+    })
+  })
+
+  describe('discarding a refused change', () => {
+    it('forgets the page and the change at once, and the page opens again as the server has it', async () => {
+      const { hub, client } = start()
+      hub.store(page, textEdit(new Y.Doc(), 'on the server'))
+      hub.full.add(page)
+      await tick()
+      const handle = client.subscribe(page)
+      await tick()
+      textEdit(handle.doc, ' and refused')
+      await tick()
+      expect(handle.state).toBe('full')
+
+      client.discard(page)
+
+      expect(client.get(page)).toBeUndefined()
+      expect(client.hasUnsent()).toBe(false)
+      expect(hub.sent(MessageType.Unsubscribe, page)).toHaveLength(1)
+
+      const fresh = client.subscribe(page)
+      await tick()
+      expect(fresh.state).toBe('synced')
+      expect(text(fresh.doc)).toBe('on the server')
+      expect(fresh.unconfirmed).toBe(false)
+      // Editing goes on: the new subscription takes changes again, until the page is full again.
+      hub.full.delete(page)
+      textEdit(fresh.doc, '!')
+      await tick()
+      expect(serverText(hub)).toBe('on the server!')
+      client.destroy()
+    })
+
+    it('forgets a change too large for a message the same way', async () => {
+      const { client } = start()
+      await tick()
+      const handle = client.subscribe(page)
+      await tick()
+      textEdit(handle.doc, 'x'.repeat(2.2 * 1024 * 1024))
+      expect(handle.state).toBe('tooLarge')
+
+      client.discard(page)
+      const fresh = client.subscribe(page)
+      await tick()
+
+      expect(fresh.state).toBe('synced')
+      expect(text(fresh.doc)).toBe('')
+      client.destroy()
+    })
+  })
+
   describe('leaving a page', () => {
     it('unsubscribes at once when everything is sent', async () => {
       const { hub, client } = start()
