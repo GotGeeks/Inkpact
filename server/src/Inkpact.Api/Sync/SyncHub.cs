@@ -366,7 +366,7 @@ public sealed class SyncHub(
             var content = await store.LoadAsync(pageId, connection.Aborted);
             // Read under the lock, so it is the page's size right now.
             room.StoredBytes = content.Bytes;
-            connection.Enqueue(await EncodeSyncAsync(pageId, clientStateVector, content.Inputs, content.Bytes, connection.Aborted));
+            connection.Enqueue(await EncodeSyncAsync(pageId, clientStateVector, content, connection.Aborted));
             if (room.Awareness.EncodeAll() is { } presence)
             {
                 connection.Enqueue(Frame.Encode(MessageType.Awareness, pageId, presence));
@@ -400,10 +400,11 @@ public sealed class SyncHub(
 
     /// <summary>The answer to a subscribe: the diff and the server's state vector, or the stored log when there is no diff.</summary>
     private async Task<byte[]> EncodeSyncAsync(
-        Guid pageId, ReadOnlyMemory<byte> clientStateVector, IReadOnlyList<byte[]> log, long logBytes, CancellationToken cancellationToken)
+        Guid pageId, ReadOnlyMemory<byte> clientStateVector, PageContent content, CancellationToken cancellationToken)
     {
+        var log = content.Inputs;
         // A page nobody has written to has nothing to diff. A large one is sent as stored (see SyncOptions.MaxDiffBytes).
-        if (log.Count == 0 || logBytes > options.MaxDiffBytes)
+        if (log.Count == 0 || content.Bytes > options.MaxDiffBytes)
         {
             return Frame.EncodeSync(pageId, [], log);
         }

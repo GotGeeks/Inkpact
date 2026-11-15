@@ -47,7 +47,7 @@ Finding 2.3 of the review of 2026-11-11: nine pastes of just under 2 MiB take a 
 
 1. **The measure is the page's stored bytes**: snapshot plus live updates, what a client in log mode is sent and a bound on what any client is sent (item 3).
 2. **One name for the limit:** `SyncOptions.MaxStoredBytes`, worked out as `MaxQueuedBytes / 4 * 3` (12 MiB), as run 1.21 did with `MaxPageBytes`.
-   - The import's `MaxOldAndNewBytes` and the restore's `MaxQueuedBytes / 4 * 3` use it.
+   - The import (which called it `MaxOldAndNewBytes`) and the restore (`MaxQueuedBytes / 4 * 3`) use it.
    - It is the room the queue keeps for a page whose log has not been compacted yet: the reply plus the traffic around it.
 3. **The rule** (question 1):
    - An update is refused when the page's stored bytes plus the update would be over `MaxStoredBytes`.
@@ -149,12 +149,12 @@ Finding 2.3 of the review of 2026-11-11: nine pastes of just under 2 MiB take a 
 
 ### PR 1: the server's limit
 
-- **`SyncOptions`:** `MaxStoredBytes` (three quarters of the queue), `SmallUpdateBytes` (1/4096, 4 KiB) and `MaxStoredBytesForSmallUpdates` (13/16), all worked out. The import's `MaxOldAndNewBytes` and the restore's size rule use `MaxStoredBytes`.
+- **`SyncOptions`:** `MaxStoredBytes` (three quarters of the queue), `SmallUpdateBytes` (1/4096, 4 KiB) and `MaxStoredBytesForSmallUpdates` (13/16), all worked out. The import and the restore use `MaxStoredBytes` directly (the import's alias `MaxOldAndNewBytes` is gone).
 - **The hub** ([`SyncHub.cs`](../../server/src/Inkpact.Api/Sync/SyncHub.cs)):
   - `PageRoom.StoredBytes`: set by a subscribe's load, grown by every update stored, null from the start of a `PublishAsync` (it may store and then throw) and after a store that threw.
   - `FitsAsync`, under the room's lock: the kept figure is enough when it says yes. Otherwise the database is read (`PageUpdateStore.StoredBytesAsync`, both sums in one statement) before anything is refused.
   - A refusal sends `SyncErrors.PageTooLarge` (`page_too_large`), sets `Subscription.Refused`, and logs the page id and the two sizes. Every later Update on that subscription is dropped before the lock is taken.
-- **`PageContent.Bytes`:** the snapshot and the live updates, which the subscribe uses for the room's figure and for the diff's size check.
+- **`PageContent.Bytes`:** the snapshot and the live updates, which the subscribe uses for the room's figure; `EncodeSyncAsync` takes the `PageContent` and uses it for the diff's size check, so the log and its size cannot disagree.
 - **Docs:** the protocol ("How large a page may grow", the error, the worked-out figures), architecture (the B.10 row, the paragraph on what a page can be), [`large-pages.md`](../design-notes/large-pages.md), self-hosting ("Very long notes"), the test pass.
 
 **For PR 2:** after a refusal, a Ping the client sent is still answered with a Pong. The client counts an update as confirmed by the next Pong, so it must handle `page_too_large` before it marks anything confirmed. The server sends the Error before the Pong, since a socket is answered in order.
