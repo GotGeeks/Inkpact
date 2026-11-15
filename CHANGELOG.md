@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/GotGeeks/Inkpact/compare/v0.1.1...v0.2.0) (2026-11-15)
+
+
+### Features
+
+* **account:** change the display name, and see and sign out signed-in devices (B.9) ([#159](https://github.com/GotGeeks/Inkpact/issues/159)) ([04324e9](https://github.com/GotGeeks/Inkpact/commit/04324e9f979462460fa0232abab46c990c25d2e7))
+* **account:** change your own password, signing out every other device (B.9) ([#161](https://github.com/GotGeeks/Inkpact/issues/161)) ([8b7c051](https://github.com/GotGeeks/Inkpact/commit/8b7c051d31f65b865d5bd254bfd621b4e9f1d588))
+
 ## [0.1.1](https://github.com/GotGeeks/Inkpact/compare/v0.1.0...v0.1.1) (2026-11-13)
 
 
