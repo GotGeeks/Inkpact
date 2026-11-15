@@ -1261,6 +1261,90 @@ describe('SyncClient', () => {
     })
   })
 
+  describe('a refused change that stays refused', () => {
+    it('stays full through a permission check that says blocked and then edit, and sends nothing', async () => {
+      const { hub, client } = start()
+      hub.full.add(page)
+      await tick()
+      const handle = client.subscribe(page)
+      await tick()
+      textEdit(handle.doc, 'refused')
+      await tick()
+
+      client.setPageAccess(page, 'blocked')
+      client.setPageAccess(page, 'edit')
+      hub.current.serverClose(1006)
+      await tick(250)
+      await tick()
+
+      expect(handle.state).toBe('full')
+      expect(hub.sent(MessageType.Update)).toHaveLength(1)
+      client.destroy()
+    })
+
+    it('stops receiving a page the person left, and starts again when they open it again', async () => {
+      const { hub, client } = start()
+      hub.full.add(page)
+      await tick()
+      const handle = client.subscribe(page)
+      await tick()
+      textEdit(handle.doc, 'refused')
+      await tick()
+
+      client.unsubscribe(page)
+      expect(client.get(page)).toBe(handle)
+      expect(hub.sent(MessageType.Unsubscribe, page)).toHaveLength(1)
+      hub.current.serverClose(1006)
+      await tick(250)
+      await tick()
+      expect(hub.sent(MessageType.Subscribe, page)).toHaveLength(1)
+
+      expect(client.subscribe(page)).toBe(handle)
+      await tick()
+      expect(hub.sent(MessageType.Subscribe, page)).toHaveLength(2)
+      expect(handle.state).toBe('full')
+      expect(handle.unconfirmed).toBe(true)
+      client.destroy()
+    })
+
+    it('lets a page opened again after a discard subscribe, also while the check of the old one was on its way', async () => {
+      const hub = new FakeSyncHub()
+      hub.full.add(page)
+      let answer: ((access: 'edit') => void) | null = null
+      const client = new SyncClient({
+        url: 'ws://localhost/api/sync',
+        createSocket: hub.createSocket,
+        random: () => 0.5,
+        beforeSubscribe: () =>
+          new Promise((resolve) => {
+            answer = resolve
+          }),
+      })
+      await tick()
+      const handle = client.subscribe(page)
+      await tick()
+      answer!('edit')
+      await tick()
+      textEdit(handle.doc, 'refused')
+      await tick()
+      expect(handle.state).toBe('full')
+      // A reconnect starts a permission check, and the person discards before it is answered.
+      hub.current.serverClose(1006)
+      await tick(250)
+      const stale = answer!
+      client.discard(page)
+
+      const fresh = client.subscribe(page)
+      await tick()
+      stale('edit')
+      answer!('edit')
+      await tick()
+
+      expect(fresh.state).toBe('synced')
+      client.destroy()
+    })
+  })
+
   describe('a refused change after a reload (the device kept it, run B.6)', () => {
     /** The page as this device kept it, opened by a new client: what a reload does. */
     function reload(hub: FakeSyncHub, saved: Uint8Array) {

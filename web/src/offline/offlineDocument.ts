@@ -195,9 +195,10 @@ export class OfflineDocument {
 
   /**
    * The person discarded a change the server refused (run B.10): nothing of this document is saved any more, and once a
-   * write that was going on has ended, this tab's snapshot of the page is removed, unconfirmed or not. A recovery copy of
-   * lost edits still waiting is written first, and kept; when it cannot be written, nothing is removed and this throws,
-   * so the person can try again.
+   * write that was going on has ended, the page's copy on this device is removed, every tab's snapshot of it (another tab
+   * may have merged the change; one whose page is fine saves its own again, `saveAgain`). A recovery copy of lost edits
+   * still waiting is written first, and kept; when it cannot be written, nothing is removed and this throws, so the person
+   * can try again. An earlier failure is forgotten with the copy it was about.
    */
   async discard(): Promise<void> {
     this.stopped = true
@@ -212,9 +213,19 @@ export class OfflineDocument {
     if (this.writing) await new Promise<void>((resolve) => this.idle.push(resolve))
     if (this.recoveries.length > 0)
       throw new Error('A copy of lost edits could not be saved, so the change was not discarded')
-    await this.repository.removeSnapshot(this.metadata, this.writerId)
+    await this.repository.removePage(this.metadata)
+    this.failure = null
     this.needsConfirmation = false
     this.report()
+  }
+
+  /**
+   * Another tab discarded a change on this page and removed the page's copy (run B.10); this tab's page is fine, so its
+   * snapshot is written again, unsaved edits and all.
+   */
+  saveAgain() {
+    if (this.detached || this.stopped) return
+    this.scheduleSnapshot()
   }
 
   /** Writes a waiting snapshot now, without the pause a large page gets: the tab is being hidden and may be closed. */

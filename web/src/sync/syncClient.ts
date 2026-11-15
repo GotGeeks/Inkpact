@@ -234,9 +234,12 @@ export class SyncClient {
   ): PageHandle {
     const existing = this.pages.get(pageId)
     if (existing) {
+      const parked = existing.leaving && holdsRefusedChange(existing.state)
       existing.leaving = false
       // A page the server made read-only stays so; asking for read-only on an open page is always allowed.
       if (options.readOnly) existing.readOnly = true
+      // A page with a refused change that was left is subscribed again, to show what others change.
+      if (parked) this.sendSubscribe(existing)
       return existing
     }
 
@@ -315,7 +318,6 @@ export class SyncClient {
     const page = this.pages.get(pageId)
     if (!page) return
     page.confirmAt = null
-    page.leaving = false
     this.release(page)
   }
 
@@ -323,6 +325,13 @@ export class SyncClient {
   unsubscribe(pageId: string) {
     const page = this.pages.get(pageId)
     if (!page) return
+    if (holdsRefusedChange(page.state)) {
+      // The change can never be sent, and is kept until the person discards it: the page stays here, but the server stops
+      // sending it, and it is not subscribed again on a reconnect until the person opens it again.
+      page.leaving = true
+      if (this.isOpen()) this.send(MessageType.Unsubscribe, page.pageId)
+      return
+    }
     if (page.unconfirmed && (page.state !== 'synced' || !this.isOpen())) {
       page.leaving = true
       return
@@ -547,6 +556,9 @@ export class SyncClient {
 
   private setState(page: Page, state: PageState) {
     if (page.state === state) return
+    // A refused change stays refused until the person discards it (`discard`, which forgets the page): a permission check
+    // or an error must not take the page back to syncing, whose Sync would send the change again.
+    if (holdsRefusedChange(page.state) && !holdsRefusedChange(state)) return
     page.state = state
     this.options.onPageChange?.(page.pageId)
   }
@@ -558,8 +570,9 @@ export class SyncClient {
   }
 
   private sendSubscribe(page: Page) {
-    // A page holding a refused change subscribes too, to keep showing what others change: its Sync sends nothing back.
-    if (!this.isOpen()) return
+    // A page holding a refused change subscribes too, to keep showing what others change: its Sync sends nothing back. Not
+    // once the person left it (`unsubscribe`).
+    if (!this.isOpen() || (page.leaving && holdsRefusedChange(page.state))) return
     // Whatever the old connection announced went with it: the Sync that answers this is an ordinary one.
     page.replacing = false
     if (this.options.beforeSubscribe) {
@@ -620,6 +633,8 @@ export class SyncClient {
   }
 
   private release(page: Page) {
+    // A permission check still on its way belongs to this page; a page opened again under the same id makes its own.
+    this.subscribing.delete(page.pageId)
     const retry = this.checkRetries.get(page.pageId)
     if (retry?.timer) clearTimeout(retry.timer)
     this.checkRetries.delete(page.pageId)
@@ -628,7 +643,10 @@ export class SyncClient {
       // The server announces our presence removal to the remaining peers.
       page.awareness.setLocalState(null)
     }
-    if (this.isOpen() && page.state !== 'missing') this.send(MessageType.Unsubscribe, page.pageId)
+    // A page that was left with a refused change is no longer subscribed (`unsubscribe` told the server).
+    const parked = page.leaving && holdsRefusedChange(page.state)
+    if (this.isOpen() && page.state !== 'missing' && !parked)
+      this.send(MessageType.Unsubscribe, page.pageId)
     page.detach()
     // A page left in the background goes later than the call that left it: whoever shows its state has to hear.
     this.options.onPageChange?.(page.pageId)

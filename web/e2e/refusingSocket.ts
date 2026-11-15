@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Page, WebSocketRoute } from '@playwright/test'
 import * as decoding from 'lib0/decoding'
 import * as encoding from 'lib0/encoding'
 import { MessageType } from '../src/sync/protocol'
@@ -27,9 +27,36 @@ function errorFrame(pageId: string, code: string): Buffer {
   return Buffer.from(encoding.toUint8Array(encoder))
 }
 
-export async function refusingSocket(page: Page) {
-  const control = { pageId: '', armed: false, refused: false, refusals: 0 }
+export interface RefusingSocket {
+  /** The page whose next update is refused once `armed`. */
+  pageId: string
+  armed: boolean
+  /** An update was refused, and the subscription is dropped until the client unsubscribes. */
+  refused: boolean
+  refusals: number
+  /** Cuts the socket and refuses new ones (true), or lets the client connect again (false): the tab is offline. */
+  cut(offline: boolean): void
+}
+
+export async function refusingSocket(page: Page): Promise<RefusingSocket> {
+  let offline = false
+  const open: WebSocketRoute[] = []
+  const control: RefusingSocket = {
+    pageId: '',
+    armed: false,
+    refused: false,
+    refusals: 0,
+    cut(value) {
+      offline = value
+      if (value) for (const route of open.splice(0)) void route.close()
+    },
+  }
   await page.routeWebSocket(/\/api\/sync(?:\?.*)?$/, (route) => {
+    if (offline) {
+      void route.close()
+      return
+    }
+    open.push(route)
     const server = route.connectToServer()
     route.onMessage((message) => {
       const frame = frameOf(message)

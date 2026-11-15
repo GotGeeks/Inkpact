@@ -8,7 +8,8 @@ import AppButton from '../components/AppButton.vue'
  * a message may be (`tooLarge`). The page stays readable, so the person can copy what they need; discarding the change,
  * after a question in place, opens the page again as the server has it.
  */
-const props = defineProps<{ reason: 'full' | 'tooLarge' }>()
+/** `offline`: the page cannot be opened again from the server now, so the change cannot be discarded yet. */
+const props = defineProps<{ reason: 'full' | 'tooLarge'; offline: boolean }>()
 const emit = defineEmits<{ discard: [] }>()
 
 const { t } = useI18n()
@@ -36,7 +37,15 @@ async function keep() {
     <p role="alert" class="text-error">
       {{ props.reason === 'full' ? t('sync.full') : t('sync.tooLarge') }}
     </p>
-    <AppButton v-if="!asking" :id="`${id}-discard`" class="self-start" @click="ask">
+    <p v-if="props.offline" :id="`${id}-offline`">{{ t('sync.discardOffline') }}</p>
+    <AppButton
+      v-if="!asking || props.offline"
+      :id="`${id}-discard`"
+      class="self-start"
+      :disabled="props.offline"
+      :aria-describedby="props.offline ? `${id}-offline` : undefined"
+      @click="ask"
+    >
       {{ t('sync.discard') }}
     </AppButton>
     <div v-else role="group" :aria-labelledby="`${id}-question`" class="flex flex-col gap-space-sm">

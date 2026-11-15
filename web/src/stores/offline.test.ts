@@ -13,7 +13,7 @@ const repository: OfflineRepository = {
   deleteRecovery: async () => {},
   cleanup: async () => 0,
   forgetConfirmed: async () => 0,
-  removeSnapshot: async () => undefined,
+  removePage: async () => undefined,
 }
 vi.mock('../offline/indexedDb', () => ({ openOfflineDatabase: async () => repository }))
 

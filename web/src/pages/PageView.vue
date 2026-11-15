@@ -334,8 +334,10 @@ async function restoredVersion(answer: RestoreAnswer) {
  */
 async function discardUnsaved() {
   const id = shownId.value
-  if (!id || discarding.value) return
+  // The page is opened again from the server, which needs the connection (the notice says so).
+  if (!id || discarding.value || localOnly.value) return
   discarding.value = true
+  focusAfterDiscard = true
   loadGeneration++
   loadedId = ''
   editorReady.value = false
@@ -352,6 +354,24 @@ async function discardUnsaved() {
   }
   retryCount.value++
 }
+
+// After a discard the notice and the editor are gone: the focus goes to the new editor once it is there, not to the page.
+let focusAfterDiscard = false
+watch(editor, async (current) => {
+  if (!current || !focusAfterDiscard) return
+  focusAfterDiscard = false
+  await nextTick()
+  current.focus()
+})
+
+// Another tab discarded the same refused change: this view discards it too, editor first, as when the person does.
+watch(
+  shownId,
+  (id, _old, onCleanup) => {
+    if (id) onCleanup(sync.onDiscardRequest(id, () => void discardUnsaved()))
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -488,6 +508,7 @@ async function discardUnsaved() {
     <RefusedChangeNotice
       v-if="syncState === 'tooLarge' || syncState === 'full'"
       :reason="syncState"
+      :offline="localOnly"
       @discard="discardUnsaved"
     />
 

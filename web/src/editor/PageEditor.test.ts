@@ -211,7 +211,7 @@ describe('PageEditor', () => {
       deleteRecovery: async () => {},
       cleanup: async () => 0,
       forgetConfirmed: async () => 0,
-      removeSnapshot: async () => undefined,
+      removePage: async () => undefined,
     }
     const document = await OfflineDocument.open(repository, metadata, false, () => {})
     hub.refusing = true

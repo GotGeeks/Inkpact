@@ -269,6 +269,7 @@
     "discardQuestion": "De wijziging die niet is opgeslagen verwerpen? Ze staat niet op de server en verdwijnt van dit apparaat.",
     "discardConfirm": "Verwerpen",
     "keep": "Nu nog bewaren",
+    "discardOffline": "Verwerpen kan alleen met verbinding: de pagina wordt dan opnieuw geopend zoals de server haar heeft.",
     "offlineCopyTitle": "{title} (je offline wijzigingen)"
   },
   "editor": {

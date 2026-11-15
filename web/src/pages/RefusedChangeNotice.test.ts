@@ -10,9 +10,9 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-function show(reason: 'full' | 'tooLarge', locale: Locale = 'en') {
+function show(reason: 'full' | 'tooLarge', locale: Locale = 'en', offline = false) {
   wrapper = mount(RefusedChangeNotice, {
-    props: { reason },
+    props: { reason, offline },
     global: { plugins: [createAppI18n(locale)] },
     attachTo: document.body,
   })
@@ -62,6 +62,17 @@ describe('RefusedChangeNotice', () => {
 
     expect(document.activeElement?.textContent?.trim()).toBe('Discard unsaved change')
     expect(wrapper!.emitted('discard')).toBeUndefined()
+  })
+
+  it('cannot discard offline, and says why', () => {
+    show('full', 'en', true)
+
+    const discard = button('Discard unsaved change')!
+    expect(discard.disabled).toBe(true)
+    const why = document.getElementById(discard.getAttribute('aria-describedby')!)
+    expect(why?.textContent).toContain('Discarding needs the connection')
+    discard.click()
+    expect(document.body.textContent).not.toContain('Discard the change that was not saved?')
   })
 
   it('speaks Dutch', () => {

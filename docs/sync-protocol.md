@@ -49,7 +49,7 @@ A page is opened by one Sync that can hold all of its stored bytes (its snapshot
 
 The Joplin import and a restored version keep to the same figure, with the page's stored updates and their replacement together.
 
-**The client** (run B.10, PR 2) puts the page in the state `full`: it sends nothing more for it and counts nothing as confirmed. After a reconnect it subscribes again, to keep showing what others change, and sends nothing back after that Sync either. The change stays in the tab and in the device's offline copy until the person discards it; then the client sends Unsubscribe, forgets the page and this tab's offline copy of it, and opens it again with a new Subscribe. A change larger than a message (`tooLarge`, which the client finds itself and never sends) is discarded the same way.
+**The client** (run B.10, PR 2) puts the page in the state `full`: it sends nothing more for it and counts nothing as confirmed. After a reconnect it subscribes again, to keep showing what others change, and sends nothing back after that Sync either; once the person leaves the page it unsubscribes and stays so until they open it again. The change stays in the tab and in the device's offline copy until the person discards it, which needs the connection; then the client sends Unsubscribe, forgets the page and the device's offline copy of it, tells the browser's other tabs (a tab holding the same refused change discards it too, a tab whose page is fine saves its copy again), and opens the page again with a new Subscribe. A change larger than a message (`tooLarge`, which the client finds itself and never sends) is discarded the same way.
 
 ## When the server replaces a page's content
 

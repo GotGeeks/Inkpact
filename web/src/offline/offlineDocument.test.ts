@@ -102,11 +102,11 @@ class MemoryRepository implements OfflineRepository {
   async forgetConfirmed() {
     return 0
   }
-  async removeSnapshot(key: PageKey, writerId: string) {
+  async removePage(key: PageKey) {
     this.writes.push('remove')
-    this.snapshots.delete(`${keyOf(key)}/${writerId}`)
-    if (![...this.snapshots.keys()].some((snapshot) => snapshot.startsWith(`${keyOf(key)}/`)))
-      this.pages.delete(keyOf(key))
+    this.pages.delete(keyOf(key))
+    for (const snapshot of [...this.snapshots.keys()])
+      if (snapshot.startsWith(`${keyOf(key)}/`)) this.snapshots.delete(snapshot)
   }
 }
 
@@ -485,7 +485,7 @@ describe('offline documents', () => {
     session.doc.destroy()
   })
 
-  it('discards only its own snapshot: another tab keeps its unsaved edits, and the page record', async () => {
+  it('discards the snapshots of every tab; another tab whose page is fine saves its own again', async () => {
     const repository = new MemoryRepository()
     const mine = await OfflineDocument.open(repository, page(), true, () => {})
     // The second tab folds the first one's snapshot into its own when it opens; each writes its own after that.
@@ -495,17 +495,39 @@ describe('offline documents', () => {
     await vi.waitFor(async () => expect(await repository.readSnapshots(page())).toHaveLength(2))
 
     await mine.discard()
+    expect(await repository.readSnapshots(page())).toEqual([])
+    expect(await repository.findPage(page().userId, page().pageId)).toBeNull()
 
-    const left = await repository.readSnapshots(page())
-    expect(left).toHaveLength(1)
+    // Told by the discarding tab (the sync store does that), the other one writes its snapshot again.
+    theirs.saveAgain()
+    await vi.waitFor(async () => expect(await repository.readSnapshots(page())).toHaveLength(1))
+    const left = (await repository.readSnapshots(page()))[0]!
     const saved = new Y.Doc()
-    Y.applyUpdate(saved, left[0]!.update)
+    Y.applyUpdate(saved, left.update)
     expect(saved.getText('text').toString()).toBe('their offline edit')
-    expect(left[0]!.unconfirmed).toBe(1)
+    expect(left.unconfirmed).toBe(1)
     expect(await repository.findPage(page().userId, page().pageId)).not.toBeNull()
     saved.destroy()
     theirs.detach()
     for (const session of [mine, theirs]) session.doc.destroy()
+  })
+
+  it('forgets an earlier failed save with the copy it was about', async () => {
+    const repository = new MemoryRepository()
+    const statuses: Durability[] = []
+    const session = await OfflineDocument.open(repository, page(), true, (status) =>
+      statuses.push(status),
+    )
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    repository.saveFailure = new Error('quota exceeded')
+    session.doc.getText('text').insert(0, 'refused')
+    await vi.waitFor(() => expect(statuses.at(-1)?.error).toBe(repository.saveFailure))
+
+    await session.discard()
+
+    expect(statuses.at(-1)).toEqual({ pending: false, error: null })
+    session.doc.destroy()
+    logged.mockRestore()
   })
 
   it('tries a waiting recovery once more before it discards, and discards nothing when it still fails', async () => {

@@ -308,6 +308,39 @@ describe('the page and the shell', () => {
     expect(hub.sent(0, 'Notes')).toHaveLength(2)
   })
 
+  it('discards the same refused change when another tab of this browser discarded it', async () => {
+    fakeTree({ pages: outline(['Notes']) })
+    const mounted = await mountAt(RouterView, '/p/Notes')
+    wrapper = mounted.wrapper
+    await vi.waitFor(() => expect(wrapper!.get('[data-testid="sync-status"]').text()).toBe('Live'))
+    hub.current.deliver(errorFrame('Notes', 'page_too_large'))
+    await vi.waitFor(() =>
+      expect(wrapper!.find('[data-testid="refused-full"]').exists()).toBe(true),
+    )
+
+    const told = (userId: string) =>
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'inkpact.discardedChange',
+          newValue: JSON.stringify({ pageId: 'Notes', userId, at: Date.now() }),
+        }),
+      )
+    // Someone else's discard says nothing to this account.
+    told('somebody-else')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="refused-full"]').exists()).toBe(true)
+
+    told(useAuthStore().user!.id)
+
+    await vi.waitFor(() =>
+      expect(wrapper!.find('[data-testid="refused-full"]').exists()).toBe(false),
+    )
+    await vi.waitFor(() =>
+      expect(wrapper!.get('.ProseMirror').attributes('contenteditable')).toBe('true'),
+    )
+    expect(hub.sent(1, 'Notes')).toHaveLength(1)
+  })
+
   it('keeps the change when the person thinks again', async () => {
     fakeTree({ pages: outline(['Notes']) })
     const mounted = await mountAt(RouterView, '/p/Notes')

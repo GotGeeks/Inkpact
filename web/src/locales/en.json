@@ -269,6 +269,7 @@
     "discardQuestion": "Discard the change that was not saved? It is not on the server, and it will be gone from this device.",
     "discardConfirm": "Discard",
     "keep": "Keep it for now",
+    "discardOffline": "Discarding needs the connection: the page is then opened again as the server has it.",
     "offlineCopyTitle": "{title} (your offline changes)"
   },
   "editor": {
