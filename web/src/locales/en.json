@@ -92,6 +92,7 @@
     "forbidden": "You are not allowed to do that.",
     "not_found": "That could not be found.",
     "history_open_failed": "The history could not be opened. Reload the page and try again.",
+    "discard_failed": "The unsaved change could not be discarded. Reload the page and try again.",
     "export_unavailable": "The export cannot be made right now, because the part of the server that reads the pages is not available. Try again in a moment.",
     "csrf_invalid": "The page was out of date. Reload it and try again.",
     "title_invalid": "The title can be at most 500 characters.",
@@ -262,7 +263,12 @@
       "live": "Live",
       "offline": "Offline · changes are kept in this tab"
     },
-    "tooLarge": "This change is too large to save. Reloading the page discards it.",
+    "tooLarge": "This change is too large to save, so it was not sent. You can still select and copy from the page. Discard the change to go on editing.",
+    "full": "This page has reached its size limit, so your last change was not saved. You can still select and copy from the page. Discard the change to go on editing; large content fits better on a page of its own or as an attachment.",
+    "discard": "Discard unsaved change",
+    "discardQuestion": "Discard the change that was not saved? It is not on the server, and it will be gone from this device.",
+    "discardConfirm": "Discard",
+    "keep": "Keep it for now",
     "offlineCopyTitle": "{title} (your offline changes)"
   },
   "editor": {
@@ -271,7 +277,7 @@
     "checkboxDone": "Done",
     "checkboxNotDone": "Not done",
     "newerVersion": "This page was made with a newer version of Inkpact. Reload the page to keep editing.",
-    "largePage": "This page is large ({size}), so it may be slow to open and to edit.",
+    "largePage": "This page is large ({size}), so it may be slow to open and to edit. A page has a size limit: past it, changes are not saved.",
     "blocks": {
       "text": {
         "label": "Text",

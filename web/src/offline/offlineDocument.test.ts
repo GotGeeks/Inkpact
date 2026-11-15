@@ -102,6 +102,12 @@ class MemoryRepository implements OfflineRepository {
   async forgetConfirmed() {
     return 0
   }
+  async removeSnapshot(key: PageKey, writerId: string) {
+    this.writes.push('remove')
+    this.snapshots.delete(`${keyOf(key)}/${writerId}`)
+    if (![...this.snapshots.keys()].some((snapshot) => snapshot.startsWith(`${keyOf(key)}/`)))
+      this.pages.delete(keyOf(key))
+  }
 }
 
 describe('offline documents', () => {
@@ -446,6 +452,99 @@ describe('offline documents', () => {
     session.doc.destroy()
     remote.destroy()
     logged.mockRestore()
+  })
+
+  it('discards: waits for a write going on, removes the copy, and saves nothing after it', async () => {
+    const repository = new MemoryRepository()
+    const session = await OfflineDocument.open(repository, page(), true, () => {})
+    let release!: () => void
+    const blocked = new Promise<void>((resolve) => (release = resolve))
+    const save = vi.spyOn(repository, 'saveSnapshot').mockImplementationOnce(async (...args) => {
+      await blocked
+      return MemoryRepository.prototype.saveSnapshot.apply(repository, args)
+    })
+    session.doc.getText('text').insert(0, 'refused by the server')
+    await vi.waitFor(() => expect(save).toHaveBeenCalled())
+
+    let discarded = false
+    const discarding = session.discard().then(() => (discarded = true))
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    // The write going on ends first; removing the copy before it would let that write bring the change back.
+    expect(discarded).toBe(false)
+    expect(repository.writes).not.toContain('remove')
+    release()
+    await discarding
+
+    expect(repository.writes.at(-1)).toBe('remove')
+    expect(await repository.readSnapshots(page())).toEqual([])
+    expect(await repository.findPage(page().userId, page().pageId)).toBeNull()
+    expect(session.unconfirmed).toBe(false)
+    session.doc.getText('text').insert(0, 'later')
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(repository.writes.at(-1)).toBe('remove')
+    session.doc.destroy()
+  })
+
+  it('discards only its own snapshot: another tab keeps its unsaved edits, and the page record', async () => {
+    const repository = new MemoryRepository()
+    const mine = await OfflineDocument.open(repository, page(), true, () => {})
+    // The second tab folds the first one's snapshot into its own when it opens; each writes its own after that.
+    const theirs = await OfflineDocument.open(repository, page(), false, () => {})
+    theirs.doc.getText('text').insert(0, 'their offline edit')
+    mine.doc.getText('text').insert(0, 'refused')
+    await vi.waitFor(async () => expect(await repository.readSnapshots(page())).toHaveLength(2))
+
+    await mine.discard()
+
+    const left = await repository.readSnapshots(page())
+    expect(left).toHaveLength(1)
+    const saved = new Y.Doc()
+    Y.applyUpdate(saved, left[0]!.update)
+    expect(saved.getText('text').toString()).toBe('their offline edit')
+    expect(left[0]!.unconfirmed).toBe(1)
+    expect(await repository.findPage(page().userId, page().pageId)).not.toBeNull()
+    saved.destroy()
+    theirs.detach()
+    for (const session of [mine, theirs]) session.doc.destroy()
+  })
+
+  it('tries a waiting recovery once more before it discards, and discards nothing when it still fails', async () => {
+    const repository = new MemoryRepository()
+    const session = await OfflineDocument.open(repository, page(), true, () => {})
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    repository.recoveryFailure = new Error('disk full')
+    session.protect({ ...page(), id: 'recovery-c', before: Y.encodeStateAsUpdate(session.doc) })
+    await vi.waitFor(() => expect(repository.writes).toContain('recovery'))
+
+    // Still failing: nothing is removed, and the person can try again.
+    await expect(session.discard()).rejects.toThrow('could not be saved')
+    expect(repository.writes).not.toContain('remove')
+    expect(await repository.readSnapshots(page())).toHaveLength(1)
+
+    // Storage is back: the recovery is written first, then the copy goes.
+    repository.recoveryFailure = null
+    await session.discard()
+    expect((await repository.listRecoveries(page().userId)).map((item) => item.id)).toEqual([
+      'recovery-c',
+    ])
+    expect(await repository.readSnapshots(page())).toEqual([])
+    session.doc.destroy()
+    logged.mockRestore()
+  })
+
+  it('writes a lost-edit recovery still waiting before it discards, and keeps it', async () => {
+    const repository = new MemoryRepository()
+    const session = await OfflineDocument.open(repository, page(), true, () => {})
+    const before = Y.encodeStateAsUpdate(session.doc)
+
+    session.protect({ ...page(), id: 'recovery-b', before })
+    await session.discard()
+
+    expect((await repository.listRecoveries(page().userId)).map((item) => item.id)).toEqual([
+      'recovery-b',
+    ])
+    expect(await repository.readSnapshots(page())).toEqual([])
+    session.doc.destroy()
   })
 
   it('surfaces an initial persistence failure instead of returning an editable document', async () => {

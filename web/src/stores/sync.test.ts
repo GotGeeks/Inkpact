@@ -273,6 +273,64 @@ describe('the page and the shell', () => {
     expect(mounted.router.currentRoute.value.query.redirect).toBe('/p/Notes')
   })
 
+  it('says when the page is full, and opens it again as the server has it once the change is discarded', async () => {
+    fakeTree({ pages: outline(['Notes']) })
+    const mounted = await mountAt(RouterView, '/p/Notes')
+    wrapper = mounted.wrapper
+    await vi.waitFor(() => expect(wrapper!.get('[data-testid="sync-status"]').text()).toBe('Live'))
+    const editable = () => wrapper!.get('.ProseMirror').attributes('contenteditable')
+    await vi.waitFor(() => expect(editable()).toBe('true'))
+
+    // The server refused a change: the page is at its size limit.
+    hub.current.deliver(errorFrame('Notes', 'page_too_large'))
+    await vi.waitFor(() =>
+      expect(wrapper!.find('[data-testid="refused-full"]').exists()).toBe(true),
+    )
+    const notice = () => wrapper!.get('[data-testid="refused-full"]')
+    expect(notice().get('[role="alert"]').text()).toContain('reached its size limit')
+    expect(editable()).toBe('false')
+
+    await notice()
+      .findAll('button')
+      .find((button) => button.text() === 'Discard unsaved change')!
+      .trigger('click')
+    expect(notice().text()).toContain('Discard the change that was not saved?')
+    await notice()
+      .findAll('button')
+      .find((button) => button.text() === 'Discard')!
+      .trigger('click')
+
+    await vi.waitFor(() =>
+      expect(wrapper!.find('[data-testid="refused-full"]').exists()).toBe(false),
+    )
+    await vi.waitFor(() => expect(editable()).toBe('true'))
+    expect(hub.sent(1, 'Notes')).toHaveLength(1)
+    expect(hub.sent(0, 'Notes')).toHaveLength(2)
+  })
+
+  it('keeps the change when the person thinks again', async () => {
+    fakeTree({ pages: outline(['Notes']) })
+    const mounted = await mountAt(RouterView, '/p/Notes')
+    wrapper = mounted.wrapper
+    await vi.waitFor(() => expect(wrapper!.get('[data-testid="sync-status"]').text()).toBe('Live'))
+    hub.current.deliver(errorFrame('Notes', 'page_too_large'))
+    await vi.waitFor(() =>
+      expect(wrapper!.find('[data-testid="refused-full"]').exists()).toBe(true),
+    )
+    const notice = () => wrapper!.get('[data-testid="refused-full"]')
+    const button = (name: string) =>
+      notice()
+        .findAll('button')
+        .find((item) => item.text() === name)!
+
+    await button('Discard unsaved change').trigger('click')
+    await button('Keep it for now').trigger('click')
+
+    expect(notice().text()).not.toContain('Discard the change that was not saved?')
+    expect(button('Discard unsaved change')).toBeDefined()
+    expect(hub.sent(1, 'Notes')).toHaveLength(0)
+  })
+
   it('shows the not-found message when the server has no such page', async () => {
     hub.missing.add('Ghost')
     // The tree knows the page, so only the sync socket says it is gone.

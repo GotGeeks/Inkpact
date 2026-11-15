@@ -52,6 +52,8 @@ export class OfflineDocument {
   private failure: unknown | null = null
   private detached = false
   private wake: (() => void) | null = null
+  /** Called when a write that was going on has ended, for `discard`. */
+  private idle: (() => void)[] = []
   private flushQueued = false
   private stopped = false
   /** No encode before this time (`performance.now()`): the pause after encoding a large page. */
@@ -191,6 +193,30 @@ export class OfflineDocument {
     return true
   }
 
+  /**
+   * The person discarded a change the server refused (run B.10): nothing of this document is saved any more, and once a
+   * write that was going on has ended, this tab's snapshot of the page is removed, unconfirmed or not. A recovery copy of
+   * lost edits still waiting is written first, and kept; when it cannot be written, nothing is removed and this throws,
+   * so the person can try again.
+   */
+  async discard(): Promise<void> {
+    this.stopped = true
+    this.dirty = false
+    this.detach()
+    // Recovery copies still waiting are written now: their write may not have started yet, or a failure stopped it (then
+    // it is tried once more).
+    if (this.recoveries.length > 0 && !this.writing) {
+      this.failure = null
+      void this.flush()
+    }
+    if (this.writing) await new Promise<void>((resolve) => this.idle.push(resolve))
+    if (this.recoveries.length > 0)
+      throw new Error('A copy of lost edits could not be saved, so the change was not discarded')
+    await this.repository.removeSnapshot(this.metadata, this.writerId)
+    this.needsConfirmation = false
+    this.report()
+  }
+
   /** Writes a waiting snapshot now, without the pause a large page gets: the tab is being hidden and may be closed. */
   flushNow() {
     this.notBefore = 0
@@ -296,6 +322,7 @@ export class OfflineDocument {
     } finally {
       this.writing = false
       this.report()
+      for (const resolve of this.idle.splice(0)) resolve()
     }
   }
 }

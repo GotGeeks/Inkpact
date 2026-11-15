@@ -185,6 +185,18 @@ export async function openOfflineDatabase(
       return removed
     },
 
+    async removeSnapshot(key, writerId) {
+      const transaction = database.transaction(['pages', 'snapshots'], 'readwrite')
+      const snapshots = transaction.objectStore('snapshots')
+      snapshots.delete([...pageKey(key), writerId])
+      // Counted after the delete, in the same transaction: the record goes with the last snapshot.
+      const left = snapshots.index('byPage').count(IDBKeyRange.only(pageKey(key)))
+      left.onsuccess = () => {
+        if (left.result === 0) transaction.objectStore('pages').delete(pageKey(key))
+      }
+      await completed(transaction)
+    },
+
     async forgetConfirmed(userId) {
       const transaction = database.transaction(['pages', 'snapshots', 'recoveries'], 'readwrite')
       const stores = storesOf(transaction)

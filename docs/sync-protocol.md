@@ -49,6 +49,8 @@ A page is opened by one Sync that can hold all of its stored bytes (its snapshot
 
 The Joplin import and a restored version keep to the same figure, with the page's stored updates and their replacement together.
 
+**The client** (run B.10, PR 2) puts the page in the state `full`: it sends nothing more for it and counts nothing as confirmed. After a reconnect it subscribes again, to keep showing what others change, and sends nothing back after that Sync either. The change stays in the tab and in the device's offline copy until the person discards it; then the client sends Unsubscribe, forgets the page and this tab's offline copy of it, and opens it again with a new Subscribe. A change larger than a message (`tooLarge`, which the client finds itself and never sends) is discarded the same way.
+
 ## When the server replaces a page's content
 
 The server sometimes makes an update itself that deletes every block of a page and writes new content: a Joplin re-import of a note that changed there, and a restored version (run B.5b). It is stored under the page's lock, only when no client's update was stored since the page was read, and then sent to everyone who has the page open as two messages, in this order:

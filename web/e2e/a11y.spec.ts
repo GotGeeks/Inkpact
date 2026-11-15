@@ -11,6 +11,7 @@ import {
 } from './helpers'
 import { importJex, openImportPage } from './importHelpers'
 import { generateJex, generateLinkedJex } from './jex'
+import { refusingSocket } from './refusingSocket'
 
 /**
  * Every screen and state, on every device (desktop, Pixel 7, iPhone 15 and a 320-pixel phone): no WCAG 2.2 A or AA
@@ -621,6 +622,29 @@ test('the settings screen, a number it cannot save and its warning', async ({ pa
   await expect(page.getByTestId('policy-warning')).toBeVisible()
   await scan(page, testInfo, 'settings warning before versions are removed')
   await page.getByTestId('policy-warning').getByRole('button', { name: 'Cancel' }).click()
+})
+
+test('a change refused for the page size, and the question before it is discarded', async ({
+  page,
+}, testInfo) => {
+  const socket = await refusingSocket(page)
+  await page.goto('/')
+  socket.pageId = await pageIdOf(
+    await createPageNamed(page, `A11y full ${testInfo.project.name} ${Date.now().toString(36)}`),
+  )
+  await closeDrawer(page)
+  await expect(page.getByTestId('sync-status')).toHaveAttribute('data-state', 'live')
+  await page.getByTestId('editor').locator('.ProseMirror').click()
+  socket.armed = true
+  await page.keyboard.insertText('refused')
+  const notice = page.getByTestId('refused-full')
+  await expect(notice).toBeVisible()
+  await scan(page, testInfo, 'page with a refused change')
+
+  await notice.getByRole('button', { name: 'Discard unsaved change' }).click()
+  await expect(notice.getByText('Discard the change that was not saved?')).toBeFocused()
+  await scan(page, testInfo, 'question before a refused change is discarded')
+  await notice.getByRole('button', { name: 'Keep it for now' }).click()
 })
 
 test('the account section, its device list and a confirmation', async ({ page }, testInfo) => {

@@ -332,6 +332,18 @@ export const useSyncStore = defineStore('sync', () => {
     return handle
   }
 
+  /**
+   * The person discarded a change the server will not take (`full`, `tooLarge`; run B.10): the page is forgotten on this
+   * device, its offline copy too, so that it opens again from the server. The caller has unmounted the editor, which
+   * holds the document, and opens the page again after this.
+   */
+  async function discardUnsaved(pageId: string) {
+    const document = documents.value.get(pageId)
+    // First the page, so nothing more of it is sent or saved; its detach lets the offline session go.
+    client?.discard(pageId)
+    if (document) await offline.discard(document)
+  }
+
   /** The person left the page. Changes still on their way keep it open in the background until they are sent. */
   function close(pageId: string) {
     client?.unsubscribe(pageId)
@@ -406,6 +418,7 @@ export const useSyncStore = defineStore('sync', () => {
     ownsDocument,
     open,
     close,
+    discardUnsaved,
     forgetLostEdits,
     destroy,
   }

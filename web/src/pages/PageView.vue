@@ -33,6 +33,7 @@ import BacklinksPanel from './BacklinksPanel.vue'
 import ChildPages from './ChildPages.vue'
 import FavoriteButton from './FavoriteButton.vue'
 import PageTags from './PageTags.vue'
+import RefusedChangeNotice from './RefusedChangeNotice.vue'
 import { shownPageIsCurrent } from './pageFreshness'
 import TitleField from './TitleField.vue'
 import type { PageDetail } from '../tree/types'
@@ -74,6 +75,8 @@ const missing = ref(false)
 const localOnly = computed(() => auth.offline || !browserOnline.value)
 const canReachApi = computed(() => browserOnline.value && !auth.offline)
 const retryCount = ref(0)
+/** A refused change is being discarded (run B.10): no load starts meanwhile. */
+const discarding = ref(false)
 let loadGeneration = 0
 let loadedId = ''
 // Nothing to show yet: a placeholder, but only once the wait is long enough to notice, so a quick load does not flash.
@@ -179,6 +182,8 @@ watch(
     ) {
       return
     }
+    // Opened again once the discard is done (it bumps retryCount).
+    if (discarding.value) return
     const mine = ++loadGeneration
     if (loadedId !== id) {
       startSlowTimer(mine)
@@ -321,6 +326,32 @@ async function restoredVersion(answer: RestoreAnswer) {
   await closeHistory()
   await tree.load().catch(() => undefined)
 }
+
+/**
+ * The person discarded a change the server will not take (run B.10). The editor goes first, since it holds the document
+ * being forgotten, and no load runs meanwhile, which could open the page's copy before it is removed. Then the page and
+ * its copy on this device are forgotten, and the page is opened again from the server.
+ */
+async function discardUnsaved() {
+  const id = shownId.value
+  if (!id || discarding.value) return
+  discarding.value = true
+  loadGeneration++
+  loadedId = ''
+  editorReady.value = false
+  document.value = null
+  await nextTick()
+  try {
+    await sync.discardUnsaved(id)
+  } catch (error) {
+    // The copy on this device may still hold the change: it comes back with the page, and can be discarded again.
+    console.error('The unsaved change could not be discarded', error)
+    notifications.post({ type: 'error', code: 'discard_failed' })
+  } finally {
+    discarding.value = false
+  }
+  retryCount.value++
+}
 </script>
 
 <template>
@@ -454,13 +485,11 @@ async function restoredVersion(answer: RestoreAnswer) {
       {{ t('offline.accessChanged') }}
     </p>
 
-    <p
-      v-if="syncState === 'tooLarge'"
-      role="alert"
-      class="rounded border border-error p-space-md text-body-sm text-error"
-    >
-      {{ t('sync.tooLarge') }}
-    </p>
+    <RefusedChangeNotice
+      v-if="syncState === 'tooLarge' || syncState === 'full'"
+      :reason="syncState"
+      @discard="discardUnsaved"
+    />
 
     <!-- The title is metadata of the page tree, not part of the document. The content of a page in the trash stays editable.
          Offline it stays on the screen, read-only, so a title still being typed is kept and saved when the network is back. -->

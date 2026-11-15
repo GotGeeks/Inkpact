@@ -44,4 +44,9 @@ export interface OfflineRepository {
   cleanup(maxCleanPages: number): Promise<number>
   /** Removes the account's pages that the server has (no unconfirmed snapshot, no recovery copy), when it signs out. */
   forgetConfirmed(userId: string): Promise<number>
+  /**
+   * Removes one tab's snapshot of a page, unconfirmed or not, and the page's record once no snapshot of it is left: the
+   * person discarded a change the server refused (run B.10). Other tabs' snapshots and recovery copies are kept.
+   */
+  removeSnapshot(key: PageKey, writerId: string): Promise<void>
 }
