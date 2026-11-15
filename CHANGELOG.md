@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/GotGeeks/Inkpact/compare/v0.2.0...v0.3.0) (2026-11-15)
+
+
+### Features
+
+* **editor:** say when a change was refused for the page size, and let it be discarded (B.10) ([#164](https://github.com/GotGeeks/Inkpact/issues/164)) ([05c56e0](https://github.com/GotGeeks/Inkpact/commit/05c56e01e77f2c0640cb4bbc872e404f2219cf69))
+* **sync:** refuse live edits that would make a page too large to open (B.10) ([#163](https://github.com/GotGeeks/Inkpact/issues/163)) ([cf96206](https://github.com/GotGeeks/Inkpact/commit/cf96206444a0c1145f47f0afdade2a941320a962))
+
 ## [0.2.0](https://github.com/GotGeeks/Inkpact/compare/v0.1.1...v0.2.0) (2026-11-15)
 
 
