@@ -253,6 +253,9 @@ test.describe('with the keyboard', () => {
 
     await expect(rowFor(page, `Doomed-${id}`)).toHaveCount(0)
     await expect(notice(page, `“Doomed-${id}” was moved to the trash.`)).toBeVisible()
+    // An Escape outside the notice (the one that closes a menu or the drawer) leaves it, and its Undo, alone.
+    await page.keyboard.press('Escape')
+    await expect(notice(page, `“Doomed-${id}” was moved to the trash.`)).toBeVisible()
     await page.getByRole('button', { name: 'Undo', exact: true }).click()
     await expect(rowFor(page, `Doomed-${id}`)).toBeVisible()
   })

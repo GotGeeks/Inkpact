@@ -56,8 +56,7 @@ test('the pages that link to a page are listed under it, and a link to a page in
   // The page it links to goes to the trash: the link stays, struck through, and the page no longer lists it as a backlink.
   await openSidebar(page)
   await chooseAction(page, rowFor(page, jex.titles.first), 'Move to trash')
-  // On a phone the drawer makes way for the Undo notice by itself. Not with Escape (closeDrawer): every notice closes on
-  // Escape, and the key would take the Undo away when the notice is already there.
+  // On a phone the drawer makes way for the Undo notice by itself; the spec waits for that rather than closing it.
   await expect(page.getByRole('dialog')).toBeHidden()
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeVisible()
   const broken = editorBody(page).locator('[data-broken-link="trash"]')
