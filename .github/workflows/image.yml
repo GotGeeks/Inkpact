@@ -68,6 +68,7 @@ jobs:
       tags: ${{ steps.version.outputs.tags }}
       publish: ${{ steps.version.outputs.publish }}
       from: ${{ steps.version.outputs.from }}
+      apt_refresh: ${{ steps.version.outputs.apt_refresh }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: version
@@ -107,7 +108,10 @@ jobs:
           context: .
           load: true
           tags: ${{ env.LOCAL_IMAGE }}
-          build-args: INKPACT_VERSION=${{ env.INKPACT_VERSION }}
+          # APT_REFRESH: the day, so the Dockerfile's apt-get upgrade takes the fixes Ubuntu published since the cached layer.
+          build-args: |
+            INKPACT_VERSION=${{ env.INKPACT_VERSION }}
+            APT_REFRESH=${{ needs.version.outputs.apt_refresh }}
           cache-from: type=gha,scope=amd64
           cache-to: type=gha,scope=amd64,mode=max
 
@@ -245,7 +249,9 @@ jobs:
         with:
           context: .
           platforms: linux/${{ matrix.arch }}
-          build-args: INKPACT_VERSION=${{ needs.version.outputs.version }}
+          build-args: |
+            INKPACT_VERSION=${{ needs.version.outputs.version }}
+            APT_REFRESH=${{ needs.version.outputs.apt_refresh }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: ${{ env.PUBLISH == 'true' && 'type=image,name=ghcr.io/gotgeeks/inkpact,push-by-digest=true,name-canonical=true,push=true' || 'type=cacheonly' }}
           provenance: ${{ env.PUBLISH == 'true' && 'mode=max' || 'false' }}

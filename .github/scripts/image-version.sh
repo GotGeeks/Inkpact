@@ -5,6 +5,8 @@
 #   tags     the tags to publish, one per line: x.y.z, x.y and latest for a release; edge and sha-<short sha> otherwise
 #   publish  true when the images are pushed: a release, a push to main, or a manual run on main that asks for it
 #   from     the image the upgrade test starts from: the newest release (latest), or edge while there is none
+#   apt_refresh  the day (UTC), passed to the Dockerfile so its cached `apt-get upgrade` layer is run again once a day;
+#            one value for the whole run, so the checked image and the published ones get the same packages
 #
 # Reads RELEASE (the release's version, empty otherwise), EVENT (github.event_name), REF (github.ref), PUBLISH_INPUT (a
 # manual run's choice), SHA (the commit) and IMAGE (ghcr.io/<owner>/<repository>, lower case).
@@ -54,6 +56,7 @@ out="${GITHUB_OUTPUT:-/dev/stdout}"
   if [[ -n "$release" ]]; then echo "release=true"; else echo "release=false"; fi
   echo "publish=$publish"
   echo "from=$from"
+  echo "apt_refresh=$(date -u +%Y-%m-%d)"
   echo "tags<<TAGS"
   echo "$tags"
   echo "TAGS"

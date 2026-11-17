@@ -11,6 +11,8 @@ self.addEventListener('install', (event) => {
 let updateRequestedBy = null
 
 self.addEventListener('message', (event) => {
+  // Only a tab of this app may ask: a worker's clients are same-origin, but the check says so rather than assumes it.
+  if (event.origin !== self.location.origin) return
   if (event.data?.type !== 'skip-waiting' || !event.source) return
   const requester = event.source
   event.waitUntil(

@@ -238,6 +238,14 @@ test('image version: a release publishes x.y.z, x.y and latest', () => {
   assert.equal(imageVersion({ EVENT: 'push', REF: 'refs/heads/main', RELEASE: '0.2.1;x' }).status, 1);
 });
 
+test("image version: today's date (UTC) for the Dockerfile's apt refresh", () => {
+  const before = new Date().toISOString().slice(0, 10);
+  const { apt_refresh: day } = imageVersion({ EVENT: 'pull_request', REF: 'refs/pull/1/merge' });
+  const after = new Date().toISOString().slice(0, 10);
+  assert.match(day, /^\d{4}-\d{2}-\d{2}$/);
+  assert.ok(day === before || day === after, `${day} is not today`);
+});
+
 test('image version: only main publishes edge; a pull request and another branch build and check', () => {
   assert.equal(imageVersion({ EVENT: 'workflow_dispatch', REF: 'refs/heads/main', PUBLISH_INPUT: 'true' }).publish, 'true');
   assert.equal(imageVersion({ EVENT: 'workflow_dispatch', REF: 'refs/heads/main', PUBLISH_INPUT: 'false' }).publish, 'false');
