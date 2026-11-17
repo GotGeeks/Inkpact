@@ -43,6 +43,18 @@ export const test = base.extend<{ cspViolations: CspViolation[]; pageErrors: str
       await collect(page, violations, pageErrors)
       await use(violations)
 
+      // A test that already failed is only reported: the screenshot Playwright takes of it hides the caret with a
+      // <style> it adds to the page, which WebKit blocks and reports as a violation of the app's policy. The test is
+      // red either way, and a violation of the app's own shows on the retry or on the next run.
+      if (testInfo.status !== testInfo.expectedStatus) {
+        if (violations.length > 0)
+          await testInfo.attach('csp-violations', {
+            body: JSON.stringify(violations, null, 2),
+            contentType: 'application/json',
+          })
+        return
+      }
+
       // Checked here, so no spec has to remember to assert it.
       if (!testInfo.annotations.some((a) => a.type === EXPECTS_CSP_VIOLATIONS)) {
         expect(violations, 'CSP violations').toEqual([])

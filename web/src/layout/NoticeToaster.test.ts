@@ -171,4 +171,39 @@ describe('NoticeToaster', () => {
 
     expect(notices.notices).toEqual([])
   })
+
+  const escape = () =>
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+
+  it('stays when Escape is pressed elsewhere on the page, such as to close the drawer or a menu', async () => {
+    const { notices, shown } = await toaster()
+    const field = document.createElement('input')
+    document.body.append(field)
+    notices.post({ type: 'trashed', pageId: 'Notes', title: 'Notes' })
+    notices.post({ type: 'editsKept', pageId: 'copy-1', title: 'Plan' })
+    await shown()
+
+    field.focus()
+    field.dispatchEvent(escape())
+    document.body.dispatchEvent(escape())
+    await flushPromises()
+
+    expect(notices.notices.map((n) => n.type)).toEqual(['trashed', 'editsKept'])
+  })
+
+  it('closes on Escape when the focus is in it, and leaves the others', async () => {
+    const { notices, shown } = await toaster()
+    notices.post({ type: 'trashed', pageId: 'Notes', title: 'Notes' })
+    notices.post({ type: 'editsKept', pageId: 'copy-1', title: 'Plan' })
+    await shown()
+
+    const undo = [...document.body.querySelectorAll('button')].find(
+      (b) => b.textContent?.trim() === 'Undo',
+    )!
+    undo.focus()
+    undo.dispatchEvent(escape())
+    await flushPromises()
+
+    expect(notices.notices.map((n) => n.type)).toEqual(['editsKept'])
+  })
 })
