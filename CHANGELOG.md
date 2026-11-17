@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/GotGeeks/Inkpact/compare/v0.3.1...v0.3.2) (2026-11-17)
+
+
+### Fixes
+
+* **notices:** an Escape elsewhere on the page no longer closes the notices ([#181](https://github.com/GotGeeks/Inkpact/issues/181)) ([fb31304](https://github.com/GotGeeks/Inkpact/commit/fb313046efea7afab729e8fdca73a4eb3ad1c14f))
+
 ## [0.3.1](https://github.com/GotGeeks/Inkpact/compare/v0.3.0...v0.3.1) (2026-11-17)
 
 
