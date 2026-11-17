@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/GotGeeks/Inkpact/compare/v0.3.0...v0.3.1) (2026-11-17)
+
+
+### Fixes
+
+* **security:** fresh Ubuntu packages in every day's image, patched glob and minimatch, an origin check in the worker ([#177](https://github.com/GotGeeks/Inkpact/issues/177)) ([a43c0be](https://github.com/GotGeeks/Inkpact/commit/a43c0bef3778e23c7f5c061c654263e18ab487f5))
+
 ## [0.3.0](https://github.com/GotGeeks/Inkpact/compare/v0.2.0...v0.3.0) (2026-11-15)
 
 
