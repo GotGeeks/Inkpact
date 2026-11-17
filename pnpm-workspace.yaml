@@ -7,3 +7,13 @@ minimumReleaseAge: 1440
 
 # Install scripts stay blocked. Add a package here only after asking.
 onlyBuiltDependencies: []
+
+# Advisories `pnpm audit` must not fail for. One per entry, and a comment above it says why it is safe and when to drop
+# it. Only for an advisory without a fixed version that cannot reach what ships: anything else gets fixed.
+auditConfig:
+  ignoreGhsas:
+    # picomatch ReDoS through repeated extglobs, every version up to 4.0.7 (the newest), no release fixes it yet
+    # (micromatch/picomatch#194). It runs only at build and test time (Vite, tinyglobby, vue-router's file-routing
+    # plugin, which the app does not use), on patterns from our own config; it is not in the web bundle, the sidecar's
+    # production dependencies or the server. Drop this entry when a picomatch above 4.0.7 is out.
+    - GHSA-fc5q-39xc-vjpf
