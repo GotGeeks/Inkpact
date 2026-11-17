@@ -168,12 +168,15 @@ jobs:
         env:
           FROM: ${{ needs.version.outputs.from }}
 
-      # All findings, for the Security tab. The gate below decides what fails.
-      - name: Scan, all findings
+      # The findings with a fix, for the Security tab: what can be acted on. One without a fix (the base image's packages
+      # that Ubuntu has not fixed yet) shows up once a fix is out, and the Dockerfile's daily apt refresh then takes it.
+      # The gate below decides what fails.
+      - name: Scan, findings with a fix
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ env.LOCAL_IMAGE }}
           format: sarif
+          ignore-unfixed: true
           output: trivy-image.sarif
           trivyignores: .trivyignore
       - name: Upload the findings
@@ -359,8 +362,8 @@ jobs:
           DIGEST: ${{ steps.index.outputs.digest }}
           PUBLISH_TAGS: ${{ needs.version.outputs.tags }}
 
-  # The images people actually pull, rescanned every week: all findings to the Security tab, and a red run on a HIGH or
-  # CRITICAL one that has a fix.
+  # The images people actually pull, rescanned every week: the findings with a fix to the Security tab, and a red run on
+  # a HIGH or CRITICAL one.
   scan:
     name: scan ${{ matrix.tag }}
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.version)
@@ -392,12 +395,13 @@ jobs:
         env:
           TAG: ${{ matrix.tag }}
 
-      - name: Scan, all findings
+      - name: Scan, findings with a fix
         if: steps.exists.outputs.exists == 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ghcr.io/gotgeeks/inkpact:${{ matrix.tag }}
           format: sarif
+          ignore-unfixed: true
           output: trivy-${{ matrix.tag }}.sarif
       - name: Upload the findings
         if: always() && steps.exists.outputs.exists == 'true' && hashFiles(format('trivy-{0}.sarif', matrix.tag)) != ''
