@@ -17,3 +17,11 @@ auditConfig:
     # plugin, which the app does not use), on patterns from our own config; it is not in the web bundle, the sidecar's
     # production dependencies or the server. Drop this entry when a picomatch above 4.0.7 is out.
     - GHSA-fc5q-39xc-vjpf
+
+# Versions with a fixed advisory, for dependencies whose own range still allows the vulnerable ones. Only the vulnerable
+# range is moved; drop an entry when `pnpm why` shows nothing needs it any more.
+overrides:
+  # GHSA-3g3m-2fjr-6pw4: js-beautify (through @vue/test-utils) and @intlify/eslint-plugin-vue-i18n.
+  'glob@>=9.0.0 <14.0.2': ^14.0.2
+  # GHSA-g3hv-75wg-m249: editorconfig (through js-beautify), and glob before the override above.
+  'minimatch@>=7.0.0 <11.0.1': ^11.0.1

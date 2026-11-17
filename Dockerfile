@@ -58,7 +58,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:bfd912c83295ce66d4b706ebb
 # pg_dump 18: a migration backs the database up first and refuses to run without it, and a dump of a Postgres 18
 # server needs a client of the same major version, which the distribution does not have. curl is for the health check, libatomic1 for the Node binary.
 # The upgrade takes Ubuntu's security fixes that the base image does not have yet (Microsoft rebuilds it later).
-RUN apt-get update \
+# APT_REFRESH (the day, from image.yml) makes the layer cache run it again: with the same base digest a cached layer
+# would otherwise keep the packages of the first build for good.
+ARG APT_REFRESH=none
+RUN echo "Packages as of ${APT_REFRESH}" \
+ && apt-get update \
  && apt-get upgrade -y --no-install-recommends \
  && apt-get install -y --no-install-recommends ca-certificates curl gnupg libatomic1 \
  && install -d /usr/share/postgresql-common/pgdg \
