@@ -10,7 +10,7 @@ Self-hosted, multi-user notes app with real-time collaborative editing. Replaces
 ## Repository layout
 
 ```
-server/    ASP.NET Core (.NET 10): REST API, WebSocket sync hub, compaction worker
+server/    ASP.NET Core (.NET 11): REST API, WebSocket sync hub, compaction worker
   sidecar/ Node process running Yjs, the only decoder of Yjs updates (pnpm package, TypeScript run by Node 26, no build)
 web/       Vue 3 + TypeScript client (Vite, Pinia, TipTap, Tailwind v4, Reka UI)
 desktop/   Electron shell around web/ (phase 3, not yet)
@@ -79,7 +79,7 @@ These hold for every change. Never weaken one to make something pass; stop and a
 
 ## Backend conventions
 
-- .NET 10, minimal APIs, nullable reference types on, warnings as errors.
+- .NET 11, minimal APIs, nullable reference types on, warnings as errors.
 - EF Core with Npgsql. Migrations are the only way to change the schema. Raw SQL only for recursive tree queries (also the search query, which reads the visible tree through the `live_pages` function) and for the compaction's advisory lock and its `for update` read of the snapshot row, and the history's advisory lock per workspace.
 - **What a log line may hold:** ids, counts, codes, durations and the request's trace id. Never note content, page or tag titles, search text, file names, typed email addresses, passwords, tokens or cookies. The setup code is the one deliberate exception, while there is no account. `LogContentTests` checks it; a new flow that handles content gets a marker there.
 - Every endpoint declares an authorisation policy; the single permission service resolves roles (rules in architecture → "Permission resolution").
