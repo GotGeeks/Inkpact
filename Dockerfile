@@ -75,6 +75,11 @@ RUN echo "Packages as of ${APT_REFRESH}" \
  && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/*
 
+# Ubuntu 26.04's base layer ships Pebble, Canonical's service manager, as a Go binary outside any package, so the
+# upgrade above never patches its Go runtime (Trivy flagged CVE-2026-97054). Nothing here runs it: the entrypoint is
+# dotnet. Removed, not ignored.
+RUN rm -rf /usr/bin/pebble /var/lib/pebble
+
 # Node, for the sidecar: one binary from the official image.
 COPY --from=web /usr/local/bin/node /usr/local/bin/node
 
