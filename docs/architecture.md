@@ -36,7 +36,7 @@ Inkpact runs as exactly one application instance. The sync hub keeps connection 
 
 | Layer | Choice | Why |
 | --- | --- | --- |
-| Backend | ASP.NET Core (.NET 10), minimal APIs + WebSockets, EF Core | Your strongest stack; fast, single container |
+| Backend | ASP.NET Core (.NET 11), minimal APIs + WebSockets, EF Core | Your strongest stack; fast, single container |
 | Database | PostgreSQL via Npgsql | Requirement; `bytea` for CRDT state, built-in full-text search |
 | CRDT | Yjs on the client, Yjs in a Node sidecar on the server where needed | Most mature CRDT ecosystem, editor bindings ready-made |
 | Editor | TipTap (ProseMirror) with the Yjs collaboration extension, Notion-style block handles and a slash menu | Proven rich editor, works in mobile browsers |
