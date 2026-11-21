@@ -61,6 +61,6 @@ internal static class SnakeCaseNames
         return builder.ToString();
     }
 
-    private static string Join(IEnumerable<IReadOnlyProperty> properties) =>
+    private static string Join(IEnumerable<IReadOnlyPropertyBase> properties) =>
         string.Join('_', properties.Select(p => ToSnakeCase(p.Name)));
 }

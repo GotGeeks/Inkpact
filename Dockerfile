@@ -34,7 +34,7 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
  && pnpm --filter sidecar deploy --prod /out
 
 # The server. The SDK tag is the one in global.json (rollForward is disabled there).
-FROM mcr.microsoft.com/dotnet/sdk:10.0.404@sha256:fe0fd4e93bd2fbb47c883b7a6369e5c8d3db8bf01cdc5981f6ee35fbdf3ff4fb AS server
+FROM mcr.microsoft.com/dotnet/sdk:11.0.100@sha256:65f3c7c6a25a239ab3e6719f2896147e7b68242ff2d8818dd70498bde6ef8bea AS server
 WORKDIR /src
 COPY global.json ./
 COPY server/Directory.Build.props server/Directory.Packages.props server/
@@ -53,7 +53,7 @@ RUN case "$INKPACT_VERSION" in *[!0-9A-Za-z.+-]*|'') echo "INKPACT_VERSION is no
  && dotnet publish server/src/Inkpact.Api/Inkpact.Api.csproj -c Release -o /out --no-restore \
       "-p:Version=${INKPACT_VERSION%%[-+]*}" "-p:InformationalVersion=$INKPACT_VERSION"
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:bfd912c83295ce66d4b706ebb8541b9f14259b0e76fbb88b2751f58ce2399d2e AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0-resolute@sha256:bc0d6653979efba491ab3d6f589d691f96c309c3c3ef81325efa6978e7b7f242 AS final
 
 # pg_dump 18: a migration backs the database up first and refuses to run without it, and a dump of a Postgres 18
 # server needs a client of the same major version, which the distribution does not have. curl is for the health check, libatomic1 for the Node binary.
@@ -74,6 +74,11 @@ RUN echo "Packages as of ${APT_REFRESH}" \
  && apt-get purge -y gnupg \
  && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/*
+
+# Ubuntu 26.04's base layer ships Pebble, Canonical's service manager, as a Go binary outside any package, so the
+# upgrade above never patches its Go runtime (Trivy flagged CVE-2026-97054). Nothing here runs it: the entrypoint is
+# dotnet. Removed, not ignored.
+RUN rm -rf /usr/bin/pebble /var/lib/pebble
 
 # Node, for the sidecar: one binary from the official image.
 COPY --from=web /usr/local/bin/node /usr/local/bin/node
