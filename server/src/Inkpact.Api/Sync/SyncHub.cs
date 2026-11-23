@@ -71,6 +71,12 @@ public sealed class SyncHub(
     public int OpenConnections => _connections.Count;
 
     /// <summary>
+    /// The connection slots a user holds. A slot is freed after its socket has left <see cref="OpenConnections"/>, once
+    /// the endpoint's request is done, so a reconnect waits for this number, not for that one.
+    /// </summary>
+    public int ConnectionsOf(Guid userId) => _connectionsPerUser.GetValueOrDefault(userId);
+
+    /// <summary>
     /// Stores an update that the server itself made to replace a page's content (the Joplin import replacing a note, a
     /// restored version) and relays it to everyone who has the page open. <paramref name="commit"/> does the storing, in
     /// the caller's own transaction, so that the update and whatever else belongs with it are written together. It runs
