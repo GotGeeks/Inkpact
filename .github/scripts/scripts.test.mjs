@@ -117,28 +117,32 @@ test('nuget: an unknown severity counts as the worst', () => {
 
 const npm = 'npm_and_yarn';
 const patch = 'version-update:semver-patch';
+const minor = 'version-update:semver-minor';
 
-test('automerge: a patch in each tooling group merges', () => {
+test('automerge: a patch or a minor in each tooling group merges', () => {
   for (const group of ['web-lint', 'web-types', 'web-unit-tests', 'commitlint']) {
     assert.equal(shouldAutoMerge({ ecosystem: npm, updateType: patch, group }), true, group);
+    assert.equal(shouldAutoMerge({ ecosystem: npm, updateType: minor, group }), true, group);
   }
 });
 
-test('automerge: yjs, playwright and other groups wait', () => {
+test('automerge: yjs, playwright and other groups wait, also for a patch or a minor', () => {
   for (const group of ['yjs', 'tiptap', 'vue', 'vite', 'playwright', '']) {
     assert.equal(shouldAutoMerge({ ecosystem: npm, updateType: patch, group }), false, group);
+    assert.equal(shouldAutoMerge({ ecosystem: npm, updateType: minor, group }), false, group);
   }
 });
 
-test('automerge: a minor or major in a tooling group waits', () => {
-  assert.equal(shouldAutoMerge({ ecosystem: npm, updateType: 'version-update:semver-minor', group: 'web-lint' }), false);
+test('automerge: a major or an unknown update type in a tooling group waits', () => {
   assert.equal(shouldAutoMerge({ ecosystem: npm, updateType: 'version-update:semver-major', group: 'web-lint' }), false);
+  assert.equal(shouldAutoMerge({ ecosystem: npm, updateType: '', group: 'web-lint' }), false);
 });
 
-test('automerge: a NuGet patch and a GitHub Actions patch wait', () => {
+test('automerge: NuGet and GitHub Actions wait', () => {
   assert.equal(shouldAutoMerge({ ecosystem: 'nuget', updateType: patch, group: 'test-framework' }), false);
   assert.equal(shouldAutoMerge({ ecosystem: 'github_actions', updateType: patch, group: 'actions' }), false);
   assert.equal(shouldAutoMerge({ ecosystem: 'github_actions', updateType: patch, group: 'web-lint' }), false);
+  assert.equal(shouldAutoMerge({ ecosystem: 'nuget', updateType: minor, group: 'test-framework' }), false);
 });
 
 // ---- the shell scripts (run B.8), run as CI runs them: bash, in a throwaway repository or with a fake docker ----------

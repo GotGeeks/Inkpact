@@ -5,7 +5,7 @@ version: 2
 # pnpm would refuse to install), labels its pull requests `dependencies` and writes conventional commit messages.
 # Security updates (on in the repository settings) use this file too, so they come grouped and labelled the same way.
 #
-# Only patch updates of the four tooling groups under npm are merged without the maintainer: see
+# Only patch and minor updates of the four tooling groups under npm are merged without the maintainer: see
 # .github/workflows/auto-merge.yml and .github/scripts/automerge.mjs. A group named here and there must match.
 #
 # A dependency goes to the first group whose pattern matches, so the order of the groups matters.
@@ -68,8 +68,8 @@ updates:
         patterns:
           - '@playwright/test'
           - '@axe-core/playwright'
-      # The four groups below are tooling whose whole effect a pull request's checks test: their patches are merged
-      # automatically.
+      # The four groups below are tooling whose whole effect a pull request's checks test: their patches and minors are
+      # merged automatically, their majors wait.
       web-lint:
         patterns:
           - eslint

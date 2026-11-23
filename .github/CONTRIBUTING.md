@@ -23,7 +23,7 @@ Use pnpm only, never npm or yarn. Ask in the issue before adding a dependency, a
 
 A new dependency must pass `pnpm check:licenses`. If it fails because the package has no SPDX licence expression (a NuGet package with only a licence URL, say), check the licence yourself and add an entry under `packages` in `.github/license-policy.json` with the real licence and the reason. A licence that is not on the `allowed` list needs a discussion first: it must be compatible with AGPL-3.0.
 
-Dependabot keeps dependencies current in small grouped pull requests (Mondays, with a 3-day wait after a release). It merges only patch updates of web dev tooling by itself (lint, types, unit-test tooling, commitlint), after their checks pass. Runtime dependencies, NuGet, Playwright, GitHub Actions and the Yjs group are reviewed and merged by hand.
+Dependabot keeps dependencies current in small grouped pull requests (Mondays, with a 3-day wait after a release). It merges only patch and minor updates of web dev tooling by itself (lint, types, unit-test tooling, commitlint), after their checks pass. Runtime dependencies, NuGet, Playwright, GitHub Actions and the Yjs group are reviewed and merged by hand.
 
 ## Before you open a pull request
 

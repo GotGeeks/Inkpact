@@ -1,9 +1,9 @@
 name: Auto-merge Dependabot
 
-# Turns on auto-merge for a Dependabot pull request that is a patch update of web dev tooling (lint, types, unit-test
-# tooling, commitlint), whose whole effect the checks of a pull request test. The rule is in
+# Turns on auto-merge for a Dependabot pull request that is a patch or minor update of web dev tooling (lint, types,
+# unit-test tooling, commitlint), whose whole effect the checks of a pull request test. The rule is in
 # .github/scripts/automerge.mjs and is tested there. Everything else (runtime dependencies, NuGet, Playwright, GitHub
-# Actions, the Yjs group, minors and majors) waits for the maintainer. Auto-merge still waits for every required check.
+# Actions, the Yjs group, majors) waits for the maintainer. Auto-merge still waits for every required check.
 #
 # pull_request_target runs with write access, so this workflow never checks out or runs the pull request's code: it
 # reads the metadata GitHub and Dependabot provide and runs the script from the default branch.

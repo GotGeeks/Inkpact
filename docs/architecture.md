@@ -423,7 +423,7 @@ Nothing reaches users unless every check is green, and a release is a single mer
 - Branch protection on main: pull requests only, required checks, linear history
 - Conventional commits enforced by commitlint; release-please turns them into versions and changelogs
 - Issue forms, Discussions, CODEOWNERS, CONTRIBUTING, SECURITY.md with private vulnerability reporting, and a DCO sign-off check on every commit
-- Dependabot (part of GitHub, no app to install, as in GarageStack) for npm, NuGet, GitHub Actions, the Docker images and the .NET SDK, grouped, with a 3-day cooldown so it never proposes a version pnpm's `minimumReleaseAge` refuses. Only patch updates of web dev tooling (lint, types, unit-test tooling, commitlint) are merged automatically, since a pull request's checks test all of their effect; runtime dependencies (auth, database, crypto, security libraries), NuGet, Playwright and GitHub Actions always get a manual review
+- Dependabot (part of GitHub, no app to install, as in GarageStack) for npm, NuGet, GitHub Actions, the Docker images and the .NET SDK, grouped, with a 3-day cooldown so it never proposes a version pnpm's `minimumReleaseAge` refuses. Only patch and minor updates of web dev tooling (lint, types, unit-test tooling, commitlint) are merged automatically, since a pull request's checks test all of their effect; runtime dependencies (auth, database, crypto, security libraries), NuGet, Playwright and GitHub Actions always get a manual review
 
 **Every pull request**
 
