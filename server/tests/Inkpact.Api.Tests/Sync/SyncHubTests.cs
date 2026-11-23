@@ -200,9 +200,11 @@ public class SyncHubTests(PostgresFixture postgres) : IClassFixture<PostgresFixt
         await ConnectAsync();
 
         await HandshakeFailsWithAsync(() => _jos.ConnectAsync(), HttpStatusCode.TooManyRequests);
+        Hub.ConnectionsOf(_jos.UserId).ShouldBe(2);
 
         await first.Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
-        await WaitUntilAsync(() => Hub.OpenConnections == 1);
+        // The slot, not the hub's socket count: the socket leaves that count before its slot is freed.
+        await WaitUntilAsync(() => Hub.ConnectionsOf(_jos.UserId) == 1);
         await ConnectAsync();
     }
 
